@@ -109,9 +109,9 @@
             <th class="r">P&L%</th>
             <th class="r">Stop</th>
             <th class="r">KO</th>
-            <th class="r">Abst.</th>
+            <th class="r">KO Abst.</th>
             <th class="c">Hebel</th>
-            <th>Risiko</th>
+            <th>Empf.</th>
             <th></th>
           </tr>
         </thead>
@@ -190,23 +190,46 @@ function render() {
     var pnl = val - inv;
     var pct = inv ? (pnl / inv * 100) : 0;
     var kd = p.ko_distance_pct;
-    var risk = p.ko_risk || '—';
-    var rc = risk === 'SICHER' ? 'var(--c-ok)' : risk === 'KRITISCH' ? 'var(--c-err)' : risk === 'BEOBACHTEN' ? '#f59e0b' : 'var(--c-text-dim)';
+    var lev = parseFloat(p.current_leverage || p.leverage) || 0;
     ti += inv; tv += val; tp += pnl;
 
-    // Stop-Loss: gesetzt > berechnet (15% unter aktuellem Wert)
+    // Stop-Loss: dynamisch basierend auf KO-Distanz
     var stop = p.stop_loss;
     var stopTxt = '—';
-    var calcStop = val * 0.85;
-    if (stop != null && stop > 0 && p.units) {
-      var pp = val / p.units;
-      var sd = (pp - stop) / pp * 100;
+    if (stop != null && stop > 0) {
       stopTxt = stop.toFixed(2) + '€';
-      if (sd < 5) stopTxt = '<span style="color:var(--c-err);font-weight:600">' + stopTxt + '</span>';
-    } else if (stop != null && stop > 0) {
-      stopTxt = stop.toFixed(2) + '€';
+    } else if (kd > 0 && kd < 20) {
+      stopTxt = '<span style="color:var(--c-err);font-weight:600">SOFORT</span>';
     } else {
-      stopTxt = calcStop.toFixed(2) + '€ <span class="muted" style="font-size:10px">(15%)</span>';
+      var slPct = kd > 0 ? Math.min(kd / 2, 15.0) : 15.0;
+      var calcStop = val * (1 - slPct / 100);
+      stopTxt = calcStop.toFixed(2) + '€ <span class="muted" style="font-size:10px">(' + slPct.toFixed(0) + '%)</span>';
+    }
+
+    // Hebel-Farbe
+    var levColor = lev >= 4.0 ? 'var(--c-err)' : lev >= 3.5 ? 'var(--c-warn)' : 'var(--c-ok)';
+    var levStr = lev > 0 ? '<span style="color:' + levColor + ';font-weight:600">' + lev.toFixed(2) + 'x</span>' : '—';
+
+    // KO-Abstand-Farbe
+    var koColor = kd != null ? (kd < 20 ? 'var(--c-err)' : kd < 25 ? 'var(--c-warn)' : 'var(--c-ok)') : 'var(--c-text-dim)';
+    var koStr = kd != null ? '<span style="color:' + koColor + ';font-weight:600">' + kd.toFixed(1) + '%</span>' : '—';
+
+    // Handlungsempfehlung
+    var action = 'HALTEN';
+    var actionClass = 'badge-hold';
+    var actionReason = 'OK';
+    if (kd != null && kd < 20) {
+      action = 'VERKAUFEN'; actionClass = 'badge-sell'; actionReason = 'KO zu nah';
+    } else if (lev >= 4.0) {
+      action = 'NEU KAUFEN'; actionClass = 'badge-sell'; actionReason = 'Hebel unrentabel';
+    } else if (pct < -10) {
+      action = 'STOPP'; actionClass = 'badge-sell'; actionReason = 'Verlust > 10%';
+    } else if (pct > 20) {
+      action = 'GEWINN SICHERN'; actionClass = 'badge-warn'; actionReason = 'Gewinn > 20%';
+    } else if (kd != null && kd < 25) {
+      action = 'BEOBACHTEN'; actionClass = 'badge-warn'; actionReason = 'KO nahe';
+    } else if (lev >= 3.5) {
+      action = 'BEOBACHTEN'; actionClass = 'badge-warn'; actionReason = 'Hebel hoch';
     }
 
     var tr = document.createElement('tr');
@@ -219,9 +242,9 @@ function render() {
       '<td class="r"><span class="'+pnlC(pct)+'">' + (pct>=0?'+':'') + pct.toFixed(1) + '%</span></td>' +
       '<td class="r ro">' + stopTxt + '</td>' +
       '<td class="r ro">' + (p.ko_barrier||'—') + '</td>' +
-      '<td class="r" style="color:'+(kd!=null?(kd<35?'var(--c-err)':'var(--c-ok)'):'var(--c-text-dim)')+'">'+(kd!=null?kd.toFixed(1)+'%':'—')+'</td>' +
-      '<td class="c ro">' + (p.current_leverage||'—') + '</td>' +
-      '<td style="color:'+rc+'">' + risk + '</td>' +
+      '<td class="r">' + koStr + '</td>' +
+      '<td class="c">' + levStr + '</td>' +
+      '<td><span class="badge ' + actionClass + '">' + action + '</span><br><span class="muted" style="font-size:10px">' + actionReason + '</span></td>' +
       '<td><button class="del-btn" onclick="delPos('+i+')"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>';
     tbody.appendChild(tr);
   });
