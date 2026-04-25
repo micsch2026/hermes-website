@@ -1,0 +1,369 @@
+<!--TITLE:Trading Leitfaden — Hermes-->
+<!--HEAD-->
+<style>
+  .guide { max-width: 900px; margin: 0 auto; line-height: 1.8; }
+  .guide h1 { font-size: var(--text-2xl); margin-bottom: var(--s-4); }
+  .guide h2 { font-size: var(--text-lg); margin-top: var(--s-8); margin-bottom: var(--s-3); border-bottom: 1px solid var(--c-border); padding-bottom: var(--s-2); }
+  .guide h3 { font-size: var(--text-md); margin-top: var(--s-4); margin-bottom: var(--s-2); }
+  .guide table { width: 100%; border-collapse: collapse; margin: var(--s-3) 0; font-size: var(--text-sm); }
+  .guide th { text-align: left; padding: var(--s-2); border-bottom: 1px solid var(--c-border); color: var(--c-text-dim); }
+  .guide td { padding: var(--s-2); border-bottom: 1px solid var(--c-border); }
+  .guide code { background: var(--c-surface); padding: 2px 6px; border-radius: var(--r-sm); font-size: var(--text-sm); }
+  .guide pre { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); overflow-x: auto; font-size: var(--text-sm); }
+  .guide pre code { background: transparent; padding: 0; }
+  .guide blockquote { border-left: 3px solid var(--c-border); padding-left: var(--s-4); color: var(--c-text-dim); font-style: italic; margin: var(--s-3) 0; }
+  .guide ul { padding-left: var(--s-6); margin: var(--s-3) 0; }
+  .guide li { margin-bottom: var(--s-1); }
+  .guide hr { border: none; border-top: 1px solid var(--c-border); margin: var(--s-6) 0; }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+
+<div class="container guide">
+
+<div class="page-header">
+  <h1 class="page-title">Trading Bot — Leitfaden</h1>
+  <p class="page-subtitle">Gewinnorientierter Ansatz. Multidimensionalität als Grundsatz. Kimi optimiert sich selbst.</p>
+</div>
+
+<h1>Trading Bot — Leitfaden, Prozess & TODOs</h1>
+
+<blockquote>Gewinnorientierter Ansatz. Multidimensionalität als Grundsatz.</blockquote>
+<blockquote>Kimi optimiert sich selbst (Review) und dokumentiert.</blockquote>
+
+<hr>
+
+<h2>1. ÜBERBLICK</h2>
+
+<p><b>Ziel:</b> Autonomer Swing-Trading Bot auf Pepperstone (Demo → Live)</p>
+<p><b>Broker:</b> Pepperstone GmbH (BaFin, Düsseldorf) — Abgeltungssteuer automatisch</p>
+<p><b>API:</b> cTrader Open API (gRPC/Protobuf)</p>
+<p><b>KI:</b> Kimi 2.6 (OpenRouter) für Analyse + Review</p>
+<p><b>Dashboard:</b> hermes.nexusfortis.org/bot</p>
+
+<hr>
+
+<h2>2. KERNPRINZIPIEN</h2>
+
+<h3>Gewinnorientierung</h3>
+<ul>
+  <li><b>Mindest-R:R 1:2</b> — jeder Trade muss das Potenzial haben, doppelt so viel zu gewinnen wie zu riskieren</li>
+  <li><b>Profit-Faktor > 1.5</b> als Ziel über 20 Trades</li>
+  <li><b>Höheres Risiko erlaubt</b> wenn Setup-Qualität hoch ist (A-Setup → bis 3% statt 2%)</li>
+  <li><b>Kein Risiko = kein Trade</b> — aber Risiko ist Werkzeug, nicht Feind</li>
+</ul>
+
+<h3>Multidimensionalität</h3>
+<ul>
+  <li><b>Mehrere Zeitrahmen</b> analysieren (1H + 4H + Daily)</li>
+  <li><b>Mehrere Indikatoren</b> kombinieren (Trend + Momentum + Volumen)</li>
+  <li><b>Mehrere Märkte</b> scannen (Forex, Indizes, Crypto, Aktien)</li>
+  <li><b>Korrelation prüfen</b> — keine 3 Long-Positionen im selben Sektor</li>
+  <li><b>Makro-Kontext</b> berücksichtigen (Fed, Earnings, geopolitisch)</li>
+</ul>
+
+<h3>Selbstoptimierung (Kimi Review)</h3>
+<ul>
+  <li><b>Jeder Trade</b> wird von Kimi reviewt</li>
+  <li><b>Wöchentlicher Prozess-Review</b> — Kimi evaluiert den Workflow selbst</li>
+  <li><b>Prompt-Tuning</b> — Kimi verbessert seine eigenen Prompts basierend auf Ergebnissen</li>
+  <li><b>Dokumentation</b> — Kimi hält Änderungen und Begründungen fest</li>
+</ul>
+
+<hr>
+
+<h2>3. PROZESS (7 Schritte)</h2>
+
+<pre><code>┌─────────────────────────────────────────────────┐
+│  1. SCAN       → cTrader Live-Daten (OHLCV)    │
+│  2. SCREEN     → Kimi prüft 8 Swing-Setups     │
+│  3. SCORE      → Signal-Qualität (ATR, RR, Korr)│
+│  4. RISK       → Risikomodul validiert          │
+│  5. EXECUTE    → cTrader Order (Market)         │
+│  6. MONITOR    → SL/TP Management               │
+│  7. REVIEW     → Kimi reviewt + dokumentiert    │
+└─────────────────────────────────────────────────┘</code></pre>
+
+<h3>Detail je Schritt:</h3>
+
+<p><b>1. SCAN (automatisch, Stream)</b></p>
+<ul>
+  <li>cTrader Stream liefert Live Bid/Ask für Watchlist</li>
+  <li>OHLCV Trendbars (M1, M5, H1) für Top-Symbole</li>
+  <li>Daten in /root/trading/data/stream/</li>
+</ul>
+
+<p><b>2. SCREEN (Kimi, manuell oder bei Signal)</b></p>
+<ul>
+  <li>Kimi analysiert 8 Setup-Typen:</li>
+  <li>MA-Cross (20/50, 50/200)</li>
+  <li>RSI-Divergenz</li>
+  <li>Bollinger Squeeze</li>
+  <li>VWAP-Bounce</li>
+  <li>Support/Resistance Break</li>
+  <li>Trendfortsetzung (Flag, Pennant)</li>
+  <li>Mean-Reversion</li>
+  <li>Momentum-Breakout</li>
+  <li>Filter: nur A-Setups (R:R ≥ 1:2, Trend bestätigt)</li>
+</ul>
+
+<p><b>3. SCORE (Kimi + Regeln)</b></p>
+<ul>
+  <li>SL < 1.2 × ATR(14)</li>
+  <li>R:R ≥ 1:2</li>
+  <li>Korrelation < 0.6 vs offene Positionen</li>
+  <li>Volumen-Bestätigung (steigend bei Breakout)</li>
+  <li>Kein Earnings in < 5 Tagen</li>
+</ul>
+
+<p><b>4. RISK (automatisch, risk_manager.py)</b></p>
+<ul>
+  <li>SL Pflicht (ohne SL → ablehnen)</li>
+  <li>Max 2% Equity pro Trade (3% bei A-Setup)</li>
+  <li>Max 5% Tagesverlust → BLOCKED</li>
+  <li>Max 10% Exposure insgesamt</li>
+  <li>Max 20 Trades/Tag</li>
+  <li>Weekend-Block (Fr 22:00 - So 22:00)</li>
+</ul>
+
+<p><b>5. EXECUTE (cTrader API)</b></p>
+<ul>
+  <li>Market Order mit SL/TP</li>
+  <li>Volume = Equity × RiskPct / (SL-Distanz × TickValue)</li>
+  <li>Logging in trade_log.jsonl</li>
+</ul>
+
+<p><b>6. MONITOR (Stream + Cron)</b></p>
+<ul>
+  <li>Live P&L Tracking</li>
+  <li>Bei 50% TP → SL auf Break-Even schieben</li>
+  <li>Bei SL-Trigger → automatisch geschlossen</li>
+  <li>Swap-Kosten tracken</li>
+</ul>
+
+<p><b>7. REVIEW (Kimi, nach jedem Trade + wöchentlich)</b></p>
+<ul>
+  <li>Kimi bewertet: Timing, Größe, Risiko, Ergebnis</li>
+  <li>Vorschläge für Verbesserung</li>
+  <li>Dokumentation in kimi_review.json</li>
+  <li>Wöchentlicher Prozess-Review</li>
+</ul>
+
+<hr>
+
+<h2>4. KOSTEN-TRACKING</h2>
+
+<h3>Trading-Kosten (pro Trade)</h3>
+<table>
+  <thead><tr><th>Kostenart</th><th>Geschätzt</th><th>Tracking</th></tr></thead>
+  <tbody>
+    <tr><td>Spread</td><td>0.1-0.3 pips FX</td><td>automatisch</td></tr>
+    <tr><td>Swap (Overnight)</td><td>-4 bis +2 €/Lot</td><td>manuell</td></tr>
+    <tr><td>Kommission</td><td>€0 (Zero-Acc)</td><td>—</td></tr>
+    <tr><td>Slippage</td><td>~0.1 pips</td><td>geschätzt</td></tr>
+  </tbody>
+</table>
+
+<h3>KI-Kosten</h3>
+<table>
+  <thead><tr><th>Service</th><th>Kosten</th><th>Tracking</th></tr></thead>
+  <tbody>
+    <tr><td>Kimi 2.6</td><td>~€0.08/Analyse</td><td>automatisch</td></tr>
+    <tr><td>Geschätzt/Monat</td><td>~€2.40</td><td>Dashboard</td></tr>
+  </tbody>
+</table>
+
+<h3>Steuer</h3>
+<ul>
+  <li>Pepperstone GmbH (Düsseldorf) führt automatisch ab:</li>
+  <li>25% Abgeltungssteuer</li>
+  <li>5.5% Solidaritätszuschlag darauf</li>
+  <li>= <b>26.375%</b> auf Gewinne</li>
+  <li>Verluste werden automatisch verrechnet</li>
+  <li>Jahressteuerbescheinigung verfügbar</li>
+</ul>
+
+<h3>Netto-Rechnung</h3>
+<pre><code>- Spread-Kosten:    -€4
+- KI-Kosten:        -€0.16
+= Vor Steuer:       +€95.84
+- Steuer (26.375%): -€25.27
+= NETTO:            +€70.57</code></pre>
+
+<hr>
+
+<h2>5. KIMI SELBSTOPTIMIERUNG</h2>
+
+<h3>Review-Protokoll</h3>
+<p>Kimi dokumentiert nach jedem Trade:</p>
+<pre><code>  "trade_id": "...",
+  "setup_type": "MA-Cross",
+  "bewertung": {
+    "timing": "7/10 — Entry 2h nach Signal, ok",
+    "groesse": "5/10 — Volume zu hoch für B-Setup",
+    "risiko": "8/10 — SL korrekt bei 1.2 ATR",
+    "ergebnis": "WIN +12 pips"
+  },
+  "lerneffekt": "Bei B-Setup Volume auf 0.5% statt 1% reduzieren",
+  "prompt_aenderung": null
+}</code></pre>
+
+<h3>Wöchentlicher Prozess-Review</h3>
+<p>Kimi evaluiert:</p>
+<ul>
+  <li>Welche Setups performen besser?</li>
+  <li>Ist der R:R realistisch oder zu optimistisch?</li>
+  <li>Braucht es mehr oder weniger Konfirmation?</li>
+  <li>Soll das Risiko angepasst werden?</li>
+  <li>Prompt-Verbesserungen?</li>
+</ul>
+
+<h3>Dokumentation</h3>
+<ul>
+  <li>Kimi schreibt Reviews nach /root/trading/data/kimi_review.json</li>
+  <li>Wöchentliche Zusammenfassung nach /root/trading/data/weekly_review.md</li>
+  <li>Änderungen am Prozess werden hier im Leitfaden dokumentiert</li>
+</ul>
+
+<hr>
+
+<h2>6. TODOs</h2>
+
+<h3>KURZFRISTIG (diese Woche)</h3>
+<ul>
+  <li>☐ Ersten echten Swing-Trade platzieren (mit Risikomodul)</li>
+  <li>☐ Spread-Tracking automatisieren (aus cTrader Spreads)</li>
+  <li>☐ Swap-Kosten pro Position tracken</li>
+  <li>☐ Equity-Kurve im Dashboard zeigen</li>
+  <li>☐ Kimi Review nach Trade #1 laufen lassen</li>
+</ul>
+
+<h3>MITTELFRISTIG (nächste 2 Wochen)</h3>
+<ul>
+  <li>☐ Kimi-Prompt mit Live-Spreads/VWAP erweitern</li>
+  <li>☐ Feature-Engine: RSI, MACD, ATR aus OHLCV berechnen</li>
+  <li>☐ Korrelations-Check vor jedem Trade</li>
+  <li>☐ Automatischer SL-Trail bei 50% TP</li>
+  <li>☐ Earnings-Kalender Integration</li>
+  <li>☐ Wöchentlichen Kimi-Prozess-Review einrichten</li>
+</ul>
+
+<h3>LANGFRISTIG (nächster Monat)</h3>
+<ul>
+  <li>☐ Pepperstone Demo → Live Konto wechseln</li>
+  <li>☐ Steuer-Report Generator (Jahresübersicht)</li>
+  <li>☐ Backtesting-Framework (historische Daten)</li>
+  <li>☐ Multi-Asset Diversifikation (max 3 unkorrelierte)</li>
+  <li>☐ Kimi Prompt-Engineering Optimierung</li>
+  <li>☐ Performance vs Benchmark (S&P 500)</li>
+</ul>
+
+<h3>OFFENE FRAGEN</h3>
+<ul>
+  <li>☐ Wann von Demo auf Live wechseln? (Nach X profitablen Wochen?)</li>
+  <li>☐ Maximaler Drawdown für Live-Betrieb? (10%? 15%?)</li>
+  <li>☐ Soll Kimi eigenständig traden dürfen oder nur empfehlen?</li>
+</ul>
+
+<hr>
+
+<h2>7. SYMBOLE & WATCHLIST</h2>
+
+<h3>Aktuell im Stream</h3>
+<table>
+  <thead><tr><th>Symbol</th><th>Typ</th><th>Min-Lot</th><th>Spread (geschätzt)</th></tr></thead>
+  <tbody>
+    <tr><td>EURUSD</td><td>Forex</td><td>0.01</td><td>0.1-0.3 pips</td></tr>
+    <tr><td>GBPUSD</td><td>Forex</td><td>0.01</td><td>0.2-0.4 pips</td></tr>
+    <tr><td>USDJPY</td><td>Forex</td><td>0.01</td><td>0.2-0.3 pips</td></tr>
+    <tr><td>AUDUSD</td><td>Forex</td><td>0.01</td><td>0.2-0.3 pips</td></tr>
+    <tr><td>USDCAD</td><td>Forex</td><td>0.01</td><td>0.2-0.4 pips</td></tr>
+    <tr><td>BTCUSD</td><td>Crypto</td><td>0.01</td><td>$20-40</td></tr>
+    <tr><td>ETHUSD</td><td>Crypto</td><td>0.01</td><td>$2-5</td></tr>
+    <tr><td>QQQ</td><td>ETF</td><td>1</td><td>$0.01-0.02</td></tr>
+  </tbody>
+</table>
+
+<h3>Erweiterung geplant</h3>
+<ul>
+  <li>GOLD (XAUUSD)</li>
+  <li>DE40 (DAX)</li>
+  <li>US500 (S&P 500)</li>
+  <li>NVDA, AAPL (Einzeltitel)</li>
+</ul>
+
+<hr>
+
+<h2>8. DATEIEN & INFRASTRUKTUR</h2>
+
+<h3>Code</h3>
+<pre><code>├── ctrader_stream.py        ← Live-Daten Stream (systemd)
+├── ctrader_snapshot.py      ← Snapshot für Dashboard (Cron 15min)
+├── pepperstone_trader.py    ← Trading Engine (buy/sell/close)
+├── risk_manager.py          ← Risikomodul
+├── performance_tracker.py   ← Performance & Kosten
+├── kimi_review.py           ← Kimi Trade Review
+├── execute_kimi_decision.py ← Kimi → Order Bridge
+└── check_api_status.py      ← API Status Check</code></pre>
+
+<h3>Daten</h3>
+<pre><code>├── trade_log.jsonl          ← Alle Trades
+├── kimi_review.json         ← Letztes Kimi Review
+├── risk_state.json          ← Risiko-Status (täglich reset)
+├── stream/
+│   ├── spots_all.json       ← Live Preise
+│   └── spots/*.json         ← Pro Symbol
+└── weekly_review.md         ← Wöchentliche Zusammenfassung</code></pre>
+
+<h3>Services</h3>
+<pre><code>Cron: Snapshot               ← alle 15min
+Cron: API Status Check       ← alle 6h</code></pre>
+
+<h3>Dashboard</h3>
+<pre><code>├── Performance & Kosten
+├── Live-Preise (8 Symbole)
+├── Kontostand & Positionen
+├── Risiko-Management
+├── Kimi Review
+├── Trade-Log
+├── Review-Zyklus
+└── Pipeline Status</code></pre>
+
+<hr>
+
+<h2>9. ENTSCHEIDUNGSMATRIX</h2>
+
+<h3>Wann traden?</h3>
+<table>
+  <thead><tr><th>Bedingung</th><th>Aktion</th></tr></thead>
+  <tbody>
+    <tr><td>A-Setup + R:R ≥ 1:3</td><td>3% Risiko</td></tr>
+    <tr><td>B-Setup + R:R ≥ 1:2</td><td>2% Risiko</td></tr>
+    <tr><td>C-Setup</td><td>Nicht traden</td></tr>
+    <tr><td>FEAR-Regime</td><td>Nur Long, 1%</td></tr>
+    <tr><td>Earnings < 5 Tage</td><td>Kein Trade</td></tr>
+    <tr><td>Weekend</td><td>Kein Trade</td></tr>
+  </tbody>
+</table>
+
+<h3>Wann Position schließen?</h3>
+<table>
+  <thead><tr><th>Bedingung</th><th>Aktion</th></tr></thead>
+  <tbody>
+    <tr><td>TP erreicht</td><td>Auto-close</td></tr>
+    <tr><td>SL erreicht</td><td>Auto-close</td></tr>
+    <tr><td>50% TP → SL auf BE</td><td>Trail SL</td></tr>
+    <tr><td>Fundament ändert</td><td>Manuell prüfen</td></tr>
+    <tr><td>5% Daily Loss</td><td>ALLES schließen</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<p>*Letzte Aktualisierung: 2026-04-24 15:50 Berlin*</p>
+<p>*Nächster Review: nach dem ersten echten Swing-Trade*</p>
+
+
+</div>
+
+<!--/BODY-->
