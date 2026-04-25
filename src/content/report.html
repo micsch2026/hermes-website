@@ -595,11 +595,11 @@ function loadDepotIntoReport() {
     safeFetch('/api/trading/scalable.json').then(r => r.json()).catch(() => null),
     safeFetch('/api/trading/kimi_meta').then(r => r.json()).catch(() => ({}))
   ]).then(([facts, scalable, kimiMeta]) => {
-    // Build invested lookup from scalable.json (has per-position invested)
-    const investedByIsin = {};
+    // Build full lookup from scalable.json (has invested, current_leverage, ko_risk etc.)
+    const scalableByIsin = {};
     if (scalable && scalable.positions) {
       scalable.positions.forEach(p => {
-        if (p.isin) investedByIsin[p.isin] = p.invested;
+        if (p.isin) scalableByIsin[p.isin] = p;
       });
     }
 
@@ -608,28 +608,35 @@ function loadDepotIntoReport() {
       return Promise.all([
         safeFetch('/api/trading/depot').then(r => r.json()),
         Promise.resolve(kimiMeta)
-      ]).then(([depot, km]) => renderDepotTable(depot.positions.map(p => ({
-        name: p.name, isin: p.isin, value: p.value, change_pct: p.change_pct, invested: investedByIsin[p.isin],
-        underlying: 0, ko_barrier: 0, ko_distance_pct: 0, ko_risk: '—', leverage: 0
-      })), depot.cash, 0, km));
+      ]).then(([depot, km]) => renderDepotTable(depot.positions.map(p => {
+        const s = scalableByIsin[p.isin] || {};
+        return {
+          name: p.name, isin: p.isin, value: p.value, change_pct: p.change_pct,
+          invested: s.invested, leverage: s.leverage, current_leverage: s.current_leverage,
+          ko_distance_pct: s.ko_distance_pct, ko_barrier: s.ko_barrier, ko_risk: s.ko_risk
+        };
+      }), depot.cash, 0, km));
     }
     const ds = facts.depot_scalable;
-    renderDepotTable(ds.positions.map(p => ({
-      name: p.ticker, isin: p.isin || '', value: p.value, change_pct: p.pnl_pct,
-      invested: investedByIsin[p.isin || ''],
-      underlying: p.current_underlying_usd || p.last_underlying || 0,
-      ko_barrier: p.ko_barrier || 0,
-      ko_distance_pct: p.ko_distance_pct || 0,
-      ko_risk: p.ko_risk || '—',
-      leverage: p.leverage || 0
-    })), ds.cash, ds.invested || 0, kimiMeta);
+    renderDepotTable(ds.positions.map(p => {
+      const s = scalableByIsin[p.isin || ''] || {};
+      return {
+        name: p.ticker, isin: p.isin || '', value: p.value, change_pct: p.pnl_pct,
+        invested: s.invested,
+        leverage: s.leverage || p.leverage || 0,
+        current_leverage: s.current_leverage || p.current_leverage || 0,
+        ko_distance_pct: s.ko_distance_pct || p.ko_distance_pct || 0,
+        ko_barrier: s.ko_barrier || p.ko_barrier || 0,
+        ko_risk: s.ko_risk || p.ko_risk || '—'
+      };
+    }), ds.cash, ds.invested || 0, kimiMeta);
   }).catch(e => console.error('Depot laden fehlgeschlagen:', e));
 }
 
 function renderDepotTable(positions, cash, costBasis, kimiMeta) {
     const tbody = document.querySelector('#positionsTable');
-    // Header
-    tbody.innerHTML = '<tr><th>Position</th><th>Kurs</th><th>Entry</th><th>Abstand&nbsp;SL</th><th>Stop-Loss</th><th>Wert</th><th>P&L</th><th>Aktion</th></tr>';
+    // Header: Derivat-fokussiert, keine Underlying-Werte
+    tbody.innerHTML = '<tr><th>Position</th><th>Hebel</th><th>KO&nbsp;Abst.</th><th>Entry</th><th>Kurs</th><th>Stop-Loss</th><th>Wert</th><th>P&L</th><th>Aktion</th></tr>';
 
     let invested = 0, totalPnL = 0;
     positions.forEach(p => {
@@ -653,14 +660,10 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
       const kursStr = derivBid > 0 ? derivBid.toFixed(3).replace('.', ',') + '€' : '<span class="muted" style="cursor:pointer" onclick="fetchLivePrices()">klicken ⬆</span>';
       const kursColor = derivBid > 0 ? '' : 'style="color:var(--c-text-dim)"';
 
-      // Underlying
-      const ul = lp.underlying_usd || p.underlying || 0;
-
-      // KO Distanz (nur noch intern, nicht angezeigt)
+      // KO Distanz
       const koDist = lp.ko_distance_pct || p.ko_distance_pct || 0;
 
-      // Entry-Kurs (Derivat) - rueckgerechnet aus aktuellem Kurs und Performance
-      // Fallback auf Gesamtwert wenn kein Stueckkurs verfuegbar
+      // Entry-Kurs (Derivat)
       let entryKurs = 0;
       let entryIsTotal = false;
       if (derivBid > 0 && p.change_pct !== 0) {
@@ -673,48 +676,88 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
         }
       }
       if (entryKurs <= 0) {
-        entryKurs = entryVal; // Gesamtwert als Fallback
+        entryKurs = entryVal;
         entryIsTotal = true;
       }
-      const entryStr = entryKurs > 0 ? entryKurs.toFixed(2).replace('.', ',') + '€' + (entryIsTotal ? ' <span class="muted" style="font-size:10px">(Gesamt)</span>' : '') : '—';
+      const entryStr = entryKurs > 0 ? entryKurs.toFixed(2).replace('.', ',') + '€' + (entryIsTotal ? ' <span class="muted" style="font-size:10px">(Ges.)</span>' : '') : '—';
 
-      // Stop-Loss: 15% unter aktuellem Wert (Stueck ODER Gesamt)
+      // Hebel (aus Daten direkt)
+      const leverage = parseFloat(p.current_leverage || p.leverage) || 0;
+      const levColor = leverage >= 4.0 ? 'var(--c-err)' : leverage >= 3.5 ? 'var(--c-warn)' : 'var(--c-ok)';
+      const levStr = leverage > 0 ? leverage.toFixed(2) + 'x' : '—';
+
+      // KO Abstand
+      const koStr = koDist > 0 ? koDist.toFixed(1) + '%' : '—';
+      const koColor = koDist < 20 ? 'var(--c-err)' : koDist < 25 ? 'var(--c-warn)' : 'var(--c-ok)';
+
+      // Stop-Loss: dynamisch basierend auf KO-Distanz
+      // Logik: SL-Puffer = min(KO_Distanz / 2, 15%)
+      // Wenn KO_Distanz < 20%: Kein Stop sinnvoll, SOFORT VERKAUFEN
       let stopVal = 0;
       let stopStr = '—';
-      let abstandSL = 15.0;
+      let slPct = 15.0;
       let stopIsTotal = false;
-      if (derivBid > 0) {
-        stopVal = derivBid * 0.85;
-        stopStr = stopVal.toFixed(3).replace('.', ',') + '€';
-        abstandSL = ((derivBid - stopVal) / derivBid * 100);
+
+      if (koDist > 0 && koDist < 20) {
+        stopStr = '<span style="color:var(--c-err);font-weight:600">SOFORT</span>';
       } else {
-        // Fallback: Gesamtwert-Stop
-        stopVal = p.value * 0.85;
-        stopStr = stopVal.toFixed(2).replace('.', ',') + '€ <span class="muted" style="font-size:10px">(Gesamt)</span>';
-        stopIsTotal = true;
+        slPct = Math.min(koDist / 2, 15.0);
+        if (derivBid > 0) {
+          stopVal = derivBid * (1 - slPct / 100);
+          stopStr = stopVal.toFixed(3).replace('.', ',') + '€';
+        } else {
+          stopVal = p.value * (1 - slPct / 100);
+          stopStr = stopVal.toFixed(2).replace('.', ',') + '€ <span class="muted" style="font-size:10px">(Ges.)</span>';
+          stopIsTotal = true;
+        }
       }
-      const abstandStr = abstandSL.toFixed(1) + '%';
-      const stopWarn = (koDist > 0 && koDist < abstandSL + 5) ? 'muted' : ''; // Warnung wenn KO naeher als SL
+
+      // Handlungsempfehlung (automatisch, nicht aus Kimi)
+      let action = 'HALTEN';
+      let actionClass = 'badge-hold';
+      let actionReason = 'OK';
+
+      if (koDist > 0 && koDist < 20) {
+        action = 'VERKAUFEN';
+        actionClass = 'badge-sell';
+        actionReason = 'KO zu nah (' + koDist.toFixed(1) + '%)';
+      } else if (leverage >= 4.0) {
+        action = 'NEU KAUFEN';
+        actionClass = 'badge-sell';
+        actionReason = 'Hebel unrentabel (' + leverage.toFixed(2) + 'x)';
+      } else if (p.change_pct < -10) {
+        action = 'STOPP';
+        actionClass = 'badge-sell';
+        actionReason = 'Verlust > 10%';
+      } else if (p.change_pct > 20) {
+        action = 'GEWINN SICHERN';
+        actionClass = 'badge-warn';
+        actionReason = 'Gewinn > 20%';
+      } else if (koDist > 0 && koDist < 25) {
+        action = 'BEOBACHTEN';
+        actionClass = 'badge-warn';
+        actionReason = 'KO nahe (' + koDist.toFixed(1) + '%)';
+      } else if (leverage >= 3.5) {
+        action = 'BEOBACHTEN';
+        actionClass = 'badge-warn';
+        actionReason = 'Hebel hoch (' + leverage.toFixed(2) + 'x)';
+      }
 
       // P&L
       const pnlClass = pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
       const pnlSign = pnl >= 0 ? '+' : '';
 
-      // Aktion
-      const action = m.action || '—';
-      const actionClass = m.actionClass || 'badge-hold';
-      const actionReason = m.thesis || '';
-
       const row = document.createElement('tr');
       row.innerHTML =
         '<td><b>' + p.name + '</b><br><span class="muted" style="font-size:11px">' + p.isin + '</span></td>' +
-        '<td ' + kursColor + '><b>' + kursStr + '</b>' + (derivAsk > 0 && derivAsk !== derivBid ? '<br><span class="muted" style="font-size:11px">Ask ' + derivAsk.toFixed(3) + '€</span>' : '') + '</td>' +
+        '<td style="color:' + levColor + ';font-weight:600">' + levStr + '</td>' +
+        '<td style="color:' + koColor + ';font-weight:600">' + koStr + '</td>' +
         '<td><span class="muted">' + entryStr + '</span></td>' +
-        '<td><span class="muted">' + abstandStr + '</span></td>' +
-        '<td><b style="color:var(--c-warn);font-size:var(--text-md)">' + stopStr + '</b>' + (stopWarn ? '<br><span class="muted" style="font-size:11px">KO näher als SL!</span>' : '') + '</td>' +
+        '<td ' + kursColor + '><b>' + kursStr + '</b>' + (derivAsk > 0 && derivAsk !== derivBid ? '<br><span class="muted" style="font-size:11px">Ask ' + derivAsk.toFixed(3) + '€</span>' : '') + '</td>' +
+        '<td><b style="color:var(--c-warn)">' + stopStr + '</b></td>' +
         '<td>' + fmtEUR(p.value) + '</td>' +
         '<td class="' + pnlClass + '">' + pnlSign + fmtEUR(pnl) + '<br><span class="muted" style="font-size:11px">' + pnlSign + p.change_pct.toFixed(1) + '%</span></td>' +
-        '<td><span class="badge ' + actionClass + '">' + action + '</span>' + (actionReason ? '<br><span class="muted" style="font-size:11px">' + actionReason.substring(0, 60) + '</span>' : '') + '</td>';
+        '<td><span class="badge ' + actionClass + '">' + action + '</span><br><span class="muted" style="font-size:11px">' + actionReason + '</span></td>';
       tbody.appendChild(row);
     });
 
