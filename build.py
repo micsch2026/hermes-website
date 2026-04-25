@@ -296,7 +296,7 @@ def build_nav(current_path):
         is_active = False
         if href == '/' and current == '/':
             is_active = True
-        elif href != '/' and current.startswith(href):
+        elif href != '/' and (current == href or current.startswith(href + '/')):
             is_active = True
 
         attrs = ' aria-current="page"' if is_active else ''
