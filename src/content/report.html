@@ -592,8 +592,9 @@ function loadDepotIntoReport() {
   Promise.all([
     safeFetch('/api/trading/facts.json').then(r => r.json()).catch(() => null),
     safeFetch('/api/trading/scalable.json').then(r => r.json()).catch(() => null),
-    safeFetch('/api/trading/kimi_meta').then(r => r.json()).catch(() => ({}))
-  ]).then(([facts, scalable, kimiMeta]) => {
+    safeFetch('/api/trading/kimi_meta').then(r => r.json()).catch(() => ({})),
+    safeFetch('/api/trading/depot_meta.json').then(r => r.json()).catch(() => ({}))
+  ]).then(([facts, scalable, kimiMeta, depotMeta]) => {
     // Build full lookup from scalable.json (has invested, current_leverage, ko_risk etc.)
     const scalableByIsin = {};
     if (scalable && scalable.positions) {
@@ -606,15 +607,16 @@ function loadDepotIntoReport() {
       // Fallback to backend proxy
       return Promise.all([
         safeFetch('/api/trading/depot').then(r => r.json()),
-        Promise.resolve(kimiMeta)
-      ]).then(([depot, km]) => renderDepotTable(depot.positions.map(p => {
+        Promise.resolve(kimiMeta),
+        Promise.resolve(depotMeta)
+      ]).then(([depot, km, dm]) => renderDepotTable(depot.positions.map(p => {
         const s = scalableByIsin[p.isin] || {};
         return {
           name: p.name, isin: p.isin, value: p.value, change_pct: p.change_pct,
           invested: s.invested, leverage: s.leverage, current_leverage: s.current_leverage,
           ko_distance_pct: s.ko_distance_pct, ko_barrier: s.ko_barrier, ko_risk: s.ko_risk
         };
-      }), depot.cash, 0, km));
+      }), depot.cash, 0, km, dm));
     }
     const ds = facts.depot_scalable;
     renderDepotTable(ds.positions.map(p => {
@@ -628,14 +630,15 @@ function loadDepotIntoReport() {
         ko_barrier: s.ko_barrier || p.ko_barrier || 0,
         ko_risk: s.ko_risk || p.ko_risk || '—'
       };
-    }), ds.cash, ds.invested || 0, kimiMeta);
+    }), ds.cash, ds.invested || 0, kimiMeta, depotMeta);
   }).catch(e => console.error('Depot laden fehlgeschlagen:', e));
 }
 
-function renderDepotTable(positions, cash, costBasis, kimiMeta) {
+function renderDepotTable(positions, cash, costBasis, kimiMeta, depotMeta) {
     const tbody = document.querySelector('#positionsTable');
+    const meta = depotMeta && depotMeta.positions ? depotMeta.positions : {};
     // Header: Nur Derivat-Daten, keine Underlying-Werte, kein Entry, kein Stückkurs
-    tbody.innerHTML = '<tr><th>Position</th><th>Hebel</th><th>KO&nbsp;Abst.</th><th>Wert</th><th>P&L</th><th>Stop-Loss</th><th>Aktion</th></tr>';
+    tbody.innerHTML = '<tr><th>Position</th><th>KI-Layer</th><th>Hebel</th><th>KO&nbsp;Abst.</th><th>Wert</th><th>P&L</th><th>Stop-Loss</th><th>Aktion</th></tr>';
 
     let invested = 0, totalPnL = 0;
     positions.forEach(p => {
@@ -644,12 +647,17 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
       invested += p.value;
       totalPnL += pnl;
 
+      // KI-Layer aus depot_meta.json
+      const posMeta = meta[p.name] || {};
+      const layer = posMeta.category || '—';
+      const layerShort = layer.length > 12 ? layer.substring(0, 10) + '..' : layer;
+
       // KO Distanz
       const koDist = p.ko_distance_pct || 0;
 
       // Hebel
       const leverage = parseFloat(p.current_leverage || p.leverage) || 0;
-      const levColor = leverage >= 4.0 ? 'var(--c-err)' : leverage >= 3.5 ? 'var(--c-warn)' : 'var(--c-ok)';
+      const levColor = leverage < 2.0 ? 'var(--c-err)' : leverage < 2.5 ? 'var(--c-warn)' : leverage < 4.5 ? 'var(--c-ok)' : leverage < 5.5 ? 'var(--c-warn)' : 'var(--c-err)';
       const levStr = leverage > 0 ? leverage.toFixed(2) + 'x' : '—';
 
       // KO Abstand
@@ -673,23 +681,31 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
       }
 
       // Handlungsempfehlung mit vollem Kontext
+      // HELEL-REGEL BNP TURBO: je höher Hebel desto rentabler. Niedrig = Zombie.
       let action = 'HALTEN';
       let actionClass = 'badge-hold';
       let actionDetail = '';
-      let actionSub = '';
 
       if (koDist > 0 && koDist < 20) {
         action = 'VERKAUFEN';
         actionClass = 'badge-sell';
-        actionDetail = 'KO-Distanz nur ' + koDist.toFixed(1) + '% — zu nah am Auslösen. Sofort verkaufen und neuen Turbo mit höherem Abstand kaufen.';
-      } else if (leverage >= 4.0) {
+        actionDetail = 'KO-Distanz nur ' + koDist.toFixed(1) + '% — Auslöser zu nah. Sofort verkaufen und neuen Turbo mit höherem Abstand kaufen.';
+      } else if (leverage < 2.0) {
         action = 'NEU KAUFEN';
         actionClass = 'badge-sell';
-        actionDetail = 'Hebel ' + leverage.toFixed(2) + 'x ist unrentabel — finanzierungspassive Kosten zu hoch. Verkaufen und Ersatz mit Hebel < 3.5x kaufen.';
+        actionDetail = 'Hebel-Zombie (' + leverage.toFixed(2) + 'x) — zu wenig Bewegung, Kapital verbrennt. Verkaufen und Ersatz mit Hebel 3-4x kaufen.';
+      } else if (leverage < 2.5) {
+        action = 'BEOBACHTEN';
+        actionClass = 'badge-warn';
+        actionDetail = 'Hebel nur ' + leverage.toFixed(2) + 'x — niedrig. Rendite zu gering. Ausweich-Turbo mit höherem Hebel prüfen.';
+      } else if (leverage > 5.5) {
+        action = 'BEOBACHTEN';
+        actionClass = 'badge-warn';
+        actionDetail = 'Hebel ' + leverage.toFixed(2) + 'x extrem hoch — KO sehr nah, Risiko massiv. Stop-Loss eng setzen oder Ausweich-Turbo bereithalten.';
       } else if (p.change_pct < -10) {
         action = 'STOPP';
         actionClass = 'badge-sell';
-        actionDetail = 'Verlust ' + p.change_pct.toFixed(1) + '% — Stop-Loss bei ' + stopStr + ' setzen oder position schließen.';
+        actionDetail = 'Verlust ' + p.change_pct.toFixed(1) + '% — Stop-Loss bei ' + stopStr + ' setzen oder Position schließen.';
       } else if (p.change_pct > 20) {
         action = 'GEWINN SICHERN';
         actionClass = 'badge-warn';
@@ -698,14 +714,10 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
         action = 'BEOBACHTEN';
         actionClass = 'badge-warn';
         actionDetail = 'KO-Distanz ' + koDist.toFixed(1) + '% — kritisch nah. Täglich prüfen, Ausweich-Turbo bereithalten.';
-      } else if (leverage >= 3.5) {
-        action = 'BEOBACHTEN';
-        actionClass = 'badge-warn';
-        actionDetail = 'Hebel ' + leverage.toFixed(2) + 'x — grenzwertig. Bei weiterem Kursrückgang wird Hebel > 4x, dann neu kaufen.';
       } else {
         action = 'HALTEN';
         actionClass = 'badge-hold';
-        actionDetail = 'Position OK — Hebel ' + leverage.toFixed(2) + 'x, KO-Abstand ' + koDist.toFixed(1) + '%. Stop-Loss bei ' + stopStr + ' setzen.';
+        actionDetail = 'Position OK — Hebel ' + leverage.toFixed(2) + 'x optimal, KO-Abstand ' + koDist.toFixed(1) + '%. Stop-Loss bei ' + stopStr + ' setzen.';
       }
 
       // P&L
@@ -715,6 +727,7 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
       const row = document.createElement('tr');
       row.innerHTML =
         '<td><b>' + p.name + '</b><br><span class="muted" style="font-size:11px">' + p.isin + '</span><br><span class="muted" style="font-size:10px">BNP Paribas Turbo Open End</span></td>' +
+        '<td><span style="font-size:11px;color:var(--c-text-dim)">' + layerShort + '</span></td>' +
         '<td style="color:' + levColor + ';font-weight:600;font-size:var(--text-md)">' + levStr + '</td>' +
         '<td style="color:' + koColor + ';font-weight:600;font-size:var(--text-md)">' + koStr + '</td>' +
         '<td style="font-weight:600;font-size:var(--text-md)">' + fmtEUR(p.value) + '</td>' +

@@ -102,6 +102,7 @@
         <thead>
           <tr>
             <th>Ticker</th>
+            <th>KI-Layer</th>
             <th>ISIN</th>
             <th class="r">Investiert</th>
             <th class="r">Aktuell €</th>
@@ -164,6 +165,7 @@ function safeFetch(path, opts) {
 }
 
 var SSOT = null;
+var DEPOT_META = {};
 
 function fmt(n) {
   return n.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) + '€';
@@ -193,6 +195,11 @@ function render() {
     var lev = parseFloat(p.current_leverage || p.leverage) || 0;
     ti += inv; tv += val; tp += pnl;
 
+    // KI-Layer aus depot_meta.json
+    var meta = DEPOT_META && DEPOT_META.positions ? DEPOT_META.positions[p.ticker] : null;
+    var layer = meta && meta.category ? meta.category : '—';
+    if (layer.length > 12) layer = layer.substring(0, 10) + '..';
+
     // Stop-Loss: dynamisch basierend auf KO-Distanz
     var stop = p.stop_loss;
     var stopTxt = '—';
@@ -206,35 +213,38 @@ function render() {
       stopTxt = calcStop.toFixed(2) + '€ <span class="muted" style="font-size:10px">(' + slPct.toFixed(0) + '%)</span>';
     }
 
-    // Hebel-Farbe
-    var levColor = lev >= 4.0 ? 'var(--c-err)' : lev >= 3.5 ? 'var(--c-warn)' : 'var(--c-ok)';
+    // Hebel-Farbe (BNP TURBO: je höher desto rentabler. Niedrig = Zombie)
+    var levColor = lev < 2.0 ? 'var(--c-err)' : lev < 2.5 ? 'var(--c-warn)' : lev < 4.5 ? 'var(--c-ok)' : lev < 5.5 ? 'var(--c-warn)' : 'var(--c-err)';
     var levStr = lev > 0 ? '<span style="color:' + levColor + ';font-weight:600">' + lev.toFixed(2) + 'x</span>' : '—';
 
     // KO-Abstand-Farbe
     var koColor = kd != null ? (kd < 20 ? 'var(--c-err)' : kd < 25 ? 'var(--c-warn)' : 'var(--c-ok)') : 'var(--c-text-dim)';
     var koStr = kd != null ? '<span style="color:' + koColor + ';font-weight:600">' + kd.toFixed(1) + '%</span>' : '—';
 
-    // Handlungsempfehlung
+    // Handlungsempfehlung (BNP TURBO: niedrig = Zombie, hoch = gut)
     var action = 'HALTEN';
     var actionClass = 'badge-hold';
     var actionReason = 'OK';
     if (kd != null && kd < 20) {
       action = 'VERKAUFEN'; actionClass = 'badge-sell'; actionReason = 'KO zu nah';
-    } else if (lev >= 4.0) {
-      action = 'NEU KAUFEN'; actionClass = 'badge-sell'; actionReason = 'Hebel unrentabel';
+    } else if (lev < 2.0) {
+      action = 'NEU KAUFEN'; actionClass = 'badge-sell'; actionReason = 'Hebel-Zombie';
+    } else if (lev < 2.5) {
+      action = 'BEOBACHTEN'; actionClass = 'badge-warn'; actionReason = 'Hebel niedrig';
+    } else if (lev > 5.5) {
+      action = 'BEOBACHTEN'; actionClass = 'badge-warn'; actionReason = 'Hebel extrem';
     } else if (pct < -10) {
       action = 'STOPP'; actionClass = 'badge-sell'; actionReason = 'Verlust > 10%';
     } else if (pct > 20) {
       action = 'GEWINN SICHERN'; actionClass = 'badge-warn'; actionReason = 'Gewinn > 20%';
     } else if (kd != null && kd < 25) {
       action = 'BEOBACHTEN'; actionClass = 'badge-warn'; actionReason = 'KO nahe';
-    } else if (lev >= 3.5) {
-      action = 'BEOBACHTEN'; actionClass = 'badge-warn'; actionReason = 'Hebel hoch';
     }
 
     var tr = document.createElement('tr');
     tr.innerHTML =
       '<td class="ro-val">' + (p.ticker||'') + '</td>' +
+      '<td><span style="font-size:11px;color:var(--c-text-dim)">' + layer + '</span></td>' +
       '<td><input class="in in-isin" value="' + (p.isin||'') + '" onchange="setISIN('+i+',this.value)" placeholder="DE000..."></td>' +
       '<td class="r ro">' + fmt(inv) + '</td>' +
       '<td class="r"><input class="in in-value" type="number" step="0.01" value="'+val+'" onchange="setVal('+i+',this.value)"></td>' +
@@ -255,7 +265,7 @@ function render() {
     '<td colspan="2"><i data-lucide="banknote" style="width:14px;height:14px;vertical-align:middle"></i> <strong>Cash</strong></td>' +
     '<td></td>' +
     '<td class="r"><input class="in in-value" type="number" step="0.01" value="'+cash+'" onchange="setCash(this.value)"></td>' +
-    '<td colspan="8"></td>';
+    '<td colspan="9"></td>';
   tbody.appendChild(ctr);
 
   document.getElementById('kpiInvested').textContent = fmt(ti);
@@ -309,10 +319,15 @@ function addPos() {
 }
 
 function loadDepot() {
-  safeFetch('/api/trading/depot/full')
-    .then(function(r){ return r.json(); })
-    .then(function(d){ SSOT = d; render(); toast('Geladen', 'ok'); })
-    .catch(function(e){ toast('Fehler: '+e, 'err'); });
+  Promise.all([
+    safeFetch('/api/trading/depot/full').then(function(r){ return r.json(); }),
+    safeFetch('/api/trading/depot_meta.json').then(function(r){ return r.json(); }).catch(function(){ return {}; })
+  ]).then(function(results){
+    SSOT = results[0];
+    DEPOT_META = results[1] || {};
+    render();
+    toast('Geladen', 'ok');
+  }).catch(function(e){ toast('Fehler: '+e, 'err'); });
 }
 
 function saveDepot() {
