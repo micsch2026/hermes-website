@@ -1,0 +1,56 @@
+<!--TITLE:Notizen — Hermes-->
+<!--HEAD-->
+<!--/HEAD-->
+<!--BODY-->
+
+    <div class="container">
+      <div class="page">
+        <div class="page-header">
+          <h1 class="page-title" style="display:flex;align-items:center;gap:var(--s-3)">
+            <i data-lucide="notebook-pen" style="width:24px;height:24px;color:var(--c-text-dim)"></i>
+            Notizen
+          </h1>
+          <p class="page-subtitle" id="subtitle">Lade...</p>
+        </div>
+
+        <div id="notes-list" style="display:flex;flex-direction:column;gap:var(--s-4)"></div>
+
+      </div>
+    </div>
+
+  <footer class="footer">Hermes · hermes.nexusfortis.org</footer>
+
+<!--DATA:/api/content/notes.json-->
+<script>
+(function(){
+  var d = window.__DATA__ || { notes: [] };
+  document.getElementById('subtitle').textContent = d.notes.length + ' Einträge' +
+    (d.updated ? ' · Stand: ' + new Date(d.updated).toLocaleString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '');
+
+  var list = document.getElementById('notes-list');
+  if (!d.notes.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i data-lucide="inbox" style="width:32px;height:32px"></i></div><p class="empty-state-text">Keine Notizen vorhanden.</p></div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    return;
+  }
+
+  d.notes.forEach(function(note){
+    var article = document.createElement('article');
+    article.className = 'card';
+    article.innerHTML =
+      '<div style="display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-4)">' +
+        '<span class="badge badge-muted">' +
+          '<i data-lucide="calendar" style="width:12px;height:12px"></i>' +
+          '<time datetime="' + note.date + '">' +
+            new Date(note.date).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'}) +
+          '</time>' +
+        '</span>' +
+      '</div>' +
+      '<p style="color:var(--c-text);font-size:var(--text-base);line-height:1.75">' + note.content + '</p>';
+    list.appendChild(article);
+  });
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+<!--/BODY-->

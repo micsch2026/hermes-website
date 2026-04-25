@@ -1,0 +1,168 @@
+<!--TITLE:System Status — Hermes-->
+<!--HEAD-->
+<!--/HEAD-->
+<!--BODY-->
+
+    <div class="container">
+      <div class="page">
+        <div class="page-header">
+          <h1 class="page-title">
+            <i data-lucide="cpu" style="width:24px;height:24px;display:inline;vertical-align:text-bottom;margin-right:8px"></i>
+            System
+          </h1>
+          <p class="page-subtitle" id="update-time">Lade…</p>
+        </div>
+
+        <section aria-label="Services">
+          <p class="section-title">
+            <i data-lucide="activity" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>
+            Services
+          </p>
+          <div class="table-wrap" style="margin-bottom:var(--s-6)">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Service</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Info</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><i data-lucide="bot" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>Hermes Agent</td>
+                  <td id="hermes-status"><span class="badge badge-muted">—</span></td>
+                  <td id="hermes-ver">—</td>
+                </tr>
+                <tr>
+                  <td><i data-lucide="shield" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>Caddy Webserver</td>
+                  <td id="caddy-status"><span class="badge badge-muted">—</span></td>
+                  <td>v2.11.2 · systemd</td>
+                </tr>
+                <tr>
+                  <td><i data-lucide="wrench" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>Wartung</td>
+                  <td><span class="badge badge-muted">Scheduled</span></td>
+                  <td>Wöchentlich · Sonntag 4 Uhr</td>
+                </tr>
+                <tr>
+                  <td><i data-lucide="history" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>Letzte Wartung</td>
+                  <td id="maint-status"><span class="badge badge-muted">—</span></td>
+                  <td id="maint-date">—</td>
+                </tr>
+                <tr>
+                  <td><i data-lucide="lock" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>SSL Zertifikat</td>
+                  <td><span class="badge badge-ok">Active</span></td>
+                  <td>Let's Encrypt · auto-renew</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section aria-label="Server-Metriken">
+          <p class="section-title">
+            <i data-lucide="bar-chart-2" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>
+            Metriken
+          </p>
+          <div class="grid-4">
+            <div class="card">
+              <p class="card-label"><i data-lucide="clock" style="width:12px;height:12px;display:inline;vertical-align:text-bottom;margin-right:4px"></i>Uptime</p>
+              <p class="card-value" id="uptime" style="font-size:var(--text-sm)">—</p>
+            </div>
+            <div class="card">
+              <p class="card-label"><i data-lucide="memory-stick" style="width:12px;height:12px;display:inline;vertical-align:text-bottom;margin-right:4px"></i>Memory</p>
+              <p class="card-value" id="memory" style="font-size:var(--text-sm)">—</p>
+              <div id="memory-bar" style="margin-top:var(--s-2)"></div>
+            </div>
+            <div class="card">
+              <p class="card-label"><i data-lucide="hard-drive" style="width:12px;height:12px;display:inline;vertical-align:text-bottom;margin-right:4px"></i>Disk</p>
+              <p class="card-value" id="disk" style="font-size:var(--text-sm)">—</p>
+              <div id="disk-bar" style="margin-top:var(--s-2)"></div>
+            </div>
+            <div class="card">
+              <p class="card-label"><i data-lucide="zap" style="width:12px;height:12px;display:inline;vertical-align:text-bottom;margin-right:4px"></i>Load</p>
+              <p class="card-value" id="load" style="font-size:var(--text-sm)">—</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  
+
+  <footer class="footer">Hermes · hermes.nexusfortis.org</footer>
+
+  <script>
+/* Credentials-safe fetch: Browser blockiert fetch() wenn Seite via user:pass@host geladen wird. */
+function safeFetch(path, opts) {
+  var url = new URL(path, window.location.origin);
+  return fetch(url.href, opts);
+}
+
+safeFetch('/api/status.json')
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var u = new Date(d.updated);
+    document.getElementById('update-time').textContent = 'Aktualisiert: ' + u.toLocaleString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+    var hBadge = d.hermes.running
+      ? '<span class="badge badge-ok">Running</span>'
+      : '<span class="badge badge-err">Down</span>';
+    document.getElementById('hermes-status').innerHTML = hBadge;
+    document.getElementById('hermes-ver').textContent = 'v' + d.hermes.version;
+
+    var cBadge = d.caddy.running
+      ? '<span class="badge badge-ok">Running</span>'
+      : '<span class="badge badge-err">Down</span>';
+    document.getElementById('caddy-status').innerHTML = cBadge;
+
+    if (d.lastMaintenance !== '—') {
+      document.getElementById('maint-date').textContent = d.lastMaintenance;
+      document.getElementById('maint-status').innerHTML = '<span class="badge badge-ok">OK</span>';
+    }
+
+    document.getElementById('uptime').textContent = d.server.uptime;
+    document.getElementById('memory').textContent = d.server.memory;
+    document.getElementById('disk').textContent = d.server.disk;
+    document.getElementById('load').textContent = d.server.load;
+
+    // Render progress bars for memory and disk
+    function parseMem(s) {
+      // "760Mi/3.7Gi" → {used: 760, total: 3789}
+      var parts = s.split('/');
+      if (parts.length !== 2) return null;
+      var used = parseFloat(parts[0]);
+      var total = parseFloat(parts[1]);
+      if (isNaN(used) || isNaN(total)) return null;
+      return {used: used, total: total, pct: Math.round(used / total * 100)};
+    }
+    function parseDisk(s) {
+      // "8.5G/75G" → {used: 8.5, total: 75}
+      var parts = s.split('/');
+      if (parts.length !== 2) return null;
+      var used = parseFloat(parts[0]);
+      var total = parseFloat(parts[1]);
+      if (isNaN(used) || isNaN(total)) return null;
+      return {used: used, total: total, pct: Math.round(used / total * 100)};
+    }
+    function renderBar(el, pct, color) {
+      el.innerHTML = '<div class="progress"><div class="progress-fill" style="width:'+pct+'%;background:'+color+'"></div></div>';
+    }
+
+    var mem = parseMem(d.server.memory);
+    if (mem) {
+      var memColor = mem.pct > 80 ? 'var(--c-err)' : mem.pct > 60 ? 'var(--c-warn)' : 'var(--c-ok)';
+      renderBar(document.getElementById('memory-bar'), mem.pct, memColor);
+    }
+    var disk = parseDisk(d.server.disk);
+    if (disk) {
+      var diskColor = disk.pct > 80 ? 'var(--c-err)' : disk.pct > 60 ? 'var(--c-warn)' : 'var(--c-ok)';
+      renderBar(document.getElementById('disk-bar'), disk.pct, diskColor);
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  })
+  .catch(function() {
+    document.getElementById('update-time').textContent = 'Fehler beim Laden der Daten';
+  });
+</script>
+<!--/BODY-->

@@ -1,0 +1,227 @@
+<!--TITLE:Cronjobs — Hermes-->
+<!--HEAD-->
+<style>
+  .job-grid { display: flex; flex-direction: column; gap: var(--s-3); }
+  .job-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    padding: var(--s-4) var(--s-5);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--s-3);
+    align-items: start;
+    transition: border-color var(--t);
+  }
+  .job-card:hover { border-color: var(--c-border-2); }
+  .job-name { font-weight: 600; font-size: var(--text-base); }
+  .job-desc { font-size: var(--text-sm); color: var(--c-text-muted); margin-top: 2px; }
+  .job-meta { display: flex; gap: var(--s-4); flex-wrap: wrap; margin-top: var(--s-2); }
+  .job-meta-item { font-size: var(--text-xs); color: var(--c-text-dim); display: flex; align-items: center; gap: 4px; }
+  .job-right { text-align: right; flex-shrink: 0; }
+  .job-schedule {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: var(--text-xs);
+    color: var(--c-accent);
+    background: var(--c-surface-2);
+    padding: 2px 8px;
+    border-radius: var(--r-xs);
+    white-space: nowrap;
+  }
+  .job-next { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: 4px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.03em; }
+  .badge-active { background: var(--c-ok-bg); color: var(--c-ok); }
+  .badge-system { background: rgba(91,141,239,0.15); color: #5b8def; }
+  .badge-trading { background: rgba(167,139,250,0.15); color: #a78bfa; }
+  .section-label {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--c-text-dim);
+    font-weight: 500;
+    margin: var(--s-6) 0 var(--s-3);
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+  .section-label:first-of-type { margin-top: 0; }
+  .legend { display: flex; gap: var(--s-4); flex-wrap: wrap; margin-bottom: var(--s-4); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--c-text-muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+
+<div class="container">
+
+  <div class="page-header">
+    <h1 class="page-title">Cronjobs</h1>
+    <p class="page-subtitle">Alle geplanten Aufgaben — System-Wartung, Health Checks, Trading Pipeline und Bot-Monitoring.</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#5b8def"></div> System</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> Trading</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-ok)"></div> Aktiv</div>
+  </div>
+
+  <div id="cronjobs"><span class="muted">Lade...</span></div>
+
+</div>
+
+<script>
+(function() {
+  var jobs = [
+    // System crontab
+    {
+      name: 'Health Check',
+      desc: 'Server-Metriken erfassen (CPU, RAM, Disk, Uptime) — schreibt status.json',
+      schedule: '0 * * * *',
+      human: 'Jede Stunde',
+      source: 'system',
+      script: '/root/.hermes/health.sh',
+      next: null
+    },
+    {
+      name: 'Depot Snapshot',
+      desc: 'Taeglicher Depotstand in depot_history.json speichern fuer das Entwicklungs-Chart',
+      schedule: '0 18 * * 1-5',
+      human: 'Mo-Fr 18:00',
+      source: 'system',
+      script: '/root/.hermes/scripts/depot_snapshot.py',
+      next: null
+    },
+    {
+      name: 'Wartung',
+      desc: 'apt-Update, Log-Rotation, Docker-Prune, status.json aktualisieren — Sonntag 4 Uhr',
+      schedule: '0 4 * * 0',
+      human: 'So 04:00 (wöchentlich)',
+      source: 'system',
+      script: '/root/.hermes/scripts/maintenance.sh',
+      next: '2026-04-26T04:00:00Z'
+    },
+    {
+      name: 'cTrader Live Snapshot',
+      desc: 'Performance-Tracker + cTrader Snapshot alle 5 Minuten für Dashboard',
+      schedule: '*/5 * * * *',
+      human: 'Alle 5 Minuten',
+      source: 'system',
+      script: 'ctrader_snapshot.py + performance_tracker.py',
+      next: null
+    },
+    {
+      name: 'API Status Check',
+      desc: 'cTrader API Verbindungsstatus prüfen (SSH auf OpenClaw)',
+      schedule: '0 */6 * * *',
+      human: 'Alle 6 Stunden',
+      source: 'system',
+      script: 'check_api_status.py',
+      next: null
+    },
+    {
+      name: 'API App Reminder',
+      desc: 'Erinnerung: API-App Token-Status prüfen (alle 30 Tage erneuern)',
+      schedule: '0 10 * * 1',
+      human: 'Mo 10:00',
+      source: 'system',
+      script: 'ctrader token renewal check',
+      next: '2026-04-27T10:00:00Z'
+    },
+    // Trading pipeline (Hermes Cronjobs)
+    {
+      name: 'Pre-Market Scan',
+      desc: 'Market-Daten abrufen, Fear & Greed, Vorbereitung fuer den Handelstag',
+      schedule: '20 13 * * 1-5',
+      human: 'Mo-Fr 15:20 Berlin',
+      source: 'trading',
+      script: 'pipeline.sh market',
+      next: null
+    },
+    {
+      name: 'Market Open',
+      desc: 'Vollstaendige Pipeline: Kimi-Analyse + Positionen-Check bei US-Marktöffnung',
+      schedule: '30 13 * * 1-5',
+      human: 'Mo-Fr 15:30 Berlin',
+      source: 'trading',
+      script: 'pipeline.sh full',
+      next: null
+    },
+    {
+      name: 'Mid-Session',
+      desc: 'Analyse-Lauf waehrend der Handelszeit — Trend-Check + Risiko-Bewertung',
+      schedule: '0 16 * * 1-5',
+      human: 'Mo-Fr 18:00 Berlin',
+      source: 'trading',
+      script: 'pipeline.sh analysis',
+      next: null
+    },
+    {
+      name: 'Pre-Close',
+      desc: 'Letzte Analyse vor Marktschluss — Abschluss-Empfehlungen',
+      schedule: '45 19 * * 1-5',
+      human: 'Mo-Fr 21:45 Berlin',
+      source: 'trading',
+      script: 'pipeline.sh analysis',
+      next: null
+    },
+    {
+      name: 'Weekly Review',
+      desc: 'Wochenueberblick: Performance, Lessons Learned, naechste Woche',
+      schedule: '0 18 * * 0',
+      human: 'So 20:00 Berlin',
+      source: 'trading',
+      script: 'pipeline.sh review',
+      next: null
+    }
+  ];
+
+  var container = document.getElementById('cronjobs');
+  var systemJobs = jobs.filter(j => j.source === 'system');
+  var tradingJobs = jobs.filter(j => j.source === 'trading');
+
+  function renderJob(j) {
+    var badgeClass = j.source === 'system' ? 'badge-system' : 'badge-trading';
+    var badgeLabel = j.source === 'system' ? 'System' : 'Trading';
+    var nextStr = '';
+    if (j.next) {
+      try {
+        var d = new Date(j.next);
+        var now = new Date();
+        var diff = d - now;
+        if (diff > 0) {
+          var hours = Math.floor(diff / 3600000);
+          var mins = Math.floor((diff % 3600000) / 60000);
+          nextStr = hours > 24 ? Math.floor(hours/24) + 'd ' + (hours%24) + 'h' : hours + 'h ' + mins + 'm';
+        } else {
+          nextStr = 'ueberfaellig';
+        }
+      } catch(e) {}
+    }
+
+    return '<div class="job-card">' +
+      '<div>' +
+        '<div class="job-name">' + j.name + ' <span class="badge ' + badgeClass + '">' + badgeLabel + '</span></div>' +
+        '<div class="job-desc">' + j.desc + '</div>' +
+        '<div class="job-meta">' +
+          '<div class="job-meta-item"><i data-lucide="clock" style="width:12px;height:12px"></i> ' + j.human + '</div>' +
+          '<div class="job-meta-item"><i data-lucide="file-code" style="width:12px;height:12px"></i> ' + j.script + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="job-right">' +
+        '<div class="job-schedule">' + j.schedule + '</div>' +
+        (nextStr ? '<div class="job-next">naechste: ' + nextStr + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  var html = '';
+  html += '<div class="section-label"><i data-lucide="server" style="width:14px;height:14px"></i> System (' + systemJobs.length + ')</div>';
+  html += '<div class="job-grid">' + systemJobs.map(renderJob).join('') + '</div>';
+  html += '<div class="section-label"><i data-lucide="trending-up" style="width:14px;height:14px"></i> Trading Pipeline (' + tradingJobs.length + ')</div>';
+  html += '<div class="job-grid">' + tradingJobs.map(renderJob).join('') + '</div>';
+
+  container.innerHTML = html;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+<!--/BODY-->

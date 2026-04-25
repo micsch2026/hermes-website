@@ -1,0 +1,351 @@
+<!--TITLE:Depot Verwaltung — Hermes-->
+<!--HEAD-->
+<style>
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
+  .kpi-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-4); }
+  .kpi-label { font-size: var(--text-xs); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--s-1); }
+  .kpi-val { font-size: var(--text-xl); font-weight: 700; }
+  .kpi-val.pos { color: var(--c-ok); }
+  .kpi-val.neg { color: var(--c-err); }
+
+  .depot-wrap { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-4); margin-bottom: var(--s-4); }
+  .depot-wrap h2 { margin: 0 0 var(--s-3); font-size: var(--text-sm); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); min-width: 700px; }
+  th { text-align: left; color: var(--c-text-dim); font-weight: 600; padding: var(--s-2) var(--s-2); border-bottom: 1px solid var(--c-border); font-size: var(--text-xs); text-transform: uppercase; white-space: nowrap; }
+  td { padding: var(--s-2) var(--s-2); border-bottom: 1px solid var(--c-border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  th.r, td.r { text-align: right; }
+  th.c, td.c { text-align: center; }
+
+  .ro { color: var(--c-text-dim); }
+  .ro-val { color: var(--c-text); font-weight: 500; }
+
+  .in { background: var(--c-bg); color: var(--c-text); border: 1px solid var(--c-border); padding: 4px 6px; border-radius: var(--r-sm); font-size: var(--text-sm); width: 100%; box-sizing: border-box; }
+  .in:focus { outline: none; border-color: var(--c-accent); }
+  .in-isin { width: 140px; font-family: monospace; font-size: 11px; }
+  .in-value { width: 90px; text-align: right; border-color: rgba(63,185,80,0.3); font-weight: 600; }
+  .in-value:focus { border-color: var(--c-ok); }
+
+  .btn { background: var(--c-accent); color: #fff; border: none; padding: var(--s-2) var(--s-4); border-radius: var(--r-md); cursor: pointer; font-size: var(--text-sm); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { background: var(--c-accent-hover); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: transparent; color: var(--c-text-dim); border: 1px solid var(--c-border); }
+  .btn-ghost:hover { background: var(--c-surface-hover); color: var(--c-text); }
+  .btn-ok { background: rgba(63,185,80,0.12); color: var(--c-ok); border: 1px solid var(--c-ok); }
+  .btn-ok:hover { background: rgba(63,185,80,0.25); }
+  .btn-fetch { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid #38bdf8; }
+  .btn-fetch:hover { background: rgba(56,189,248,0.25); }
+
+  .actions { display: flex; gap: var(--s-3); justify-content: space-between; align-items: center; margin-top: var(--s-4); flex-wrap: wrap; }
+  .actions-right { display: flex; gap: var(--s-3); }
+
+  .cash-row td { background: rgba(56,189,248,0.04); font-weight: 600; }
+
+  .del-btn { background: none; border: none; color: var(--c-err); cursor: pointer; padding: 4px; border-radius: var(--r-sm); opacity: 0.5; transition: opacity 0.2s; }
+  .del-btn:hover { opacity: 1; background: rgba(248,81,73,0.1); }
+
+  .add-row { display: flex; gap: var(--s-2); align-items: flex-end; flex-wrap: wrap; margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px dashed var(--c-border); }
+  .add-row .form-g { display: flex; flex-direction: column; gap: 2px; }
+  .add-row label { font-size: 10px; color: var(--c-text-dim); text-transform: uppercase; }
+
+  .kimi-badge { display: inline-block; font-size: 9px; background: rgba(168,85,247,0.15); color: #a855f7; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+
+  .toast { position: fixed; bottom: 20px; right: 20px; padding: var(--s-3) var(--s-5); border-radius: var(--r-md); font-size: var(--text-sm); font-weight: 600; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
+  .toast.show { opacity: 1; }
+  .toast.ok { background: rgba(63,185,80,0.15); color: var(--c-ok); border: 1px solid var(--c-ok); }
+  .toast.err { background: rgba(248,81,73,0.15); color: var(--c-err); border: 1px solid var(--c-err); }
+  .toast.info { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid #38bdf8; }
+
+  .fetch-status { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: var(--s-2); }
+  .fetch-status .ok-tag { color: var(--c-ok); }
+  .fetch-status .err-tag { color: var(--c-err); }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-4);">
+    <div>
+      <h1 style="margin:0"><i data-lucide="landmark" style="width:20px;height:20px;vertical-align:middle"></i> Depot</h1>
+      <p style="margin:var(--s-1) 0 0;color:var(--c-text-dim);font-size:var(--text-sm)" id="updatedAt">Lade...</p>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Investiert</div>
+      <div class="kpi-val" id="kpiInvested">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Depotwert</div>
+      <div class="kpi-val" id="kpiValue">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">P&L</div>
+      <div class="kpi-val" id="kpiPnL">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Cash</div>
+      <div class="kpi-val" id="kpiCash">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Gesamt</div>
+      <div class="kpi-val" id="kpiTotal">—</div>
+    </div>
+  </div>
+
+  <div class="depot-wrap">
+    <h2>Positionen <span class="kimi-badge">Kimi-Daten</span></h2>
+    <div class="tbl-scroll">
+      <table id="posTable">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>ISIN</th>
+            <th class="r">Investiert</th>
+            <th class="r">Aktuell €</th>
+            <th class="r">P&L</th>
+            <th class="r">P&L%</th>
+            <th class="r">Stop</th>
+            <th class="r">KO</th>
+            <th class="r">Abst.</th>
+            <th class="c">Hebel</th>
+            <th>Risiko</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="posBody"></tbody>
+      </table>
+    </div>
+
+    <div class="add-row">
+      <div class="form-g">
+        <label>Ticker</label>
+        <input type="text" class="in" style="width:80px" id="addTicker" placeholder="NVDA">
+      </div>
+      <div class="form-g">
+        <label>ISIN</label>
+        <input type="text" class="in in-isin" id="addIsin" placeholder="DE000...">
+      </div>
+      <div class="form-g">
+        <label>Aktuell €</label>
+        <input type="number" step="0.01" class="in in-value" id="addValue" placeholder="800">
+      </div>
+      <div class="form-g">
+        <label>&nbsp;</label>
+        <button class="btn btn-ok" onclick="addPos()"><i data-lucide="plus" style="width:14px;height:14px"></i> Neu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <div class="actions-right">
+      <button class="btn btn-fetch" onclick="fetchPrices()" id="fetchBtn">
+        <i data-lucide="download" style="width:14px;height:14px"></i> Preise holen
+      </button>
+      <button class="btn btn-ghost" onclick="loadDepot()">
+        <i data-lucide="rotate-ccw" style="width:14px;height:14px"></i> Zurücksetzen
+      </button>
+      <button class="btn" onclick="saveDepot()" id="saveBtn">
+        <i data-lucide="save" style="width:14px;height:14px"></i> Speichern
+      </button>
+    </div>
+  </div>
+  <div class="fetch-status" id="fetchStatus"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* Credentials-safe fetch: Browser blockiert fetch() wenn Seite via user:pass@host geladen wird. */
+function safeFetch(path, opts) {
+  var url = new URL(path, window.location.origin);
+  return fetch(url.href, opts);
+}
+
+var SSOT = null;
+
+function fmt(n) {
+  return n.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) + '€';
+}
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || 'ok');
+  setTimeout(function(){ t.className = 'toast'; }, 3500);
+}
+function pnlC(v) { return v >= 0 ? 'pos' : 'neg'; }
+
+function render() {
+  if (!SSOT) return;
+  var pos = SSOT.positions || [];
+  var cash = SSOT.cash || 0;
+  var tbody = document.getElementById('posBody');
+  tbody.innerHTML = '';
+  var ti = 0, tv = 0, tp = 0;
+
+  pos.forEach(function(p, i) {
+    var inv = parseFloat(p.invested) || 0;
+    var val = parseFloat(p.current_value) || 0;
+    var pnl = val - inv;
+    var pct = inv ? (pnl / inv * 100) : 0;
+    var kd = p.ko_distance_pct;
+    var risk = p.ko_risk || '—';
+    var rc = risk === 'SICHER' ? 'var(--c-ok)' : risk === 'KRITISCH' ? 'var(--c-err)' : risk === 'BEOBACHTEN' ? '#f59e0b' : 'var(--c-text-dim)';
+    ti += inv; tv += val; tp += pnl;
+
+    var stop = p.stop_loss;
+    var stopTxt = '—';
+    if (stop != null && stop > 0 && p.units) {
+      var pp = val / p.units;
+      var sd = (pp - stop) / pp * 100;
+      stopTxt = stop.toFixed(2);
+      if (sd < 5) stopTxt = '<span style="color:var(--c-err);font-weight:600">' + stopTxt + '</span>';
+    } else if (stop != null) {
+      stopTxt = stop.toFixed(2);
+    }
+
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="ro-val">' + (p.ticker||'') + '</td>' +
+      '<td><input class="in in-isin" value="' + (p.isin||'') + '" onchange="setISIN('+i+',this.value)" placeholder="DE000..."></td>' +
+      '<td class="r ro">' + fmt(inv) + '</td>' +
+      '<td class="r"><input class="in in-value" type="number" step="0.01" value="'+val+'" onchange="setVal('+i+',this.value)"></td>' +
+      '<td class="r"><span class="'+pnlC(pnl)+'">' + (pnl>=0?'+':'') + fmt(pnl) + '</span></td>' +
+      '<td class="r"><span class="'+pnlC(pct)+'">' + (pct>=0?'+':'') + pct.toFixed(1) + '%</span></td>' +
+      '<td class="r ro">' + stopTxt + '</td>' +
+      '<td class="r ro">' + (p.ko_barrier||'—') + '</td>' +
+      '<td class="r" style="color:'+(kd!=null?(kd<35?'var(--c-err)':'var(--c-ok)'):'var(--c-text-dim)')+'">'+(kd!=null?kd.toFixed(1)+'%':'—')+'</td>' +
+      '<td class="c ro">' + (p.current_leverage||'—') + '</td>' +
+      '<td style="color:'+rc+'">' + risk + '</td>' +
+      '<td><button class="del-btn" onclick="delPos('+i+')"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>';
+    tbody.appendChild(tr);
+  });
+
+  var ctr = document.createElement('tr');
+  ctr.className = 'cash-row';
+  ctr.innerHTML =
+    '<td colspan="2"><i data-lucide="banknote" style="width:14px;height:14px;vertical-align:middle"></i> <strong>Cash</strong></td>' +
+    '<td></td>' +
+    '<td class="r"><input class="in in-value" type="number" step="0.01" value="'+cash+'" onchange="setCash(this.value)"></td>' +
+    '<td colspan="8"></td>';
+  tbody.appendChild(ctr);
+
+  document.getElementById('kpiInvested').textContent = fmt(ti);
+  document.getElementById('kpiValue').textContent = fmt(tv);
+  var pe = document.getElementById('kpiPnL');
+  pe.textContent = (tp>=0?'+':'') + fmt(tp);
+  pe.className = 'kpi-val ' + pnlC(tp);
+  document.getElementById('kpiCash').textContent = fmt(cash);
+  document.getElementById('kpiTotal').textContent = fmt(tv + cash);
+  var u = SSOT.updated_at ? new Date(SSOT.updated_at).toLocaleString('de-DE') : '—';
+  document.getElementById('updatedAt').textContent = u + ' · ' + pos.length + ' Positionen';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function setISIN(i, v) { SSOT.positions[i].isin = v.trim().toUpperCase(); }
+function setVal(i, v) {
+  var p = SSOT.positions[i];
+  p.current_value = parseFloat(v) || 0;
+  var inv = parseFloat(p.invested) || 0;
+  p.pnl_eur = Math.round((p.current_value - inv) * 100) / 100;
+  p.pnl_pct = inv ? Math.round((p.current_value - inv) / inv * 10000) / 100 : 0;
+  render();
+}
+function setCash(v) { SSOT.cash = parseFloat(v) || 0; render(); }
+
+function delPos(i) {
+  var n = SSOT.positions[i].ticker || '?';
+  if (!confirm(n + ' löschen?')) return;
+  SSOT.positions.splice(i, 1);
+  render();
+  toast('Gelöscht', 'info');
+}
+
+function addPos() {
+  var t = document.getElementById('addTicker').value.trim().toUpperCase();
+  var isin = document.getElementById('addIsin').value.trim().toUpperCase();
+  var v = parseFloat(document.getElementById('addValue').value) || 0;
+  if (!t) { toast('Ticker fehlt', 'err'); return; }
+  SSOT.positions.push({
+    asset: t, ticker: t, leverage: 'variable', invested: 0, current_value: v,
+    entry: null, ko_barrier: null, ko_underlying_pct: 33, ko_risk: '—',
+    reason: '', value_chain: '', pnl_pct: 0, pnl_eur: 0,
+    current_leverage: null, ko_distance_pct: null, stop_loss: null,
+    isin: isin, wkn: '', units: null, note: ''
+  });
+  document.getElementById('addTicker').value = '';
+  document.getElementById('addIsin').value = '';
+  document.getElementById('addValue').value = '';
+  render();
+  toast('Hinzugefügt', 'ok');
+}
+
+function loadDepot() {
+  safeFetch('/api/trading/depot/full')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ SSOT = d; render(); toast('Geladen', 'ok'); })
+    .catch(function(e){ toast('Fehler: '+e, 'err'); });
+}
+
+function saveDepot() {
+  var btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:14px;height:14px"></i> ...';
+  var pl = JSON.parse(JSON.stringify(SSOT));
+  if (pl.positions) pl.positions.forEach(function(p) {
+    delete p.reason; delete p.value_chain; delete p.ko_risk; delete p.ko_underlying_pct;
+  });
+  safeFetch('/api/trading/depot/full', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(pl)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="save" style="width:14px;height:14px"></i> Speichern';
+    if (d.ok) { SSOT.updated_at = d.data.updated_at; render(); toast('Gespeichert', 'ok'); }
+    else toast('Fehler: '+(d.error||'?'), 'err');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  })
+  .catch(function(e){
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="save" style="width:14px;height:14px"></i> Speichern';
+    toast('Fehler: '+e, 'err');
+  });
+}
+
+function fetchPrices() {
+  var btn = document.getElementById('fetchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:14px;height:14px"></i> ...';
+  document.getElementById('fetchStatus').textContent = 'Hole Preise...';
+  safeFetch('/api/trading/depot/fetch', { method: 'POST' })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="download" style="width:14px;height:14px"></i> Preise holen';
+    if (!d.ok) { document.getElementById('fetchStatus').innerHTML = '<span class="err-tag">'+(d.error||'?')+'</span>'; return; }
+    var n = 0, parts = [];
+    (d.results||[]).forEach(function(r, i) {
+      if (i < SSOT.positions.length) {
+        var p = SSOT.positions[i];
+        if (r.current_value != null) { p.current_value = r.current_value; p.pnl_eur = r.pnl_eur; p.pnl_pct = r.pnl_pct; n++; }
+        if (r.ko_distance_pct != null) p.ko_distance_pct = r.ko_distance_pct;
+        if (r.underlying_usd != null) p.last_underlying = r.underlying_usd;
+        parts.push(r.ticker + (r.fetched ? ' ✓' : ' —'));
+      }
+    });
+    document.getElementById('fetchStatus').innerHTML = parts.join(' · ');
+    render(); toast(n+' aktualisiert (USD/EUR: '+d.eur_usd+')', 'ok');
+  })
+  .catch(function(e){
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="download" style="width:14px;height:14px"></i> Preise holen';
+    toast('Netzwerk-Fehler', 'err');
+  });
+}
+
+loadDepot();
+</script>
+<!--/BODY-->

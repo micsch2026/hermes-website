@@ -1,0 +1,112 @@
+<!--TITLE:Wissensbasis — Hermes-->
+<!--HEAD-->
+<!--/HEAD-->
+<!--BODY-->
+
+    <div class="container">
+      <div class="page">
+        <div class="page-header">
+          <h1 class="page-title">
+            <i data-lucide="book-open" style="width:22px;height:22px;display:inline;vertical-align:text-bottom;margin-right:8px;color:var(--c-text-muted)"></i>
+            Wissensbasis
+          </h1>
+          <p class="page-subtitle" id="subtitle">Lade...</p>
+        </div>
+
+        <nav aria-label="Inhaltsverzeichnis" style="margin-bottom:var(--s-8)">
+          <div class="card" style="padding:var(--s-4) var(--s-5)">
+            <p class="section-title" style="margin-bottom:var(--s-3)">
+              <i data-lucide="list" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:6px"></i>
+              Inhalt
+            </p>
+            <div style="display:flex;gap:var(--s-4);flex-wrap:wrap;font-size:var(--text-sm)" id="toc"></div>
+          </div>
+        </nav>
+
+        <div class="list" style="gap:var(--s-4)" id="knowledge-list"></div>
+
+      </div>
+    </div>
+
+  <footer class="footer">Hermes · hermes.nexusfortis.org</footer>
+
+<!--DATA:/api/content/knowledge.json-->
+<script>
+(function(){
+  var d = window.__DATA__ || { sections: [] };
+  document.getElementById('subtitle').textContent = d.sections.length + ' Bereiche' +
+    (d.updated ? ' · Stand: ' + new Date(d.updated).toLocaleDateString('de-DE') : '');
+
+  /* icon mapping for item labels → Lucide icon names */
+  var iconMap = {
+    'Host':     'server',
+    'OS':       'monitor',
+    'IP':       'globe',
+    'Domain':   'link',
+    'SSH':      'key',
+    'Firewall': 'shield',
+    'Caddy':    'server',
+    'Hermes':   'cpu',
+    'Wartung':  'wrench',
+    'Python':   'terminal',
+    'Node':     'box',
+    'URL':      'link',
+    'Auth':     'lock',
+    'Seiten':   'layout-grid',
+    'Build':    'hammer',
+    'Config':   'file-text',
+    'Icons':    'image',
+    'Strategie':'compass',
+    'Broker':   'building-2',
+    'API':      'plug',
+    'KI':       'brain',
+    'Depot':    'wallet'
+  };
+
+  /* TOC */
+  var toc = document.getElementById('toc');
+  d.sections.forEach(function(sec){
+    var a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.innerHTML = '<i data-lucide="' + sec.icon + '" style="width:12px;height:12px;display:inline;vertical-align:text-bottom;margin-right:4px"></i>' + sec.title;
+    toc.appendChild(a);
+  });
+
+  /* Sections */
+  var list = document.getElementById('knowledge-list');
+  d.sections.forEach(function(sec){
+    var article = document.createElement('article');
+    article.className = 'card';
+    article.id = sec.id;
+
+    var itemsHtml = sec.items.map(function(item){
+      var icon = iconMap[item.label] || 'circle';
+      return '<div class="stat-row">' +
+        '<span class="stat-label"><i data-lucide="' + icon + '" style="width:14px;height:14px;display:inline;vertical-align:text-bottom;margin-right:4px"></i>' + item.label + '</span>' +
+        '<span class="stat-value">' + item.value + '</span>' +
+      '</div>';
+    }).join('');
+
+    var noteHtml = sec.note
+      ? '<div style="margin-top:var(--s-4);padding:var(--s-3) var(--s-4);background:var(--c-surface-2);border-radius:var(--r-md);display:flex;align-items:flex-start;gap:var(--s-2);font-size:var(--text-sm);color:var(--c-text-2)">' +
+          '<i data-lucide="info" style="width:14px;height:14px;flex-shrink:0;margin-top:2px;color:var(--c-text-muted)"></i>' +
+          '<span>' + sec.note + '</span>' +
+        '</div>'
+      : '';
+
+    article.innerHTML =
+      '<div class="section-icon">' +
+        '<div style="color:var(--c-text-muted);display:flex"><i data-lucide="' + sec.icon + '" style="width:20px;height:20px"></i></div>' +
+        '<h2 style="font-size:var(--text-md);font-weight:600">' + sec.title + '</h2>' +
+      '</div>' +
+      '<div style="border-top:1px solid var(--c-border)">' +
+        itemsHtml +
+      '</div>' +
+      noteHtml;
+    list.appendChild(article);
+  });
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+<!--/BODY-->
