@@ -619,7 +619,7 @@ function loadDepotIntoReport() {
 function renderDepotTable(positions, cash, costBasis, kimiMeta) {
     const tbody = document.querySelector('#positionsTable');
     // Header
-    tbody.innerHTML = '<tr><th>Position</th><th>Kurs</th><th>Underlying</th><th>KO&nbsp;Distanz</th><th>Hebel</th><th>Stop-Loss</th><th>Wert</th><th>P&L</th><th>Aktion</th></tr>';
+    tbody.innerHTML = '<tr><th>Position</th><th>Kurs</th><th>Entry</th><th>Abstand&nbsp;SL</th><th>Stop-Loss</th><th>Wert</th><th>P&L</th><th>Aktion</th></tr>';
 
     let invested = 0, totalPnL = 0;
     positions.forEach(p => {
@@ -645,30 +645,34 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
 
       // Underlying
       const ul = lp.underlying_usd || p.underlying || 0;
-      const ulStr = ul > 0 ? '$' + ul.toFixed(2) : '—';
 
-      // KO Distanz
+      // KO Distanz (nur noch intern, nicht angezeigt)
       const koDist = lp.ko_distance_pct || p.ko_distance_pct || 0;
-      const koAbs = (ul > 0 && p.ko_barrier > 0) ? (ul - p.ko_barrier).toFixed(1) : '';
-      const koStr = koAbs ? '$' + koAbs + ' (' + koDist.toFixed(1) + '%)' : koDist.toFixed(1) + '%';
-      const koColor = koDist < 20 ? 'pnl-neg' : koDist < 30 ? '' : 'pnl-pos';
 
-      // Hebel
-      const lev = p.leverage || 0;
-      const levStr = lev > 0 ? lev.toFixed(2) + 'x' : '—';
-
-      // Stop-Loss: 15% unter Derivatkurs
-      let stopStr = '—';
-      let stopWarn = '';
-      if (derivBid > 0) {
-        const stopVal = derivBid * 0.85;
-        stopStr = stopVal.toFixed(3).replace('.', ',') + '€';
-      } else if (ul > 0 && p.ko_barrier > 0 && lev > 0) {
-        const dropPct = 15.0 / lev;
-        const stopUl = ul * (1 - dropPct/100);
-        stopStr = '~$' + stopUl.toFixed(0) + ' (' + dropPct.toFixed(1) + '% Basis)';
-        stopWarn = 'muted';
+      // Entry-Kurs (Derivat) - rueckgerechnet aus aktuellem Kurs und Performance
+      let entryKurs = 0;
+      if (derivBid > 0 && p.change_pct !== 0) {
+        entryKurs = derivBid / (1 + p.change_pct / 100);
+      } else if (derivBid > 0 && m.units) {
+        const match = String(m.units).match(/([0-9]+[.,]?[0-9]*)/);
+        if (match) {
+          const unitsNum = parseFloat(match[1].replace(',', '.'));
+          if (unitsNum > 0) entryKurs = p.value / unitsNum;
+        }
       }
+      const entryStr = entryKurs > 0 ? entryKurs.toFixed(3).replace('.', ',') + '€' : '—';
+
+      // Stop-Loss: 15% unter Derivatkurs (immer Derivat-Wert!)
+      let stopVal = 0;
+      let stopStr = '—';
+      let abstandSL = 0;
+      if (derivBid > 0) {
+        stopVal = derivBid * 0.85;
+        stopStr = stopVal.toFixed(3).replace('.', ',') + '€';
+        abstandSL = ((derivBid - stopVal) / derivBid * 100);
+      }
+      const abstandStr = abstandSL > 0 ? abstandSL.toFixed(1) + '%' : '—';
+      const stopWarn = (abstandSL > 0 && koDist < abstandSL + 5) ? 'muted' : ''; // Warnung wenn KO naeher als SL
 
       // P&L
       const pnlClass = pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
@@ -683,10 +687,9 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
       row.innerHTML =
         '<td><b>' + p.name + '</b><br><span class="muted" style="font-size:11px">' + p.isin + '</span></td>' +
         '<td ' + kursColor + '><b>' + kursStr + '</b>' + (derivAsk > 0 && derivAsk !== derivBid ? '<br><span class="muted" style="font-size:11px">Ask ' + derivAsk.toFixed(3) + '€</span>' : '') + '</td>' +
-        '<td>' + ulStr + '</td>' +
-        '<td class="' + koColor + '">' + koStr + '</td>' +
-        '<td>' + levStr + '</td>' +
-        '<td><b style="color:var(--c-warn)">' + stopStr + '</b>' + (stopWarn ? '<br><span class="muted" style="font-size:11px">≈ 15% Derivat-Verlust</span>' : '') + '</td>' +
+        '<td><span class="muted">' + entryStr + '</span></td>' +
+        '<td><span class="muted">' + abstandStr + '</span></td>' +
+        '<td><b style="color:var(--c-warn);font-size:var(--text-md)">' + stopStr + '</b>' + (stopWarn ? '<br><span class="muted" style="font-size:11px">KO näher als SL!</span>' : '') + '</td>' +
         '<td>' + fmtEUR(p.value) + '</td>' +
         '<td class="' + pnlClass + '">' + pnlSign + fmtEUR(pnl) + '<br><span class="muted" style="font-size:11px">' + pnlSign + p.change_pct.toFixed(1) + '%</span></td>' +
         '<td><span class="badge ' + actionClass + '">' + action + '</span>' + (actionReason ? '<br><span class="muted" style="font-size:11px">' + actionReason.substring(0, 60) + '</span>' : '') + '</td>';
