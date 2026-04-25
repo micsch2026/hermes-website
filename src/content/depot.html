@@ -194,15 +194,19 @@ function render() {
     var rc = risk === 'SICHER' ? 'var(--c-ok)' : risk === 'KRITISCH' ? 'var(--c-err)' : risk === 'BEOBACHTEN' ? '#f59e0b' : 'var(--c-text-dim)';
     ti += inv; tv += val; tp += pnl;
 
+    // Stop-Loss: gesetzt > berechnet (15% unter aktuellem Wert)
     var stop = p.stop_loss;
     var stopTxt = '—';
+    var calcStop = val * 0.85;
     if (stop != null && stop > 0 && p.units) {
       var pp = val / p.units;
       var sd = (pp - stop) / pp * 100;
-      stopTxt = stop.toFixed(2);
+      stopTxt = stop.toFixed(2) + '€';
       if (sd < 5) stopTxt = '<span style="color:var(--c-err);font-weight:600">' + stopTxt + '</span>';
-    } else if (stop != null) {
-      stopTxt = stop.toFixed(2);
+    } else if (stop != null && stop > 0) {
+      stopTxt = stop.toFixed(2) + '€';
+    } else {
+      stopTxt = calcStop.toFixed(2) + '€ <span class="muted" style="font-size:10px">(15%)</span>';
     }
 
     var tr = document.createElement('tr');

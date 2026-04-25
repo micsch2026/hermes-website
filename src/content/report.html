@@ -589,24 +589,34 @@ function fetchLivePrices() {
 }
 
 function loadDepotIntoReport() {
-  // Primary: facts.json (always current), Fallback: backend proxy
+  // Primary: facts.json (always current), Fallback: scalable.json, then backend proxy
   Promise.all([
     safeFetch('/api/trading/facts.json').then(r => r.json()).catch(() => null),
+    safeFetch('/api/trading/scalable.json').then(r => r.json()).catch(() => null),
     safeFetch('/api/trading/kimi_meta').then(r => r.json()).catch(() => ({}))
-  ]).then(([facts, kimiMeta]) => {
+  ]).then(([facts, scalable, kimiMeta]) => {
+    // Build invested lookup from scalable.json (has per-position invested)
+    const investedByIsin = {};
+    if (scalable && scalable.positions) {
+      scalable.positions.forEach(p => {
+        if (p.isin) investedByIsin[p.isin] = p.invested;
+      });
+    }
+
     if (!facts || !facts.depot_scalable) {
       // Fallback to backend proxy
       return Promise.all([
         safeFetch('/api/trading/depot').then(r => r.json()),
         Promise.resolve(kimiMeta)
       ]).then(([depot, km]) => renderDepotTable(depot.positions.map(p => ({
-        name: p.name, isin: p.isin, value: p.value, change_pct: p.change_pct,
+        name: p.name, isin: p.isin, value: p.value, change_pct: p.change_pct, invested: investedByIsin[p.isin],
         underlying: 0, ko_barrier: 0, ko_distance_pct: 0, ko_risk: '—', leverage: 0
       })), depot.cash, 0, km));
     }
     const ds = facts.depot_scalable;
     renderDepotTable(ds.positions.map(p => ({
       name: p.ticker, isin: p.isin || '', value: p.value, change_pct: p.pnl_pct,
+      invested: investedByIsin[p.isin || ''],
       underlying: p.current_underlying_usd || p.last_underlying || 0,
       ko_barrier: p.ko_barrier || 0,
       ko_distance_pct: p.ko_distance_pct || 0,
@@ -625,7 +635,7 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
     positions.forEach(p => {
       const m = kimiMeta[p.isin] || {};
       const lp = livePrices[p.isin] || {};
-      const entryVal = p.value / (1 + p.change_pct / 100);
+      const entryVal = p.invested || (p.value / (1 + p.change_pct / 100));
       const pnl = p.value - entryVal;
       invested += p.value;
       totalPnL += pnl;
@@ -650,7 +660,9 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
       const koDist = lp.ko_distance_pct || p.ko_distance_pct || 0;
 
       // Entry-Kurs (Derivat) - rueckgerechnet aus aktuellem Kurs und Performance
+      // Fallback auf Gesamtwert wenn kein Stueckkurs verfuegbar
       let entryKurs = 0;
+      let entryIsTotal = false;
       if (derivBid > 0 && p.change_pct !== 0) {
         entryKurs = derivBid / (1 + p.change_pct / 100);
       } else if (derivBid > 0 && m.units) {
@@ -660,19 +672,29 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta) {
           if (unitsNum > 0) entryKurs = p.value / unitsNum;
         }
       }
-      const entryStr = entryKurs > 0 ? entryKurs.toFixed(3).replace('.', ',') + '€' : '—';
+      if (entryKurs <= 0) {
+        entryKurs = entryVal; // Gesamtwert als Fallback
+        entryIsTotal = true;
+      }
+      const entryStr = entryKurs > 0 ? entryKurs.toFixed(2).replace('.', ',') + '€' + (entryIsTotal ? ' <span class="muted" style="font-size:10px">(Gesamt)</span>' : '') : '—';
 
-      // Stop-Loss: 15% unter Derivatkurs (immer Derivat-Wert!)
+      // Stop-Loss: 15% unter aktuellem Wert (Stueck ODER Gesamt)
       let stopVal = 0;
       let stopStr = '—';
-      let abstandSL = 0;
+      let abstandSL = 15.0;
+      let stopIsTotal = false;
       if (derivBid > 0) {
         stopVal = derivBid * 0.85;
         stopStr = stopVal.toFixed(3).replace('.', ',') + '€';
         abstandSL = ((derivBid - stopVal) / derivBid * 100);
+      } else {
+        // Fallback: Gesamtwert-Stop
+        stopVal = p.value * 0.85;
+        stopStr = stopVal.toFixed(2).replace('.', ',') + '€ <span class="muted" style="font-size:10px">(Gesamt)</span>';
+        stopIsTotal = true;
       }
-      const abstandStr = abstandSL > 0 ? abstandSL.toFixed(1) + '%' : '—';
-      const stopWarn = (abstandSL > 0 && koDist < abstandSL + 5) ? 'muted' : ''; // Warnung wenn KO naeher als SL
+      const abstandStr = abstandSL.toFixed(1) + '%';
+      const stopWarn = (koDist > 0 && koDist < abstandSL + 5) ? 'muted' : ''; // Warnung wenn KO naeher als SL
 
       // P&L
       const pnlClass = pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
