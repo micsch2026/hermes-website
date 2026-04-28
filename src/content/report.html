@@ -627,7 +627,8 @@ function loadDepotIntoReport() {
           name: p.name, isin: p.isin, value: p.value, change_pct: p.change_pct,
           invested: s.invested, leverage: s.leverage, current_leverage: s.current_leverage,
           ko_distance_pct: s.ko_distance_pct, ko_barrier: s.ko_barrier, ko_risk: s.ko_risk,
-          current_underlying_usd: s.current_underlying_usd || 0
+          current_underlying_usd: s.current_underlying_usd || 0,
+          current_bid: s.current_bid || 0, units: s.units || 0
         };
       }), depot.cash, 0, km, dm));
     }
@@ -642,7 +643,8 @@ function loadDepotIntoReport() {
         ko_distance_pct: s.ko_distance_pct || p.ko_distance_pct || 0,
         ko_barrier: s.ko_barrier || p.ko_barrier || 0,
         ko_risk: s.ko_risk || p.ko_risk || '—',
-        current_underlying_usd: s.current_underlying_usd || 0
+        current_underlying_usd: s.current_underlying_usd || 0,
+        current_bid: s.current_bid || 0, units: s.units || 0
       };
     }), ds.cash, ds.invested || 0, kimiMeta, depotMeta);
   }).catch(e => console.error('Depot laden fehlgeschlagen:', e));
@@ -678,33 +680,33 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta, depotMeta) {
       const koStr = koDist > 0 ? koDist.toFixed(1) + '%' : '—';
       const koColor = koDist < 20 ? 'var(--c-err)' : koDist < 25 ? 'var(--c-warn)' : 'var(--c-ok)';
 
-      // Stop-Loss: Underlying-Trigger-Preis (USD)
-      // Bei Erreichen: sofort verkaufen, bevor KO droht.
+      // Stop-Loss: ISIN-Kurs (Turbo-Einzelpreis in EUR)
+      // Formel: SL = current_bid × (1 - Puffer)
+      // Puffer dynamisch je nach KO-Abstand
       let stopDisplay = '—';
       let slStatus = 'neutral';
-      const koBarrier = parseFloat(p.ko_barrier) || 0;
-      const curUnderlying = parseFloat(p.current_underlying_usd) || 0;
+      const curBid = parseFloat(p.current_bid) || 0;
 
       if (koDist > 0 && koDist < 10) {
         stopDisplay = '<span style="color:var(--c-err);font-weight:700">SOFORT VERKAUFEN</span> — KO nur ' + koDist.toFixed(1) + '% entfernt!';
         slStatus = 'critical';
-      } else if (koBarrier > 0 && curUnderlying > 0) {
+      } else if (curBid > 0) {
         // Dynamischer Puffer je nach KO-Abstand
         let bufferPct = 10.0;
         if (koDist < 20)      bufferPct = 5.0;
         else if (koDist < 30) bufferPct = 8.0;
 
-        const triggerPrice = koBarrier * (1 + bufferPct / 100);
-        const distToTrigger = ((curUnderlying - triggerPrice) / curUnderlying) * 100;
+        const slPrice = curBid * (1 - bufferPct / 100);
+        const distToSL = ((curBid - slPrice) / curBid) * 100;
 
         let slColor = 'var(--c-ok)';
-        if (distToTrigger <= 0)       { slColor = 'var(--c-err)'; slStatus = 'critical'; }
-        else if (distToTrigger < 5)   { slColor = '#f97316'; slStatus = 'warning'; }
-        else if (distToTrigger < 15)  { slColor = '#eab308'; slStatus = 'watch'; }
-        else                          { slStatus = 'safe'; }
+        if (distToSL <= 0)       { slColor = 'var(--c-err)'; slStatus = 'critical'; }
+        else if (distToSL < 5)   { slColor = '#f97316'; slStatus = 'warning'; }
+        else if (distToSL < 15)  { slColor = '#eab308'; slStatus = 'watch'; }
+        else                      { slStatus = 'safe'; }
 
-        stopDisplay = '<span style="color:' + slColor + ';font-weight:600">$' + triggerPrice.toFixed(2) + '</span>'
-          + ' <span class="muted" style="font-size:10px">(' + bufferPct.toFixed(0) + '% Puffer) — Abstand: ' + distToTrigger.toFixed(1) + '%</span>';
+        stopDisplay = '<span style="color:' + slColor + ';font-weight:600">€' + slPrice.toFixed(2).replace('.', ',') + '</span>'
+          + ' <span class="muted" style="font-size:10px">(' + bufferPct.toFixed(0) + '% unter ISIN ' + '€' + curBid.toFixed(2).replace('.', ',') + ')</span>';
       } else if (p.value && p.invested) {
         // Fallback für Nicht-KO-Positionen
         const slPct = 15.0;
