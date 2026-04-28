@@ -324,7 +324,10 @@ async function loadBotStatus() {
       for (var i = 0; i < d.positions.length; i++) {
         var p = d.positions[i];
         var side = (p.side === 'BUY' || p.side === 'buy') ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>';
-        html += '<tr><td><b>' + (p.symbol || '\u2014') + '</b></td><td>' + side + '</td><td>' + (p.volume || p.quantity || '\u2014') + '</td><td>' + (p.entry_price || p.price || '\u2014') + '</td><td>' + (p.sl || '\u2014') + '</td><td>' + (p.tp || '\u2014') + '</td><td class="' + pnlClass(p.pnl || 0) + '">' + pnlFormat(p.pnl) + '</td></tr>';
+        var volRaw = p.volume || p.quantity || 0;
+        var volLot = volRaw ? (volRaw / 10000000).toFixed(2) + ' Lot' : '\u2014';
+        var upnl = p.unrealized_pnl != null ? p.unrealized_pnl : (p.pnl || null);
+        html += '<tr><td><b>' + (p.symbol || '\u2014') + '</b></td><td>' + side + '</td><td>' + volLot + '</td><td>' + (p.entry_price || p.price || '\u2014') + '</td><td>' + (p.sl || '\u2014') + '</td><td>' + (p.tp || '\u2014') + '</td><td class="' + pnlClass(upnl || 0) + '">' + (upnl != null ? pnlFormat(upnl) : '\u2014') + '</td></tr>';
       }
       tbody.innerHTML = html;
     } else {
@@ -356,8 +359,8 @@ async function loadBotStatus() {
       document.getElementById('risk-max-pos').textContent = b.max_positions != null ? b.max_positions : '\u2014';
       document.getElementById('risk-max-pct').textContent = b.max_risk_per_trade_pct != null ? b.max_risk_per_trade_pct + '%' : '\u2014';
       document.getElementById('risk-max-eur').textContent = b.max_risk_per_trade_eur != null ? '\u20AC' + b.max_risk_per_trade_eur : '\u2014';
-      document.getElementById('briefing-preferred').innerHTML = (b.preferred_assets && b.preferred_assets.length) ? b.preferred_assets.map(function(a){ return '<span class="asset-tag asset-pref">' + a + '</span>'; }).join('') : '<span class="no-data">\u2014</span>';
-      document.getElementById('briefing-avoid').innerHTML = (b.avoid_assets && b.avoid_assets.length) ? b.avoid_assets.map(function(a){ return '<span class="asset-tag asset-avoid">' + a + '</span>'; }).join('') : '<span class="no-data">\u2014</span>';
+      document.getElementById('briefing-preferred').innerHTML = (b.preferred_assets && b.preferred_assets.length) ? b.preferred_assets.map(function(a){ var sym = typeof a === 'string' ? a : (a.symbol || JSON.stringify(a)); return '<span class="asset-tag asset-pref">' + sym + '</span>'; }).join('') : '<span class="no-data">\u2014</span>';
+      document.getElementById('briefing-avoid').innerHTML = (b.avoid_assets && b.avoid_assets.length) ? b.avoid_assets.map(function(a){ var sym = typeof a === 'string' ? a : (a.symbol || JSON.stringify(a)); return '<span class="asset-tag asset-avoid">' + sym + '</span>'; }).join('') : '<span class="no-data">\u2014</span>';
       if (b.technical_rules) {
         var tr = b.technical_rules;
         document.getElementById('rule-rr').textContent = tr.min_rr != null ? '1:' + tr.min_rr : '\u2014';
@@ -450,7 +453,16 @@ async function loadBotStatus() {
           var pnlSign = t.pnl >= 0 ? '+' : '';
           pnlStr = '<span class="' + pnlCls + '">' + pnlSign + t.pnl.toFixed(1) + ' ' + (t.pnl_currency || '') + '</span>';
         }
-        html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + (t.quantity || t.volume || 1) + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + (t.status || '\u2014') + '</td></tr>';
+        var tVol = t.quantity || t.volume || 0;
+        var volDisp = tVol;
+        var symU = (t.symbol || '').toUpperCase();
+        var isIndex = /^(US30|US500|NAS100|UK100|DE40|SP500|DJ30)$/.test(symU);
+        if (tVol > 100 && !isIndex) {
+          volDisp = (tVol / 10000000).toFixed(2) + ' Lot';
+        } else {
+          volDisp = tVol + (isIndex ? ' ctr' : '');
+        }
+        html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + volDisp + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + (t.status || '\u2014') + '</td></tr>';
       }
       document.getElementById('trade-log-body').innerHTML = html;
     }
