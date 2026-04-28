@@ -47,14 +47,13 @@ function safeFetch(path, opts) {
 <!--/HEAD-->
 <!--BODY-->
 
-
   <!-- Status Bar -->
   <div class="refresh-bar">
     <div>
       <span class="status-dot" id="bot-dot"></span>
       <span id="bot-status">Lade...</span>
       <span class="badge" id="mode-badge" style="margin-left:8px"></span>
-      <span style="margin-left:8px;font-size:var(--text-xs);color:var(--c-text-dim)">v2.3.0</span>
+      <span style="margin-left:8px;font-size:var(--text-xs);color:var(--c-text-dim)">v2.5.1</span>
     </div>
     <span id="last-update" style="color:var(--c-text-dim);font-size:var(--text-xs)">—</span>
   </div>
@@ -106,7 +105,6 @@ function safeFetch(path, opts) {
         <button onclick="cancelCashflow()" style="background:var(--c-border);color:var(--c-text);border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer">Antrag widerrufen</button>
       </div>
     </div>
-    <!-- Neuen Antrag stellen -->
     <div id="cashflow-new" style="margin-top:var(--s-4);padding-top:var(--s-4);border-top:1px solid var(--c-border)">
       <div style="font-size:var(--text-sm);color:var(--c-text-dim);margin-bottom:var(--s-3)">Ankündigung (Bot passt sofort an)</div>
       <div style="display:flex;gap:var(--s-3);align-items:center">
@@ -130,16 +128,13 @@ function safeFetch(path, opts) {
     </table>
   </div>
 
-  <!-- Strategist Briefing — DETAILLIERT -->
+  <!-- Strategist Briefing -->
   <p class="section-title">Strategist-Briefing</p>
-
-  <!-- Begründung -->
   <div class="reasoning-box" id="briefing-reasoning">
     <div style="font-weight:600;margin-bottom:var(--s-2);color:var(--c-text-dim);font-size:var(--text-xs);text-transform:uppercase">Strategist Reasoning</div>
     <div id="reasoning-text">Lade...</div>
   </div>
 
-  <!-- Marktregime + Timing -->
   <div class="grid grid-2">
     <div class="card">
       <div class="card-title">Marktregime</div>
@@ -154,7 +149,6 @@ function safeFetch(path, opts) {
     </div>
   </div>
 
-  <!-- Richtung + Risiko -->
   <div class="grid">
     <div class="card">
       <div class="card-title">Erlaubte Richtungen</div>
@@ -170,7 +164,6 @@ function safeFetch(path, opts) {
     </div>
   </div>
 
-  <!-- Assets -->
   <div class="card" style="margin-bottom:var(--s-4)">
     <div class="card-title">Assets</div>
     <div style="margin-top:var(--s-2)">
@@ -181,7 +174,6 @@ function safeFetch(path, opts) {
     </div>
   </div>
 
-  <!-- Technische Regeln -->
   <div class="card" style="margin-bottom:var(--s-4)">
     <div class="card-title">Technische Regeln (Entry-Filter)</div>
     <div id="briefing-rules">
@@ -192,7 +184,6 @@ function safeFetch(path, opts) {
     </div>
   </div>
 
-  <!-- Veto-Bedingungen -->
   <div class="card" style="margin-bottom:var(--s-4)">
     <div class="card-title">Veto-Bedingungen (kein Trade wenn...)</div>
     <div id="briefing-vetos"><span class="no-data">—</span></div>
@@ -217,7 +208,6 @@ function safeFetch(path, opts) {
     <div id="exec-details"><span class="no-data">Keine Kandidaten</span></div>
   </div>
 
-
   <!-- Asset Scores -->
   <p class="section-title">Asset-Ranking (Composite Score)</p>
   <div class="card" style="margin-bottom:var(--s-4)">
@@ -227,7 +217,7 @@ function safeFetch(path, opts) {
     </table>
   </div>
 
-  <!-- Performance / Self-Critique -->
+  <!-- Performance -->
   <p class="section-title">Performance</p>
   <div class="grid">
     <div class="card">
@@ -256,7 +246,7 @@ function safeFetch(path, opts) {
     <div id="perf-lessons"><span class="no-data">Keine Daten</span></div>
   </div>
 
-  <!-- Monte Carlo Analyse -->
+  <!-- Monte Carlo -->
   <p class="section-title">Monte Carlo Analyse</p>
   <div class="grid">
     <div class="card">
@@ -280,8 +270,6 @@ function safeFetch(path, opts) {
     </table>
   </div>
 
-</div>
-
 <script>
 function fmtTime(iso) {
   if (!iso) return '—';
@@ -297,11 +285,11 @@ function dotClass(active) { return active ? 'status-dot green' : 'status-dot red
 function renderVetos(vetos) {
   if (!vetos || vetos.length === 0) return '<span class="no-data">Keine Veto-Bedingungen</span>';
   return vetos.map(function(v) {
-    var label = v.type === 'equity_below' ? 'Equity unter €' + v.value :
-                v.type === 'daily_pnl_below' ? 'Tages-P&L unter €' + v.value :
+    var label = v.type === 'equity_below' ? 'Equity unter &#8364;' + v.value :
+                v.type === 'daily_pnl_below' ? 'Tages-P&#38;L unter &#8364;' + v.value :
                 v.type === 'news_impact_high_within_min' ? 'High-Impact News in ' + v.value + ' Min' :
                 v.type + ': ' + v.value;
-    return '<div class="veto-item"><span class="veto-icon">✗</span> ' + label + '</div>';
+    return '<div class="veto-item"><span class="veto-icon">&#10007;</span> ' + label + '</div>';
   }).join('');
 }
 
@@ -312,12 +300,11 @@ async function loadBotStatus() {
 
     document.getElementById('last-update').textContent = 'Aktualisiert: ' + fmtTime(d.timestamp);
 
-    // Bot status
-    const connected = d.ctrader && d.ctrader.connected;
-    const authenticated = d.ctrader && d.ctrader.authenticated;
-    const dot = document.getElementById('bot-dot');
-    const statusText = document.getElementById('bot-status');
-    const modeBadge = document.getElementById('mode-badge');
+    var connected = d.ctrader && d.ctrader.connected;
+    var authenticated = d.ctrader && d.ctrader.authenticated;
+    var dot = document.getElementById('bot-dot');
+    var statusText = document.getElementById('bot-status');
+    var modeBadge = document.getElementById('mode-badge');
 
     if (authenticated) { dot.className = 'status-dot green'; statusText.textContent = 'Verbunden'; }
     else if (connected) { dot.className = 'status-dot yellow'; statusText.textContent = 'Stream aktiv'; }
@@ -326,27 +313,24 @@ async function loadBotStatus() {
     modeBadge.textContent = d.demo ? 'DEMO' : 'LIVE';
     modeBadge.className = 'badge ' + (d.demo ? 'badge-demo' : 'badge-live');
 
-    // Account
-    document.getElementById('balance').textContent = d.balance != null ? '€' + Number(d.balance).toFixed(2) : '—';
+    document.getElementById('balance').textContent = d.balance != null ? '\u20AC' + Number(d.balance).toFixed(2) : '\u2014';
     document.getElementById('positions-count').textContent = d.positions ? d.positions.length : '0';
-    document.getElementById('daily-pnl').innerHTML = d.daily_pnl != null ? '<span class="' + pnlClass(d.daily_pnl) + '">' + pnlFormat(d.daily_pnl) + ' €</span>' : '—';
-    document.getElementById('trades-today').textContent = (d.risk && d.risk.trades_today != null) ? d.risk.trades_today : '—';
+    document.getElementById('daily-pnl').innerHTML = d.daily_pnl != null ? '<span class="' + pnlClass(d.daily_pnl) + '">' + pnlFormat(d.daily_pnl) + ' \u20AC</span>' : '\u2014';
+    document.getElementById('trades-today').textContent = (d.risk && d.risk.trades_today != null) ? d.risk.trades_today : '\u2014';
 
-    // Positions
-    const tbody = document.getElementById('positions-body');
+    var tbody = document.getElementById('positions-body');
     if (d.positions && d.positions.length > 0) {
       var html = '';
       for (var i = 0; i < d.positions.length; i++) {
         var p = d.positions[i];
         var side = (p.side === 'BUY' || p.side === 'buy') ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>';
-        html += '<tr><td><b>' + (p.symbol || '—') + '</b></td><td>' + side + '</td><td>' + (p.volume || p.quantity || '—') + '</td><td>' + (p.entry_price || p.price || '—') + '</td><td>' + (p.sl || '—') + '</td><td>' + (p.tp || '—') + '</td><td class="' + pnlClass(p.pnl || 0) + '">' + pnlFormat(p.pnl) + '</td></tr>';
+        html += '<tr><td><b>' + (p.symbol || '\u2014') + '</b></td><td>' + side + '</td><td>' + (p.volume || p.quantity || '\u2014') + '</td><td>' + (p.entry_price || p.price || '\u2014') + '</td><td>' + (p.sl || '\u2014') + '</td><td>' + (p.tp || '\u2014') + '</td><td class="' + pnlClass(p.pnl || 0) + '">' + pnlFormat(p.pnl) + '</td></tr>';
       }
       tbody.innerHTML = html;
     } else {
       tbody.innerHTML = '<tr><td colspan="7" class="no-data">Keine offenen Positionen</td></tr>';
     }
 
-    // Services
     var svcCard = document.getElementById('services-card');
     if (d.services) {
       var html = '';
@@ -359,69 +343,44 @@ async function loadBotStatus() {
       svcCard.innerHTML = html;
     }
 
-    // Briefing — DETAILLIERT
     if (d.briefing) {
       var b = d.briefing;
-
-      // Reasoning
-      document.getElementById('reasoning-text').textContent = b.strategist_reasoning || 'Keine Begründung vorhanden';
-
-      // Regime
-      var rmap = {bullish:'Bullisch',bearish:'Bärisch',neutral:'Neutral',volatile:'Volatil',ranging:'Seitwärts','bullish_consolidation':'Bullish Konsolidierung','bearish_consolidation':'Bärisch Konsolidierung'};
-      document.getElementById('briefing-regime').textContent = rmap[b.market_regime] || b.market_regime || '—';
+      document.getElementById('reasoning-text').textContent = b.strategist_reasoning || 'Keine Begruendung vorhanden';
+      var rmap = {bullish:'Bullisch',bearish:'Baerisch',neutral:'Neutral',volatile:'Volatil',ranging:'Seitwaerts','bullish_consolidation':'Bullish Konsolidierung','bearish_consolidation':'Baerisch Konsolidierung'};
+      document.getElementById('briefing-regime').textContent = rmap[b.market_regime] || b.market_regime || '\u2014';
       document.getElementById('briefing-macro').textContent = b.macro_context || '';
-
-      // Timing
-      document.getElementById('briefing-next').textContent = b.next_check_in != null ? b.next_check_in + 'h' : '—';
+      document.getElementById('briefing-next').textContent = b.next_check_in != null ? b.next_check_in + 'h' : '\u2014';
       document.getElementById('briefing-next-reason').textContent = b.next_check_reason || '';
-      document.getElementById('briefing-valid-until').textContent = 'Gültig bis: ' + fmtTime(b.valid_until);
-
-      // Directions
-      document.getElementById('briefing-directions').innerHTML = b.allowed_directions ? b.allowed_directions.map(function(d){ return '<span class="badge ' + (d==='long'?'badge-buy':'badge-sell') + '">' + d.toUpperCase() + '</span>'; }).join(' ') : '—';
-
-      // Risk
-      document.getElementById('risk-max-pos').textContent = b.max_positions != null ? b.max_positions : '—';
-      document.getElementById('risk-max-pct').textContent = b.max_risk_per_trade_pct != null ? b.max_risk_per_trade_pct + '%' : '—';
-      document.getElementById('risk-max-eur').textContent = b.max_risk_per_trade_eur != null ? '€' + b.max_risk_per_trade_eur : '—';
-    }
-    
-    // Cashflow Management
-    if (d.cashflow) {
-      updateCashflowUI(d.cashflow, d.risk);
-    }
-      // Assets
-      document.getElementById('briefing-preferred').innerHTML = (b.preferred_assets && b.preferred_assets.length) ? b.preferred_assets.map(function(a){ return '<span class="asset-tag asset-pref">' + a + '</span>'; }).join('') : '<span class="no-data">—</span>';
-      document.getElementById('briefing-avoid').innerHTML = (b.avoid_assets && b.avoid_assets.length) ? b.avoid_assets.map(function(a){ return '<span class="asset-tag asset-avoid">' + a + '</span>'; }).join('') : '<span class="no-data">—</span>';
-
-      // Technical Rules
+      document.getElementById('briefing-valid-until').textContent = 'Gueltig bis: ' + fmtTime(b.valid_until);
+      document.getElementById('briefing-directions').innerHTML = b.allowed_directions ? b.allowed_directions.map(function(d){ return '<span class="badge ' + (d==='long'?'badge-buy':'badge-sell') + '">' + d.toUpperCase() + '</span>'; }).join(' ') : '\u2014';
+      document.getElementById('risk-max-pos').textContent = b.max_positions != null ? b.max_positions : '\u2014';
+      document.getElementById('risk-max-pct').textContent = b.max_risk_per_trade_pct != null ? b.max_risk_per_trade_pct + '%' : '\u2014';
+      document.getElementById('risk-max-eur').textContent = b.max_risk_per_trade_eur != null ? '\u20AC' + b.max_risk_per_trade_eur : '\u2014';
+      document.getElementById('briefing-preferred').innerHTML = (b.preferred_assets && b.preferred_assets.length) ? b.preferred_assets.map(function(a){ return '<span class="asset-tag asset-pref">' + a + '</span>'; }).join('') : '<span class="no-data">\u2014</span>';
+      document.getElementById('briefing-avoid').innerHTML = (b.avoid_assets && b.avoid_assets.length) ? b.avoid_assets.map(function(a){ return '<span class="asset-tag asset-avoid">' + a + '</span>'; }).join('') : '<span class="no-data">\u2014</span>';
       if (b.technical_rules) {
         var tr = b.technical_rules;
-        document.getElementById('rule-rr').textContent = tr.min_rr != null ? '1:' + tr.min_rr : '—';
-        document.getElementById('rule-sl').textContent = tr.sl_max_pips != null ? tr.sl_max_pips + ' Pips' : '—';
-        document.getElementById('rule-entry').textContent = tr.entry_trigger || '—';
-        document.getElementById('rule-trend').textContent = tr.trend_filter || '—';
+        document.getElementById('rule-rr').textContent = tr.min_rr != null ? '1:' + tr.min_rr : '\u2014';
+        document.getElementById('rule-sl').textContent = tr.sl_max_pips != null ? tr.sl_max_pips + ' Pips' : '\u2014';
+        document.getElementById('rule-entry').textContent = tr.entry_trigger || '\u2014';
+        document.getElementById('rule-trend').textContent = tr.trend_filter || '\u2014';
       }
-
-      // Vetos
       document.getElementById('briefing-vetos').innerHTML = renderVetos(b.veto_conditions);
     }
 
-    // Executor
     if (d.executor) {
       var e = d.executor;
-      document.getElementById('exec-last').textContent = e.last_scan ? fmtTime(e.last_scan) : '—';
+      document.getElementById('exec-last').textContent = e.last_scan ? fmtTime(e.last_scan) : '\u2014';
       document.getElementById('exec-count').textContent = (e.candidates_count || 0) + ' Kandidaten';
       document.getElementById('exec-candidates').textContent = e.candidates_count || 0;
-
       var detEl = document.getElementById('exec-details');
       if (e.candidates && e.candidates.length > 0) {
         var html = '';
         for (var i = 0; i < e.candidates.length; i++) {
           var c = e.candidates[i];
           var sideBadge = c.side === 'buy' ? 'badge-buy' : 'badge-sell';
-          html += '<div style="padding:8px 0;border-bottom:1px solid var(--c-border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span><span class="badge ' + sideBadge + '">' + (c.side || '').toUpperCase() + '</span> <b>' + (c.symbol || '—') + '</b></span><span style="font-size:var(--text-xs);color:var(--c-text-dim)">R:R ' + (c.rr || '—') + '</span></div>';
-          html += '<div style="font-size:var(--text-sm);color:var(--c-text-dim)">Entry: <b>' + (c.entry || '—') + '</b> · SL: <b>' + (c.sl || '—') + '</b> · TP: <b>' + (c.tp || '—') + '</b></div>';
-          html += '</div>';
+          html += '<div style="padding:8px 0;border-bottom:1px solid var(--c-border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span><span class="badge ' + sideBadge + '">' + (c.side || '').toUpperCase() + '</span> <b>' + (c.symbol || '\u2014') + '</b></span><span style="font-size:var(--text-xs);color:var(--c-text-dim)">R:R ' + (c.rr || '\u2014') + '</span></div>';
+          html += '<div style="font-size:var(--text-sm);color:var(--c-text-dim)">Entry: <b>' + (c.entry || '\u2014') + '</b> &middot; SL: <b>' + (c.sl || '\u2014') + '</b> &middot; TP: <b>' + (c.tp || '\u2014') + '</b></div></div>';
         }
         detEl.innerHTML = html;
       } else {
@@ -429,18 +388,16 @@ async function loadBotStatus() {
       }
     }
 
-    // Asset Scores
     if (d.asset_scores && d.asset_scores.top_10) {
       tbody = document.getElementById('asset-scores-body');
       tbody.innerHTML = '';
       d.asset_scores.top_10.forEach(function(a) {
-        var biasStr = a.bias ? (a.bias['1d'] > 0 ? '+' : '') + a.bias['1d'] + '/' + (a.bias['4h'] > 0 ? '+' : '') + a.bias['4h'] + '/' + (a.bias['1h'] > 0 ? '+' : '') + a.bias['1h'] : '—';
+        var biasStr = a.bias ? (a.bias['1d'] > 0 ? '+' : '') + a.bias['1d'] + '/' + (a.bias['4h'] > 0 ? '+' : '') + a.bias['4h'] + '/' + (a.bias['1h'] > 0 ? '+' : '') + a.bias['1h'] : '\u2014';
         var mtfClass = a.mtf >= 100 ? 'pnl-pos' : (a.mtf >= 66 ? '' : 'pnl-neg');
-        tbody.innerHTML += '<tr><td>' + a.symbol + '</td><td><b>' + (a.composite || 0).toFixed(1) + '</b></td><td class="' + mtfClass + '">' + Math.round(a.mtf || 0) + '%</td><td>' + (a.trend || 0).toFixed(0) + '</td><td>' + (a.cluster || '—') + '</td><td>' + biasStr + '</td></tr>';
+        tbody.innerHTML += '<tr><td>' + a.symbol + '</td><td><b>' + (a.composite || 0).toFixed(1) + '</b></td><td class="' + mtfClass + '">' + Math.round(a.mtf || 0) + '%</td><td>' + (a.trend || 0).toFixed(0) + '</td><td>' + (a.cluster || '\u2014') + '</td><td>' + biasStr + '</td></tr>';
       });
     }
 
-    // Performance / Self-Critique
     if (d.performance && !d.performance.error) {
       var p = d.performance;
       document.getElementById('perf-winrate').textContent = (p.win_rate || 0).toFixed(1) + '%';
@@ -450,23 +407,19 @@ async function loadBotStatus() {
       document.getElementById('perf-pf').className = 'card-value ' + (p.profit_factor >= 1 ? 'pnl-pos' : 'pnl-neg');
       var pnlVal = p.total_pnl_pips || p.total_pnl || 0;
       document.getElementById('perf-pnl').textContent = (pnlVal >= 0 ? '+' : '') + pnlVal.toFixed(2) + (p.total_pnl_pips ? ' pips' : ' EUR');
-      // Sharpe + Expectancy
       document.getElementById('perf-sharpe').textContent = (p.sharpe_ratio || 0).toFixed(2);
       document.getElementById('perf-sharpe').className = 'card-value ' + ((p.sharpe_ratio || 0) >= 0.5 ? 'pnl-pos' : ((p.sharpe_ratio || 0) < 0 ? 'pnl-neg' : ''));
       document.getElementById('perf-expectancy').textContent = 'E[R] ' + ((p.expectancy || 0) >= 0 ? '+' : '') + (p.expectancy || 0).toFixed(1) + ' pips';
-      // Max DD + Avg Win/Loss
       var ddVal = typeof p.max_drawdown === 'object' ? (p.max_drawdown.max_dd_pct || 0) : (p.max_drawdown || 0);
       document.getElementById('perf-dd').textContent = '-' + ddVal.toFixed(1) + '%';
       document.getElementById('perf-dd').className = 'card-value ' + (ddVal > 10 ? 'pnl-neg' : '');
       document.getElementById('perf-avgwl').textContent = '\u2191' + (p.avg_win || 0).toFixed(1) + ' / \u2193' + (p.avg_loss || 0).toFixed(1) + ' pips';
-      // Lessons
       if (p.lessons && p.lessons.length > 0) {
-        document.getElementById('perf-lessons').innerHTML = p.lessons.map(function(l) { return '<div style="padding:4px 0;border-bottom:1px solid var(--c-border)">\u2022 ' + l + '</div>'; }).join('');
+        document.getElementById('perf-lessons').innerHTML = p.lessons.map(function(l) { return '<div style="padding:4px 0;border-bottom:1px solid var(--c-border)">' + l + '</div>'; }).join('');
       }
-      // Monte Carlo
       if (p.mc_analysis && p.mc_analysis.monte_carlo) {
         var outer = p.mc_analysis.monte_carlo;
-        var mc = outer.monte_carlo || outer;  // handle double nesting
+        var mc = outer.monte_carlo || outer;
         var eq = mc.final_equity_median || 0;
         document.getElementById('mc-expected').textContent = eq.toFixed(0) + ' EUR';
         document.getElementById('mc-expected').className = 'card-value ' + (eq >= 1000 ? 'pnl-pos' : 'pnl-neg');
@@ -477,8 +430,6 @@ async function loadBotStatus() {
       }
     }
 
-
-    // Trade log
     if (d.trade_log && d.trade_log.length > 0) {
       var html = '';
       var logs = d.trade_log.slice().reverse();
@@ -487,21 +438,25 @@ async function loadBotStatus() {
         var badge = t.action === 'buy' ? 'badge-buy' : 'badge-sell';
         var rowStyle = t.is_test ? ' style="opacity:0.5"' : '';
         var testBadge = t.is_test ? ' <span class="badge" style="background:rgba(150,150,150,0.2);color:#888;margin-left:4px">TEST</span>' : '';
-        var priceStr = '—';
+        var priceStr = '\u2014';
         if (t.price != null) {
           if (t.symbol === 'US30') priceStr = t.price.toFixed(1);
           else if (String(t.symbol).endsWith('JPY')) priceStr = t.price.toFixed(3);
           else priceStr = t.price.toFixed(5);
         }
-        var pnlStr = '—';
+        var pnlStr = '\u2014';
         if (t.pnl != null) {
           var pnlCls = t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
           var pnlSign = t.pnl >= 0 ? '+' : '';
           pnlStr = '<span class="' + pnlCls + '">' + pnlSign + t.pnl.toFixed(1) + ' ' + (t.pnl_currency || '') + '</span>';
         }
-        html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '—') + '</b></td><td>' + (t.quantity || t.volume || 1) + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + (t.status || '—') + '</td></tr>';
+        html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + (t.quantity || t.volume || 1) + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + (t.status || '\u2014') + '</td></tr>';
       }
       document.getElementById('trade-log-body').innerHTML = html;
+    }
+
+    if (d.cashflow) {
+      updateCashflowUI(d.cashflow, d.risk);
     }
 
   } catch(e) {
@@ -514,13 +469,11 @@ async function loadBotStatus() {
 loadBotStatus();
 setInterval(loadBotStatus, 15000);
 
-// Cashflow Management Functions
 function submitCashflow() {
   var type = document.getElementById('cashflow-new-type').value;
   var amount = parseFloat(document.getElementById('cashflow-new-amount').value);
   if (!amount || amount <= 0) { alert('Bitte Betrag eingeben'); return; }
-  if (!confirm(type === 'deposit' ? 'Einzahlung' : 'Auszahlung' + ' von ' + amount + ' EUR ankündigen?')) return;
-  
+  if (!confirm(type === 'deposit' ? 'Einzahlung' : 'Auszahlung' + ' von ' + amount + ' EUR ank\u00FCndigen?')) return;
   safeFetch('/api/cashflow', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -547,14 +500,11 @@ function updateCashflowUI(cf, risk) {
   var indEl = document.getElementById('cashflow-indicator');
   var detEl = document.getElementById('cashflow-details');
   var newEl = document.getElementById('cashflow-new');
-  
-  var labels = {none:'Kein Antrag',pending:'Angekündigt — Bot passt an',completed:'Erkannt'};
+  var labels = {none:'Kein Antrag',pending:'Angekuendigt \u2014 Bot passt an',completed:'Erkannt'};
   var colors = {none:'var(--c-border)',pending:'var(--c-warn)',completed:'var(--c-ok)'};
-  
   statusEl.textContent = labels[cf.status] || cf.status;
   indEl.style.background = colors[cf.status] || 'var(--c-border)';
   msgEl.textContent = cf.message || '';
-  
   if (cf.status === 'none') {
     detEl.style.display = 'none';
     newEl.style.display = 'block';
@@ -562,20 +512,14 @@ function updateCashflowUI(cf, risk) {
     detEl.style.display = 'block';
     newEl.style.display = 'block';
   }
-  
   if (cf.status !== 'none') {
     var typeLabels = {deposit:'Einzahlung',withdrawal:'Auszahlung'};
     document.getElementById('cashflow-type').textContent = typeLabels[cf.type] || cf.type;
-    document.getElementById('cashflow-amount').textContent = cf.amount ? cf.amount.toFixed(2) + ' EUR' : '—';
-    document.getElementById('cashflow-requested').textContent = cf.requested_at ? fmtTime(cf.requested_at) : '—';
-    document.getElementById('cashflow-reference').textContent = risk && risk.reference_balance ? risk.reference_balance.toFixed(2) + ' EUR' : '—';
+    document.getElementById('cashflow-amount').textContent = cf.amount ? cf.amount.toFixed(2) + ' EUR' : '\u2014';
+    document.getElementById('cashflow-requested').textContent = cf.requested_at ? fmtTime(cf.requested_at) : '\u2014';
+    document.getElementById('cashflow-reference').textContent = risk && risk.reference_balance ? risk.reference_balance.toFixed(2) + ' EUR' : '\u2014';
   }
 }
 </script>
-<script>
-if (typeof lucide !== 'undefined') lucide.createIcons();
-document.addEventListener('DOMContentLoaded', function(){
-  var active = document.querySelector('.nav a[aria-current="page"]');
-  if(active && active.scrollIntoView){ active.scrollIntoView({inline:'center',behavior:'instant'}); }
-});
-</script>
+
+<!--/BODY-->
