@@ -467,14 +467,15 @@ async function loadBotStatus() {
       }
       // Monte Carlo
       if (p.mc_analysis && p.mc_analysis.monte_carlo) {
-        var mc = p.mc_analysis.monte_carlo;
+        var outer = p.mc_analysis.monte_carlo;
+        var mc = outer.monte_carlo || outer;  // handle double nesting
         var eq = mc.final_equity_median || 0;
         document.getElementById('mc-expected').textContent = eq.toFixed(0) + ' EUR';
         document.getElementById('mc-expected').className = 'card-value ' + (eq >= 1000 ? 'pnl-pos' : 'pnl-neg');
-        document.getElementById('mc-sims').textContent = (p.mc_analysis.n_roundtrips || 0) + ' Trades, ' + mc.prob_profit_pct + '% Gewinnwahrsch.';
-        document.getElementById('mc-var').textContent = mc.final_equity_5th.toFixed(0) + ' EUR';
+        document.getElementById('mc-sims').textContent = (p.mc_analysis.n_roundtrips || outer.n_trades || 0) + ' Trades, ' + (mc.prob_profit_pct || 0) + '% Gewinnwahrsch.';
+        document.getElementById('mc-var').textContent = (mc.final_equity_5th || 0).toFixed(0) + ' EUR';
         document.getElementById('mc-var').className = 'card-value pnl-neg';
-        document.getElementById('mc-worst').textContent = 'DD ' + mc.max_drawdown_median_pct + '% | Worst: ' + mc.final_equity_5th.toFixed(0) + ' EUR';
+        document.getElementById('mc-worst').textContent = 'DD ' + (mc.max_drawdown_median_pct || 0) + '% | Worst: ' + (mc.final_equity_5th || 0).toFixed(0) + ' EUR';
       }
     }
 
