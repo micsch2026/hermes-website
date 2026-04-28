@@ -291,7 +291,18 @@ function pollStatus() {
     .then(r => r.json())
     .then(data => {
       if (data.running) {
-        setTimeout(pollStatus, 15000);
+        // Show step progress
+        var stepLabel = '';
+        var stepNames = {'market_data':'Marktdaten','depot_updater':'Depot','prep_facts':'Fakten','kimi_swarm':'Kimi','sync':'Sync'};
+        if (data.step_total > 0) {
+          var sName = stepNames[data.step_current] || data.step_current;
+          stepLabel = data.step_number + '/' + data.step_total + ' ' + sName;
+          if (data.sub_total > 0 && data.sub_number > 0) {
+            stepLabel += ' (' + data.sub_number + '/' + data.sub_total + ')';
+          }
+        }
+        btn.textContent = '⏳ ' + (stepLabel || 'Läuft...');
+        setTimeout(pollStatus, 3000);
       } else {
         if (data.failed_steps && data.failed_steps.length > 0) {
           btn.textContent = '⚠️ Fehler: ' + data.failed_steps.join(', ');
@@ -303,7 +314,7 @@ function pollStatus() {
         setTimeout(() => location.reload(), 2000);
       }
     })
-    .catch(() => setTimeout(pollStatus, 15000));
+    .catch(() => setTimeout(pollStatus, 5000));
 }
 
 /* ===== DYNAMISCHE DEPOT-DATEN ===== */
@@ -510,7 +521,8 @@ function loadKimiCards() {
       // Pruefe ob Kimi generische Namen hat
       var genericCount = 0;
       for (var ci = 0; ci < data.calendar_relevance.length; ci++) {
-        if (data.calendar_relevance[ci].event && data.calendar_relevance[ci].event.indexOf('Termin am') >= 0) genericCount++;
+        var evName = data.calendar_relevance[ci].event || '';
+        if (evName.indexOf('Termin am') >= 0 || evName === 'Kalendertermin' || evName.indexOf('Kalender') === 0) genericCount++;
       }
       if (genericCount >= data.calendar_relevance.length * 0.5) useFactsCal = true;
     }

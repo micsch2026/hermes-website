@@ -117,7 +117,11 @@ function safeFetch(path, opts) {
 <script>
 function formatTime(iso) {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleString('de-DE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); } catch(e) { return iso; }
+  try {
+    // If no timezone info, assume UTC
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) && !/[Zz+\-]\d{2}:?\d{2}$/.test(iso)) iso += 'Z';
+    return new Date(iso).toLocaleString('de-DE', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+  } catch(e) { return iso; }
 }
 
 function pnlClass(val) { return val >= 0 ? 'pnl-pos' : 'pnl-neg'; }
@@ -172,27 +176,59 @@ async function loadBotStatus() {
     }
 
     // Kimi decision
-    if (d.last_decision) {
+    if (d.last_decision && d.last_decision.trades && d.last_decision.trades.length > 0) {
       const k = d.last_decision;
-      const actionBadge = k.action === 'buy' ? 'badge-buy' : k.action === 'sell' ? 'badge-sell' : 'badge-hold';
-      const confPct = (k.confidence || 0) * 100;
+      let tradesHtml = '';
+      for (const t of k.trades) {
+        const actionBadge = t.side === 'buy' ? 'badge-buy' : t.side === 'sell' ? 'badge-sell' : 'badge-hold';
+        const confPct = (t.confidence || 0) * 100;
+        const statusBadge = t.approved ? '<span class="badge badge-buy">APPROVED</span>' : '<span class="badge badge-sell">REJECTED</span>';
+        tradesHtml += `
+          <div style="padding:8px 0;border-bottom:1px solid var(--c-border)">
+            <div class="decision-header">
+              <div>
+                <span class="badge ${actionBadge}">${(t.side || 'HOLD').toUpperCase()}</span>
+                <b style="margin-left:8px">${t.symbol || '—'}</b>
+                <span style="margin-left:8px;font-size:var(--text-xs);color:var(--c-text-dim)">${t.setup || ''} (${t.setup_quality || '?'})</span>
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="decision-meta">
+              <span>Entry: <b>${t.entry || '—'}</b></span>
+              ${t.sl ? '<span>SL: <b>' + t.sl + '</b></span>' : ''}
+              ${t.tp ? '<span>TP: <b>' + t.tp + '</b></span>' : ''}
+              ${t.rr ? '<span>R:R: <b>1:' + t.rr + '</b></span>' : ''}
+              <span>Conf: <b>${confPct.toFixed(0)}%</b></span>
+              ${t.volume ? '<span>Vol: <b>' + (t.volume/10000000).toFixed(2) + ' Lot</b></span>' : ''}
+            </div>
+            <div class="confidence-bar"><div class="confidence-fill" style="width:${confPct}%"></div></div>
+            ${t.reason ? '<div class="decision-reasoning">' + t.reason + '</div>' : ''}
+          </div>
+        `;
+      }
       document.getElementById('kimi-decision').innerHTML = `
         <div class="decision-header">
           <div>
-            <span class="badge ${actionBadge}">${(k.action || 'HOLD').toUpperCase()}</span>
-            <b style="margin-left:8px">${k.symbol || '—'}</b>
+            <b>Kimi-Analyse</b>
+            <span style="margin-left:8px;font-size:var(--text-xs);color:var(--c-text-dim)">${k.raw_trades_count || 0} Signale, ${k.approved_count || 0} approved, ${k.rejected_count || 0} rejected</span>
           </div>
           <span style="font-size:var(--text-sm);color:var(--c-text-dim)">${formatTime(k.timestamp)}</span>
         </div>
-        <div class="decision-meta">
-          <span>Menge: <b>${k.quantity || 1}</b></span>
-          ${k.sl ? '<span>SL: <b>' + k.sl + '</b></span>' : ''}
-          ${k.tp ? '<span>TP: <b>' + k.tp + '</b></span>' : ''}
-          <span>Confidence: <b>${confPct.toFixed(0)}%</b></span>
+        ${k.regime ? '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:8px">Regime: ' + k.regime + '</div>' : ''}
+        ${k.market_summary ? '<div class="decision-reasoning">' + k.market_summary + '</div>' : ''}
+        ${k.no_trade_reason ? '<div style="margin:8px 0;padding:8px;background:var(--c-surface);border-radius:var(--r-md);font-size:var(--text-sm)"><b>Kein Trade:</b> ' + k.no_trade_reason + '</div>' : ''}
+        ${tradesHtml}
+      `;
+    } else if (d.last_decision && d.last_decision.no_trade_reason) {
+      const k = d.last_decision;
+      document.getElementById('kimi-decision').innerHTML = `
+        <div class="decision-header">
+          <div><b>Kimi-Analyse</b> — Kein Trade</div>
+          <span style="font-size:var(--text-sm);color:var(--c-text-dim)">${formatTime(k.timestamp)}</span>
         </div>
-        <div class="confidence-bar"><div class="confidence-fill" style="width:${confPct}%"></div></div>
-        ${k.reasoning ? '<div class="decision-reasoning">' + k.reasoning + '</div>' : ''}
-        ${k.executed ? '<div style="margin-top:8px;font-size:var(--text-xs)"><span class="badge badge-buy">AUSGEFÜHRT</span></div>' : '<div style="margin-top:8px;font-size:var(--text-xs)"><span class="badge badge-hold">NICHT AUSGEFÜHRT</span></div>'}
+        ${k.regime ? '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:8px">Regime: ' + k.regime + '</div>' : ''}
+        <div class="decision-reasoning">${k.no_trade_reason}</div>
+        ${k.market_summary ? '<div class="decision-reasoning" style="margin-top:8px">' + k.market_summary + '</div>' : ''}
       `;
     }
 
