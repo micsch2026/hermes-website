@@ -158,21 +158,21 @@ function safeFetch(path, opts) {
         </div>
       </div>
       <div id="cashflow-actions" style="margin-top:var(--s-4);display:flex;gap:var(--s-3)">
-        <button onclick="confirmCashflow()" id="cashflow-confirm-btn" style="display:none;background:var(--c-ok);color:#fff;border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer;font-weight:600">Bestätigen — Ich habe ausgeführt</button>
-        <button onclick="cancelCashflow()" style="background:var(--c-border);color:var(--c-text);border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer">Abbrechen</button>
+        <button onclick="cancelCashflow()" style="background:var(--c-border);color:var(--c-text);border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer">Antrag widerrufen</button>
       </div>
     </div>
     <!-- Neuen Antrag stellen -->
     <div id="cashflow-new" style="margin-top:var(--s-4);padding-top:var(--s-4);border-top:1px solid var(--c-border)">
-      <div style="font-size:var(--text-sm);color:var(--c-text-dim);margin-bottom:var(--s-3)">Neuen Antrag stellen</div>
+      <div style="font-size:var(--text-sm);color:var(--c-text-dim);margin-bottom:var(--s-3)">Ankündigung (Bot passt sofort an)</div>
       <div style="display:flex;gap:var(--s-3);align-items:center">
         <select id="cashflow-new-type" style="background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border);padding:var(--s-2);border-radius:var(--r-md)">
           <option value="deposit">Einzahlung</option>
           <option value="withdrawal">Auszahlung</option>
         </select>
         <input type="number" id="cashflow-new-amount" placeholder="Betrag EUR" style="background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border);padding:var(--s-2);border-radius:var(--r-md);width:120px">
-        <button onclick="submitCashflow()" style="background:var(--c-accent);color:#fff;border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer;font-weight:600">Beantragen</button>
+        <button onclick="submitCashflow()" style="background:var(--c-accent);color:#fff;border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer;font-weight:600">Ankündigen</button>
       </div>
+      <div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">Bot erkennt Änderungen auch automatisch wenn du nichts ankündigst.</div>
     </div>
   </div>
 
@@ -575,7 +575,7 @@ function submitCashflow() {
   var type = document.getElementById('cashflow-new-type').value;
   var amount = parseFloat(document.getElementById('cashflow-new-amount').value);
   if (!amount || amount <= 0) { alert('Bitte Betrag eingeben'); return; }
-  if (!confirm(type === 'deposit' ? 'Einzahlung' : 'Auszahlung' + ' von ' + amount + ' EUR beantragen?')) return;
+  if (!confirm(type === 'deposit' ? 'Einzahlung' : 'Auszahlung' + ' von ' + amount + ' EUR ankündigen?')) return;
   
   safeFetch('/api/cashflow', {
     method: 'POST',
@@ -583,14 +583,6 @@ function submitCashflow() {
     body: JSON.stringify({type: type, amount: amount})
   }).then(function(r) { return r.json(); }).then(function(data) {
     if (data.ok) { document.getElementById('cashflow-new-amount').value = ''; loadBotStatus(); }
-    else alert('Fehler: ' + (data.error || 'Unbekannt'));
-  }).catch(function(e) { alert('Netzwerk-Fehler: ' + e.message); });
-}
-
-function confirmCashflow() {
-  if (!confirm('Bestätigen: Du hast die Ein-/Auszahlung bei Pepperstone durchgeführt?')) return;
-  safeFetch('/api/cashflow/confirm', {method: 'POST'}).then(function(r) { return r.json(); }).then(function(data) {
-    if (data.ok) loadBotStatus();
     else alert('Fehler: ' + (data.error || 'Unbekannt'));
   }).catch(function(e) { alert('Netzwerk-Fehler: ' + e.message); });
 }
@@ -611,10 +603,9 @@ function updateCashflowUI(cf, risk) {
   var indEl = document.getElementById('cashflow-indicator');
   var detEl = document.getElementById('cashflow-details');
   var newEl = document.getElementById('cashflow-new');
-  var confirmBtn = document.getElementById('cashflow-confirm-btn');
   
-  var labels = {none:'Kein Antrag',pending:'Warte auf Prüfung...',ready:'Bereit',rejected:'Abgelehnt',completed:'Abgeschlossen'};
-  var colors = {none:'var(--c-border)',pending:'var(--c-warn)',ready:'var(--c-ok)',rejected:'var(--c-err)',completed:'var(--c-ok)'};
+  var labels = {none:'Kein Antrag',pending:'Angekündigt — Bot passt an',completed:'Erkannt'};
+  var colors = {none:'var(--c-border)',pending:'var(--c-warn)',completed:'var(--c-ok)'};
   
   statusEl.textContent = labels[cf.status] || cf.status;
   indEl.style.background = colors[cf.status] || 'var(--c-border)';
@@ -623,23 +614,9 @@ function updateCashflowUI(cf, risk) {
   if (cf.status === 'none') {
     detEl.style.display = 'none';
     newEl.style.display = 'block';
-    confirmBtn.style.display = 'none';
-  } else if (cf.status === 'pending') {
-    detEl.style.display = 'block';
-    newEl.style.display = 'none';
-    confirmBtn.style.display = 'none';
-  } else if (cf.status === 'ready') {
-    detEl.style.display = 'block';
-    newEl.style.display = 'none';
-    confirmBtn.style.display = 'inline-block';
-  } else if (cf.status === 'rejected') {
+  } else {
     detEl.style.display = 'block';
     newEl.style.display = 'block';
-    confirmBtn.style.display = 'none';
-  } else if (cf.status === 'completed') {
-    detEl.style.display = 'block';
-    newEl.style.display = 'block';
-    confirmBtn.style.display = 'none';
   }
   
   if (cf.status !== 'none') {
