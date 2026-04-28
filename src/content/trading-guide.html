@@ -15,6 +15,7 @@
   .guide ul { padding-left: var(--s-6); margin: var(--s-3) 0; }
   .guide li { margin-bottom: var(--s-1); }
   .guide hr { border: none; border-top: 1px solid var(--c-border); margin: var(--s-6) 0; }
+  .guide .arch-box { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); font-family: monospace; font-size: var(--text-sm); white-space: pre; overflow-x: auto; }
 </style>
 <!--/HEAD-->
 <!--BODY-->
@@ -23,346 +24,355 @@
 
 <div class="page-header">
   <h1 class="page-title">Trading Bot — Leitfaden</h1>
-  <p class="page-subtitle">Gewinnorientierter Ansatz. Multidimensionalität als Grundsatz. Kimi optimiert sich selbst.</p>
+  <p class="page-subtitle">v2.5.1 — Autonomes Swing-Trading mit KI-Strategist und regelbasiertem Executor</p>
 </div>
 
-<h1>Trading Bot — Leitfaden, Prozess & TODOs</h1>
-
-<blockquote>Gewinnorientierter Ansatz. Multidimensionalität als Grundsatz.</blockquote>
-<blockquote>Kimi optimiert sich selbst (Review) und dokumentiert.</blockquote>
+<blockquote>Zwei-Schicht-Architektur: KI entscheidet WAS, Regeln entscheiden WANN und WIE.</blockquote>
 
 <hr>
 
 <h2>1. ÜBERBLICK</h2>
 
-<p><b>Ziel:</b> Autonomer Swing-Trading Bot auf Pepperstone (Demo → Live)</p>
+<p><b>Ziel:</b> Autonomer Swing-Trading Bot auf Pepperstone Demo → Live</p>
 <p><b>Broker:</b> Pepperstone GmbH (BaFin, Düsseldorf) — Abgeltungssteuer automatisch</p>
 <p><b>API:</b> cTrader Open API (gRPC/Protobuf)</p>
-<p><b>KI:</b> Kimi 2.6 (OpenRouter) für Analyse + Review</p>
+<p><b>Konto:</b> Demo #47109084, 504 EUR, 1:30 Hebel</p>
+<p><b>KI:</b> DeepSeek-R1-0528 via OpenRouter (~0.012 EUR/Call, ~10 EUR/Monat)</p>
 <p><b>Dashboard:</b> hermes.nexusfortis.org/bot</p>
 
 <hr>
 
-<h2>2. KERNPRINZIPIEN</h2>
+<h2>2. ARCHITEKTUR</h2>
 
-<h3>Gewinnorientierung</h3>
-<ul>
-  <li><b>Mindest-R:R 1:2</b> — jeder Trade muss das Potenzial haben, doppelt so viel zu gewinnen wie zu riskieren</li>
-  <li><b>Profit-Faktor > 1.5</b> als Ziel über 20 Trades</li>
-  <li><b>Höheres Risiko erlaubt</b> wenn Setup-Qualität hoch ist (A-Setup → bis 3% statt 2%)</li>
-  <li><b>Kein Risiko = kein Trade</b> — aber Risiko ist Werkzeug, nicht Feind</li>
-</ul>
+<p>Der Bot besteht aus zwei unabhängigen Schichten, die als separate systemd-Services laufen:</p>
 
-<h3>Multidimensionalität</h3>
-<ul>
-  <li><b>Mehrere Zeitrahmen</b> analysieren (1H + 4H + Daily)</li>
-  <li><b>Mehrere Indikatoren</b> kombinieren (Trend + Momentum + Volumen)</li>
-  <li><b>Mehrere Märkte</b> scannen (Forex, Indizes, Crypto, Aktien)</li>
-  <li><b>Korrelation prüfen</b> — keine 3 Long-Positionen im selben Sektor</li>
-  <li><b>Makro-Kontext</b> berücksichtigen (Fed, Earnings, geopolitisch)</li>
-</ul>
+<div class="arch-box">┌─────────────────────────────────────────────────────┐
+│  STRATEGIST (DeepSeek-R1-0528, ~0.012 EUR/Call)     │
+│  16_strategist.py + 18_scheduler.py                 │
+│  ── Analysiert Makro, Regime, Asset-Fokus           │
+│  ── Liest: OHLCV (1H/4H/1D/1W), VIX, DXY, US10Y,   │
+│           Fear&Greed, Korrelationen, Self-Critique   │
+│  ── Schreibt briefing.json                          │
+│  ── Bestimmt next_check_in (0.5-24h adaptiv)        │
+└───────────────────────┬─────────────────────────────┘
+                        │ briefing.json
+                        ▼
+┌─────────────────────────────────────────────────────┐
+│  EXECUTOR (regelbasiert, <100ms, 0 EUR)             │
+│  17_executor.py + 19_executor_daemon.py             │
+│  ── Liest briefing.json + Live-Daten                │
+│  ── MTF-Gating: 1D→4H→1H (Top-Down)                │
+│  ── Spread-Check, Session-Filter, News-Blackout     │
+│  ── Baut Trade-Kandidaten → führt aus               │
+│  ── Läuft alle 60 Min (15 Min bei Pending Orders)   │
+└───────────────────────┬─────────────────────────────┘
+                        │ Order
+                        ▼
+┌─────────────────────────────────────────────────────┐
+│  cTrader Open API → Pepperstone                      │
+│  ── Market Orders mit SL/TP                          │
+│  ── Trailing Stop (ATR-basiert)                      │
+│  ── Position Monitor (Snapshot Daemon)               │
+└─────────────────────────────────────────────────────┘</div>
 
-<h3>Selbstoptimierung (Kimi Review)</h3>
-<ul>
-  <li><b>Jeder Trade</b> wird von Kimi reviewt</li>
-  <li><b>Wöchentlicher Prozess-Review</b> — Kimi evaluiert den Workflow selbst</li>
-  <li><b>Prompt-Tuning</b> — Kimi verbessert seine eigenen Prompts basierend auf Ergebnissen</li>
-  <li><b>Dokumentation</b> — Kimi hält Änderungen und Begründungen fest</li>
-</ul>
-
-<hr>
-
-<h2>3. PROZESS (7 Schritte)</h2>
-
-<pre><code>┌─────────────────────────────────────────────────┐
-│  1. SCAN       → cTrader Live-Daten (OHLCV)    │
-│  2. SCREEN     → Kimi prüft 8 Swing-Setups     │
-│  3. SCORE      → Signal-Qualität (ATR, RR, Korr)│
-│  4. RISK       → Risikomodul validiert          │
-│  5. EXECUTE    → cTrader Order (Market)         │
-│  6. MONITOR    → SL/TP Management               │
-│  7. REVIEW     → Kimi reviewt + dokumentiert    │
-└─────────────────────────────────────────────────┘</code></pre>
-
-<h3>Detail je Schritt:</h3>
-
-<p><b>1. SCAN (automatisch, Stream)</b></p>
-<ul>
-  <li>cTrader Stream liefert Live Bid/Ask für Watchlist</li>
-  <li>OHLCV Trendbars (M1, M5, H1) für Top-Symbole</li>
-  <li>Daten in /root/trading/data/stream/</li>
-</ul>
-
-<p><b>2. SCREEN (Kimi, manuell oder bei Signal)</b></p>
-<ul>
-  <li>Kimi analysiert 8 Setup-Typen:</li>
-  <li>MA-Cross (20/50, 50/200)</li>
-  <li>RSI-Divergenz</li>
-  <li>Bollinger Squeeze</li>
-  <li>VWAP-Bounce</li>
-  <li>Support/Resistance Break</li>
-  <li>Trendfortsetzung (Flag, Pennant)</li>
-  <li>Mean-Reversion</li>
-  <li>Momentum-Breakout</li>
-  <li>Filter: nur A-Setups (R:R ≥ 1:2, Trend bestätigt)</li>
-</ul>
-
-<p><b>3. SCORE (Kimi + Regeln)</b></p>
-<ul>
-  <li>SL < 1.2 × ATR(14)</li>
-  <li>R:R ≥ 1:2</li>
-  <li>Korrelation < 0.6 vs offene Positionen</li>
-  <li>Volumen-Bestätigung (steigend bei Breakout)</li>
-  <li>Kein Earnings in < 5 Tagen</li>
-</ul>
-
-<p><b>4. RISK (automatisch, risk_manager.py)</b></p>
-<ul>
-  <li>SL Pflicht (ohne SL → ablehnen)</li>
-  <li>Max 2% Equity pro Trade (3% bei A-Setup)</li>
-  <li>Max 5% Tagesverlust → BLOCKED</li>
-  <li>Max 10% Exposure insgesamt</li>
-  <li>Max 20 Trades/Tag</li>
-  <li>Weekend-Block (Fr 22:00 - So 22:00)</li>
-</ul>
-
-<p><b>5. EXECUTE (cTrader API)</b></p>
-<ul>
-  <li>Market Order mit SL/TP</li>
-  <li>Volume = Equity × RiskPct / (SL-Distanz × TickValue)</li>
-  <li>Logging in trade_log.jsonl</li>
-</ul>
-
-<p><b>6. MONITOR (Stream + Cron)</b></p>
-<ul>
-  <li>Live P&L Tracking</li>
-  <li>Bei 50% TP → SL auf Break-Even schieben</li>
-  <li>Bei SL-Trigger → automatisch geschlossen</li>
-  <li>Swap-Kosten tracken</li>
-</ul>
-
-<p><b>7. REVIEW (Kimi, nach jedem Trade + wöchentlich)</b></p>
-<ul>
-  <li>Kimi bewertet: Timing, Größe, Risiko, Ergebnis</li>
-  <li>Vorschläge für Verbesserung</li>
-  <li>Dokumentation in kimi_review.json</li>
-  <li>Wöchentlicher Prozess-Review</li>
-</ul>
-
-<hr>
-
-<h2>4. KOSTEN-TRACKING</h2>
-
-<h3>Trading-Kosten (pro Trade)</h3>
+<h3>Services (systemd, auto-restart, boot-persistent)</h3>
 <table>
-  <thead><tr><th>Kostenart</th><th>Geschätzt</th><th>Tracking</th></tr></thead>
+  <thead><tr><th>Service</th><th>Script</th><th>Intervall</th><th>Aufgabe</th></tr></thead>
   <tbody>
-    <tr><td>Spread</td><td>0.1-0.3 pips FX</td><td>automatisch</td></tr>
-    <tr><td>Swap (Overnight)</td><td>-4 bis +2 €/Lot</td><td>manuell</td></tr>
-    <tr><td>Kommission</td><td>€0 (Zero-Acc)</td><td>—</td></tr>
-    <tr><td>Slippage</td><td>~0.1 pips</td><td>geschätzt</td></tr>
+    <tr><td>hermes-strategist</td><td>18_scheduler.py</td><td>adaptiv (0.5-24h)</td><td>Triggert Strategist bei next_check_in</td></tr>
+    <tr><td>hermes-executor</td><td>19_executor_daemon.py</td><td>60 Min (15 bei Pending)</td><td>Scanned MTF-Setups, führt Orders aus</td></tr>
+    <tr><td>ctrader-stream</td><td>ctrader_stream.py</td><td>Live (5s Updates)</td><td>Bid/Ask Streaming, Spot-Daten</td></tr>
+    <tr><td>hermes-snapshot</td><td>20_snapshot_daemon.py</td><td>5 Min</td><td>Trailing Stops, Performance, Positionen</td></tr>
   </tbody>
 </table>
 
-<h3>KI-Kosten</h3>
+<h3>Cron-Jobs</h3>
 <table>
-  <thead><tr><th>Service</th><th>Kosten</th><th>Tracking</th></tr></thead>
+  <thead><tr><th>Cron</th><th>Script</th><th>Aufgabe</th></tr></thead>
   <tbody>
-    <tr><td>Kimi 2.6</td><td>~€0.08/Analyse</td><td>automatisch</td></tr>
-    <tr><td>Geschätzt/Monat</td><td>~€2.40</td><td>Dashboard</td></tr>
-  </tbody>
-</table>
-
-<h3>Steuer</h3>
-<ul>
-  <li>Pepperstone GmbH (Düsseldorf) führt automatisch ab:</li>
-  <li>25% Abgeltungssteuer</li>
-  <li>5.5% Solidaritätszuschlag darauf</li>
-  <li>= <b>26.375%</b> auf Gewinne</li>
-  <li>Verluste werden automatisch verrechnet</li>
-  <li>Jahressteuerbescheinigung verfügbar</li>
-</ul>
-
-<h3>Netto-Rechnung</h3>
-<pre><code>- Spread-Kosten:    -€4
-- KI-Kosten:        -€0.16
-= Vor Steuer:       +€95.84
-- Steuer (26.375%): -€25.27
-= NETTO:            +€70.57</code></pre>
-
-<hr>
-
-<h2>5. KIMI SELBSTOPTIMIERUNG</h2>
-
-<h3>Review-Protokoll</h3>
-<p>Kimi dokumentiert nach jedem Trade:</p>
-<pre><code>  "trade_id": "...",
-  "setup_type": "MA-Cross",
-  "bewertung": {
-    "timing": "7/10 — Entry 2h nach Signal, ok",
-    "groesse": "5/10 — Volume zu hoch für B-Setup",
-    "risiko": "8/10 — SL korrekt bei 1.2 ATR",
-    "ergebnis": "WIN +12 pips"
-  },
-  "lerneffekt": "Bei B-Setup Volume auf 0.5% statt 1% reduzieren",
-  "prompt_aenderung": null
-}</code></pre>
-
-<h3>Wöchentlicher Prozess-Review</h3>
-<p>Kimi evaluiert:</p>
-<ul>
-  <li>Welche Setups performen besser?</li>
-  <li>Ist der R:R realistisch oder zu optimistisch?</li>
-  <li>Braucht es mehr oder weniger Konfirmation?</li>
-  <li>Soll das Risiko angepasst werden?</li>
-  <li>Prompt-Verbesserungen?</li>
-</ul>
-
-<h3>Dokumentation</h3>
-<ul>
-  <li>Kimi schreibt Reviews nach /root/trading/data/kimi_review.json</li>
-  <li>Wöchentliche Zusammenfassung nach /root/trading/data/weekly_review.md</li>
-  <li>Änderungen am Prozess werden hier im Leitfaden dokumentiert</li>
-</ul>
-
-<hr>
-
-<h2>6. TODOs</h2>
-
-<h3>KURZFRISTIG (diese Woche)</h3>
-<ul>
-  <li>☐ Ersten echten Swing-Trade platzieren (mit Risikomodul)</li>
-  <li>☐ Spread-Tracking automatisieren (aus cTrader Spreads)</li>
-  <li>☐ Swap-Kosten pro Position tracken</li>
-  <li>☐ Equity-Kurve im Dashboard zeigen</li>
-  <li>☐ Kimi Review nach Trade #1 laufen lassen</li>
-</ul>
-
-<h3>MITTELFRISTIG (nächste 2 Wochen)</h3>
-<ul>
-  <li>☐ Kimi-Prompt mit Live-Spreads/VWAP erweitern</li>
-  <li>☐ Feature-Engine: RSI, MACD, ATR aus OHLCV berechnen</li>
-  <li>☐ Korrelations-Check vor jedem Trade</li>
-  <li>☐ Automatischer SL-Trail bei 50% TP</li>
-  <li>☐ Earnings-Kalender Integration</li>
-  <li>☐ Wöchentlichen Kimi-Prozess-Review einrichten</li>
-</ul>
-
-<h3>LANGFRISTIG (nächster Monat)</h3>
-<ul>
-  <li>☐ Pepperstone Demo → Live Konto wechseln</li>
-  <li>☐ Steuer-Report Generator (Jahresübersicht)</li>
-  <li>☐ Backtesting-Framework (historische Daten)</li>
-  <li>☐ Multi-Asset Diversifikation (max 3 unkorrelierte)</li>
-  <li>☐ Kimi Prompt-Engineering Optimierung</li>
-  <li>☐ Performance vs Benchmark (S&P 500)</li>
-</ul>
-
-<h3>OFFENE FRAGEN</h3>
-<ul>
-  <li>☐ Wann von Demo auf Live wechseln? (Nach X profitablen Wochen?)</li>
-  <li>☐ Maximaler Drawdown für Live-Betrieb? (10%? 15%?)</li>
-  <li>☐ Soll Kimi eigenständig traden dürfen oder nur empfehlen?</li>
-</ul>
-
-<hr>
-
-<h2>7. SYMBOLE & WATCHLIST</h2>
-
-<h3>Aktuell im Stream</h3>
-<table>
-  <thead><tr><th>Symbol</th><th>Typ</th><th>Min-Lot</th><th>Spread (geschätzt)</th></tr></thead>
-  <tbody>
-    <tr><td>EURUSD</td><td>Forex</td><td>0.01</td><td>0.1-0.3 pips</td></tr>
-    <tr><td>GBPUSD</td><td>Forex</td><td>0.01</td><td>0.2-0.4 pips</td></tr>
-    <tr><td>USDJPY</td><td>Forex</td><td>0.01</td><td>0.2-0.3 pips</td></tr>
-    <tr><td>AUDUSD</td><td>Forex</td><td>0.01</td><td>0.2-0.3 pips</td></tr>
-    <tr><td>USDCAD</td><td>Forex</td><td>0.01</td><td>0.2-0.4 pips</td></tr>
-    <tr><td>BTCUSD</td><td>Crypto</td><td>0.01</td><td>$20-40</td></tr>
-    <tr><td>ETHUSD</td><td>Crypto</td><td>0.01</td><td>$2-5</td></tr>
-    <tr><td>QQQ</td><td>ETF</td><td>1</td><td>$0.01-0.02</td></tr>
-  </tbody>
-</table>
-
-<h3>Erweiterung geplant</h3>
-<ul>
-  <li>GOLD (XAUUSD)</li>
-  <li>DE40 (DAX)</li>
-  <li>US500 (S&P 500)</li>
-  <li>NVDA, AAPL (Einzeltitel)</li>
-</ul>
-
-<hr>
-
-<h2>8. DATEIEN & INFRASTRUKTUR</h2>
-
-<h3>Code</h3>
-<pre><code>├── ctrader_stream.py        ← Live-Daten Stream (systemd)
-├── ctrader_snapshot.py      ← Snapshot für Dashboard (Cron 15min)
-├── pepperstone_trader.py    ← Trading Engine (buy/sell/close)
-├── risk_manager.py          ← Risikomodul
-├── performance_tracker.py   ← Performance & Kosten
-├── kimi_review.py           ← Kimi Trade Review
-├── execute_kimi_decision.py ← Kimi → Order Bridge
-└── check_api_status.py      ← API Status Check</code></pre>
-
-<h3>Daten</h3>
-<pre><code>├── trade_log.jsonl          ← Alle Trades
-├── kimi_review.json         ← Letztes Kimi Review
-├── risk_state.json          ← Risiko-Status (täglich reset)
-├── stream/
-│   ├── spots_all.json       ← Live Preise
-│   └── spots/*.json         ← Pro Symbol
-└── weekly_review.md         ← Wöchentliche Zusammenfassung</code></pre>
-
-<h3>Services</h3>
-<pre><code>Cron: Snapshot               ← alle 15min
-Cron: API Status Check       ← alle 6h</code></pre>
-
-<h3>Dashboard</h3>
-<pre><code>├── Performance & Kosten
-├── Live-Preise (8 Symbole)
-├── Kontostand & Positionen
-├── Risiko-Management
-├── Kimi Review
-├── Trade-Log
-├── Review-Zyklus
-└── Pipeline Status</code></pre>
-
-<hr>
-
-<h2>9. ENTSCHEIDUNGSMATRIX</h2>
-
-<h3>Wann traden?</h3>
-<table>
-  <thead><tr><th>Bedingung</th><th>Aktion</th></tr></thead>
-  <tbody>
-    <tr><td>A-Setup + R:R ≥ 1:3</td><td>3% Risiko</td></tr>
-    <tr><td>B-Setup + R:R ≥ 1:2</td><td>2% Risiko</td></tr>
-    <tr><td>C-Setup</td><td>Nicht traden</td></tr>
-    <tr><td>FEAR-Regime</td><td>Nur Long, 1%</td></tr>
-    <tr><td>Earnings < 5 Tage</td><td>Kein Trade</td></tr>
-    <tr><td>Weekend</td><td>Kein Trade</td></tr>
-  </tbody>
-</table>
-
-<h3>Wann Position schließen?</h3>
-<table>
-  <thead><tr><th>Bedingung</th><th>Aktion</th></tr></thead>
-  <tbody>
-    <tr><td>TP erreicht</td><td>Auto-close</td></tr>
-    <tr><td>SL erreicht</td><td>Auto-close</td></tr>
-    <tr><td>50% TP → SL auf BE</td><td>Trail SL</td></tr>
-    <tr><td>Fundament ändert</td><td>Manuell prüfen</td></tr>
-    <tr><td>5% Daily Loss</td><td>ALLES schließen</td></tr>
+    <tr><td>*/5 Min</td><td>build_bot_status.py</td><td>Dashboard JSON + MC-Analyse (30 Min Cache)</td></tr>
+    <tr><td>*/2 Std</td><td>01_scanner.py</td><td>25 Symbole × 4 TFs, Indikatoren, Asset-Scores, Korrelationen</td></tr>
   </tbody>
 </table>
 
 <hr>
 
-<p>*Letzte Aktualisierung: 2026-04-24 15:50 Berlin*</p>
-<p>*Nächster Review: nach dem ersten echten Swing-Trade*</p>
+<h2>3. STRATEGIST — Die KI-Analyse</h2>
 
+<p>Der Strategist entscheidet <b>welche Assets</b> gehandelt werden und <b>welche Regeln</b> gelten. Er bestimmt selbst wann die nächste Analyse nötig ist.</p>
+
+<h3>Eingabedaten</h3>
+<table>
+  <thead><tr><th>Datenquelle</th><th>Inhalt</th><th>Update</th></tr></thead>
+  <tbody>
+    <tr><td>scan_summary.json</td><td>25 Symbole, OHLCV 1H/4H/1D/1W, Indikatoren, Asset-Scores</td><td>alle 2h</td></tr>
+    <tr><td>market_data.json</td><td>VIX, DXY, US10Y, S&P500, NASDAQ, Fear&Greed, Regime</td><td>stündlich</td></tr>
+    <tr><td>events_calendar.json</td><td>FOMC, NFP, CPI, OPEX, Earnings</td><td>täglich</td></tr>
+    <tr><td>self_critique.json</td><td>Win-Rate, Profit-Faktor, Lessons, per-Asset Performance</td><td>pro Trade</td></tr>
+    <tr><td>correlations.json</td><td>Rolling 20-Perioden Pearson-Korrelationen</td><td>alle 2h</td></tr>
+    <tr><td>review_phase.json</td><td>Aktuelle Phase (1-3), Trade-Anzahl, Fortschritt</td><td>pro Trade</td></tr>
+  </tbody>
+</table>
+
+<h3>Ausgabe: briefing.json</h3>
+<ul>
+  <li><b>market_regime</b> + confidence (bullish, bearish, ranging, volatile)</li>
+  <li><b>preferred_assets</b> mit Rationale, Direction-Bias, Size-Multiplier</li>
+  <li><b>allowed_directions</b> (long, short, both)</li>
+  <li><b>max_positions</b>, <b>max_risk_per_trade_pct</b>, <b>max_risk_per_trade_eur</b></li>
+  <li><b>technical_rules</b>: min_rr, sl_max_atr_multiple</li>
+  <li><b>veto_conditions</b>: equity_below, daily_pnl_below, news_impact</li>
+  <li><b>trading_hours</b>: pro Asset mit Session-Blackouts</li>
+  <li><b>next_check_in</b>: Stunden bis zur nächsten Analyse (0.5-24h)</li>
+</ul>
+
+<h3>Adaptive Intervalle</h3>
+<table>
+  <thead><tr><th>Marktlage</th><th>next_check_in</th><th>Grund</th></tr></thead>
+  <tbody>
+    <tr><td>Normal (VIX 15-25)</td><td>6-10h</td><td>Standard</td></tr>
+    <tr><td>Hohe Volatilität (VIX >30)</td><td>1-4h</td><td>ATR >2× Durchschnitt</td></tr>
+    <tr><td>Pre-Event (FOMC <2h)</td><td>0.5-1h</td><td>Economic Calendar</td></tr>
+    <tr><td>Post-Trade (nach SL/TP)</td><td>1-2h</td><td>Executor signalisiert</td></tr>
+    <tr><td>Ruhig/Seitwärts (ADX <20)</td><td>12-24h</td><td>Wenig Volumen</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>4. EXECUTOR — Die technische Ausführung</h2>
+
+<p>Der Executor ist <b>vollständig regelbasiert</b> — keine KI, keine Halluzinationen, <100ms pro Zyklus.</p>
+
+<h3>MTF-Gating (Multi-Timeframe Top-Down)</h3>
+<pre><code>1D Regime → "Sind wir im richtigen Markt?" (ADX > 15 erforderlich)
+  └→ 4H Bias → "Welche Richtung?" (EMA-Alignment erforderlich)
+       └→ 1H Entry → "Wann genau?" (Pullback zu SMA20, RSI nicht extrem)</code></pre>
+<ul>
+  <li>Mindestens <b>2/3 Timeframes</b> müssen übereinstimmen</li>
+  <li>1D ADX < 15 = SKIP (stark seitwärts)</li>
+  <li>4H Bias neutral = SKIP</li>
+  <li>Preis > 3 ATR von SMA20 entfernt = SKIP (zu weit vom Mittelwert)</li>
+  <li>RSI > 75 (Long) oder < 25 (Short) = SKIP (extrem)</li>
+</ul>
+
+<h3>Setup-Qualität (dynamisch)</h3>
+<table>
+  <thead><tr><th>Score</th><th>Setup</th><th>Risiko</th><th>Kriterien</th></tr></thead>
+  <tbody>
+    <tr><td>≥5</td><td>A</td><td>5% Equity</td><td>MTF 3/3, R:R ≥2.5, ADX >25, ATR Sweet-Spot</td></tr>
+    <tr><td>≥3</td><td>B</td><td>3% Equity</td><td>MTF 2/3, gute Basis-Kriterien</td></tr>
+    <tr><td>≥1</td><td>C</td><td>1.5% Equity</td><td>Minimale Bestätigung</td></tr>
+    <tr><td><1</td><td>D</td><td>SKIP</td><td>Kein Trade</td></tr>
+  </tbody>
+</table>
+
+<h3>Spread-Monitoring</h3>
+<ul>
+  <li>Liest live Bid/Ask aus ctrader_stream (spots_all.json)</li>
+  <li>Rolling History (letzte 100 Reads pro Symbol)</li>
+  <li><b>Rejectet Trades wenn Spread > 3× Durchschnitt</b></li>
+  <li>Fallback-Limits: Majors 3 Pips, JPY/GBP 5, Gold 50, Crypto 500</li>
+</ul>
+
+<h3>Session-Filter</h3>
+<table>
+  <thead><tr><th>Klasse</th><th>Aktive Zeit (UTC)</th><th>Weight</th></tr></thead>
+  <tbody>
+    <tr><td>Forex Majors</td><td>07:00-16:00</td><td>1.0</td></tr>
+    <tr><td>Forex JPY</td><td>00:00-09:00 + 12:00-16:00</td><td>0.9</td></tr>
+    <tr><td>Gold/Silber</td><td>07:00-20:00</td><td>0.9</td></tr>
+    <tr><td>US Indizes</td><td>13:30-20:00</td><td>0.7</td></tr>
+    <tr><td>Crypto</td><td>24/7</td><td>0.5</td></tr>
+  </tbody>
+</table>
+
+<h3>Korrelations-Cluster</h3>
+<ul>
+  <li>Max <b>1 Position pro Cluster</b> gleichzeitig</li>
+  <li>Cluster: usd_long, usd_short, jpy_cross, risk_off, eur_bloc, crypto, energy</li>
+  <li>Rolling 20-Perioden Pearson-Korrelation (dynamisch berechnet)</li>
+  <li>Wenn EURUSD im Cluster <code>eur_bloc</code> bereits offen → GBPUSD wird blockiert</li>
+</ul>
+
+<hr>
+
+<h2>5. RISIKO-MANAGEMENT</h2>
+
+<h3>Safety Nets (v2.5.1)</h3>
+<table>
+  <thead><tr><th>Regel</th><th>Schwelle</th><th>Aktion</th></tr></thead>
+  <tbody>
+    <tr><td>Tages-Loss-Limit</td><td>-3% Equity (~15 EUR)</td><td>Trading-Stop für den Tag</td></tr>
+    <tr><td>Cooldown</td><td>3 Verluste in Folge</td><td>Trading pausiert bis Strategist-Neubewertung</td></tr>
+    <tr><td>Emergency Stop</td><td>Equity < 450 EUR</td><td>Alle Trading gestoppt</td></tr>
+    <tr><td>Weekend-Block</td><td>Fr 21:00 - So 22:00 UTC</td><td>Keine neuen Orders</td></tr>
+    <tr><td>News-Blackout</td><td>FOMC/NFP: 60min vorher</td><td>Kein Entry während High-Impact Events</td></tr>
+  </tbody>
+</table>
+
+<h3>Position-Sizing</h3>
+<ul>
+  <li><b>Basis:</b> Risk% × Equity / (SL-Pips × Pip-Value)</li>
+  <li><b>Asset-Caps:</b> GBP/JPY/Crypto/Gold max 3%, EUR/USD-Majors max 5%</li>
+  <li><b>Margin-Limit:</b> Max 30% Equity als Margin pro Trade</li>
+  <li><b>Slippage-Buffer:</b> SL wird um min. 1.5 Pips erweitert</li>
+  <li><b>Session-Weight:</b> Suboptimale Zeiten → 50% Positionsreduktion</li>
+</ul>
+
+<h3>Trailing Stop (ATR-basiert)</h3>
+<ul>
+  <li>Break-Even: Bei 30% des TP-Abstands → SL auf Entry</li>
+  <li>Trailing: SL folgt bei 0.75× ATR(14) vom aktuellen Preis</li>
+  <li>Nie unter Entry (kein negativer Trail)</li>
+</ul>
+
+<hr>
+
+<h2>6. PHASEN-SYSTEM</h2>
+
+<p>Der Bot startet konservativ und wird mit steigender Erfahrung aggressiver:</p>
+
+<table>
+  <thead><tr><th>Phase</th><th>Trades</th><th>Max Pos.</th><th>Risiko</th><th>Assets</th><th>Size</th></tr></thead>
+  <tbody>
+    <tr><td><b>1 — Lernphase</b></td><td>0-30</td><td>2</td><td>3%</td><td>2-3 (Fokus)</td><td>×0.7</td></tr>
+    <tr><td><b>2 — Stabil</b></td><td>30-100</td><td>3</td><td>4%</td><td>5-6</td><td>×0.9</td></tr>
+    <tr><td><b>3 — Optimiert</b></td><td>100+</td><td>4</td><td>5%</td><td>Alle</td><td>×1.0</td></tr>
+  </tbody>
+</table>
+
+<p><b>Aufstieg Phase 1→2:</b> 30 Trades + Profit-Faktor ≥ 0.5 + Max DD ≤ 10%</p>
+<p><b>Aufstieg Phase 2→3:</b> 100 Trades + 3 Monate stabil + Max DD ≤ 10%</p>
+
+<hr>
+
+<h2>7. PERFORMANCE-TRACKING</h2>
+
+<h3>Kennzahlen</h3>
+<table>
+  <thead><tr><th>Kennzahl</th><th>Beschreibung</th><th>Ziel</th></tr></thead>
+  <tbody>
+    <tr><td>Win-Rate</td><td>Anteil gewinnender Trades</td><td>> 50%</td></tr>
+    <tr><td>Profit-Faktor</td><td>Gewinne / Verluste</td><td>> 1.5</td></tr>
+    <tr><td>Sharpe Ratio</td><td>Risikoadjustierte Rendite</td><td>> 0.5</td></tr>
+    <tr><td>Max Drawdown</td><td>Maximaler Equity-Verlust</td><td>< 15%</td></tr>
+    <tr><td>Expectancy</td><td>Ø Pips pro Trade</td><td>> 0</td></tr>
+  </tbody>
+</table>
+
+<h3>Monte Carlo Analyse</h3>
+<ul>
+  <li>10.000 Simulationen auf echten Trade-PnLs</li>
+  <li>Berechnet: Wahrscheinlichkeit Gewinn, Median Equity, 95% VaR, Max Drawdown</li>
+  <li>Wird automatisch alle 30 Min aktualisiert</li>
+</ul>
+
+<h3>Self-Critique</h3>
+<ul>
+  <li>Analysiert letzte Trades: Win-Rate per Asset, per Uhrzeit, per Richtung</li>
+  <li>Generiert Lektionen (max 5) die dem Strategist injiziert werden</li>
+  <li>Beispiel: "UTC 16:00: 0% Win-Rate — vermeiden oder vorsichtiger"</li>
+</ul>
+
+<hr>
+
+<h2>8. KOSTEN</h2>
+
+<table>
+  <thead><tr><th>Posten</th><th>Kosten</th><th>Tracking</th></tr></thead>
+  <tbody>
+    <tr><td>DeepSeek-R1-0528 (Bot)</td><td>~0.012 EUR/Call, ~10 EUR/Monat</td><td>kimicalls.log</td></tr>
+    <tr><td>Spread (pro Trade)</td><td>0.1-0.5 Pips</td><td>spread_history.json</td></tr>
+    <tr><td>Swap (Overnight)</td><td>-4 bis +2 EUR/Lot</td><td>cTrader</td></tr>
+    <tr><td>Steuer (Pepperstone)</td><td>26.375% auf Gewinne</td><td>automatisch</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>9. SYMBOLE (25)</h2>
+
+<table>
+  <thead><tr><th>Klasse</th><th>Symbole</th><th>Pip-Size</th><th>Risk-Cap</th></tr></thead>
+  <tbody>
+    <tr><td>Forex Majors (7)</td><td>EURUSD, GBPUSD, USDJPY, AUDUSD, USDCHF, USDCAD, NZDUSD</td><td>0.0001 / 0.01</td><td>3-5%</td></tr>
+    <tr><td>Forex Crosses (6)</td><td>EURJPY, GBPJPY, EURGBP, AUDJPY, EURAUD, GBPAUD</td><td>0.0001 / 0.01</td><td>3%</td></tr>
+    <tr><td>Metalle (8)</td><td>XAUUSD, XAGUSD, XAUEUR, XAUGBP, XAUCHF, XAUAUD, XAGEUR, XAGAUD</td><td>variiert</td><td>3%</td></tr>
+    <tr><td>US Indizes (4)</td><td>US500, NAS100, US30, UK100</td><td>0.01 (Contracts)</td><td>3%</td></tr>
+    <tr><td>Crypto (4)</td><td>BTCUSD, ETHUSD, SOLUSD, XRPUSD</td><td>variiert</td><td>3%</td></tr>
+    <tr><td>Energie (2)</td><td>SpotBrent, SpotCrude</td><td>0.01</td><td>3%</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>10. DATEIEN</h2>
+
+<h3>Code (src/)</h3>
+<pre><code>├── 01_scanner.py           ← 25 Symbole × 4 TFs, Indikatoren, Scores, Korrelationen
+├── 16_strategist.py        ← KI-Strategist (DeepSeek-R1-0528)
+├── 17_executor.py          ← Regelbasiert: MTF-Gating, Spread, Session, Veto
+├── 18_scheduler.py         ← Scheduler für Strategist (respektiert next_check_in)
+├── 19_executor_daemon.py   ← Executor Daemon (60 Min Zyklus)
+├── 20_snapshot_daemon.py   ← Snapshot + Trailing + Performance (5 Min)
+├── kimi_caller.py          ← OpenRouter API (DeepSeek-R1-0528)
+├── indicators.py           ← SMA, EMA, RSI, ATR, ADX, MACD, ROC
+├── asset_config.py         ← 25 Symbole, Pip-Config, Cluster, Sessions
+├── performance_tracker.py  ← TWR, Sharpe, Max DD, Profit-Faktor
+├── self_critique.py        ← Trade-Analyse, Lessons, Roundtrip-Pairing
+├── review_phase.py         ← Phase 1→2→3 Management
+├── news_blackout.py        ← FOMC/NFP/CPI Blackout-Fenster
+├── build_bot_status.py     ← Dashboard JSON Generator
+├── ctrader_stream.py       ← cTrader Live Stream
+├── ctrader_api.py          ← cTrader API Helper
+└── indicators.py           ← Reine Python-Indikatoren</code></pre>
+
+<h3>Daten (data/)</h3>
+<pre><code>├── briefing.json           ← Aktuelles Strategist-Briefing
+├── performance.json        ← Performance-Metriken
+├── self_critique.json      ← Lessons + Patterns
+├── review_phase.json       ← Aktuelle Phase
+├── trade_log.jsonl         ← Alle Trades
+├── risk_state.json         ← Equity, Trades Today
+├── market_data.json        ← VIX, DXY, F&G, Regime
+├── spread_history.json     ← Rolling Spread-Daten
+├── executor_candidates.json ← Letzte Kandidaten
+├── live/
+│   ├── scan_summary.json   ← Scanner-Ergebnis
+│   ├── asset_scores.json   ← Gerankte Shortlist
+│   └── correlations.json   ← Rolling Korrelationen
+└── stream/
+    └── spots_all.json      ← Live Bid/Ask</code></pre>
+
+<hr>
+
+<h2>11. STATUS & ROADMAP</h2>
+
+<h3>Aktuell (v2.5.1)</h3>
+<ul>
+  <li>✅ Zwei-Schicht-Architektur (Strategist + Executor)</li>
+  <li>✅ MTF-Gating (1D→4H→1H)</li>
+  <li>✅ Spread-Monitoring</li>
+  <li>✅ Tages-Loss-Limit + Cooldown + Slippage-Modell</li>
+  <li>✅ Phase-System (konservativ → aggressiv)</li>
+  <li>✅ Self-Critique + Performance-Tracking</li>
+  <li>✅ Makro-Daten (DXY, US10Y, VIX, F&G)</li>
+  <li>✅ Rolling Korrelationen</li>
+</ul>
+
+<h3>Offen</h3>
+<ul>
+  <li>☐ Backtesting-Engine (2 Jahre historische Daten)</li>
+  <li>☐ Walk-Forward-Optimierung</li>
+  <li>☐ COT-Daten (Commitment of Traders)</li>
+  <li>☐ Sentiment-Analyse (News Headlines)</li>
+  <li>☐ Demo → Live Wechsel (nach 100+ profitablen Trades)</li>
+</ul>
+
+<hr>
+
+<p><i>Letzte Aktualisierung: 2026-04-28 — v2.5.1</i></p>
 
 </div>
 
