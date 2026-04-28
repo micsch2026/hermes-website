@@ -626,7 +626,8 @@ function loadDepotIntoReport() {
         return {
           name: p.name, isin: p.isin, value: p.value, change_pct: p.change_pct,
           invested: s.invested, leverage: s.leverage, current_leverage: s.current_leverage,
-          ko_distance_pct: s.ko_distance_pct, ko_barrier: s.ko_barrier, ko_risk: s.ko_risk
+          ko_distance_pct: s.ko_distance_pct, ko_barrier: s.ko_barrier, ko_risk: s.ko_risk,
+          current_underlying_usd: s.current_underlying_usd || 0
         };
       }), depot.cash, 0, km, dm));
     }
@@ -640,7 +641,8 @@ function loadDepotIntoReport() {
         current_leverage: s.current_leverage || p.current_leverage || 0,
         ko_distance_pct: s.ko_distance_pct || p.ko_distance_pct || 0,
         ko_barrier: s.ko_barrier || p.ko_barrier || 0,
-        ko_risk: s.ko_risk || p.ko_risk || '—'
+        ko_risk: s.ko_risk || p.ko_risk || '—',
+        current_underlying_usd: s.current_underlying_usd || 0
       };
     }), ds.cash, ds.invested || 0, kimiMeta, depotMeta);
   }).catch(e => console.error('Depot laden fehlgeschlagen:', e));
@@ -650,7 +652,7 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta, depotMeta) {
     const tbody = document.querySelector('#positionsTable');
     const meta = depotMeta && depotMeta.positions ? depotMeta.positions : {};
     // Header: Nur Derivat-Daten, keine Underlying-Werte, kein Entry, kein Stückkurs
-    tbody.innerHTML = '<tr><th>Position</th><th>KI-Layer</th><th>Hebel</th><th>KO&nbsp;Abst.</th><th>Wert</th><th>P&L</th><th>Stop-Loss</th><th>Aktion</th></tr>';
+    tbody.innerHTML = '<tr><th>Position</th><th>KI-Layer</th><th>Hebel</th><th>KO&nbsp;Abst.</th><th>Wert</th><th>P&L</th><th>SL-Trigger&nbsp;(Underlying)</th><th>Aktion</th></tr>';
 
     let invested = 0, totalPnL = 0;
     positions.forEach(p => {
@@ -676,20 +678,38 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta, depotMeta) {
       const koStr = koDist > 0 ? koDist.toFixed(1) + '%' : '—';
       const koColor = koDist < 20 ? 'var(--c-err)' : koDist < 25 ? 'var(--c-warn)' : 'var(--c-ok)';
 
-      // Stop-Loss: immer als Gesamtwert (Derivatwert), nie als Stückpreis
-      // Logik: SL-Puffer = min(KO_Distanz / 2, 15%)
-      // Wenn KO_Distanz < 20%: Kein Stop sinnvoll, SOFORT VERKAUFEN
-      let stopVal = 0;
-      let stopStr = '—';
-      let slPct = 15.0;
+      // Stop-Loss: Underlying-Trigger-Preis (USD)
+      // Bei Erreichen: sofort verkaufen, bevor KO droht.
+      let stopDisplay = '—';
+      let slStatus = 'neutral';
+      const koBarrier = parseFloat(p.ko_barrier) || 0;
+      const curUnderlying = parseFloat(p.current_underlying_usd) || 0;
 
-      if (koDist > 0 && koDist < 20) {
-        stopStr = '<span style="color:var(--c-err);font-weight:600">SOFORT VERKAUFEN</span>';
-        slPct = 0;
-      } else {
-        slPct = Math.min(koDist / 2, 15.0);
-        stopVal = p.value * (1 - slPct / 100);
-        stopStr = stopVal.toFixed(2).replace('.', ',') + '€ <span class="muted" style="font-size:10px">(' + slPct.toFixed(1) + '%)</span>';
+      if (koDist > 0 && koDist < 10) {
+        stopDisplay = '<span style="color:var(--c-err);font-weight:700">SOFORT VERKAUFEN</span> — KO nur ' + koDist.toFixed(1) + '% entfernt!';
+        slStatus = 'critical';
+      } else if (koBarrier > 0 && curUnderlying > 0) {
+        // Dynamischer Puffer je nach KO-Abstand
+        let bufferPct = 10.0;
+        if (koDist < 20)      bufferPct = 5.0;
+        else if (koDist < 30) bufferPct = 8.0;
+
+        const triggerPrice = koBarrier * (1 + bufferPct / 100);
+        const distToTrigger = ((curUnderlying - triggerPrice) / curUnderlying) * 100;
+
+        let slColor = 'var(--c-ok)';
+        if (distToTrigger <= 0)       { slColor = 'var(--c-err)'; slStatus = 'critical'; }
+        else if (distToTrigger < 5)   { slColor = '#f97316'; slStatus = 'warning'; }
+        else if (distToTrigger < 15)  { slColor = '#eab308'; slStatus = 'watch'; }
+        else                          { slStatus = 'safe'; }
+
+        stopDisplay = '<span style="color:' + slColor + ';font-weight:600">$' + triggerPrice.toFixed(2) + '</span>'
+          + ' <span class="muted" style="font-size:10px">(' + bufferPct.toFixed(0) + '% Puffer) — Abstand: ' + distToTrigger.toFixed(1) + '%</span>';
+      } else if (p.value && p.invested) {
+        // Fallback für Nicht-KO-Positionen
+        const slPct = 15.0;
+        const stopVal = p.value * (1 - slPct / 100);
+        stopDisplay = stopVal.toFixed(2).replace('.', ',') + '€ <span class="muted" style="font-size:10px">(' + slPct.toFixed(1) + '%)</span>';
       }
 
       // Handlungsempfehlung mit vollem Kontext
@@ -717,11 +737,11 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta, depotMeta) {
       } else if (p.change_pct < -10) {
         action = 'STOPP';
         actionClass = 'badge-sell';
-        actionDetail = 'Verlust ' + p.change_pct.toFixed(1) + '% — Stop-Loss bei ' + stopStr + ' setzen oder Position schließen.';
+        actionDetail = 'Verlust ' + p.change_pct.toFixed(1) + '% — Stop-Loss bei ' + stopDisplay + ' setzen oder Position schließen.';
       } else if (p.change_pct > 20) {
         action = 'GEWINN SICHERN';
         actionClass = 'badge-warn';
-        actionDetail = 'Gewinn ' + p.change_pct.toFixed(1) + '% — Trailing-Stop bei ' + stopStr + ' setzen oder Teilgewinn realisieren.';
+        actionDetail = 'Gewinn ' + p.change_pct.toFixed(1) + '% — Trailing-Stop bei ' + stopDisplay + ' setzen oder Teilgewinn realisieren.';
       } else if (koDist > 0 && koDist < 25) {
         action = 'BEOBACHTEN';
         actionClass = 'badge-warn';
@@ -729,7 +749,7 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta, depotMeta) {
       } else {
         action = 'HALTEN';
         actionClass = 'badge-hold';
-        actionDetail = 'Position OK — Hebel ' + leverage.toFixed(2) + 'x optimal, KO-Abstand ' + koDist.toFixed(1) + '%. Stop-Loss bei ' + stopStr + ' setzen.';
+        actionDetail = 'Position OK — Hebel ' + leverage.toFixed(2) + 'x optimal, KO-Abstand ' + koDist.toFixed(1) + '%. Stop-Loss bei ' + stopDisplay + ' setzen.';
       }
 
       // P&L
@@ -744,7 +764,7 @@ function renderDepotTable(positions, cash, costBasis, kimiMeta, depotMeta) {
         '<td style="color:' + koColor + ';font-weight:600;font-size:var(--text-md)">' + koStr + '</td>' +
         '<td style="font-weight:600;font-size:var(--text-md)">' + fmtEUR(p.value) + '</td>' +
         '<td class="' + pnlClass + '"><span style="font-weight:600">' + pnlSign + fmtEUR(pnl) + '</span><br><span class="muted" style="font-size:11px">' + pnlSign + p.change_pct.toFixed(1) + '%</span></td>' +
-        '<td><b style="color:var(--c-warn)">' + stopStr + '</b></td>' +
+        '<td><b style="color:var(--c-warn)">' + stopDisplay + '</b></td>' +
         '<td><span class="badge ' + actionClass + '">' + action + '</span><br><span class="muted" style="font-size:11px;line-height:1.4">' + actionDetail + '</span></td>';
       tbody.appendChild(row);
     });
