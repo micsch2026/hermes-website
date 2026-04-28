@@ -127,6 +127,55 @@ function safeFetch(path, opts) {
     <div class="card"><div class="card-title">Trades heute</div><div class="card-value" id="trades-today">—</div></div>
   </div>
 
+  <!-- Cashflow Management -->
+  <p class="section-title">Cashflow Management</p>
+  <div class="card" style="margin-bottom:var(--s-4)">
+    <div style="display:flex;align-items:center;gap:var(--s-4);margin-bottom:var(--s-4)">
+      <div style="flex:1">
+        <div style="font-size:var(--text-sm);color:var(--c-text-dim)">Status</div>
+        <div id="cashflow-status" style="font-size:var(--text-lg);font-weight:600;margin-top:var(--s-1)">—</div>
+        <div id="cashflow-message" style="font-size:var(--text-sm);color:var(--c-text-dim);margin-top:var(--s-1)">—</div>
+      </div>
+      <div id="cashflow-indicator" style="width:12px;height:12px;border-radius:50%;background:var(--c-border)"></div>
+    </div>
+    <div id="cashflow-details" style="display:none;margin-top:var(--s-4);padding-top:var(--s-4);border-top:1px solid var(--c-border)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s-3)">
+        <div>
+          <div style="font-size:var(--text-xs);color:var(--c-text-dim)">Type</div>
+          <div id="cashflow-type" style="font-weight:600">—</div>
+        </div>
+        <div>
+          <div style="font-size:var(--text-xs);color:var(--c-text-dim)">Betrag</div>
+          <div id="cashflow-amount" style="font-weight:600">—</div>
+        </div>
+        <div>
+          <div style="font-size:var(--text-xs);color:var(--c-text-dim)">Beantragt</div>
+          <div id="cashflow-requested" style="font-weight:600">—</div>
+        </div>
+        <div>
+          <div style="font-size:var(--text-xs);color:var(--c-text-dim)">Reference Balance</div>
+          <div id="cashflow-reference" style="font-weight:600">—</div>
+        </div>
+      </div>
+      <div id="cashflow-actions" style="margin-top:var(--s-4);display:flex;gap:var(--s-3)">
+        <button onclick="confirmCashflow()" id="cashflow-confirm-btn" style="display:none;background:var(--c-ok);color:#fff;border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer;font-weight:600">Bestätigen — Ich habe ausgeführt</button>
+        <button onclick="cancelCashflow()" style="background:var(--c-border);color:var(--c-text);border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer">Abbrechen</button>
+      </div>
+    </div>
+    <!-- Neuen Antrag stellen -->
+    <div id="cashflow-new" style="margin-top:var(--s-4);padding-top:var(--s-4);border-top:1px solid var(--c-border)">
+      <div style="font-size:var(--text-sm);color:var(--c-text-dim);margin-bottom:var(--s-3)">Neuen Antrag stellen</div>
+      <div style="display:flex;gap:var(--s-3);align-items:center">
+        <select id="cashflow-new-type" style="background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border);padding:var(--s-2);border-radius:var(--r-md)">
+          <option value="deposit">Einzahlung</option>
+          <option value="withdrawal">Auszahlung</option>
+        </select>
+        <input type="number" id="cashflow-new-amount" placeholder="Betrag EUR" style="background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border);padding:var(--s-2);border-radius:var(--r-md);width:120px">
+        <button onclick="submitCashflow()" style="background:var(--c-accent);color:#fff;border:none;padding:var(--s-2) var(--s-4);border-radius:var(--r-md);cursor:pointer;font-weight:600">Beantragen</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Offene Positionen -->
   <p class="section-title">Offene Positionen</p>
   <div class="card">
@@ -390,7 +439,12 @@ async function loadBotStatus() {
       document.getElementById('risk-max-pos').textContent = b.max_positions != null ? b.max_positions : '—';
       document.getElementById('risk-max-pct').textContent = b.max_risk_per_trade_pct != null ? b.max_risk_per_trade_pct + '%' : '—';
       document.getElementById('risk-max-eur').textContent = b.max_risk_per_trade_eur != null ? '€' + b.max_risk_per_trade_eur : '—';
-
+    }
+    
+    // Cashflow Management
+    if (d.cashflow) {
+      updateCashflowUI(d.cashflow, d.risk);
+    }
       // Assets
       document.getElementById('briefing-preferred').innerHTML = (b.preferred_assets && b.preferred_assets.length) ? b.preferred_assets.map(function(a){ return '<span class="asset-tag asset-pref">' + a + '</span>'; }).join('') : '<span class="no-data">—</span>';
       document.getElementById('briefing-avoid').innerHTML = (b.avoid_assets && b.avoid_assets.length) ? b.avoid_assets.map(function(a){ return '<span class="asset-tag asset-avoid">' + a + '</span>'; }).join('') : '<span class="no-data">—</span>';
@@ -515,6 +569,87 @@ async function loadBotStatus() {
 
 loadBotStatus();
 setInterval(loadBotStatus, 15000);
+
+// Cashflow Management Functions
+function submitCashflow() {
+  var type = document.getElementById('cashflow-new-type').value;
+  var amount = parseFloat(document.getElementById('cashflow-new-amount').value);
+  if (!amount || amount <= 0) { alert('Bitte Betrag eingeben'); return; }
+  if (!confirm(type === 'deposit' ? 'Einzahlung' : 'Auszahlung' + ' von ' + amount + ' EUR beantragen?')) return;
+  
+  safeFetch('/api/cashflow', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({type: type, amount: amount})
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) { document.getElementById('cashflow-new-amount').value = ''; loadBotStatus(); }
+    else alert('Fehler: ' + (data.error || 'Unbekannt'));
+  }).catch(function(e) { alert('Netzwerk-Fehler: ' + e.message); });
+}
+
+function confirmCashflow() {
+  if (!confirm('Bestätigen: Du hast die Ein-/Auszahlung bei Pepperstone durchgeführt?')) return;
+  safeFetch('/api/cashflow/confirm', {method: 'POST'}).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) loadBotStatus();
+    else alert('Fehler: ' + (data.error || 'Unbekannt'));
+  }).catch(function(e) { alert('Netzwerk-Fehler: ' + e.message); });
+}
+
+function cancelCashflow() {
+  if (!confirm('Antrag widerrufen?')) return;
+  safeFetch('/api/cashflow', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({type: null, amount: 0, status: 'none'})
+  }).then(function(r) { return r.json(); }).then(function() { loadBotStatus(); });
+}
+
+function updateCashflowUI(cf, risk) {
+  if (!cf) cf = {status:'none'};
+  var statusEl = document.getElementById('cashflow-status');
+  var msgEl = document.getElementById('cashflow-message');
+  var indEl = document.getElementById('cashflow-indicator');
+  var detEl = document.getElementById('cashflow-details');
+  var newEl = document.getElementById('cashflow-new');
+  var confirmBtn = document.getElementById('cashflow-confirm-btn');
+  
+  var labels = {none:'Kein Antrag',pending:'Warte auf Prüfung...',ready:'Bereit',rejected:'Abgelehnt',completed:'Abgeschlossen'};
+  var colors = {none:'var(--c-border)',pending:'var(--c-warn)',ready:'var(--c-ok)',rejected:'var(--c-err)',completed:'var(--c-ok)'};
+  
+  statusEl.textContent = labels[cf.status] || cf.status;
+  indEl.style.background = colors[cf.status] || 'var(--c-border)';
+  msgEl.textContent = cf.message || '';
+  
+  if (cf.status === 'none') {
+    detEl.style.display = 'none';
+    newEl.style.display = 'block';
+    confirmBtn.style.display = 'none';
+  } else if (cf.status === 'pending') {
+    detEl.style.display = 'block';
+    newEl.style.display = 'none';
+    confirmBtn.style.display = 'none';
+  } else if (cf.status === 'ready') {
+    detEl.style.display = 'block';
+    newEl.style.display = 'none';
+    confirmBtn.style.display = 'inline-block';
+  } else if (cf.status === 'rejected') {
+    detEl.style.display = 'block';
+    newEl.style.display = 'block';
+    confirmBtn.style.display = 'none';
+  } else if (cf.status === 'completed') {
+    detEl.style.display = 'block';
+    newEl.style.display = 'block';
+    confirmBtn.style.display = 'none';
+  }
+  
+  if (cf.status !== 'none') {
+    var typeLabels = {deposit:'Einzahlung',withdrawal:'Auszahlung'};
+    document.getElementById('cashflow-type').textContent = typeLabels[cf.type] || cf.type;
+    document.getElementById('cashflow-amount').textContent = cf.amount ? cf.amount.toFixed(2) + ' EUR' : '—';
+    document.getElementById('cashflow-requested').textContent = cf.requested_at ? fmtTime(cf.requested_at) : '—';
+    document.getElementById('cashflow-reference').textContent = risk && risk.reference_balance ? risk.reference_balance.toFixed(2) + ' EUR' : '—';
+  }
+}
 </script>
 <script>
 if (typeof lucide !== 'undefined') lucide.createIcons();
