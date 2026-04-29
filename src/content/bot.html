@@ -270,7 +270,7 @@ function safeFetch(path, opts) {
   </div>
   <div class="card">
     <table>
-      <thead><tr><th>Zeit</th><th>Aktion</th><th>Symbol</th><th>Volumen</th><th>Preis</th><th>Gewinn/Verlust</th><th>Status</th></tr></thead>
+      <thead><tr><th>Zeit</th><th>Richtung</th><th>Symbol</th><th>Einstieg</th><th>Ausstieg</th><th>Dauer</th><th>Gewinn/Verlust</th></tr></thead>
       <tbody id="trade-log-body"><tr><td colspan="7" class="no-data">Keine Trades</td></tr></tbody>
     </table>
   </div>
@@ -451,49 +451,28 @@ async function loadBotStatus() {
       }
     }
 
-    if (d.trade_log && d.trade_log.length > 0) {
+    if (d.round_trips && d.round_trips.length > 0) {
       var html = '';
-      var logs = d.trade_log.slice().reverse();
-      for (var i = 0; i < logs.length; i++) {
-        var t = logs[i];
-        var badge = t.action === 'buy' ? 'badge-buy' : 'badge-sell';
-        var rowStyle = t.is_test ? ' style="opacity:0.5"' : '';
-        var testBadge = t.is_test ? ' <span class="badge" style="background:rgba(150,150,150,0.2);color:#888;margin-left:4px">TEST</span>' : '';
-        var priceStr = '\u2014';
-        if (t.price != null) {
-          if (t.symbol === 'US30') priceStr = t.price.toFixed(1);
-          else if (String(t.symbol).endsWith('JPY')) priceStr = t.price.toFixed(3);
-          else priceStr = t.price.toFixed(5);
-        }
-        var pnlStr = '\u2014';
-        if (t.pnl != null) {
-          var pnlEur = t.pnl / _eurusd;
-          var pnlCls = pnlEur >= 0 ? 'pnl-pos' : 'pnl-neg';
-          var pnlSign = pnlEur >= 0 ? '+' : '';
-          pnlStr = '<span class="' + pnlCls + '">' + pnlSign + pnlEur.toFixed(2) + ' \u20AC</span>';
-        }
-        var tVol = t.quantity || t.volume || 0;
-        var volDisp = tVol;
-        var symU = (t.symbol || '').toUpperCase();
-        var isIndex = /^(US30|US500|NAS100|UK100|DE40|SP500|DJ30)$/.test(symU);
-        if (tVol > 100 && !isIndex) {
-          volDisp = (tVol / 10000000).toFixed(2) + ' Lot';
-        } else {
-          volDisp = tVol + (isIndex ? ' ctr' : '');
-        }
-        html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + volDisp + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + (t.status || '\u2014') + '</td></tr>';
+      var trips = d.round_trips.slice().reverse();
+      var totalEur = 0, wins = 0, losses = 0;
+      for (var i = 0; i < trips.length; i++) {
+        var t = trips[i];
+        var dirBadge = t.direction === 'LONG' ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>';
+        var fmtPrice = function(p, sym) {
+          if (p == null) return '\u2014';
+          if (sym === 'US30') return p.toFixed(1);
+          if (String(sym).endsWith('JPY')) return p.toFixed(3);
+          return p.toFixed(5);
+        };
+        var pnlEur = t.pnl / _eurusd;
+        var pnlCls = pnlEur >= 0 ? 'pnl-pos' : 'pnl-neg';
+        var pnlSign = pnlEur >= 0 ? '+' : '';
+        totalEur += pnlEur;
+        if (pnlEur >= 0) wins++; else losses++;
+        html += '<tr><td>' + fmtTime(t.exit_time) + '</td><td>' + dirBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + fmtPrice(t.entry_price, t.symbol) + '</td><td>' + fmtPrice(t.exit_price, t.symbol) + '</td><td>' + (t.duration || '\u2014') + '</td><td><span class="' + pnlCls + '">' + pnlSign + pnlEur.toFixed(2) + ' \u20AC</span></td></tr>';
       }
       document.getElementById('trade-log-body').innerHTML = html;
 
-      // Gesamt-P&L
-      var totalEur = 0, wins = 0, losses = 0;
-      for (var j = 0; j < logs.length; j++) {
-        if (logs[j].pnl != null) {
-          var eur = logs[j].pnl / _eurusd;
-          totalEur += eur;
-          if (eur >= 0) wins++; else losses++;
-        }
-      }
       var totalEl = document.getElementById('trade-total-pnl');
       var tCls = totalEur >= 0 ? 'pnl-pos' : 'pnl-neg';
       var tSign = totalEur >= 0 ? '+' : '';
