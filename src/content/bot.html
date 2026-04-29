@@ -103,7 +103,7 @@ function safeFetch(path, opts) {
       <span class="status-dot" id="bot-dot"></span>
       <span id="bot-status">Lade...</span>
       <span class="badge" id="mode-badge" style="margin-left:8px"></span>
-      <span style="margin-left:8px;font-size:var(--text-xs);color:var(--c-text-dim)">v2.5.1</span>
+      <span style="margin-left:8px;font-size:var(--text-xs);color:var(--c-text-dim)">v2.6.0</span>
     </div>
     <span id="last-update" style="color:var(--c-text-dim);font-size:var(--text-xs)">—</span>
   </div>
@@ -241,6 +241,17 @@ function safeFetch(path, opts) {
   <div class="card" style="margin-bottom:var(--s-4)">
     <div class="card-title">Veto-Bedingungen (kein Trade wenn...)</div>
     <div id="briefing-vetos"><span class="no-data">—</span></div>
+  </div>
+
+  <!-- Trade Theses -->
+  <p class="section-title">Trade Theses</p>
+  <div class="card" style="margin-bottom:var(--s-4)">
+    <div class="card-title">Aktive Theses</div>
+    <div id="theses-active"><span class="no-data">Lade...</span></div>
+  </div>
+  <div class="card" style="margin-bottom:var(--s-4)">
+    <div class="card-title">Constraints (aus Self-Critique)</div>
+    <div id="constraints-box"><span class="no-data">Keine Constraints</span></div>
   </div>
 
   <!-- Executor -->
@@ -455,6 +466,76 @@ async function loadBotStatus() {
       document.getElementById('briefing-vetos').innerHTML = renderVetos(b.veto_conditions);
     }
 
+    // Trade Theses
+    if (d.trade_theses) {
+      var theses = d.trade_theses.theses || [];
+      var history = d.trade_theses.history || [];
+      var el = document.getElementById('theses-active');
+      if (theses.length === 0 && history.length === 0) {
+        el.innerHTML = '<span class="no-data">Keine aktiven Theses</span>';
+      } else {
+        var html = '';
+        // Active theses
+        for (var ti = 0; ti < theses.length; ti++) {
+          var th = theses[ti];
+          var statusColors = {pending:'#f59e0b',armed:'#3b82f6',filled:'#22c55e',closed:'#6b7280',expired:'#ef4444',invalidated:'#ef4444'};
+          var statusColor = statusColors[th.status] || '#6b7280';
+          var dirBadge = th.direction === 'long' ? '<span class="badge badge-buy">LONG</span>' : '<span class="badge badge-sell">SHORT</span>';
+          html += '<div style="padding:10px 0;border-bottom:1px solid var(--c-border)">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+          html += '<span>' + dirBadge + ' <b>' + (th.asset || '\u2014') + '</b></span>';
+          html += '<span class="badge" style="background:' + statusColor + '22;color:' + statusColor + ';border:1px solid ' + statusColor + '44">' + (th.status || '?').toUpperCase() + '</span>';
+          html += '</div>';
+          html += '<div style="font-size:var(--text-sm);color:var(--c-text-dim)">';
+          html += 'Conviction: <b>' + ((th.conviction || 0) * 100).toFixed(0) + '%</b> \u00B7 ';
+          html += 'Trigger: ' + (th.trigger_condition || '\u2014');
+          if (th.expires_at) html += ' \u00B7 L\u00E4uft ab: ' + fmtTime(th.expires_at);
+          html += '</div>';
+          if (th.reasoning) html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:4px;opacity:0.8">' + th.reasoning + '</div>';
+          html += '</div>';
+        }
+        // Recent history (last 5)
+        if (history.length > 0) {
+          html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--c-border)">';
+          html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:4px">Zuletzt geschlossen:</div>';
+          var recent = history.slice(-5).reverse();
+          for (var hi = 0; hi < recent.length; hi++) {
+            var h = recent[hi];
+            var hDir = h.direction === 'long' ? '<span class="badge badge-buy" style="font-size:0.7em">L</span>' : '<span class="badge badge-sell" style="font-size:0.7em">S</span>';
+            html += '<div style="font-size:var(--text-xs);padding:2px 0">' + hDir + ' ' + (h.asset || '?') + ' \u2014 ' + (h.status || '?') + (h.closed_reason ? ' (' + h.closed_reason + ')' : '') + '</div>';
+          }
+          html += '</div>';
+        }
+        el.innerHTML = html;
+      }
+    }
+
+    // Constraints
+    if (d.constraints && Object.keys(d.constraints).length > 0) {
+      var c = d.constraints;
+      var html = '';
+      if (c.blocked_assets && c.blocked_assets.length > 0) {
+        html += '<div style="margin-bottom:6px"><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Gesperrte Assets:</span> ';
+        html += c.blocked_assets.map(function(a){ return '<span class="asset-tag asset-avoid">' + a + '</span>'; }).join(' ');
+        html += '</div>';
+      }
+      if (c.blocked_hours_utc) {
+        html += '<div style="margin-bottom:6px"><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Gesperrte Stunden (UTC):</span> ';
+        for (var sym in c.blocked_hours_utc) {
+          html += '<span class="asset-tag">' + sym + ': ' + c.blocked_hours_utc[sym].join(',') + 'h</span> ';
+        }
+        html += '</div>';
+      }
+      html += '<div style="display:flex;gap:var(--s-4);flex-wrap:wrap;font-size:var(--text-xs);color:var(--c-text-dim)">';
+      if (c.min_conviction) html += '<div>Min Conviction: <b>' + (c.min_conviction * 100).toFixed(0) + '%</b></div>';
+      if (c.max_theses) html += '<div>Max Theses: <b>' + c.max_theses + '</b></div>';
+      if (c.min_mtf_alignment) html += '<div>Min MTF: <b>' + c.min_mtf_alignment + '/3</b></div>';
+      if (c.max_sl_atr_multiple) html += '<div>Max SL: <b>' + c.max_sl_atr_multiple + 'x ATR</b></div>';
+      html += '</div>';
+      if (c.generated_at) html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:4px;opacity:0.6">Generiert: ' + fmtTime(c.generated_at) + '</div>';
+      document.getElementById('constraints-box').innerHTML = html;
+    }
+
     if (d.executor) {
       var e = d.executor;
       document.getElementById('exec-last').textContent = e.last_scan ? fmtTime(e.last_scan) : '\u2014';
@@ -466,8 +547,22 @@ async function loadBotStatus() {
         for (var i = 0; i < e.candidates.length; i++) {
           var c = e.candidates[i];
           var sideBadge = c.side === 'buy' ? 'badge-buy' : 'badge-sell';
+          var qualColors = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+          var qualColor = qualColors[c.setup_quality] || '#6b7280';
           html += '<div style="padding:8px 0;border-bottom:1px solid var(--c-border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span><span class="badge ' + sideBadge + '">' + (c.side || '').toUpperCase() + '</span> <b>' + (c.symbol || '\u2014') + '</b></span><span style="font-size:var(--text-xs);color:var(--c-text-dim)">R:R ' + (c.rr || '\u2014') + '</span></div>';
-          html += '<div style="font-size:var(--text-sm);color:var(--c-text-dim)">Entry: <b>' + (c.entry || '\u2014') + '</b> &middot; SL: <b>' + (c.sl || '\u2014') + '</b> &middot; TP: <b>' + (c.tp || '\u2014') + '</b></div></div>';
+          html += '<div style="font-size:var(--text-sm);color:var(--c-text-dim)">Entry: <b>' + (c.entry || '\u2014') + '</b> \u00B7 SL: <b>' + (c.sl || '\u2014') + '</b> \u00B7 TP: <b>' + (c.tp || '\u2014') + '</b></div>';
+          // Extended info
+          html += '<div style="display:flex;gap:var(--s-3);flex-wrap:wrap;margin-top:4px;font-size:var(--text-xs);color:var(--c-text-dim)">';
+          if (c.setup_quality) html += '<span>Quality: <b style="color:' + qualColor + '">' + c.setup_quality + '</b></span>';
+          if (c.confidence != null) html += '<span>Conf: <b>' + (c.confidence * 100).toFixed(0) + '%</b></span>';
+          if (c.mtf_alignment != null) html += '<span>MTF: <b>' + c.mtf_alignment + '/3</b></span>';
+          if (c.adx_1d != null) html += '<span>ADX(1D): <b>' + c.adx_1d.toFixed(1) + '</b></span>';
+          if (c.cluster) html += '<span>Cluster: <b>' + c.cluster + '</b></span>';
+          if (c.session_weight != null && c.session_weight < 1.0) html += '<span style="color:#f59e0b">Session: ' + (c.session_weight * 100).toFixed(0) + '%</span>';
+          if (c.risk_pct != null) html += '<span>Risk: <b>' + c.risk_pct + '%</b></span>';
+          if (c.risk_eur != null) html += '<span>(' + c.risk_eur.toFixed(1) + ' EUR)</span>';
+          if (c.spread_pips != null) html += '<span>Spread: ' + c.spread_pips.toFixed(1) + 'p</span>';
+          html += '</div></div>';
         }
         detEl.innerHTML = html;
       } else {
