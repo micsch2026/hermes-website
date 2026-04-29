@@ -265,8 +265,8 @@ function safeFetch(path, opts) {
   <p class="section-title">Trade-Log</p>
   <div class="card">
     <table>
-      <thead><tr><th>Zeit</th><th>Aktion</th><th>Symbol</th><th>Volumen</th><th>Preis</th><th>Ergebnis</th><th>Δ Konto</th><th>Status</th></tr></thead>
-      <tbody id="trade-log-body"><tr><td colspan="8" class="no-data">Keine Trades</td></tr></tbody>
+      <thead><tr><th>Zeit</th><th>Aktion</th><th>Symbol</th><th>Volumen</th><th>Preis</th><th>Gewinn/Verlust</th><th>Status</th></tr></thead>
+      <tbody id="trade-log-body"><tr><td colspan="7" class="no-data">Keine Trades</td></tr></tbody>
     </table>
   </div>
 
@@ -461,15 +461,11 @@ async function loadBotStatus() {
           else priceStr = t.price.toFixed(5);
         }
         var pnlStr = '\u2014';
-        var eurStr = '\u2014';
         if (t.pnl != null) {
-          var pnlCls = t.pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
-          var pnlSign = t.pnl >= 0 ? '+' : '';
-          pnlStr = '<span class="' + pnlCls + '">' + pnlSign + t.pnl.toFixed(1) + ' ' + (t.pnl_currency || '') + '</span>';
           var pnlEur = t.pnl / _eurusd;
-          var eurCls = pnlEur >= 0 ? 'pnl-pos' : 'pnl-neg';
-          var eurSign = pnlEur >= 0 ? '+' : '';
-          eurStr = '<span class="' + eurCls + '">' + eurSign + pnlEur.toFixed(2) + ' \u20AC</span>';
+          var pnlCls = pnlEur >= 0 ? 'pnl-pos' : 'pnl-neg';
+          var pnlSign = pnlEur >= 0 ? '+' : '';
+          pnlStr = '<span class="' + pnlCls + '">' + pnlSign + pnlEur.toFixed(2) + ' \u20AC</span>';
         }
         var tVol = t.quantity || t.volume || 0;
         var volDisp = tVol;
@@ -480,7 +476,7 @@ async function loadBotStatus() {
         } else {
           volDisp = tVol + (isIndex ? ' ctr' : '');
         }
-        html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + volDisp + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + eurStr + '</td><td>' + (t.status || '\u2014') + '</td></tr>';
+        html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + volDisp + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + (t.status || '\u2014') + '</td></tr>';
       }
       document.getElementById('trade-log-body').innerHTML = html;
     }
