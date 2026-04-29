@@ -274,8 +274,12 @@ function safeFetch(path, opts) {
 function fmtTime(iso) {
   if (!iso) return '—';
   try {
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) && !/[Zz+\-]\d{2}:?\d{2}$/.test(iso)) iso += 'Z';
-    return new Date(iso).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+    if (typeof iso === 'number') iso = new Date(iso * 1000);
+    else {
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) && !/[Zz+\-]\d{2}:?\d{2}$/.test(iso)) iso += 'Z';
+      iso = new Date(iso);
+    }
+    return iso.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
   } catch(e) { return iso; }
 }
 function pnlClass(val) { return val >= 0 ? 'pnl-pos' : 'pnl-neg'; }
