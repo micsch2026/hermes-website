@@ -263,6 +263,11 @@ function safeFetch(path, opts) {
 
   <!-- Trade Log -->
   <p class="section-title">Trade-Log</p>
+  <div class="card" id="trade-summary" style="margin-bottom:var(--s-4);display:flex;gap:var(--s-6);align-items:center;padding:var(--s-3) var(--s-5)">
+    <div><span style="font-size:var(--text-xs);color:var(--c-text-dim)">GESAMT</span> <span id="trade-total-pnl" style="font-size:var(--text-xl);font-weight:700">—</span></div>
+    <div><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Trades</span> <span id="trade-total-count" style="font-weight:600">—</span></div>
+    <div><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Win/Loss</span> <span id="trade-total-wl" style="font-weight:600">—</span></div>
+  </div>
   <div class="card">
     <table>
       <thead><tr><th>Zeit</th><th>Aktion</th><th>Symbol</th><th>Volumen</th><th>Preis</th><th>Gewinn/Verlust</th><th>Status</th></tr></thead>
@@ -479,6 +484,22 @@ async function loadBotStatus() {
         html += '<tr' + rowStyle + '><td>' + fmtTime(t.timestamp) + '</td><td><span class="badge ' + badge + '">' + (t.action || '').toUpperCase() + '</span>' + testBadge + '</td><td><b>' + (t.symbol || '\u2014') + '</b></td><td>' + volDisp + '</td><td>' + priceStr + '</td><td>' + pnlStr + '</td><td>' + (t.status || '\u2014') + '</td></tr>';
       }
       document.getElementById('trade-log-body').innerHTML = html;
+
+      // Gesamt-P&L
+      var totalEur = 0, wins = 0, losses = 0;
+      for (var j = 0; j < logs.length; j++) {
+        if (logs[j].pnl != null) {
+          var eur = logs[j].pnl / _eurusd;
+          totalEur += eur;
+          if (eur >= 0) wins++; else losses++;
+        }
+      }
+      var totalEl = document.getElementById('trade-total-pnl');
+      var tCls = totalEur >= 0 ? 'pnl-pos' : 'pnl-neg';
+      var tSign = totalEur >= 0 ? '+' : '';
+      totalEl.innerHTML = '<span class="' + tCls + '">' + tSign + totalEur.toFixed(2) + ' \u20AC</span>';
+      document.getElementById('trade-total-count').textContent = (wins + losses) + ' abgeschlossen';
+      document.getElementById('trade-total-wl').textContent = wins + 'W / ' + losses + 'L';
     }
 
     if (d.cashflow) {
