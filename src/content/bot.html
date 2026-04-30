@@ -10,6 +10,7 @@
 <style>
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-6); }
   .grid-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
   .card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-5); }
   .card-title { font-weight: 600; font-size: var(--text-sm); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--s-3); display:flex; align-items:center; gap:var(--s-2); }
   .card-value { font-size: var(--text-2xl); font-weight: 700; }
@@ -195,7 +196,26 @@ function safeFetch(path, opts) {
       <div class="card-title">Timing</div>
       <div class="card-value" id="briefing-next">—</div>
       <div class="card-sub" id="briefing-next-reason">—</div>
+      <div class="card-sub" id="briefing-next-abs" style="margin-top:var(--s-1);color:var(--c-accent)">—</div>
       <div class="card-sub" id="briefing-valid-until" style="margin-top:var(--s-1)">—</div>
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="margin-bottom:var(--s-4)">
+    <div class="card">
+      <div class="card-title"><i data-lucide="activity" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Analysen heute</div>
+      <div class="card-value" id="strat-count">—</div>
+      <div class="card-sub" id="strat-last">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i data-lucide="clock" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Nächste Analyse</div>
+      <div class="card-value" id="strat-next-time">—</div>
+      <div class="card-sub" id="strat-next-in">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i data-lucide="wallet" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>KI-Kosten heute</div>
+      <div class="card-value" id="strat-cost">—</div>
+      <div class="card-sub" id="strat-cost-detail">—</div>
     </div>
   </div>
 
@@ -464,6 +484,33 @@ async function loadBotStatus() {
         document.getElementById('rule-trend').textContent = tr.trend_filter || '\u2014';
       }
       document.getElementById('briefing-vetos').innerHTML = renderVetos(b.veto_conditions);
+    }
+
+    // Strategist Stats (Analysen heute, nächste Analyse, Kosten)
+    if (d.strategist_stats) {
+      var s = d.strategist_stats;
+      // Analysen heute
+      document.getElementById('strat-count').textContent = s.analyses_today || 0;
+      if (s.last_analysis_at) {
+        document.getElementById('strat-last').textContent = 'Letzte: ' + fmtTime(s.last_analysis_at);
+      }
+      // Nächste Analyse (absolute Zeit in Berlin)
+      if (s.next_analysis_at) {
+        document.getElementById('strat-next-time').textContent = fmtTime(s.next_analysis_at);
+        // Also update the Timing card with absolute time
+        document.getElementById('briefing-next-abs').textContent = 'Nächste Analyse: ' + fmtTime(s.next_analysis_at);
+      }
+      if (s.next_analysis_in_hours != null) {
+        if (s.next_analysis_in_hours <= 0) {
+          document.getElementById('strat-next-in').textContent = 'Steht an!';
+          document.getElementById('strat-next-in').style.color = 'var(--c-accent)';
+        } else {
+          document.getElementById('strat-next-in').textContent = 'in ' + s.next_analysis_in_hours + 'h';
+        }
+      }
+      // Kosten
+      document.getElementById('strat-cost').textContent = '\u20AC' + (s.cost_today || 0).toFixed(3);
+      document.getElementById('strat-cost-detail').textContent = (s.analyses_today || 0) + ' \u00D7 \u20AC' + (s.cost_per_call || 0.012).toFixed(3) + '/Call';
     }
 
     // Trade Theses
