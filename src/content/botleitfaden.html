@@ -52,7 +52,8 @@
 │  16_strategist.py + 18_scheduler.py                 │
 │  ── Analysiert Makro, Regime, Asset-Fokus           │
 │  ── Liest: OHLCV (1H/4H/1D/1W), VIX, DXY, US10Y,   │
-│           Fear&Greed, Korrelationen, Self-Critique   │
+│           Fear&Greed, Korrelationen, Sentiment,      │
+│           Self-Critique                              │
 │  ── Schreibt briefing.json                          │
 │  ── Bestimmt next_check_in (0.5-24h adaptiv)        │
 └───────────────────────┬─────────────────────────────┘
@@ -341,6 +342,18 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
   <li>Beispiel: "UTC 16:00: 0% Win-Rate — vermeiden oder vorsichtiger"</li>
 </ul>
 
+<h3>Sentiment-Analyse (News Headlines)</h3>
+<ul>
+  <li>Holt Headlines aus <b>kostenlosen RSS-Feeds</b> (Yahoo Finance, ECB) — 0 EUR</li>
+  <li>Keyword-basiertes Scoring: bullish/bearish/neutral pro Symbol</li>
+  <li>~200+ Headlines pro Zyklus, 15+ Symbole abgedeckt</li>
+  <li>Cache: 2 Stunden (kein Re-Fetch bei jedem Strategist-Lauf)</li>
+  <li>100% fault-tolerant — bei Fehler: Bot läuft normal weiter</li>
+  <li>Integration: Sentiment wird dem Strategist als zusätzliche Datenquelle injiziert</li>
+  <li>Regel: Sentiment GEGEN Thesis → Conviction sinkt. Sentiment FÜR Thesis → Conviction steigt.</li>
+  <li>Technische Analyse hat IMMER Vorrang vor Sentiment</li>
+</ul>
+
 <hr>
 
 <h2>9. KOSTEN</h2>
@@ -380,6 +393,7 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 
 <h3>Code (src/)</h3>
 <pre><code>├── 01_scanner.py           ← 31 Symbole × 3 TFs, Indikatoren, Scores, Korrelationen
+├── news_sentiment.py       ← Headline-Sentiment (Yahoo Finance RSS, 0 EUR)
 ├── 02_kimi_caller.py       ← OpenRouter API Caller
 ├── 03_analyse_parser.py    ← Kimi Response Parser (Edge-Faktoren A/B/C)
 ├── 04_risk_engine.py       ← Risiko-Modul (Margin-basiert, dynamisch)
@@ -415,6 +429,7 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 ├── rejected_setups.jsonl   ← Abgelehnte Kandidaten
 ├── risk_state.json         ← Equity, Trades Today, Daily PnL Cache
 ├── market_data.json        ← VIX, DXY, F&G, Regime
+├── news_sentiment.json     ← Headline-Sentiment pro Symbol
 ├── spread_history.json     ← Rolling Spread-Daten
 ├── executor_candidates.json ← Letzte Kandidaten
 ├── briefing_archive/       ← Archiv aller Briefings
@@ -451,7 +466,7 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 <ul>
   <li>☐ Walk-Forward-Optimierung</li>
   <li>☐ COT-Daten (Commitment of Traders)</li>
-  <li>☐ Sentiment-Analyse (News Headlines)</li>
+  <li>✅ Sentiment-Analyse (News Headlines, Yahoo Finance RSS, 0 EUR)</li>
   <li>☐ Demo → Live Wechsel (nach 100+ profitablen Trades)</li>
 </ul>
 
