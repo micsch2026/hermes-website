@@ -1,4 +1,4 @@
-<!--TITLE:Trading Leitfaden — Hermes-->
+<!--TITLE:Bot Leitfaden — Hermes-->
 <!--HEAD-->
 <style>
   .guide { max-width: 900px; margin: 0 auto; line-height: 1.8; }
@@ -16,6 +16,7 @@
   .guide li { margin-bottom: var(--s-1); }
   .guide hr { border: none; border-top: 1px solid var(--c-border); margin: var(--s-6) 0; }
   .guide .arch-box { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); font-family: monospace; font-size: var(--text-sm); white-space: pre; overflow-x: auto; }
+  .guide .warn { background: var(--c-surface); border-left: 3px solid var(--c-warn); padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
 </style>
 <!--/HEAD-->
 <!--BODY-->
@@ -24,10 +25,10 @@
 
 <div class="page-header">
   <h1 class="page-title">Trading Bot — Leitfaden</h1>
-  <p class="page-subtitle">v2.5.1 — Autonomes Swing-Trading mit KI-Strategist und regelbasiertem Executor</p>
+  <p class="page-subtitle">v2.5.2 — Autonomes Swing-Trading mit KI-Strategist, regelbasiertem Executor und Safety-Nets</p>
 </div>
 
-<blockquote>Zwei-Schicht-Architektur: KI entscheidet WAS, Regeln entscheiden WANN und WIE.</blockquote>
+<blockquote>Zwei-Schicht-Architektur: KI entscheidet WAS, Regeln entscheiden WANN und WIE. Safety-first: Atomic SL, Margin-Caps, Emergency-Stop, Watchdog.</blockquote>
 
 <hr>
 
@@ -36,9 +37,9 @@
 <p><b>Ziel:</b> Autonomer Swing-Trading Bot auf Pepperstone Demo → Live</p>
 <p><b>Broker:</b> Pepperstone GmbH (BaFin, Düsseldorf) — Abgeltungssteuer automatisch</p>
 <p><b>API:</b> cTrader Open API (gRPC/Protobuf)</p>
-<p><b>Konto:</b> Demo #47109084, 504 EUR, 1:30 Hebel</p>
+<p><b>Konto:</b> Demo #47109084, ~504 EUR, 1:30 Hebel</p>
 <p><b>KI:</b> DeepSeek-R1-0528 via OpenRouter (~0.012 EUR/Call, ~10 EUR/Monat)</p>
-<p><b>Dashboard:</b> hermes.nexusfortis.org/bot</p>
+<p><b>Dashboard:</b> <a href="/bot">hermes.nexusfortis.org/bot</a></p>
 
 <hr>
 
@@ -63,16 +64,18 @@
 │  ── Liest briefing.json + Live-Daten                │
 │  ── MTF-Gating: 1D→4H→1H (Top-Down)                │
 │  ── Spread-Check, Session-Filter, News-Blackout     │
+│  ── M15 Entry-Refinement (optional, 10 Gates)       │
 │  ── Baut Trade-Kandidaten → führt aus               │
-│  ── Läuft alle 60 Min (15 Min bei Pending Orders)   │
+│  ── Läuft alle 60 Min (15 Min bei M15 aktiv)        │
 └───────────────────────┬─────────────────────────────┘
                         │ Order
                         ▼
 ┌─────────────────────────────────────────────────────┐
 │  cTrader Open API → Pepperstone                      │
-│  ── Market Orders mit SL/TP                          │
-│  ── Trailing Stop (ATR-basiert)                      │
-│  ── Position Monitor (Snapshot Daemon)               │
+│  ── Atomic SL/TP via relativeStopLoss               │
+│  ── Trailing Stop (ATR-basiert, Snapshot Daemon)    │
+│  ── Position Monitor (06_position_monitor.py)       │
+│  ── Watchdog (Dead-Man-Switch, 60s)                 │
 └─────────────────────────────────────────────────────┘</div>
 
 <h3>Services (systemd, auto-restart, boot-persistent)</h3>
@@ -80,9 +83,10 @@
   <thead><tr><th>Service</th><th>Script</th><th>Intervall</th><th>Aufgabe</th></tr></thead>
   <tbody>
     <tr><td>hermes-strategist</td><td>18_scheduler.py</td><td>adaptiv (0.5-24h)</td><td>Triggert Strategist bei next_check_in</td></tr>
-    <tr><td>hermes-executor</td><td>19_executor_daemon.py</td><td>60 Min (15 bei Pending)</td><td>Scanned MTF-Setups, führt Orders aus</td></tr>
+    <tr><td>hermes-executor</td><td>19_executor_daemon.py</td><td>60 Min (15 bei M15)</td><td>Scanned MTF-Setups, führt Orders aus</td></tr>
     <tr><td>ctrader-stream</td><td>ctrader_stream.py</td><td>Live (5s Updates)</td><td>Bid/Ask Streaming, Spot-Daten</td></tr>
     <tr><td>hermes-snapshot</td><td>20_snapshot_daemon.py</td><td>5 Min</td><td>Trailing Stops, Performance, Positionen</td></tr>
+    <tr><td>hermes-watchdog</td><td>20_watchdog.py</td><td>60s</td><td>Dead-Man-Switch: Notfall-Close wenn Daemon hängt</td></tr>
   </tbody>
 </table>
 
@@ -90,8 +94,8 @@
 <table>
   <thead><tr><th>Cron</th><th>Script</th><th>Aufgabe</th></tr></thead>
   <tbody>
-    <tr><td>*/5 Min</td><td>build_bot_status.py</td><td>Dashboard JSON + MC-Analyse (30 Min Cache)</td></tr>
-    <tr><td>*/2 Std</td><td>01_scanner.py</td><td>25 Symbole × 4 TFs, Indikatoren, Asset-Scores, Korrelationen</td></tr>
+    <tr><td>*/5 Min</td><td>build_bot_status.py</td><td>Dashboard JSON (merge aller Datenquellen)</td></tr>
+    <tr><td>*/2 Std</td><td>01_scanner.py</td><td>31 Symbole × 3 TFs, Indikatoren, Asset-Scores, Korrelationen</td></tr>
   </tbody>
 </table>
 
@@ -105,7 +109,7 @@
 <table>
   <thead><tr><th>Datenquelle</th><th>Inhalt</th><th>Update</th></tr></thead>
   <tbody>
-    <tr><td>scan_summary.json</td><td>25 Symbole, OHLCV 1H/4H/1D/1W, Indikatoren, Asset-Scores</td><td>alle 2h</td></tr>
+    <tr><td>scan_summary.json</td><td>31 Symbole, OHLCV 1H/4H/1D, Indikatoren, Asset-Scores</td><td>alle 2h</td></tr>
     <tr><td>market_data.json</td><td>VIX, DXY, US10Y, S&P500, NASDAQ, Fear&Greed, Regime</td><td>stündlich</td></tr>
     <tr><td>events_calendar.json</td><td>FOMC, NFP, CPI, OPEX, Earnings</td><td>täglich</td></tr>
     <tr><td>self_critique.json</td><td>Win-Rate, Profit-Faktor, Lessons, per-Asset Performance</td><td>pro Trade</td></tr>
@@ -120,9 +124,9 @@
   <li><b>preferred_assets</b> mit Rationale, Direction-Bias, Size-Multiplier</li>
   <li><b>allowed_directions</b> (long, short, both)</li>
   <li><b>max_positions</b>, <b>max_risk_per_trade_pct</b>, <b>max_risk_per_trade_eur</b></li>
-  <li><b>technical_rules</b>: min_rr, sl_max_atr_multiple</li>
+  <li><b>technical_rules</b>: min_rr, sl_max_atr_multiple (1.2×)</li>
   <li><b>veto_conditions</b>: equity_below, daily_pnl_below, news_impact</li>
-  <li><b>trading_hours</b>: pro Asset mit Session-Blackouts</li>
+  <li><b>m15_refine[]</b>: Symbole für M15 Entry-Refinement (max 3)</li>
   <li><b>next_check_in</b>: Stunden bis zur nächsten Analyse (0.5-24h)</li>
 </ul>
 
@@ -156,6 +160,20 @@
   <li>RSI > 75 (Long) oder < 25 (Short) = SKIP (extrem)</li>
 </ul>
 
+<h3>M15 Entry-Refinement (optional)</h3>
+<p>Wenn der Strategist Symbole in <code>m15_refine[]</code> listet, holt der Executor M15-Bars und prüft 10 zusätzliche Gates:</p>
+<ul>
+  <li>HTF-Setup (1D/4H/1H) muss bereits validiert sein</li>
+  <li>Session-Gate: London 07-11 UTC oder NY 12-16 UTC</li>
+  <li>ATR(14,M15) / Price > Floor (FX: 0.05%, Indizes: 0.15%)</li>
+  <li>Spread < 20% vom geplanten SL</li>
+  <li>Keine High-Impact-News in nächsten 30 Min</li>
+  <li>SL-Abstand ≥ max(1.5 × ATR_M15, 8 pips FX / 15 pips Indizes)</li>
+  <li>Tages-Trade-Counter < 3, Tages-PnL > -2R</li>
+  <li>M15 Bias nicht gegen 1H Bias</li>
+</ul>
+<p><b>Regeln:</b> M15 ist KEIN Standalone-TF. Gold (XAUUSD) NIE in m15_refine. Max 3 Symbole. TTL 2-6h. Executor-Daemon läuft dann im 15-Min-Intervall.</p>
+
 <h3>Setup-Qualität (dynamisch)</h3>
 <table>
   <thead><tr><th>Score</th><th>Setup</th><th>Risiko</th><th>Kriterien</th></tr></thead>
@@ -172,7 +190,8 @@
   <li>Liest live Bid/Ask aus ctrader_stream (spots_all.json)</li>
   <li>Rolling History (letzte 100 Reads pro Symbol)</li>
   <li><b>Rejectet Trades wenn Spread > 3× Durchschnitt</b></li>
-  <li>Fallback-Limits: Majors 3 Pips, JPY/GBP 5, Gold 50, Crypto 500</li>
+  <li>Hard Caps: Majors 2.5 Pips, JPY/GBP 4.0, Gold 30, Indizes 6.0</li>
+  <li>Bei High-Impact-News (<60min): Cap auf 2.0 Pips</li>
 </ul>
 
 <h3>Session-Filter</h3>
@@ -199,37 +218,73 @@
 
 <h2>5. RISIKO-MANAGEMENT</h2>
 
-<h3>Safety Nets (v2.5.1)</h3>
+<h3>Safety Nets (v2.5.2)</h3>
 <table>
   <thead><tr><th>Regel</th><th>Schwelle</th><th>Aktion</th></tr></thead>
   <tbody>
     <tr><td>Tages-Loss-Limit</td><td>-3% Equity (~15 EUR)</td><td>Trading-Stop für den Tag</td></tr>
     <tr><td>Cooldown</td><td>3 Verluste in Folge</td><td>Trading pausiert bis Strategist-Neubewertung</td></tr>
-    <tr><td>Emergency Stop</td><td>Equity < 450 EUR</td><td>Alle Trading gestoppt</td></tr>
+    <tr><td>Emergency Stop</td><td>Equity < 10% von Reference-Balance</td><td>Alle Trading gestoppt (dynamisch)</td></tr>
     <tr><td>Weekend-Block</td><td>Fr 21:00 - So 22:00 UTC</td><td>Keine neuen Orders</td></tr>
     <tr><td>News-Blackout</td><td>FOMC/NFP: 60min vorher</td><td>Kein Entry während High-Impact Events</td></tr>
+    <tr><td>Watchdog</td><td>Daemon >60s nicht reagiert</td><td>Emergency Close aller Positionen</td></tr>
   </tbody>
 </table>
 
-<h3>Position-Sizing</h3>
+<h3>Position-Sizing (dynamisch)</h3>
 <ul>
   <li><b>Basis:</b> Risk% × Equity / (SL-Pips × Pip-Value)</li>
-  <li><b>Asset-Caps:</b> GBP/JPY/Crypto/Gold max 3%, EUR/USD-Majors max 5%</li>
-  <li><b>Margin-Limit:</b> Max 30% Equity als Margin pro Trade</li>
-  <li><b>Slippage-Buffer:</b> SL wird um min. 1.5 Pips erweitert</li>
-  <li><b>Session-Weight:</b> Suboptimale Zeiten → 50% Positionsreduktion</li>
+  <li><b>Setup-Qualität bestimmt Risiko:</b> A=5%, B=3%, C=1.5%, D=SKIP</li>
+  <li><b>Confidence < 0.6:</b> Risiko × 0.7 (-30%)</li>
+  <li><b>Margin-Limit:</b> Max 30% Equity als Margin (nicht Notional-basiert)</li>
+  <li><b>Volume:</b> <code>math.ceil(risk_micro_lots) × 100000</code> (kein Truncating)</li>
+  <li><b>Minimum:</b> Volume < 100000 (0.01 Lot) → Trade wird übersprungen</li>
 </ul>
+
+<h3>Atomic SL (relativeStopLoss)</h3>
+<p>SL/TP wird <b>atomar</b> mit der Market-Order gesetzt — kein Race-Condition-Fenster:</p>
+<pre><code>req.relativeStopLoss = sl_points   # Distanz in Price-Points
+req.relativeTakeProfit = tp_points
+req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
+<p><b>Pitfall:</b> <code>relativeStopLoss</code> nutzt <code>pointSize</code> (min. Preisbewegung), NICHT Pips. EURUSD: point=0.00001, 14 Pips = 140 Points. NAS100: point=0.1, 10 Points = 1.0 Preis.</p>
 
 <h3>Trailing Stop (ATR-basiert)</h3>
 <ul>
   <li>Break-Even: Bei 30% des TP-Abstands → SL auf Entry</li>
   <li>Trailing: SL folgt bei 0.75× ATR(14) vom aktuellen Preis</li>
   <li>Nie unter Entry (kein negativer Trail)</li>
+  <li>Verwaltet vom Snapshot Daemon (alle 5 Min)</li>
+</ul>
+
+<h3>Dynamischer Emergency Stop</h3>
+<ul>
+  <li>Referenz-Balance wird bei Ein-/Auszahlungen angepasst</li>
+  <li>Emergency-Schwelle = 10% von Referenz-Balance (nicht hartkodiert)</li>
+  <li>Cashflow-Validierung prüft Margin-Auswirkung VOR Auszahlung</li>
 </ul>
 
 <hr>
 
-<h2>6. PHASEN-SYSTEM</h2>
+<h2>6. CASHFLOW-PROTOKOLL</h2>
+
+<p>Bot validiert Ein-/Auszahlungen <b>bevor</b> der User sie bei Pepperstone ausführt:</p>
+
+<pre><code>[1] User → POST /api/cashflow {type: "withdrawal", amount: 200}
+[2] Bot prüft: offene Positionen, Margin-Auswirkung, Emergency-Stop
+[3] Status: pending → ready/rejected (Dashboard zeigt Details)
+[4] User führt Cashflow bei Pepperstone aus
+[5] User klickt "Bestätigen" → POST /api/cashflow/confirm
+[6] Bot aktualisiert Referenz-Balance, loggt in balance_history.jsonl</code></pre>
+
+<ul>
+  <li>Auszahlung: Rest-Equity muss > 5× Emergency-Stop sein</li>
+  <li>Auszahlung mit offenen Positionen: Margin_pct_after < 50%</li>
+  <li>Einzahlungen: immer approved (kein Risiko)</li>
+</ul>
+
+<hr>
+
+<h2>7. PHASEN-SYSTEM</h2>
 
 <p>Der Bot startet konservativ und wird mit steigender Erfahrung aggressiver:</p>
 
@@ -247,7 +302,7 @@
 
 <hr>
 
-<h2>7. PERFORMANCE-TRACKING</h2>
+<h2>8. PERFORMANCE-TRACKING</h2>
 
 <h3>Kennzahlen</h3>
 <table>
@@ -265,7 +320,18 @@
 <ul>
   <li>10.000 Simulationen auf echten Trade-PnLs</li>
   <li>Berechnet: Wahrscheinlichkeit Gewinn, Median Equity, 95% VaR, Max Drawdown</li>
-  <li>Wird automatisch alle 30 Min aktualisiert</li>
+  <li>Stress-Test: 2× Kosten, Worst-Case Sequenz</li>
+  <li>Benchmark gegen Buy & Hold derselben Assets</li>
+  <li>Erst ab 10+ Roundtrips aussagekräftig</li>
+</ul>
+
+<h3>Trade Lifecycle Tracking</h3>
+<p>Jeder Trade wird vollständig dokumentiert:</p>
+<ul>
+  <li><b>trade_log.jsonl:</b> Entry + Exit mit PnL gross/net, Swap, Kommission, Slippage</li>
+  <li><b>exit_log.jsonl:</b> Geschlossene Positionen mit Hold-Time, Close-Reason, Snapshot</li>
+  <li><b>rejected_setups.jsonl:</b> Abgelehnte Kandidaten mit Symbol, Stage, Reason</li>
+  <li><b>briefing_archive/:</b> Jedes Strategist-Briefing archiviert</li>
 </ul>
 
 <h3>Self-Critique</h3>
@@ -277,12 +343,13 @@
 
 <hr>
 
-<h2>8. KOSTEN</h2>
+<h2>9. KOSTEN</h2>
 
 <table>
   <thead><tr><th>Posten</th><th>Kosten</th><th>Tracking</th></tr></thead>
   <tbody>
-    <tr><td>DeepSeek-R1-0528 (Bot)</td><td>~0.012 EUR/Call, ~10 EUR/Monat</td><td>kimicalls.log</td></tr>
+    <tr><td>DeepSeek-R1-0528 (Strategist)</td><td>~0.012 EUR/Call, ~10 EUR/Monat</td><td>kimicalls.log</td></tr>
+    <tr><td>Executor + Scanner</td><td>0 EUR (regelbasiert)</td><td>—</td></tr>
     <tr><td>Spread (pro Trade)</td><td>0.1-0.5 Pips</td><td>spread_history.json</td></tr>
     <tr><td>Swap (Overnight)</td><td>-4 bis +2 EUR/Lot</td><td>cTrader</td></tr>
     <tr><td>Steuer (Pepperstone)</td><td>26.375% auf Gewinne</td><td>automatisch</td></tr>
@@ -291,7 +358,7 @@
 
 <hr>
 
-<h2>9. SYMBOLE (25)</h2>
+<h2>10. SYMBOLE (31)</h2>
 
 <table>
   <thead><tr><th>Klasse</th><th>Symbole</th><th>Pip-Size</th><th>Risk-Cap</th></tr></thead>
@@ -305,39 +372,52 @@
   </tbody>
 </table>
 
+<p><b>Hinweis:</b> Kein DE40/DAX auf Pepperstone Demo. Gold (XAUUSD) NIE in m15_refine (Spread zu groß).</p>
+
 <hr>
 
-<h2>10. DATEIEN</h2>
+<h2>11. DATEIEN</h2>
 
 <h3>Code (src/)</h3>
-<pre><code>├── 01_scanner.py           ← 25 Symbole × 4 TFs, Indikatoren, Scores, Korrelationen
+<pre><code>├── 01_scanner.py           ← 31 Symbole × 3 TFs, Indikatoren, Scores, Korrelationen
+├── 02_kimi_caller.py       ← OpenRouter API Caller
+├── 03_analyse_parser.py    ← Kimi Response Parser (Edge-Faktoren A/B/C)
+├── 04_risk_engine.py       ← Risiko-Modul (Margin-basiert, dynamisch)
+├── 05_order_bridge.py      ← cTrader Order-Execution (Atomic SL)
+├── 06_position_monitor.py  ← Position-Tracking, Exit-Detection, FIFO PnL
 ├── 16_strategist.py        ← KI-Strategist (DeepSeek-R1-0528)
-├── 17_executor.py          ← Regelbasiert: MTF-Gating, Spread, Session, Veto
+├── 17_executor.py          ← Regelbasiert: MTF-Gating, Spread, Session, Veto, M15
 ├── 18_scheduler.py         ← Scheduler für Strategist (respektiert next_check_in)
-├── 19_executor_daemon.py   ← Executor Daemon (60 Min Zyklus)
+├── 19_executor_daemon.py   ← Executor Daemon (60/15 Min Zyklus)
 ├── 20_snapshot_daemon.py   ← Snapshot + Trailing + Performance (5 Min)
+├── 20_watchdog.py          ← Dead-Man-Switch (60s Check)
+├── 21_m15_fetcher.py       ← On-demand M15 Bar Fetcher
 ├── kimi_caller.py          ← OpenRouter API (DeepSeek-R1-0528)
 ├── indicators.py           ← SMA, EMA, RSI, ATR, ADX, MACD, ROC
-├── asset_config.py         ← 25 Symbole, Pip-Config, Cluster, Sessions
+├── asset_config.py         ← 31 Symbole, Pip-Config, Cluster, Sessions
 ├── performance_tracker.py  ← TWR, Sharpe, Max DD, Profit-Faktor
 ├── self_critique.py        ← Trade-Analyse, Lessons, Roundtrip-Pairing
 ├── review_phase.py         ← Phase 1→2→3 Management
 ├── news_blackout.py        ← FOMC/NFP/CPI Blackout-Fenster
-├── build_bot_status.py     ← Dashboard JSON Generator
-├── ctrader_stream.py       ← cTrader Live Stream
-├── ctrader_api.py          ← cTrader API Helper
-└── indicators.py           ← Reine Python-Indikatoren</code></pre>
+├── build_bot_status.py     ← Dashboard JSON Generator (merge aller Quellen)
+├── ctrader_stream.py       ← cTrader Live Stream (systemd)
+├── ctrader_api.py          ← cTrader API Helper (positions, account, amend SL/TP)
+├── ctrader_snapshot.py     ← Account/Position Snapshot
+└── backtest_mc.py          ← Monte Carlo + Benchmark auf echten Trades</code></pre>
 
 <h3>Daten (data/)</h3>
 <pre><code>├── briefing.json           ← Aktuelles Strategist-Briefing
 ├── performance.json        ← Performance-Metriken
 ├── self_critique.json      ← Lessons + Patterns
 ├── review_phase.json       ← Aktuelle Phase
-├── trade_log.jsonl         ← Alle Trades
-├── risk_state.json         ← Equity, Trades Today
+├── trade_log.jsonl         ← Alle Trades (ENTRY + CLOSED)
+├── exit_log.jsonl          ← Geschlossene Positionen (PnL, Hold-Time)
+├── rejected_setups.jsonl   ← Abgelehnte Kandidaten
+├── risk_state.json         ← Equity, Trades Today, Daily PnL Cache
 ├── market_data.json        ← VIX, DXY, F&G, Regime
 ├── spread_history.json     ← Rolling Spread-Daten
 ├── executor_candidates.json ← Letzte Kandidaten
+├── briefing_archive/       ← Archiv aller Briefings
 ├── live/
 │   ├── scan_summary.json   ← Scanner-Ergebnis
 │   ├── asset_scores.json   ← Gerankte Shortlist
@@ -347,23 +427,28 @@
 
 <hr>
 
-<h2>11. STATUS & ROADMAP</h2>
+<h2>12. STATUS & ROADMAP</h2>
 
-<h3>Aktuell (v2.5.1)</h3>
+<h3>Aktuell (v2.5.2)</h3>
 <ul>
   <li>✅ Zwei-Schicht-Architektur (Strategist + Executor)</li>
   <li>✅ MTF-Gating (1D→4H→1H)</li>
-  <li>✅ Spread-Monitoring</li>
-  <li>✅ Tages-Loss-Limit + Cooldown + Slippage-Modell</li>
+  <li>✅ M15 Entry-Refinement (10 Gates, optional)</li>
+  <li>✅ Atomic SL via relativeStopLoss</li>
+  <li>✅ Spread-Monitoring mit Hard-Caps + News-Aware Filter</li>
+  <li>✅ Margin-basiertes Exposure (30% Cap)</li>
+  <li>✅ Dynamischer Emergency Stop (10% von Reference-Balance)</li>
+  <li>✅ Cashflow-Protokoll (Validierung vor Auszahlung)</li>
+  <li>✅ Watchdog (Dead-Man-Switch)</li>
+  <li>✅ Trade Lifecycle Tracking (Entry → Exit → Review)</li>
+  <li>✅ Monte Carlo + Benchmark auf echten Trades</li>
   <li>✅ Phase-System (konservativ → aggressiv)</li>
   <li>✅ Self-Critique + Performance-Tracking</li>
-  <li>✅ Makro-Daten (DXY, US10Y, VIX, F&G)</li>
-  <li>✅ Rolling Korrelationen</li>
+  <li>✅ Idempotenz (keine doppelten Orders)</li>
 </ul>
 
 <h3>Offen</h3>
 <ul>
-  <li>☐ Backtesting-Engine (2 Jahre historische Daten)</li>
   <li>☐ Walk-Forward-Optimierung</li>
   <li>☐ COT-Daten (Commitment of Traders)</li>
   <li>☐ Sentiment-Analyse (News Headlines)</li>
@@ -372,7 +457,7 @@
 
 <hr>
 
-<p><i>Letzte Aktualisierung: 2026-04-28 — v2.5.1</i></p>
+<p><i>Letzte Aktualisierung: 2026-04-30 — v2.5.2</i></p>
 
 </div>
 
