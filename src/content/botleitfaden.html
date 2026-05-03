@@ -17,6 +17,7 @@
   .guide hr { border: none; border-top: 1px solid var(--c-border); margin: var(--s-6) 0; }
   .guide .arch-box { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); font-family: monospace; font-size: var(--text-sm); white-space: pre; overflow-x: auto; }
   .guide .warn { background: var(--c-surface); border-left: 3px solid var(--c-warn); padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
+  .guide .success { background: var(--c-surface); border-left: 3px solid #4caf50; padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
 </style>
 <!--/HEAD-->
 <!--BODY-->
@@ -25,10 +26,10 @@
 
 <div class="page-header">
   <h1 class="page-title">Trading Bot — Leitfaden</h1>
-  <p class="page-subtitle">v2.5.2 — Autonomes Swing-Trading mit KI-Strategist, regelbasiertem Executor und Safety-Nets</p>
+  <p class="page-subtitle">v2.6.0 — Unified Pipeline: KI-Strategist + Reflector + Kelly-Sizing + Institutionelle Guards</p>
 </div>
 
-<blockquote>Zwei-Schicht-Architektur: KI entscheidet WAS, Regeln entscheiden WANN und WIE. Safety-first: Atomic SL, Margin-Caps, Emergency-Stop, Watchdog.</blockquote>
+<blockquote>Unified Pipeline: Scanner und Strategist erzeugen strukturierte Thesen. Der Reflector prüft Qualität. Kelly bestimmt die Größe. Institutionelle Guards blockieren vor dem Trade. Safety-first: Atomic SL, Margin-Caps, Emergency-Stop, Watchdog.</blockquote>
 
 <hr>
 
@@ -39,52 +40,71 @@
 <p><b>API:</b> cTrader Open API (gRPC/Protobuf)</p>
 <p><b>Konto:</b> Demo #47109084, ~504 EUR, 1:30 Hebel</p>
 <p><b>KI:</b> DeepSeek-R1-0528 via OpenRouter (~0.012 EUR/Call, ~10 EUR/Monat)</p>
+<p><b>Review:</b> Kimi-K2.6 via OpenRouter (~0.17 EUR/Refresh)</p>
 <p><b>Dashboard:</b> <a href="/bot">hermes.nexusfortis.org/bot</a></p>
 
 <hr>
 
-<h2>2. ARCHITEKTUR</h2>
+<h2>2. ARCHITEKTUR — UNIFIED PIPELINE</h2>
 
-<p>Der Bot besteht aus zwei unabhängigen Schichten, die als separate systemd-Services laufen:</p>
+<p>Der Bot besteht aus einer <b>Unified Pipeline</b> mit strukturierten Thesen als zentralem Datentyp:</p>
 
-<div class="arch-box">┌─────────────────────────────────────────────────────┐
-│  STRATEGIST (DeepSeek-R1-0528, ~0.012 EUR/Call)     │
-│  16_strategist.py + 18_scheduler.py                 │
-│  ── Analysiert Makro, Regime, Asset-Fokus           │
-│  ── Liest: OHLCV (1H/4H/1D/1W), VIX, DXY, US10Y,   │
-│           Fear&Greed, Korrelationen, Sentiment,      │
-│           Self-Critique                              │
-│  ── Schreibt briefing.json                          │
-│  ── Bestimmt next_check_in (0.5-24h adaptiv)        │
-└───────────────────────┬─────────────────────────────┘
-                        │ briefing.json
+<div class="arch-box">┌─────────────────────────────────────────────────────────────┐
+│  SCANNER (regelbasiert, 0 EUR)                              │
+│  01_scanner.py / 17_executor.py                             │
+│  ── 31 Symbole × 3 TFs, Indikatoren, Asset-Scores           │
+│  ── Erzeugt System-Thesen (source="system", low conviction)  │
+│  ── Direkt → trade_theses.json (pending → armed)            │
+└───────────────────────┬─────────────────────────────────────┘
+                        │ trade_theses.json
                         ▼
-┌─────────────────────────────────────────────────────┐
-│  EXECUTOR (regelbasiert, <100ms, 0 EUR)             │
-│  17_executor.py + 19_executor_daemon.py             │
-│  ── Liest briefing.json + Live-Daten                │
-│  ── MTF-Gating: 1D→4H→1H (Top-Down)                │
-│  ── Spread-Check, Session-Filter, News-Blackout     │
-│  ── M15 Entry-Refinement (optional, 10 Gates)       │
-│  ── Baut Trade-Kandidaten → führt aus               │
-│  ── Läuft alle 60 Min (15 Min bei M15 aktiv)        │
-└───────────────────────┬─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  STRATEGIST (DeepSeek-R1-0528, ~0.012 EUR/Call)             │
+│  16_strategist.py + 18_scheduler.py                         │
+│  ── Analysiert Makro, Regime, Asset-Fokus, COT              │
+│  ── Liest: OHLCV, VIX, DXY, US10Y, Fear&Greed, Sentiment   │
+│  ── Erzeugt Strategist-Thesen (source="strategist")          │
+│  ── Schreibt briefing.json + Thesen → trade_theses.json      │
+│  ── Bestimmt next_check_in (0.5-24h adaptiv)                │
+└───────────────────────┬─────────────────────────────────────┘
+                        │ trade_theses.json (pending)
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│  REFLECTOR (DeepSeek-R1-0528, Qualitätsprüfung)             │
+│  22_reflector.py                                            │
+│  ── Prüft jede These: Trigger messbar? SL logisch?          │
+│  ── COT-Consistency: Stimmt Richtung mit Smart Money?       │
+│  ── Verdict: approved / revised / rejected                  │
+│  ── Loggt Entscheidung → Feedback-Loop                     │
+│  ── Auto-Kalibrierung bei False-Negative-Rate > 20%         │
+└───────────────────────┬─────────────────────────────────────┘
+                        │ trade_theses.json (armed)
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│  EXECUTOR DAEMON (regelbasiert, <100ms, 0 EUR)              │
+│  19_executor_daemon.py + 21_trigger_parser.py               │
+│  ── Parsed Trigger-Bedingung (Preis über/unter X.XXXX)      │
+│  ── Prüft Live-Preis gegen Trigger → Feuer?                 │
+│  ── Kelly-Sizing: Quarter-Kelly + VIX-Scaling + Conviction  │
+│  ── Institutionelle Guards: RoR, Korrelation, VIX-Kill      │
+│  ── Führt via Order Bridge aus → cTrader API               │
+└───────────────────────┬─────────────────────────────────────┘
                         │ Order
                         ▼
-┌─────────────────────────────────────────────────────┐
-│  cTrader Open API → Pepperstone                      │
-│  ── Atomic SL/TP via relativeStopLoss               │
-│  ── Trailing Stop (ATR-basiert, Snapshot Daemon)    │
-│  ── Position Monitor (06_position_monitor.py)       │
-│  ── Watchdog (Dead-Man-Switch, 60s)                 │
-└─────────────────────────────────────────────────────┘</div>
+┌─────────────────────────────────────────────────────────────┐
+│  cTrader Open API → Pepperstone                              │
+│  ── Atomic SL/TP via relativeStopLoss                       │
+│  ── Trailing Stop (ATR-basiert, Snapshot Daemon)            │
+│  ── Position Monitor (06_position_monitor.py)               │
+│  ── Watchdog (Dead-Man-Switch, 60s)                         │
+└─────────────────────────────────────────────────────────────┘</div>
 
 <h3>Services (systemd, auto-restart, boot-persistent)</h3>
 <table>
   <thead><tr><th>Service</th><th>Script</th><th>Intervall</th><th>Aufgabe</th></tr></thead>
   <tbody>
     <tr><td>hermes-strategist</td><td>18_scheduler.py</td><td>adaptiv (0.5-24h)</td><td>Triggert Strategist bei next_check_in</td></tr>
-    <tr><td>hermes-executor</td><td>19_executor_daemon.py</td><td>60 Min (15 bei M15)</td><td>Scanned MTF-Setups, führt Orders aus</td></tr>
+    <tr><td>hermes-executor</td><td>19_executor_daemon.py</td><td>60 Min (15 bei M15)</td><td>Prüft armed Theses, führt aus</td></tr>
     <tr><td>ctrader-stream</td><td>ctrader_stream.py</td><td>Live (5s Updates)</td><td>Bid/Ask Streaming, Spot-Daten</td></tr>
     <tr><td>hermes-snapshot</td><td>20_snapshot_daemon.py</td><td>5 Min</td><td>Trailing Stops, Performance, Positionen</td></tr>
     <tr><td>hermes-watchdog</td><td>20_watchdog.py</td><td>60s</td><td>Dead-Man-Switch: Notfall-Close wenn Daemon hängt</td></tr>
@@ -97,14 +117,62 @@
   <tbody>
     <tr><td>*/5 Min</td><td>build_bot_status.py</td><td>Dashboard JSON (merge aller Datenquellen)</td></tr>
     <tr><td>*/2 Std</td><td>01_scanner.py</td><td>31 Symbole × 3 TFs, Indikatoren, Asset-Scores, Korrelationen</td></tr>
+    <tr><td>Fr 22:00 UTC</td><td>21_cot_fetcher.py</td><td>CFTC COT-Daten (FinFutWk.txt), Smart-Money-Pressure</td></tr>
   </tbody>
 </table>
 
 <hr>
 
-<h2>3. STRATEGIST — Die KI-Analyse</h2>
+<h2>3. UNIFIED PIPELINE — THESIS-LIFECYCLE</h2>
 
-<p>Der Strategist entscheidet <b>welche Assets</b> gehandelt werden und <b>welche Regeln</b> gelten. Er bestimmt selbst wann die nächste Analyse nötig ist.</p>
+<p>Das zentrale Datenobjekt ist die <b>Trade-These</b> in <code>data/trade_theses.json</code>:</p>
+
+<pre><code>{
+  "id": "thesis_EURUSD_long_2026-05-03T10:00:00",
+  "asset": "EURUSD",
+  "direction": "long",
+  "trigger_condition": "Preis über 1.0850",
+  "invalidation": "Preis unter 1.0820",
+  "tp_logic": "TP bei 1.0880",
+  "conviction": 0.78,
+  "confidence": "medium",
+  "source": "strategist",     // oder "system" (vom Scanner)
+  "status": "pending",        // pending → armed → filled / rejected / expired / blocked
+  "expires_at": "2026-05-03T22:00:00Z",
+  "reasoning": "...",
+  "monitoring_interval": 5
+}</code></pre>
+
+<h3>Lifecycle</h3>
+<table>
+  <thead><tr><th>Status</th><th>Bedeutung</th><th>Wer setzt?</th></tr></thead>
+  <tbody>
+    <tr><td><code>pending</code></td><td>These erzeugt, wartet auf Reflector</td><td>Strategist oder Scanner</td></tr>
+    <tr><td><code>armed</code></td><td>Reflector approved/revised, Trigger wird geprüft</td><td>Reflector oder System (direkt)</td></tr>
+    <tr><td><code>filled</code></td><td>Trigger gefeuert, Trade ausgeführt</td><td>Executor Daemon</td></tr>
+    <tr><td><code>rejected</code></td><td>Reflector hat abgelehnt</td><td>Reflector</td></tr>
+    <tr><td><code>blocked</code></td><td>Institutionelle Guard hat blockiert</td><td>Executor Daemon (Guards)</td></tr>
+    <tr><td><code>expired</code></td><td>expires_at erreicht ohne Ausführung</td><td>Auto (Daemon)</td></tr>
+  </tbody>
+</table>
+
+<h3>Deduplikation (Conviction-basiert)</h3>
+<p>Wenn für ein Asset bereits eine aktive These (pending/armed) existiert:</p>
+<ul>
+  <li>Neue These mit <b>höherer Conviction</b> → alte wird ersetzt</li>
+  <li>Neue These mit gleicher/niedrigerer Conviction → wird übersprungen</li>
+  <li>System-Thesen (Scanner) haben niedrigere Conviction (0.50-0.65) als Strategist-Thesen</li>
+</ul>
+
+<hr>
+
+<h2>4. STRATEGIST — Die KI-Analyse</h2>
+
+<p>Der Strategist entscheidet <b>welche Assets</b> gehandelt werden. Er arbeitet im <b>Layer-Modell</b>:</p>
+
+<pre><code>Layer 1: Macro (DXY, US10Y, VIX, F&G)      → Markt-Regime bestimmen
+Layer 2: Sentiment (News, COT)              → Smart-Money-Richtung
+Layer 3: Price Action (Scanner-Daten)       → Technische Entry-Points</code></pre>
 
 <h3>Eingabedaten</h3>
 <table>
@@ -112,12 +180,36 @@
   <tbody>
     <tr><td>scan_summary.json</td><td>31 Symbole, OHLCV 1H/4H/1D, Indikatoren, Asset-Scores</td><td>alle 2h</td></tr>
     <tr><td>market_data.json</td><td>VIX, DXY, US10Y, S&P500, NASDAQ, Fear&Greed, Regime</td><td>stündlich</td></tr>
+    <tr><td>cot_data.json</td><td>CFTC COT: Net-Positionen, Pressure-Score, 52W-Percentile</td><td>wöchentlich (Fr)</td></tr>
     <tr><td>events_calendar.json</td><td>FOMC, NFP, CPI, OPEX, Earnings</td><td>täglich</td></tr>
     <tr><td>self_critique.json</td><td>Win-Rate, Profit-Faktor, Lessons, per-Asset Performance</td><td>pro Trade</td></tr>
     <tr><td>correlations.json</td><td>Rolling 20-Perioden Pearson-Korrelationen</td><td>alle 2h</td></tr>
     <tr><td>review_phase.json</td><td>Aktuelle Phase (1-3), Trade-Anzahl, Fortschritt</td><td>pro Trade</td></tr>
+    <tr><td>news_sentiment.json</td><td>Headline-Sentiment (Yahoo Finance RSS, 0 EUR)</td><td>alle 2h</td></tr>
   </tbody>
 </table>
+
+<h3>COT-Positioning (Smart Money)</h3>
+<ul>
+  <li><b>Quelle:</b> CFTC Commitment of Traders (FinFutWk.txt) — wöchentlich Freitag 22:00 UTC</li>
+  <li><b>Smart-Money-Pressure:</b> Net-Positionen + Weekly-Change + Commercial-Trend + 52W-Percentile</li>
+  <li><b>Skala:</b> -100 (extrem bearish) bis +100 (extrem bullish)</li>
+  <li><b>Signale:</b> EXTREMELY_BULLISH, MODERATELY_BULLISH, NEUTRAL, MODERATELY_BEARISH, EXTREMELY_BEARISH</li>
+  <li><b>Regel:</b> LONG + COT bullish = gut. LONG + COT bearish = Conviction -0.10. COT extrem (>95%/<5%) = Crowded Trade Warnung.</li>
+</ul>
+
+<h3>Trigger-Format (STANDARDISIERT)</h3>
+<div class="warn">
+<b>WICHTIG:</b> Der Executor muss den Trigger EXAKT parsen. Format ist strikt:
+<ul>
+  <li>LONG: <code>"Preis über X.XXXX"</code> (z.B. "Preis über 1.0850")</li>
+  <li>SHORT: <code>"Preis unter X.XXXX"</code> (z.B. "Preis unter 145.500")</li>
+  <li><b>KEINE UND-Klauseln, KEINE Indikatoren im Trigger</b> (kein RSI, EMA, MACD)</li>
+  <li>Der Trigger ist NUR der Preis-Level. Alle anderen Bedingungen sind im Reasoning berücksichtigt.</li>
+  <li>INVALIDATION genauso einfach: "Preis unter X.XXXX" (Long) / "Preis über X.XXXX" (Short)</li>
+  <li>TP: "TP bei X.XXXX" (einfacher Fix-TP)</li>
+</ul>
+</div>
 
 <h3>Ausgabe: briefing.json</h3>
 <ul>
@@ -127,8 +219,19 @@
   <li><b>max_positions</b>, <b>max_risk_per_trade_pct</b>, <b>max_risk_per_trade_eur</b></li>
   <li><b>technical_rules</b>: min_rr, sl_max_atr_multiple (1.2×)</li>
   <li><b>veto_conditions</b>: equity_below, daily_pnl_below, news_impact</li>
-  <li><b>m15_refine[]</b>: Symbole für M15 Entry-Refinement (max 3)</li>
+  <li><b>positioning_evaluation</b>: COT-Bewertung pro Asset (Pflicht seit v2.6)</li>
   <li><b>next_check_in</b>: Stunden bis zur nächsten Analyse (0.5-24h)</li>
+</ul>
+
+<h3>Institutionelle Guards (im Prompt)</h3>
+<p>Der Strategist weiß, dass seine Thesen durch Guards geprüft werden:</p>
+<ul>
+  <li><b>VIX-Kill-Switch:</b> Bei VIX > 35 wird JEDE neue Thesis geblockt. Bei VIX > 30 wird Sizing reduziert.</li>
+  <li><b>Risk-of-Ruin:</b> Thesis muss positive Edge haben (Win-Rate × Reward > Loss-Rate × 1).</li>
+  <li><b>Korrelations-Stress:</b> Position im gleichen Cluster → Sizing reduziert.</li>
+  <li><b>Konzentration:</b> Max 5% Equity pro Asset, max 20% pro Cluster.</li>
+  <li><b>Liquidität:</b> Bei Spread > 2× Durchschnitt → Sizing reduziert.</li>
+  <li><b>Fat-Finger:</b> Unrealistisch große Positionen werden blockiert.</li>
 </ul>
 
 <h3>Adaptive Intervalle</h3>
@@ -145,9 +248,100 @@
 
 <hr>
 
-<h2>4. EXECUTOR — Die technische Ausführung</h2>
+<h2>5. REFLECTOR — Qualitätsprüfung</h2>
+
+<p>Der Reflector (22_reflector.py) prüft <b>jede These</b> bevor sie armed wird:</p>
+
+<h3>Prüfpunkte</h3>
+<table>
+  <thead><tr><th>Punkt</th><th>Prüfung</th><th>Auswirkung</th></tr></thead>
+  <tbody>
+    <tr><td>1. Trigger-Messbarkeit</td><td>Ist der Trigger ein einzelner Preis-Level?</td><td>Nein → rejected</td></tr>
+    <tr><td>2. Positioning-Consistency</td><td>Stimmt Richtung mit COT (Smart Money)?</td><td>Nein → -0.10 Conviction</td></tr>
+    <tr><td>3. SL-Logik</td><td>Ist SL sinnvoll (nicht zu eng/weit)?</td><td>Problematisch → revised</td></tr>
+    <tr><td>4. R:R-Verhältnis</td><td>Ist R:R realistisch (>1:1)?</td><td>Nein → rejected</td></tr>
+    <tr><td>5. Überstrecktheit</td><td>Preis > 2 ATR vom Pivot?</td><td>Ja → rejected</td></tr>
+  </tbody>
+</table>
+
+<h3>Verdict</h3>
+<ul>
+  <li><b>approved:</b> These ist solide, ggf. leichte Conviction-Anpassung (<0.1)</li>
+  <li><b>revised:</b> Kleine Änderungen retten die These (präziserer Trigger, besserer SL)</li>
+  <li><b>rejected:</b> Kritisches Gegenargument zerstört die These</li>
+</ul>
+
+<h3>Feedback-Loop & Auto-Kalibrierung</h3>
+<ul>
+  <li><b>Jede Entscheidung wird geloggt</b> in <code>reflector_decisions.jsonl</code></li>
+  <li><b>Shadow-Paper-Portfolio:</b> Abgelehnte Thesen werden verfolgt — was hätte der Trade gebracht?</li>
+  <li><b>Metriken (Rolling 30 Tage):</b>
+    <ul>
+      <li>Precision: profitable approved / alle approved</li>
+      <li>False-Negative-Rate: profitable rejected / alle rejected</li>
+      <li>Opportunity-Cost: Summe verpasster Gewinne</li>
+      <li>Reflector-Alpha: P&L(approved) - P&L(rejected shadow)</li>
+    </ul>
+  </li>
+  <li><b>Auto-Kalibrierung:</b>
+    <ul>
+      <li>FNR > 20% → Threshold weniger strikt (Faktor 0.85)</li>
+      <li>Precision < 40% → Threshold strenger (Faktor 1.20)</li>
+      <li>Opportunity-Cost > 2% NAV → relax</li>
+    </ul>
+  </li>
+</ul>
+
+<hr>
+
+<h2>6. EXECUTOR — Die technische Ausführung</h2>
 
 <p>Der Executor ist <b>vollständig regelbasiert</b> — keine KI, keine Halluzinationen, <100ms pro Zyklus.</p>
+
+<h3>Trigger-Parser (21_trigger_parser.py)</h3>
+<p>Multi-Priority Parsing für verschiedene Trigger-Formate:</p>
+<table>
+  <thead><tr><th>Priorität</th><th>Format</th><th>Beispiel</th><th>Confidence</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Standard</td><td>"Preis über 1.0850"</td><td>100%</td></tr>
+    <tr><td>2</td><td>Technical</td><td>"1H-Close > 1.0850"</td><td>95%</td></tr>
+    <tr><td>3</td><td>German</td><td>"Breakout über 27800", "unter 145.50"</td><td>90%</td></tr>
+    <tr><td>4</td><td>Fallback</td><td>Erste Zahlen im String</td><td>80%</td></tr>
+    <tr><td>5</td><td>Last Resort</td><td>Kein Preis gefunden</td><td>0%</td></tr>
+  </tbody>
+</table>
+<p><b>Indikator-Filter:</b> Werte im Bereich 0-100 (RSI, ADX, MACD) werden ignoriert — verhindert, dass "RSI 55" als Preis 55.0 geparst wird.</p>
+
+<h3>Kelly-Sizing (23_kelly_engine.py)</h3>
+<p>Dynamische Positionsgröße basierend auf:</p>
+<pre><code>Risk% = Kelly-Raw × 0.25 (Quarter-Kelly) × VIX-Factor × Conviction-Mult × Quality-Cap</code></pre>
+<table>
+  <thead><tr><th>Faktor</th><th>Berechnung</th><th>Range</th></tr></thead>
+  <tbody>
+    <tr><td>Kelly-Raw</td><td>W - (1-W)/R (W=Win-Rate, R=Avg-Win/Avg-Loss)</td><td>0-1.0</td></tr>
+    <tr><td>Quarter-Kelly</td><td>Kelly-Raw × 0.25</td><td>Konservativ</td></tr>
+    <tr><td>VIX-Factor</td><td>&lt;15: 1.15× | 15-25: 1.0× | 25-30: 0.75× | >30: 0.5×</td><td>0.5-1.15</td></tr>
+    <tr><td>Conviction-Mult</td><td>Conviction × 1.5 (linear 0.5-1.5)</td><td>0.5-1.5</td></tr>
+    <tr><td>Quality-Cap</td><td>A: 1.2× | B: 1.0× | C: 0.8×</td><td>0.8-1.2</td></tr>
+  </tbody>
+</table>
+<p><b>Hard Limits:</b> Min 0.3% Equity, Max 5% Equity pro Trade. Bei < 5 Trades History → Phase-Default (1.5-2.5%).</p>
+
+<h3>Institutionelle Guards (25_institutional_guards.py)</h3>
+<p>Vor <b>jedem</b> Trade werden diese Guards geprüft:</p>
+<table>
+  <thead><tr><th>Guard</th><th>Prüfung</th><th>Block? / Adjust?</th></tr></thead>
+  <tbody>
+    <tr><td>VIX-Kill-Switch</td><td>VIX > 35</td><td>BLOCK alle neuen Entries</td></tr>
+    <tr><td>VIX-Caution</td><td>VIX > 30</td><td>Sizing × 0.7</td></tr>
+    <tr><td>Risk-of-Ruin</td><td>RoR-Wahrscheinlichkeit > 1%</td><td>BLOCK</td></tr>
+    <tr><td>Korrelations-Stress</td><td>Avg |r| zu offenen Positionen > 0.60</td><td>BLOCK</td></tr>
+    <tr><td>Konzentration (Single)</td><td>Position > 5% Equity</td><td>BLOCK</td></tr>
+    <tr><td>Konzentration (Cluster)</td><td>Cluster-Exposure > 20% Equity</td><td>BLOCK</td></tr>
+    <tr><td>Liquidität</td><td>Spread > 2× Durchschnitt</td><td>Sizing × 0.8</td></tr>
+    <tr><td>Fat-Finger</td><td>Size > 3× Average</td><td>BLOCK</td></tr>
+  </tbody>
+</table>
 
 <h3>MTF-Gating (Multi-Timeframe Top-Down)</h3>
 <pre><code>1D Regime → "Sind wir im richtigen Markt?" (ADX > 15 erforderlich)
@@ -159,40 +353,6 @@
   <li>4H Bias neutral = SKIP</li>
   <li>Preis > 3 ATR von SMA20 entfernt = SKIP (zu weit vom Mittelwert)</li>
   <li>RSI > 75 (Long) oder < 25 (Short) = SKIP (extrem)</li>
-</ul>
-
-<h3>M15 Entry-Refinement (optional)</h3>
-<p>Wenn der Strategist Symbole in <code>m15_refine[]</code> listet, holt der Executor M15-Bars und prüft 10 zusätzliche Gates:</p>
-<ul>
-  <li>HTF-Setup (1D/4H/1H) muss bereits validiert sein</li>
-  <li>Session-Gate: London 07-11 UTC oder NY 12-16 UTC</li>
-  <li>ATR(14,M15) / Price > Floor (FX: 0.05%, Indizes: 0.15%)</li>
-  <li>Spread < 20% vom geplanten SL</li>
-  <li>Keine High-Impact-News in nächsten 30 Min</li>
-  <li>SL-Abstand ≥ max(1.5 × ATR_M15, 8 pips FX / 15 pips Indizes)</li>
-  <li>Tages-Trade-Counter < 3, Tages-PnL > -2R</li>
-  <li>M15 Bias nicht gegen 1H Bias</li>
-</ul>
-<p><b>Regeln:</b> M15 ist KEIN Standalone-TF. Gold (XAUUSD) NIE in m15_refine. Max 3 Symbole. TTL 2-6h. Executor-Daemon läuft dann im 15-Min-Intervall.</p>
-
-<h3>Setup-Qualität (dynamisch)</h3>
-<table>
-  <thead><tr><th>Score</th><th>Setup</th><th>Risiko</th><th>Kriterien</th></tr></thead>
-  <tbody>
-    <tr><td>≥5</td><td>A</td><td>5% Equity</td><td>MTF 3/3, R:R ≥2.5, ADX >25, ATR Sweet-Spot</td></tr>
-    <tr><td>≥3</td><td>B</td><td>3% Equity</td><td>MTF 2/3, gute Basis-Kriterien</td></tr>
-    <tr><td>≥1</td><td>C</td><td>1.5% Equity</td><td>Minimale Bestätigung</td></tr>
-    <tr><td><1</td><td>D</td><td>SKIP</td><td>Kein Trade</td></tr>
-  </tbody>
-</table>
-
-<h3>Spread-Monitoring</h3>
-<ul>
-  <li>Liest live Bid/Ask aus ctrader_stream (spots_all.json)</li>
-  <li>Rolling History (letzte 100 Reads pro Symbol)</li>
-  <li><b>Rejectet Trades wenn Spread > 3× Durchschnitt</b></li>
-  <li>Hard Caps: Majors 2.5 Pips, JPY/GBP 4.0, Gold 30, Indizes 6.0</li>
-  <li>Bei High-Impact-News (<60min): Cap auf 2.0 Pips</li>
 </ul>
 
 <h3>Session-Filter</h3>
@@ -207,19 +367,11 @@
   </tbody>
 </table>
 
-<h3>Korrelations-Cluster</h3>
-<ul>
-  <li>Max <b>1 Position pro Cluster</b> gleichzeitig</li>
-  <li>Cluster: usd_long, usd_short, jpy_cross, risk_off, eur_bloc, crypto, energy</li>
-  <li>Rolling 20-Perioden Pearson-Korrelation (dynamisch berechnet)</li>
-  <li>Wenn EURUSD im Cluster <code>eur_bloc</code> bereits offen → GBPUSD wird blockiert</li>
-</ul>
-
 <hr>
 
-<h2>5. RISIKO-MANAGEMENT</h2>
+<h2>7. RISIKO-MANAGEMENT</h2>
 
-<h3>Safety Nets (v2.5.2)</h3>
+<h3>Safety Nets (v2.6.0)</h3>
 <table>
   <thead><tr><th>Regel</th><th>Schwelle</th><th>Aktion</th></tr></thead>
   <tbody>
@@ -228,15 +380,19 @@
     <tr><td>Emergency Stop</td><td>Equity < 10% von Reference-Balance</td><td>Alle Trading gestoppt (dynamisch)</td></tr>
     <tr><td>Weekend-Block</td><td>Fr 21:00 - So 22:00 UTC</td><td>Keine neuen Orders</td></tr>
     <tr><td>News-Blackout</td><td>FOMC/NFP: 60min vorher</td><td>Kein Entry während High-Impact Events</td></tr>
+    <tr><td>VIX-Kill-Switch</td><td>VIX > 35</td><td>Keine neuen Entries (Guard)</td></tr>
+    <tr><td>Risk-of-Ruin</td><td>RoR > 1%</td><td>Trade blockiert (Guard)</td></tr>
     <tr><td>Watchdog</td><td>Daemon >60s nicht reagiert</td><td>Emergency Close aller Positionen</td></tr>
   </tbody>
 </table>
 
-<h3>Position-Sizing (dynamisch)</h3>
+<h3>Position-Sizing (Kelly-basiert)</h3>
 <ul>
-  <li><b>Basis:</b> Risk% × Equity / (SL-Pips × Pip-Value)</li>
-  <li><b>Setup-Qualität bestimmt Risiko:</b> A=5%, B=3%, C=1.5%, D=SKIP</li>
-  <li><b>Confidence < 0.6:</b> Risiko × 0.7 (-30%)</li>
+  <li><b>Basis:</b> Quarter-Kelly aus historischer Performance pro Asset</li>
+  <li><b>VIX-Scaling:</b> Calm (×1.15) → Neutral (×1.0) → Elevated (×0.75) → Stress (×0.5)</li>
+  <li><b>Conviction-Overlay:</b> 0.55→0.6×, 0.75→1.0×, 1.0→1.5×</li>
+  <li><b>Setup-Quality-Cap:</b> A=1.2×, B=1.0×, C=0.8×</li>
+  <li><b>Hard Limits:</b> Min 0.3% Equity, Max 5% Equity pro Trade</li>
   <li><b>Margin-Limit:</b> Max 30% Equity als Margin (nicht Notional-basiert)</li>
   <li><b>Volume:</b> <code>math.ceil(risk_micro_lots) × 100000</code> (kein Truncating)</li>
   <li><b>Minimum:</b> Volume < 100000 (0.01 Lot) → Trade wird übersprungen</li>
@@ -257,16 +413,9 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
   <li>Verwaltet vom Snapshot Daemon (alle 5 Min)</li>
 </ul>
 
-<h3>Dynamischer Emergency Stop</h3>
-<ul>
-  <li>Referenz-Balance wird bei Ein-/Auszahlungen angepasst</li>
-  <li>Emergency-Schwelle = 10% von Referenz-Balance (nicht hartkodiert)</li>
-  <li>Cashflow-Validierung prüft Margin-Auswirkung VOR Auszahlung</li>
-</ul>
-
 <hr>
 
-<h2>6. CASHFLOW-PROTOKOLL</h2>
+<h2>8. CASHFLOW-PROTOKOLL</h2>
 
 <p>Bot validiert Ein-/Auszahlungen <b>bevor</b> der User sie bei Pepperstone ausführt:</p>
 
@@ -285,7 +434,7 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 
 <hr>
 
-<h2>7. PHASEN-SYSTEM</h2>
+<h2>9. PHASEN-SYSTEM</h2>
 
 <p>Der Bot startet konservativ und wird mit steigender Erfahrung aggressiver:</p>
 
@@ -303,7 +452,7 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 
 <hr>
 
-<h2>8. PERFORMANCE-TRACKING</h2>
+<h2>10. PERFORMANCE-TRACKING</h2>
 
 <h3>Kennzahlen</h3>
 <table>
@@ -314,6 +463,17 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
     <tr><td>Sharpe Ratio</td><td>Risikoadjustierte Rendite</td><td>> 0.5</td></tr>
     <tr><td>Max Drawdown</td><td>Maximaler Equity-Verlust</td><td>< 15%</td></tr>
     <tr><td>Expectancy</td><td>Ø Pips pro Trade</td><td>> 0</td></tr>
+  </tbody>
+</table>
+
+<h3>Reflector-Metriken (neu in v2.6)</h3>
+<table>
+  <thead><tr><th>Kennzahl</th><th>Beschreibung</th><th>Ziel</th></tr></thead>
+  <tbody>
+    <tr><td>Precision</td><td>Profitable approved / Alle approved</td><td>> 40%</td></tr>
+    <tr><td>False-Negative-Rate</td><td>Profitable rejected / Alle rejected</td><td>< 20%</td></tr>
+    <tr><td>Opportunity-Cost</td><td>Summe verpasster Gewinne (rejected)</td><td>< 2% NAV</td></tr>
+    <tr><td>Reflector-Alpha</td><td>P&L(approved) - P&L(rejected shadow)</td><td>> 0</td></tr>
   </tbody>
 </table>
 
@@ -332,6 +492,8 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
   <li><b>trade_log.jsonl:</b> Entry + Exit mit PnL gross/net, Swap, Kommission, Slippage</li>
   <li><b>exit_log.jsonl:</b> Geschlossene Positionen mit Hold-Time, Close-Reason, Snapshot</li>
   <li><b>rejected_setups.jsonl:</b> Abgelehnte Kandidaten mit Symbol, Stage, Reason</li>
+  <li><b>reflector_decisions.jsonl:</b> Alle Reflector-Entscheidungen mit Outcome</li>
+  <li><b>shadow_portfolio.jsonl:</b> Tracking abgelehnter Thesen (Paper-PnL)</li>
   <li><b>briefing_archive/:</b> Jedes Strategist-Briefing archiviert</li>
 </ul>
 
@@ -342,27 +504,16 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
   <li>Beispiel: "UTC 16:00: 0% Win-Rate — vermeiden oder vorsichtiger"</li>
 </ul>
 
-<h3>Sentiment-Analyse (News Headlines)</h3>
-<ul>
-  <li>Holt Headlines aus <b>kostenlosen RSS-Feeds</b> (Yahoo Finance, ECB) — 0 EUR</li>
-  <li>Keyword-basiertes Scoring: bullish/bearish/neutral pro Symbol</li>
-  <li>~200+ Headlines pro Zyklus, 15+ Symbole abgedeckt</li>
-  <li>Cache: 2 Stunden (kein Re-Fetch bei jedem Strategist-Lauf)</li>
-  <li>100% fault-tolerant — bei Fehler: Bot läuft normal weiter</li>
-  <li>Integration: Sentiment wird dem Strategist als zusätzliche Datenquelle injiziert</li>
-  <li>Regel: Sentiment GEGEN Thesis → Conviction sinkt. Sentiment FÜR Thesis → Conviction steigt.</li>
-  <li>Technische Analyse hat IMMER Vorrang vor Sentiment</li>
-</ul>
-
 <hr>
 
-<h2>9. KOSTEN</h2>
+<h2>11. KOSTEN</h2>
 
 <table>
   <thead><tr><th>Posten</th><th>Kosten</th><th>Tracking</th></tr></thead>
   <tbody>
     <tr><td>DeepSeek-R1-0528 (Strategist)</td><td>~0.012 EUR/Call, ~10 EUR/Monat</td><td>kimicalls.log</td></tr>
-    <tr><td>Executor + Scanner</td><td>0 EUR (regelbasiert)</td><td>—</td></tr>
+    <tr><td>Kimi-K2.6 (Review/Refresh)</td><td>~0.17 EUR/Refresh</td><td>kimicalls.log</td></tr>
+    <tr><td>Executor + Scanner + Guards</td><td>0 EUR (regelbasiert)</td><td>—</td></tr>
     <tr><td>Spread (pro Trade)</td><td>0.1-0.5 Pips</td><td>spread_history.json</td></tr>
     <tr><td>Swap (Overnight)</td><td>-4 bis +2 EUR/Lot</td><td>cTrader</td></tr>
     <tr><td>Steuer (Pepperstone)</td><td>26.375% auf Gewinne</td><td>automatisch</td></tr>
@@ -371,7 +522,7 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 
 <hr>
 
-<h2>10. SYMBOLE (31)</h2>
+<h2>12. SYMBOLE (31)</h2>
 
 <table>
   <thead><tr><th>Klasse</th><th>Symbole</th><th>Pip-Size</th><th>Risk-Cap</th></tr></thead>
@@ -389,23 +540,30 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 
 <hr>
 
-<h2>11. DATEIEN</h2>
+<h2>13. DATEIEN</h2>
 
 <h3>Code (src/)</h3>
 <pre><code>├── 01_scanner.py           ← 31 Symbole × 3 TFs, Indikatoren, Scores, Korrelationen
+├── 16_strategist.py        ← KI-Strategist (DeepSeek-R1-0528, Layer-Modell, COT)
+├── 17_executor.py          ← Regelbasiert: MTF-Gating, Spread, Session, Veto, M15
+├── 18_scheduler.py         ← Scheduler für Strategist (respektiert next_check_in)
+├── 19_executor_daemon.py   ← Executor Daemon: Trigger-Check, Kelly, Guards, Order
+├── 20_snapshot_daemon.py   ← Snapshot + Trailing + Performance (5 Min)
+├── 20_watchdog.py          ← Dead-Man-Switch (60s Check)
+├── 21_trigger_parser.py    ← Multi-Priority Trigger-Parsing (5 Strategien)
+├── 21_cot_fetcher.py       ← CFTC COT-Daten, Smart-Money-Pressure, 52W-Percentile
+├── 21_m15_fetcher.py       ← On-demand M15 Bar Fetcher
+├── 22_reflector.py         ← Qualitätsprüfung: Trigger, COT-Consistency, SL-Logik
+├── 23_kelly_engine.py      ← Quarter-Kelly + VIX-Scaling + Conviction-Mult
+├── 24_reflector_feedback.py ← Tracking, Shadow-Paper, FNR, Auto-Kalibrierung
+├── 25_institutional_guards.py ← RoR, Korrelation, VIX-Kill, Liquidität, Konzentration
+├── trade_thesis.py         ← Thesis-Schema, Lifecycle, Deduplikation
 ├── news_sentiment.py       ← Headline-Sentiment (Yahoo Finance RSS, 0 EUR)
 ├── 02_kimi_caller.py       ← OpenRouter API Caller
 ├── 03_analyse_parser.py    ← Kimi Response Parser (Edge-Faktoren A/B/C)
 ├── 04_risk_engine.py       ← Risiko-Modul (Margin-basiert, dynamisch)
 ├── 05_order_bridge.py      ← cTrader Order-Execution (Atomic SL)
 ├── 06_position_monitor.py  ← Position-Tracking, Exit-Detection, FIFO PnL
-├── 16_strategist.py        ← KI-Strategist (DeepSeek-R1-0528)
-├── 17_executor.py          ← Regelbasiert: MTF-Gating, Spread, Session, Veto, M15
-├── 18_scheduler.py         ← Scheduler für Strategist (respektiert next_check_in)
-├── 19_executor_daemon.py   ← Executor Daemon (60/15 Min Zyklus)
-├── 20_snapshot_daemon.py   ← Snapshot + Trailing + Performance (5 Min)
-├── 20_watchdog.py          ← Dead-Man-Switch (60s Check)
-├── 21_m15_fetcher.py       ← On-demand M15 Bar Fetcher
 ├── kimi_caller.py          ← OpenRouter API (DeepSeek-R1-0528)
 ├── indicators.py           ← SMA, EMA, RSI, ATR, ADX, MACD, ROC
 ├── asset_config.py         ← 31 Symbole, Pip-Config, Cluster, Sessions
@@ -421,17 +579,22 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 
 <h3>Daten (data/)</h3>
 <pre><code>├── briefing.json           ← Aktuelles Strategist-Briefing
+├── trade_theses.json       ← Unified Pipeline: alle Theses (pending/armed/filled/...)
 ├── performance.json        ← Performance-Metriken
 ├── self_critique.json      ← Lessons + Patterns
 ├── review_phase.json       ← Aktuelle Phase
 ├── trade_log.jsonl         ← Alle Trades (ENTRY + CLOSED)
 ├── exit_log.jsonl          ← Geschlossene Positionen (PnL, Hold-Time)
 ├── rejected_setups.jsonl   ← Abgelehnte Kandidaten
+├── reflector_decisions.jsonl ← Reflector-Entscheidungen mit Outcome
+├── shadow_portfolio.jsonl  ← Paper-Tracking abgelehnter Thesen
+├── reflector_metrics.json  ← Rolling 30-Tage Reflector-Metriken
 ├── risk_state.json         ← Equity, Trades Today, Daily PnL Cache
 ├── market_data.json        ← VIX, DXY, F&G, Regime
+├── cot_data.json           ← CFTC COT: Net, Pressure, Percentile, Signal
+├── cot_history.jsonl       ← Historische COT-Snapshots
 ├── news_sentiment.json     ← Headline-Sentiment pro Symbol
 ├── spread_history.json     ← Rolling Spread-Daten
-├── executor_candidates.json ← Letzte Kandidaten
 ├── briefing_archive/       ← Archiv aller Briefings
 ├── live/
 │   ├── scan_summary.json   ← Scanner-Ergebnis
@@ -442,11 +605,17 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
 
 <hr>
 
-<h2>12. STATUS & ROADMAP</h2>
+<h2>14. STATUS & ROADMAP</h2>
 
-<h3>Aktuell (v2.5.2)</h3>
+<h3>Aktuell (v2.6.0)</h3>
 <ul>
-  <li>✅ Zwei-Schicht-Architektur (Strategist + Executor)</li>
+  <li>✅ <b>Unified Pipeline</b>: Scanner + Strategist → gemeinsame Thesis-Datenbank</li>
+  <li>✅ <b>Trigger-Parser</b>: Multi-Priority (5 Strategien), German-Support, Indikator-Filter</li>
+  <li>✅ <b>Reflector</b>: Qualitätsprüfung mit COT-Consistency + Auto-Kalibrierung</li>
+  <li>✅ <b>COT-Daten</b>: CFTC Commitment of Traders, Smart-Money-Pressure, 52W-Percentile</li>
+  <li>✅ <b>Kelly-Sizing</b>: Quarter-Kelly + VIX-Scaling + Conviction-Multiplier</li>
+  <li>✅ <b>Institutionelle Guards</b>: RoR, Korrelation, VIX-Kill, Liquidität, Konzentration, Fat-Finger</li>
+  <li>✅ <b>Feedback-Loop</b>: Shadow-Paper, FNR-Tracking, Auto-Kalibrierung</li>
   <li>✅ MTF-Gating (1D→4H→1H)</li>
   <li>✅ M15 Entry-Refinement (10 Gates, optional)</li>
   <li>✅ Atomic SL via relativeStopLoss</li>
@@ -459,20 +628,21 @@ req.maxSlippageInPoints = 30       # 3 Pips max Slippage</code></pre>
   <li>✅ Monte Carlo + Benchmark auf echten Trades</li>
   <li>✅ Phase-System (konservativ → aggressiv)</li>
   <li>✅ Self-Critique + Performance-Tracking</li>
+  <li>✅ Sentiment-Analyse (News Headlines, Yahoo Finance RSS, 0 EUR)</li>
   <li>✅ Idempotenz (keine doppelten Orders)</li>
 </ul>
 
 <h3>Offen</h3>
 <ul>
   <li>☐ Walk-Forward-Optimierung</li>
-  <li>☐ COT-Daten (Commitment of Traders)</li>
-  <li>✅ Sentiment-Analyse (News Headlines, Yahoo Finance RSS, 0 EUR)</li>
   <li>☐ Demo → Live Wechsel (nach 100+ profitablen Trades)</li>
+  <li>☐ Gap-Stress Monte-Carlo (3-Sigma Overnight-Gap Survival)</li>
+  <li>☐ Event-Risk-Filter NFP/FOMC/CPI (Auto-Block vor Events)</li>
 </ul>
 
 <hr>
 
-<p><i>Letzte Aktualisierung: 2026-04-30 — v2.5.2</i></p>
+<p><i>Letzte Aktualisierung: 2026-05-03 — v2.6.0</i></p>
 
 </div>
 
