@@ -120,7 +120,8 @@
       </table>
     </div>
 
-    <div class="add-row">
+    <!-- Manuelles Hinzufügen deaktiviert — Depot wird via Chat aktualisiert -->
+    <div class="add-row" style="display:none">
       <div class="form-g">
         <label>Ticker</label>
         <input type="text" class="in" style="width:80px" id="addTicker" placeholder="NVDA">
@@ -140,7 +141,8 @@
     </div>
   </div>
 
-  <div class="actions">
+  <!-- Manuelle Buttons deaktiviert — Depot wird via Chat aktualisiert -->
+  <div class="actions" style="display:none">
     <div class="actions-right">
       <button class="btn btn-fetch" onclick="fetchPrices()" id="fetchBtn">
         <i data-lucide="download" style="width:14px;height:14px"></i> Preise holen
@@ -153,7 +155,11 @@
       </button>
     </div>
   </div>
-  <div class="fetch-status" id="fetchStatus"></div>
+  <div class="fetch-status" id="fetchStatus" style="display:none"></div>
+
+  <p style="color:var(--c-text-dim);font-size:var(--text-xs);margin-top:var(--s-3)">
+    ℹ️ Depot wird via Chat aktualisiert. Letzte Aktualisierung: <span id="updatedAt">Lade...</span>
+  </p>
 
 <div class="toast" id="toast"></div>
 
@@ -245,9 +251,9 @@ function render() {
     tr.innerHTML =
       '<td class="ro-val">' + (p.ticker||'') + '</td>' +
       '<td><span style="font-size:11px;color:var(--c-text-dim)">' + layer + '</span></td>' +
-      '<td><input class="in in-isin" value="' + (p.isin||'') + '" onchange="setISIN('+i+',this.value)" placeholder="DE000..."></td>' +
+      '<td class="ro">' + (p.isin||'') + '</td>' +
       '<td class="r ro">' + fmt(inv) + '</td>' +
-      '<td class="r"><input class="in in-value" type="number" step="0.01" value="'+val+'" onchange="setVal('+i+',this.value)"></td>' +
+      '<td class="r">' + fmt(val) + '</td>' +
       '<td class="r"><span class="'+pnlC(pnl)+'">' + (pnl>=0?'+':'') + fmt(pnl) + '</span></td>' +
       '<td class="r"><span class="'+pnlC(pct)+'">' + (pct>=0?'+':'') + pct.toFixed(1) + '%</span></td>' +
       '<td class="r ro">' + stopTxt + '</td>' +
@@ -255,7 +261,7 @@ function render() {
       '<td class="r">' + koStr + '</td>' +
       '<td class="c">' + levStr + '</td>' +
       '<td><span class="badge ' + actionClass + '">' + action + '</span><br><span class="muted" style="font-size:10px">' + actionReason + '</span></td>' +
-      '<td><button class="del-btn" onclick="delPos('+i+')"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>';
+      '<td><button class="del-btn" onclick="delPos('+i+')" style="display:none"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button></td>';
     tbody.appendChild(tr);
   });
 
