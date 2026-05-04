@@ -32,8 +32,10 @@ STRATEGIST (DeepSeek-R1) ──→ briefing.json ──→ Executor (Python, 0 E
 | hermes-strategist | 18_scheduler.py | adaptiv (0.5-24h) | Triggert Strategist |
 | hermes-executor | 19_executor_daemon.py | 60 Min (15 bei M15) | MTF-Setups + Orders |
 | ctrader-stream | ctrader_stream.py | Live (5s) | Bid/Ask Streaming |
-| hermes-snapshot | 20_snapshot_daemon.py | 5 Min | Trailing, Performance |
+| hermes-snapshot | 20_snapshot_daemon.py | 5 Min | Snapshot + positions_cache Sync + Trailing |
 | hermes-watchdog | 20_watchdog.py | 60s | Dead-Man-Switch |
+
+**positions_cache Sync:** Der Snapshot-Daemon liest nach jedem cTrader-Snapshot die aktuellen Positionen aus `status.json` und schreibt sie nach `data/positions_cache.json`. Damit sehen Executor, Risk-Engine und Institutional Guards immer den aktuellen Stand — unabhängig vom alten Position-Monitor-Cache.
 
 ### Cron-Jobs
 | Cron | Script | Aufgabe |
@@ -143,4 +145,4 @@ POST /api/cashflow → Bot prüft Margin-Auswirkung → Status pending/ready/rej
 
 ---
 
-*Letzte Aktualisierung: 2026-04-30 — v2.5.2*
+*Letzte Aktualisierung: 2026-05-04 — v2.5.3*
