@@ -507,30 +507,45 @@ function renderKimiCards(data) {
 function loadKimiCards() {
   Promise.all([
     safeFetch('/api/trading/kimi_latest.json').then(function(r){ return r.json(); }).catch(function(){ return {}; }),
-    safeFetch('/api/trading/facts.json').then(function(r){ return r.json(); }).catch(function(){ return null; })
+    safeFetch('/api/trading/facts.json').then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    safeFetch('/api/trading/calendar.json').then(function(r){ return r.json(); }).catch(function(){ return null; })
   ]).then(function(results) {
     var data = results[0];
     var facts = results[1];
+    var calData = results[2];
 
-    // Kalender: erst Kimi, dann facts.json Fallback
-    // Kimi hat oft generische Namen ("Termin am X.") — facts.json hat echte Namen
-    var useFactsCal = false;
-    if (!data.calendar_relevance || data.calendar_relevance.length === 0) {
-      useFactsCal = true;
-    } else {
-      // Pruefe ob Kimi generische Namen hat
-      var genericCount = 0;
-      for (var ci = 0; ci < data.calendar_relevance.length; ci++) {
-        var evName = data.calendar_relevance[ci].event || '';
-        if (evName.indexOf('Termin am') >= 0 || evName === 'Kalendertermin' || evName.indexOf('Kalender') === 0 || evName.indexOf('Markttermin') >= 0 || evName.indexOf('markttermin') >= 0) genericCount++;
-      }
-      if (genericCount >= data.calendar_relevance.length * 0.5) useFactsCal = true;
-    }
-    if (useFactsCal && facts && facts.calendar) {
-      data.calendar_relevance = facts.calendar.map(function(c) {
-        return { date: c.date, event: c.event || c.name, impact: c.impact || 'MITTEL', ticker: c.ticker || '' };
+    // Kalender: calendar.json ist PRIMARY (hat Forecast/Previous/Time)
+    // Fallback: kimi_latest → facts.json
+    var calEvents = [];
+    if (calData && calData.upcoming_30d && calData.upcoming_30d.length > 0) {
+      calEvents = calData.upcoming_30d.map(function(c) {
+        var evName = c.event || c.name || 'Termin';
+        if (c.time) evName += ' (' + c.time + ' Uhr)';
+        return { date: c.date, event: evName, impact: c.impact || 'MITTEL', ticker: c.ticker || c.country || '' };
       });
     }
+    if (calEvents.length === 0) {
+      // Alte Fallback-Logik
+      var useFactsCal = false;
+      if (!data.calendar_relevance || data.calendar_relevance.length === 0) {
+        useFactsCal = true;
+      } else {
+        var genericCount = 0;
+        for (var ci = 0; ci < data.calendar_relevance.length; ci++) {
+          var evName = data.calendar_relevance[ci].event || '';
+          if (evName.indexOf('Termin am') >= 0 || evName === 'Kalendertermin' || evName.indexOf('Kalender') === 0 || evName.indexOf('Markttermin') >= 0 || evName.indexOf('markttermin') >= 0) genericCount++;
+        }
+        if (genericCount >= data.calendar_relevance.length * 0.5) useFactsCal = true;
+      }
+      if (useFactsCal && facts && facts.calendar) {
+        calEvents = facts.calendar.map(function(c) {
+          return { date: c.date, event: c.event || c.name, impact: c.impact || 'MITTEL', ticker: c.ticker || '' };
+        });
+      } else if (data.calendar_relevance) {
+        calEvents = data.calendar_relevance;
+      }
+    }
+    data.calendar_relevance = calEvents;
 
     // Cash: facts.json fallback wenn Kimi keine cash_recommendation hat
     if (!data.cash_recommendation && facts && facts.depot_scalable) {
