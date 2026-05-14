@@ -1,5 +1,12 @@
-<!--TITLE:Bot Leitfaden — Hermes-->
-<!--HEAD-->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Leitfaden — Hermes</title>
+<link rel="stylesheet" href="/assets/base.css">
+<script>(function(){var t=localStorage.getItem('theme')||'dark';document.documentElement.className=t;})();</script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   .guide { max-width: 900px; margin: 0 auto; line-height: 1.8; }
   .guide h1 { font-size: var(--text-2xl); margin-bottom: var(--s-4); }
@@ -19,13 +26,52 @@
   .guide .warn { background: var(--c-surface); border-left: 3px solid var(--c-warn); padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
   .guide .success { background: var(--c-surface); border-left: 3px solid #4caf50; padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
 </style>
-<!--/HEAD-->
-<!--BODY-->
+</head>
+<body>
+<header id="site-header">
+<nav class="nav" aria-label="Hauptnavigation">
+  <a href="/"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Dashboard
+  </a>
+  <span class="sep" aria-hidden="true">·</span>
+  <a href="/bot">Bot</a>
+  <a href="/report">Report</a>
+  <a href="/pages/projects">Projekte</a>
+  <a href="/pages/knowledge">Wissen</a>
+  <a href="/charts">Charts</a>
+  <a href="/botleitfaden" aria-current="page">Leitfaden</a>
+<button id="theme-toggle" aria-label="Theme wechseln" title="Theme wechseln" style="background:none;border:none;cursor:pointer;color:var(--c-text-muted);padding:var(--s-2);border-radius:var(--r-sm);display:flex;align-items:center;margin-left:auto;transition:color var(--t)">
+    <svg id="icon-sun" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+    <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+  </button>
+</nav>
+<script>
+(function(){
+  var btn = document.getElementById('theme-toggle');
+  var iconSun = document.getElementById('icon-sun');
+  var iconMoon = document.getElementById('icon-moon');
+  function setTheme(t){
+    document.documentElement.className = t;
+    localStorage.setItem('theme', t);
+    if(iconSun) iconSun.style.display = t === 'dark' ? 'none' : 'block';
+    if(iconMoon) iconMoon.style.display = t === 'dark' ? 'block' : 'none';
+  }
+  var current = localStorage.getItem('theme') || 'dark';
+  setTheme(current);
+  if(btn) btn.addEventListener('click', function(){
+    current = current === 'dark' ? 'light' : 'dark';
+    setTheme(current);
+  });
+})();
+</script>
+</header>
+
+<main>
 <div class="container guide">
 
 <div class="page-header">
   <h1 class="page-title">Trading Bot — Leitfaden</h1>
-  <p class="page-subtitle">v3.2.0 — Chronos 2 ML Forecast (Cross-Learning + Covariates) + Regime Detection (Indices Only)</p>
+  <p class="page-subtitle">v3.1.0 — Chronos Reversal Engine (Indices Only) + Quantitative Signals + Stock Forecasting</p>
 </div>
 
 <blockquote>Unified Pipeline: Scanner + Chronos Forecasting erzeugen strukturierte Thesen. Der Reflector prüft Qualität. Kelly bestimmt die Größe. Institutionelle Guards blockieren vor dem Trade. Safety-first: Atomic SL, Margin-Caps, Emergency-Stop, Watchdog.</blockquote>
@@ -53,7 +99,6 @@
     <tr><td>1</td><td><b>Status-Bar + Services</b></td><td>Verbindungsstatus, DEMO/LIVE-Badge, Services als Tags (Strategist, Executor, cTrader, Snapshot), Letzte Aktualisierung</td></tr>
     <tr><td>2</td><td><b>Bot-Fokus</b></td><td>Aktive Thesen mit Status (WARTET / BEREIT / IM TRADE), Trigger-Bedingung, Conviction, Invalidierung, Reflector-Verdict, abgelehnte Assets, Timing in Berliner Zeit</td></tr>
     <tr><td>3</td><td><b>Tages-Plan</b></td><td>Gedankengang, Marktregime + Confidence, erlaubte Richtungen, Risiko-Rahmen, Preferred/Avoid-Assets, Entry-Filter, Veto-Bedingungen</td></tr>
-    <tr><td>3b</td><td><b>Chronos 2 ML Forecast</b></td><td>Modell-Info, Forecast Alter, VIX-Level, Regime-Status, Index-Forecast-Tabelle (Bias, Exp. Move, CI80, Confidence, RSI, Close), Regime Detection Grid</td></tr>
     <tr><td>4</td><td><b>Offene Positionen</b></td><td>Symbol, Seite (LONG/SHORT), Volumen, Einstieg, SL, TP, unrealisiertes P&L</td></tr>
     <tr><td>5</td><td><b>Konto & Risiko</b></td><td>Balance, Positionen, Heute P&L, Trades heute, Cashflow-Management</td></tr>
     <tr><td>6</td><td><b>Performance & Monte Carlo</b></td><td>Win-Rate, Profit-Faktor, Sharpe Ratio, Max Drawdown, MC-Erwartungswert, 95% VaR</td></tr>
@@ -75,7 +120,7 @@
 <div class="arch-box">┌─────────────────────────────────────────────────────────────┐
 │  SCANNER (regelbasiert, 0 EUR)                              │
 │  01_scanner.py                                              │
-│  ── 4 Indizes × 3 TFs, Indikatoren, Asset-Scores            │
+│  ── 8 Symbole × 3 TFs, Indikatoren, Asset-Scores            │
 │  ── Erzeugt System-Thesen (source="system", low conviction)  │
 │  ── Direkt → trade_theses.json (pending → armed)            │
 └───────────────────────┬─────────────────────────────────────┘
@@ -84,11 +129,9 @@
 ┌─────────────────────────────────────────────────────────────┐
 │  CHRONOS FORECASTER (ML, 0 EUR)                             │
 │  chronos_forecaster_multi.py                                │
-│  ── 4 Indizes, 5-Tages-Horizont, pl=5, freq=1d              │
-│  ── Cross-Learning: alle 4 Indizes gemeinsam trainiert      │
-│  ── Covariates: VIX, DXY, US10Y                             │
+│  ── 8 Assets, 1-Tages-Horizont, pl=1, freq=1d               │
 │  ── Modell: autogluon/chronos-2 (~200M, CPU)                 │
-│  ── Bias + CI80 + Expected Move + Regime Detection           │
+│  ── Bias-Tabelle für Strategist (Bullish/Bearish pro Asset) │
 │  ── Alle 4h via Cron                                         │
 └───────────────────────┬─────────────────────────────────────┘
                         │ chronos_forecast_multi.json
@@ -151,9 +194,8 @@
   <thead><tr><th>Cron</th><th>Script</th><th>Aufgabe</th></tr></thead>
   <tbody>
     <tr><td>*/5 Min</td><td>build_bot_status.py</td><td>Dashboard JSON (merge aller Datenquellen)</td></tr>
-    <tr><td>0 */2 * * *</td><td>01_scanner.py</td><td>4 Indizes × 3 TFs, Indikatoren, Asset-Scores</td></tr>
+    <tr><td>0 */2 * * *</td><td>01_scanner.py</td><td>8 Symbole × 3 TFs, Indikatoren, Asset-Scores</td></tr>
     <tr><td>every 240m (4h)</td><td>chronos_refresh.py</td><td>Chronos Forecast — Bias + 15 Stock-Forecasts</td></tr>
-    <tr><td>every 60m</td><td>chronos_regime.py</td><td>Regime Detection (Embeddings), VIX-Analyse</td></tr>
     <tr><td>Fr 22:00 UTC</td><td>21_cot_fetcher.py</td><td>CFTC COT-Daten, Smart-Money-Pressure</td></tr>
   </tbody>
 </table>
@@ -162,153 +204,38 @@
 
 <h2>4. CHRONOS FORECASTING</h2>
 
-<p>Chronos 2 liefert alle 4 Stunden einen <b>datengetriebenen Bias</b> für alle 4 Indizes mit Cross-Learning, Covariates und Confidence-Intervallen. Zusätzlich forecastet Chronos 15 individuelle Aktien für die Watchlist (separat vom Bot-Trading).</p>
+<p>Chronos liefert alle 4 Stunden einen <b>datengetriebenen Bias</b> für alle 4 Indizes. Zusätzlich forecastet Chronos 15 individuelle Aktien für die Watchlist (separat vom Bot-Trading).</p>
 
-<h3>4.1 Modell-Konfiguration</h3>
+<h3>Konfiguration</h3>
 <table>
   <thead><tr><th>Parameter</th><th>Wert</th><th>Begründung</th></tr></thead>
   <tbody>
-    <tr><td>Modell</td><td>autogluon/chronos-2 (~200M)</td><td>CPU-optimiert, Full Model, Pretrained</td></tr>
-    <tr><td>prediction_length</td><td>5 Tage</td><td>Optimal für Swing-Trading, Multi-Day-Horizont</td></tr>
+    <tr><td>Modell</td><td>autogluon/chronos-2</td><td>~200M Parameter, CPU-optimiert (Full Model)</td></tr>
+    <tr><td>Horizont</td><td>1 Tag (prediction_length=1)</td><td>Optimal: 81.8% DA bei EURUSD</td></tr>
     <tr><td>Frequenz</td><td>1d (täglich)</td><td>Bestes Signal/Rausch-Verhältnis</td></tr>
-    <tr><td>Cross-Learning</td><td>Ja</td><td>Alle 4 Indizes gemeinsam trainiert (siehe 4.2)</td></tr>
-    <tr><td>Covariates</td><td>VIX, DXY, US10Y</td><td>Makro-Features als zusätzliche Inputs</td></tr>
-    <tr><td>Datenquelle</td><td>Yahoo Finance</td><td>4 direkte + synthetische Crosses</td></tr>
+    <tr><td>Datenquelle</td><td>Yahoo Finance</td><td>4 direkte + 4 synthetische Crosses</td></tr>
     <tr><td>Update</td><td>Alle 4 Stunden (every 240m)</td><td>Cron-basiert, regelmäßige Aktualisierung</td></tr>
   </tbody>
 </table>
 
-<h3>4.2 Cross-Learning + Covariates</h3>
-<p><b>Cross-Learning:</b> Anstatt für jeden Index ein separates Modell zu trainieren, lernt Chronos aus allen 4 Indizes gleichzeitig. Dadurch erkennt das Modell:</p>
-<ul>
-  <li><b>Korrelationsmuster</b> — US500 und NAS100 bewegen sich oft synchron, US30 und UK100 können abweichen</li>
-  <li><b>Regime-Wechsel</b> — Wenn alle Indizes gleichzeitig die Richtung ändern, ist das ein starkes Signal</li>
-  <li><b>Saisonale Patterns</b> — Die kombinierte Historie enthält mehr Datenpunkte pro Pattern</li>
-</ul>
-<p><b>Covariates:</b> Neben den OHLCV-Daten der Indizes werden folgende exogene Variablen als Input genutzt:</p>
-<ul>
-  <li><b>VIX</b> — Volatilitäts-Index (Fear/Guard)</li>
-  <li><b>DXY</b> — US-Dollar-Index (Währungs-Einfluss)</li>
-  <li><b>US10Y</b> — 10-Jahres-Rendite (Zins-Umfeld)</li>
-</ul>
-
-<h3>4.3 Direction-Aware Filter (DA)</h3>
-<p>Der Direction-Aware Filter misst, ob das Modell die <b>Richtung</b> korrekt vorhersagt (unabhängig von der Genauigkeit der Preisprognose):</p>
+<h3>Watchlist (8 Assets)</h3>
 <table>
-  <thead><tr><th>Index</th><th>DA (Backtest)</th><th>Interpretation</th></tr></thead>
+  <thead><tr><th>Asset</th><th>Typ</th><th>DA (Backtest)</th><th>Quelle</th></tr></thead>
   <tbody>
-    <tr><td>US500</td><td><b>94%</b></td><td>Exzellent — sehr zuverlässiges Richtungssignal</td></tr>
-    <tr><td>NAS100</td><td><b>100%</b></td><td>Perfekt — extrem starkes Signal (Vorsicht: Überanpassung möglich)</td></tr>
-    <tr><td>US30</td><td>71% (Long) / 26% (Short)</td><td>Nur Long-Signale vertrauenswürdig</td></tr>
-    <tr><td>UK100</td><td>~65%</td><td>Solide Basis für Bias-Eingabe</td></tr>
-  </tbody>
-</table>
-<div class="warn">
-<b>Wichtig:</b> US30 zeigt eine extreme Asymmetrie — Long-DA ist 71%, Short-DA nur 26%. Daher werden US30-Short-Signale vom Bot ignoriert (siehe 4.9).
-</div>
-
-<h3>4.4 CI80 Confidence Tiers</h3>
-<p>Das 80%-Konfidenzintervall (CI80) gibt an, wie <b>eng</b> die Vorhersage ist. Engere CI80 = höhere Confidence:</p>
-<table>
-  <thead><tr><th>Tier</th><th>CI80 %</th><th>Confidence Label</th><th>Auswirkung</th></tr></thead>
-  <tbody>
-    <tr><td>1</td><td>&lt; 0.5%</td><td style="color:var(--c-ok)">VERY HIGH</td><td>Maximaler Confidence-Boost, bevorzugtes Asset</td></tr>
-    <tr><td>2</td><td>0.5 – 1.0%</td><td style="color:var(--c-ok)">HIGH</td><td>Standard-Boost, normales Sizing</td></tr>
-    <tr><td>3</td><td>1.0 – 2.0%</td><td style="color:var(--c-warn)">MEDIUM</td><td>Leicht reduziertes Sizing</td></tr>
-    <tr><td>4</td><td>2.0 – 5.0%</td><td style="color:var(--c-warn)">LOW</td><td>Reduziertes Sizing, zusätzliche Filter</td></tr>
-    <tr><td>5</td><td>&gt; 5.0%</td><td style="color:var(--c-err)">VERY LOW</td><td>Signal wird ignoriert (zu unsicher)</td></tr>
+    <tr><td>EURUSD</td><td>Major</td><td>63.6%</td><td>Yahoo (direkt)</td></tr>
+    <tr><td>AUDCAD</td><td>Cross</td><td>61.9%</td><td>Yahoo (direkt)</td></tr>
+    <tr><td>EURCHF</td><td>Cross</td><td>59.1%</td><td>Yahoo (direkt)</td></tr>
+    <tr><td>CADJPY</td><td>Cross</td><td>54.5%</td><td>Yahoo (direkt)</td></tr>
+    <tr><td>GBPAUD</td><td>Cross</td><td>54.5%</td><td>Synthetisch (Majors)</td></tr>
+    <tr><td>EURJPY</td><td>Cross</td><td>50.0%</td><td>Yahoo (direkt)</td></tr>
+    <tr><td>XAUUSD</td><td>Gold</td><td>50.0%</td><td>Yahoo (direkt)</td></tr>
+    <tr><td>EURGBP</td><td>Cross</td><td>45.5%</td><td>Synthetisch (Majors)</td></tr>
   </tbody>
 </table>
 
-<h3>4.5 Expected Move Boost</h3>
-<p>Chronos berechnet den <b>erwarteten prozentualen Move</b> für die nächsten 5 Tage. Dieser Wert wird genutzt für:</p>
-<ul>
-  <li><b>Position-Sizing:</b> Größerer Expected Move → höheres Conviction-Signal → Quarter-Kelly wird mit Faktor multipliziert</li>
-  <li><b>Filterung:</b> Expected Move &lt; 0.1% wird als "zu klein" gewertet und das Signal ignoriert</li>
-  <li><b>Risiko-Bewertung:</b> Expected Move &gt; ATR×2 → Warnung (außergewöhnliche Volatilität erwartet)</li>
-</ul>
-
-<h3>4.6 Dynamic TP</h3>
-<p>Statt eines festen TP-Faktors (z.B. 5× ATR) wird der Take-Profit dynamisch basierend auf dem Chronos Expected Move gesetzt:</p>
-<pre><code>TP_dyn = Entry + (Expected_Move_Pct × Entry_Price × Direction_Factor)
-
-Fallback (wenn kein Forecast): TP_dyn = 5.0 × ATR
-Max TP: TP_dyn ≤ 8.0 × ATR (Cap gegen Ausreißer)
-Min TP: TP_dyn ≥ 2.0 × ATR (Floor gegen zu enge TPs)</code></pre>
-
-<h3>4.7 VIX-Filter</h3>
-<p>Der VIX-Filter nutzt die VIX-Daten aus dem Chronos-Forecast, um Long-Signale bei hoher Volatilität zu blockieren:</p>
-<table>
-  <thead><tr><th>VIX Level</th><th>Regime</th><th>Aktion</th></tr></thead>
-  <tbody>
-    <tr><td>&lt; 15</td><td style="color:var(--c-ok)">Calm</td><td>Alle Signale erlaubt, Sizing ×1.15</td></tr>
-    <tr><td>15 – 20</td><td style="color:var(--c-ok)">Neutral</td><td>Alle Signale erlaubt, Sizing ×1.0</td></tr>
-    <tr><td>20 – 25</td><td style="color:var(--c-warn)">Elevated</td><td>Longs mit Vorsicht, Sizing ×0.75</td></tr>
-    <tr><td>25 – 30</td><td style="color:var(--c-warn)">High</td><td>Keine neuen Longs, Shorts erlaubt, Sizing ×0.5</td></tr>
-    <tr><td>&gt; 30</td><td style="color:var(--c-err)">Stress</td><td>Keine neuen Entries (Long+Short), nur Management</td></tr>
-    <tr><td>&gt; 35</td><td style="color:var(--c-err)">Kill Switch</td><td>Alle Trading gestoppt, Emergency-Close prüfen</td></tr>
-  </tbody>
-</table>
-<p><b>VIX-Bias:</b> Zusätzlich wird die VIX-Richtung (steigend/fallend) analysiert. Steigender VIX + Long-Signal = Warnung. Fallender VIX + Short-Signal = Warnung.</p>
-
-<h3>4.8 Regime Detection (Embeddings)</h3>
-<p>Chronos 2 erzeugt bei der Forecast-Berechnung interne <b>Embeddings</b> (Merkmalsvektoren). Diese werden genutzt, um das aktuelle Marktregime zu klassifizieren:</p>
-<table>
-  <thead><tr><th>Regime</th><th>Farbe</th><th>Bedeutung</th></tr></thead>
-  <tbody>
-    <tr><td><b>RISK ON</b></td><td style="color:var(--c-ok)">Grün</td><td>Korrelationen hoch, Trend-Bewegung, Momentum-Phase</td></tr>
-    <tr><td><b>DEFENSIVE</b></td><td style="color:var(--c-err)">Rot</td><td>Korrelationen brechen, Risk-Off, Rotation</td></tr>
-    <tr><td><b>MIXED</b></td><td style="color:var(--c-warn)">Gelb</td><td>Gemischte Signale, Übergangsphase</td></tr>
-    <tr><td><b>OUTLIER</b></td><td style="color:#9b59b6">Lila</td><td>Außergewöhnliches Muster (z.B. vor NFP/FOMC)</td></tr>
-  </tbody>
-</table>
-<p><b>Frische:</b> Regime-Daten werden alle 60 Minuten aktualisiert (cron: <code>chronos_regime.py</code>). Dashboard zeigt "Fresh" (≤2h) oder "Stale" (&gt;2h).</p>
-
-<h3>4.9 US30 Special Handling</h3>
-<div class="warn">
-<b>US30 Asymmetrie:</b> Der Backtest zeigt eine extreme DA-Asymmetrie:
-<ul>
-  <li>Long-DA: <b>71%</b> — akzeptabel, wird genutzt</li>
-  <li>Short-DA: <b>26%</b> — schlechter als Münzwurf</li>
-</ul>
-<b>Konsequenz:</b> US30-Short-Signale von Chronos werden <b>ignoriert</b>. Der Bot tradet US30 nur Long. Short-Signale für US30 kommen nur vom Scanner (regelbasiert) oder Strategist (KI).
-</div>
-
-<h3>4.10 Fine-Tuning (LoRA) — NICHT AKTIV</h3>
-<p>Theoretisch möglich, Chronos 2 mit LoRA auf die spezifischen Assets feinzutunen. Aktuell <b>deaktiviert</b>, da:</p>
-<ul>
-  <li>Pretrained-Modell bereits gute DA-Werte liefert (US500: 94%, NAS100: 100%)</li>
-  <li>Fine-Tuning Risiko von Überanpassung birgt (besonders bei kleinen Datensätzen)</li>
-  <li>CPU-Training wäre sehr langsam (~6h pro Epoch)</li>
-</ul>
-<p><b>Status:</b> Experimentell, wird erst bei signifikantem DA-Abfall in Erwägung gezogen.</p>
-
-<h3>4.11 Backtest-Vergleich: Chronos-Modi</h3>
-<table>
-  <thead><tr><th>Modus</th><th>pl</th><th>Cross-Learning</th><th>Covariates</th><th>avg DA</th><th>Status</th></tr></thead>
-  <tbody>
-    <tr><td>Single-Asset, pl=1</td><td>1</td><td>Nein</td><td>Nein</td><td>54.9%</td><td>Baseline (alt)</td></tr>
-    <tr><td>Single-Asset, pl=5</td><td>5</td><td>Nein</td><td>Nein</td><td>48.2%</td><td>Schlechter</td></tr>
-    <tr><td>Cross-Learn, pl=1</td><td>1</td><td>Ja</td><td>Nein</td><td>62.4%</td><td>Gut</td></tr>
-    <tr><td>Cross-Learn, pl=5</td><td>5</td><td>Ja</td><td>Nein</td><td>58.7%</td><td>Solide</td></tr>
-    <tr><td>Cross+Covar, pl=1</td><td>1</td><td>Ja</td><td>Ja</td><td>67.1%</td><td>Sehr gut</td></tr>
-    <tr><td><b>Cross+Covar, pl=5</b></td><td><b>5</b></td><td><b>Ja</b></td><td><b>Ja</b></td><td><b>71.8%</b></td><td><b style="color:var(--c-ok)">✅ AKTIV</b></td></tr>
-  </tbody>
-</table>
 <div class="success">
-<b>Aktiver Modus:</b> Cross-Learning + Covariates mit prediction_length=5. Durchschnittliche DA von 71.8% über alle 4 Indizes. US500: 94%, NAS100: 100%, UK100: ~65%, US30: 71%/26% (asymmetrisch).
+<b>Regel:</b> Max 2 USD-Majors, min 4 Crosses, max 2 JPY-Paare. Keine redundanten Paare. Jedes Asset hat eigene Fundamentaltreiber.
 </div>
-
-<h3>Warum nur Indizes?</h3>
-<p>Chronos forecastet aktuell <b>nur die 4 Indizes</b> (US500, NAS100, US30, UK100), nicht Forex/Gold. Gründe:</p>
-<ul>
-  <li><b>Höhere DA bei Indizes</b> — Forex-Paare haben niedrigere DA (45-63%)</li>
-  <li><b>Direkte Beeinflussung</b> — Indizes werden von denselben Makro-Faktoren getrieben (Fed, Earnings, Geopolitik)</li>
-  <li><b>Cross-Learning funktioniert</b> — Die 4 Indizes teilen genug Struktur für effektives gemeinsames Lernen</li>
-  <li><b>Regime Detection</b> — Embeddings der Indizes reichen aus, um das Gesamtmarktregime zu bestimmen (Risk-On/Off)</li>
-  <li><b>Forex braucht andere Features</b> — Zinsdifferenz, Carry, politische Events → separat behandeln</li>
-  <li><b>Kein Gold-Signal</b> — XAUUSD zeigt zu niedrige DA (50%) und zu niedrige Korrelation mit den Indizes für Cross-Learning</li>
-</ul>
 
 <hr>
 
@@ -361,16 +288,14 @@ Min TP: TP_dyn ≥ 2.0 × ATR (Floor gegen zu enge TPs)</code></pre>
 <pre><code>Layer 1: Macro (DXY, US10Y, VIX, F&G)      → Markt-Regime bestimmen
 Layer 2: Sentiment (News, COT)              → Smart-Money-Richtung
 Layer 3: Price Action (Scanner-Daten)       → Technische Entry-Points
-Layer 4: Chronos Forecast (ML)              → Datengetriebener Bias + CI80 pro Index
-Layer 5: Regime Detection (Embeddings)      → Risk-On/Off Klassifikation</code></pre>
+Layer 4: Chronos Forecast (ML)              → Datengetriebener Bias pro Asset</code></pre>
 
 <h3>Eingabedaten</h3>
 <table>
   <thead><tr><th>Datenquelle</th><th>Inhalt</th><th>Update</th></tr></thead>
   <tbody>
-    <tr><td>scan_summary.json</td><td>4 Indizes, OHLCV 1H/4H/1D, Indikatoren, Asset-Scores</td><td>alle 2h</td></tr>
-    <tr><td>chronos_forecast_multi.json</td><td>4 Indizes: Bias, CI80, Expected Move, Direction (pl=5)</td><td>alle 4h</td></tr>
-    <tr><td>chronos_regime.json</td><td>Regime Detection (Embeddings), VIX-Analyse</td><td>alle 60m</td></tr>
+    <tr><td>scan_summary.json</td><td>8 Symbole, OHLCV 1H/4H/1D, Indikatoren, Asset-Scores</td><td>alle 2h</td></tr>
+    <tr><td>chronos_forecast_multi.json</td><td>8 Assets: Bias (Bullish/Bearish), Confidence</td><td>täglich 22:00 UTC</td></tr>
     <tr><td>market_data.json</td><td>VIX, DXY, US10Y, Fear&Greed, Regime</td><td>stündlich</td></tr>
     <tr><td>cot_data.json</td><td>CFTC COT: Net-Positionen, Pressure-Score</td><td>wöchentlich (Fr)</td></tr>
     <tr><td>events_calendar.json</td><td>FOMC, NFP, CPI, OPEX</td><td>täglich</td></tr>
@@ -439,26 +364,30 @@ req.maxSlippageInPoints = 30</code></pre>
 
 <hr>
 
-<h2>8. SYMBOLE (4 Indizes)</h2>
+<h2>8. SYMBOLE (8 Assets)</h2>
 
 <table>
-  <thead><tr><th>Index</th><th>Klasse</th><th>Pip-Size</th><th>Chronos DA</th><th>Notes</th></tr></thead>
+  <thead><tr><th>Asset</th><th>Klasse</th><th>Pip-Size</th><th>Chronos DA</th></tr></thead>
   <tbody>
-    <tr><td>US500</td><td>Index</td><td>0.1</td><td><b>94%</b></td><td>S&P 500, exzellentes Signal</td></tr>
-    <tr><td>NAS100</td><td>Index</td><td>0.1</td><td><b>100%</b></td><td>Nasdaq 100, perfekt (Vorsicht: Überanpassung)</td></tr>
-    <tr><td>US30</td><td>Index</td><td>0.1</td><td>71%/26%</td><td>Dow Jones, asymmetrisch (nur Long via Chronos)</td></tr>
-    <tr><td>UK100</td><td>Index</td><td>0.1</td><td>~65%</td><td>FTSE 100, solide Basis</td></tr>
+    <tr><td>EURUSD</td><td>Major</td><td>0.00001</td><td>63.6%</td></tr>
+    <tr><td>EURGBP</td><td>Cross</td><td>0.00001</td><td>45.5%</td></tr>
+    <tr><td>EURJPY</td><td>Cross</td><td>0.001</td><td>50.0%</td></tr>
+    <tr><td>EURCHF</td><td>Cross</td><td>0.00001</td><td>59.1%</td></tr>
+    <tr><td>AUDCAD</td><td>Cross</td><td>0.00001</td><td>61.9%</td></tr>
+    <tr><td>CADJPY</td><td>Cross</td><td>0.001</td><td>54.5%</td></tr>
+    <tr><td>GBPAUD</td><td>Cross</td><td>0.00001</td><td>54.5%</td></tr>
+    <tr><td>XAUUSD</td><td>Metall</td><td>0.01</td><td>50.0%</td></tr>
   </tbody>
 </table>
 
-<p><b>Diversifikation:</b> 4 verschiedene Märkte (US Large Cap, US Tech, US Industrial, UK Large Cap). Cross-Learning nutzt die Korrelationsstruktur für bessere Vorhersagen.</p>
+<p><b>Diversifikation:</b> Keine redundanten USD-Paare, max 2 JPY-Paare, eigene Fundamentaltreiber pro Asset.</p>
 
 <hr>
 
 <h2>9. DATEIEN</h2>
 
 <h3>Code (src/)</h3>
-<pre><code>├── 01_scanner.py              ← 4 Indizes × 3 TFs, Indikatoren, Scores
+<pre><code>├── 01_scanner.py              ← 8 Symbole × 3 TFs, Indikatoren, Scores
 ├── 16_strategist.py           ← KI-Strategist (Kimi K2.6, Layer-Modell, COT)
 ├── 17_executor.py             ← Regelbasiert: MTF-Gating, Spread, Session
 ├── 18_scheduler.py            ← Scheduler für Strategist (next_check_in)
@@ -470,44 +399,35 @@ req.maxSlippageInPoints = 30</code></pre>
 ├── 22_reflector.py            ← Qualitätsprüfung
 ├── 23_kelly_engine.py         ← Quarter-Kelly + VIX-Scaling
 ├── 25_institutional_guards.py ← RoR, Korrelation, VIX-Kill
-├── chronos_data_provider_multi.py  ← Yahoo-Daten für 4 Indizes
-├── chronos_forecaster_multi.py     ← Chronos 2 ML Forecast (Cross-Learning)
+├── chronos_data_provider_multi.py  ← Yahoo-Daten für 8 Assets
+├── chronos_forecaster_multi.py     ← Chronos ML Forecast
 ├── chronos_refresh.py         ← Cron-Wrapper für Chronos
-├── chronos_regime.py          ← Regime Detection (Embeddings), VIX-Analyse
 ├── chronos_prompt_helper.py   ← Chronos-Bias-Tabelle für Strategist
-├── asset_config.py            ← 4 Indizes, Pip-Config, Cluster
+├── asset_config.py            ← 8 Symbole, Pip-Config, Cluster
 ├── build_bot_status.py        ← Dashboard JSON Generator
-├── ctrader_stream.py          ← cTrader Live Stream (4 Spots)
+├── ctrader_stream.py          ← cTrader Live Stream (8 Spots)
 └── backtest_mc.py             ← Monte Carlo + Benchmark</code></pre>
 
 <h3>Daten (data/)</h3>
 <pre><code>├── briefing.json              ← Aktuelles Strategist-Briefing
 ├── trade_theses.json          ← Alle Theses (pending/armed/filled)
-├── chronos_input_multi.csv    ← Trainingsdaten für 4 Indizes
-├── chronos_forecast_multi.json    ← 4-Index Forecast (Cross-Learning)
-├── chronos_regime.json        ← Regime Detection (Embeddings), VIX
+├── chronos_input_multi.csv    ← Trainingsdaten für Chronos
+├── chronos_forecast_multi.json    ← 8-Asset Forecast
 ├── chronos_optimized_backtest.json ← Backtest-Ergebnisse
 ├── performance.json           ← Performance-Metriken
 ├── trade_log.jsonl            ← Alle Trades
 ├── exit_log.jsonl             ← Geschlossene Positionen
 ├── live/scan_summary.json     ← Scanner-Ergebnis
-└── stream/spots_all.json      ← Live Bid/Ask (4 Index-Spots)</code></pre>
+└── stream/spots_all.json      ← Live Bid/Ask</code></pre>
 
 <hr>
 
 <h2>10. STATUS & ROADMAP</h2>
 
-<h3>Aktuell (v3.2.0)</h3>
+<h3>Aktuell (v3.1.0)</h3>
 <ul>
-  <li>✅ <b>Chronos 2 ML Forecast</b> — 4 Indizes, pl=5, Cross-Learning + Covariates, 71.8% avg DA</li>
-  <li>✅ <b>Cross-Learning</b> — Alle 4 Indizes gemeinsam trainiert, bessere Korrelationsmuster</li>
-  <li>✅ <b>Covariates</b> — VIX, DXY, US10Y als exogene Inputs</li>
-  <li>✅ <b>Regime Detection</b> — Embeddings-basierte Risk-On/Off Klassifikation</li>
-  <li>✅ <b>CI80 Confidence Tiers</b> — 5-Tier System für Signal-Qualität</li>
-  <li>✅ <b>Dynamic TP</b> — Basierend auf Expected Move statt fixem ATR-Faktor</li>
-  <li>✅ <b>Direction-Aware Filter</b> — US500: 94%, NAS100: 100%, UK100: ~65%</li>
-  <li>✅ <b>US30 Special Handling</b> — Nur Long-Signale (Short-DA: 26%)</li>
-  <li>✅ <b>VIX-Filter erweitert</b> — 6 Stufen von Calm bis Kill Switch</li>
+  <li>✅ <b>Chronos Multi-Asset Forecasting</b> — 8 Assets, 1d/pl=1, 54.9% avg DA</li>
+  <li>✅ <b>8-Asset Watchlist</b> — Diversifiziert, keine redundanten Majors</li>
   <li>✅ <b>Kimi K2.6 Strategist</b> — via OpenRouter, Budget 24 Calls/Tag</li>
   <li>✅ <b>Unified Pipeline</b> — Scanner + Strategist → gemeinsame Thesis-Datenbank</li>
   <li>✅ <b>Reflector</b> — Qualitätsprüfung mit Auto-Kalibrierung</li>
@@ -527,11 +447,24 @@ req.maxSlippageInPoints = 30</code></pre>
 
 <hr>
 
-<p><i>Letzte Aktualisierung: 2026-05-14 — v3.2.0 (Chronos 2 ML Forecast, Cross-Learning + Covariates, Regime Detection, Indices Only)</i></p>
+<p><i>Letzte Aktualisierung: 2026-05-14 — v3.1.0 (Chronos Reversal Engine + Stock Forecasting, Indices Only, Kein LLM)</i></p>
 
 </div>
 
 <script>
 if (typeof lucide !== 'undefined') lucide.createIcons();
 </script>
-<!--/BODY-->
+</main>
+
+<script>
+if (typeof lucide !== 'undefined') lucide.createIcons();
+// Scroll active nav link into view on mobile
+document.addEventListener('DOMContentLoaded', function(){
+  var active = document.querySelector('.nav a[aria-current="page"]');
+  if(active && active.scrollIntoView){
+    active.scrollIntoView({inline:'center',behavior:'instant'});
+  }
+});
+</script>
+</body>
+</html>

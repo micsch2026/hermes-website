@@ -168,6 +168,46 @@ function safeFetch(path, opts) {
   <div id="chronos-forecast-content"><span class="no-data">Lade...</span></div>
 </div>
 
+  <!-- Chronos Forecast -->
+  <p class="section-title">Chronos 2 — ML Forecast</p>
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">Modell</div>
+      <div class="card-value" id="chronos-model">—</div>
+      <div class="card-sub" id="chronos-horizon">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Forecast Alter</div>
+      <div class="card-value" id="chronos-age">—</div>
+      <div class="card-sub" id="chronos-timestamp">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title">VIX</div>
+      <div class="card-value" id="chronos-vix-level">—</div>
+      <div class="card-sub" id="chronos-vix-detail">—</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Regime</div>
+      <div class="card-value" id="chronos-regime-status">—</div>
+      <div class="card-sub" id="chronos-regime-fresh">—</div>
+    </div>
+  </div>
+
+  <!-- Chronos Index Forecast Table -->
+  <div class="card" style="margin-bottom:var(--s-4)">
+    <div class="card-title">Index-Forecast (Cross-Learning + Covariates)</div>
+    <table>
+      <thead><tr><th>Index</th><th>Bias</th><th>Exp. Move</th><th>CI80 %</th><th>Confidence</th><th>RSI(14)</th><th>Close</th></tr></thead>
+      <tbody id="chronos-forecast-body"><tr><td colspan="7" class="no-data">Keine Forecast-Daten</td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Regime Detection (Embeddings) -->
+  <div class="card" style="margin-bottom:var(--s-4)">
+    <div class="card-title">Regime Detection (Chronos Embeddings)</div>
+    <div id="chronos-regime-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--s-2)"><span class="no-data">Keine Regime-Daten</span></div>
+  </div>
+
 <!-- 4. WATCHLIST -->
 <p class="section-title">Watchlist</p>
 <div class="card table-wrap">
@@ -570,6 +610,88 @@ async function loadDashboard() {
 
     // Performance
     renderPerformance(d);
+
+    // Chronos Forecast
+    if (d.chronos_forecast) {
+      var cf = d.chronos_forecast;
+      document.getElementById("chronos-model").textContent = cf.model || "—";
+      document.getElementById("chronos-horizon").textContent = "Horizont: " + (cf.prediction_length || "—") + " Tage";
+
+      // Age
+      if (cf.timestamp) {
+        var fcTime = new Date(cf.timestamp);
+        var ageH = ((Date.now() - fcTime.getTime()) / 3600000);
+        var ageEl = document.getElementById("chronos-age");
+        if (ageH > 25) { ageEl.innerHTML = "<span style=\"color:var(--c-err)\">STALE (" + ageH.toFixed(0) + "h)</span>"; }
+        else if (ageH > 12) { ageEl.innerHTML = "<span style=\"color:var(--c-warn)\">" + ageH.toFixed(0) + "h alt</span>"; }
+        else { ageEl.innerHTML = "<span style=\"color:var(--c-ok)\">" + ageH.toFixed(1) + "h frisch</span>"; }
+        document.getElementById("chronos-timestamp").textContent = fmtTime(cf.timestamp);
+      }
+
+      // VIX
+      if (cf.vix) {
+        var vixLvl = cf.vix.level;
+        var vixEl = document.getElementById("chronos-vix-level");
+        if (vixLvl != null) {
+          if (vixLvl > 25) { vixEl.innerHTML = "<span style=\"color:var(--c-err)\">" + vixLvl.toFixed(1) + " ⚠</span>"; }
+          else if (vixLvl > 20) { vixEl.innerHTML = "<span style=\"color:var(--c-warn)\">" + vixLvl.toFixed(1) + "</span>"; }
+          else { vixEl.innerHTML = "<span style=\"color:var(--c-ok)\">" + vixLvl.toFixed(1) + "</span>"; }
+        }
+        var vixBiasMap = {bullish:"▲ steigend",bearish:"▼ fallend",neutral:"— neutral"};
+        var vixBiasColor = cf.vix.bias === "bullish" ? "var(--c-err)" : (cf.vix.bias === "bearish" ? "var(--c-ok)" : "var(--c-text-dim)");
+        document.getElementById("chronos-vix-detail").innerHTML = "<span style=\"color:" + vixBiasColor + "\">" + (vixBiasMap[cf.vix.bias] || cf.vix.bias) + "</span>" + (cf.vix.expected_move_pct ? " · Exp: " + cf.vix.expected_move_pct.toFixed(2) + "%" : "");
+      }
+
+      // Forecast Table
+      if (cf.indices) {
+        var forecastBody = document.getElementById("chronos-forecast-body");
+        var fhtml = "";
+        var order = ["US500","NAS100","US30","UK100"];
+        for (var i = 0; i < order.length; i++) {
+          var sym = order[i];
+          var idx = cf.indices[sym];
+          if (!idx) continue;
+          var biasColor = idx.bias === "bullish" ? "var(--c-ok)" : (idx.bias === "bearish" ? "var(--c-err)" : "var(--c-text-dim)");
+          var biasLabel = idx.bias === "bullish" ? "▲ BULL" : (idx.bias === "bearish" ? "▼ BEAR" : "— NEUTRAL");
+          var ciColor = idx.ci80_pct < 1 ? "var(--c-ok)" : (idx.ci80_pct < 3 ? "var(--c-warn)" : "var(--c-err)");
+          var confLabel = idx.ci80_pct < 0.5 ? "VERY HIGH" : (idx.ci80_pct < 1 ? "HIGH" : (idx.ci80_pct < 2 ? "MEDIUM" : (idx.ci80_pct < 5 ? "LOW" : "VERY LOW")));
+          var confColor = idx.ci80_pct < 1 ? "var(--c-ok)" : (idx.ci80_pct < 3 ? "var(--c-warn)" : "var(--c-err)");
+          fhtml += "<tr><td><b>" + sym + "</b></td>";
+          fhtml += "<td><span style=\"color:" + biasColor + ";font-weight:600\">" + biasLabel + "</span></td>";
+          fhtml += "<td>" + (idx.expected_move_pct >= 0 ? "+" : "") + idx.expected_move_pct.toFixed(2) + "%</td>";
+          fhtml += "<td><span style=\"color:" + ciColor + "\">" + idx.ci80_pct.toFixed(2) + "%</span></td>";
+          fhtml += "<td><span style=\"color:" + confColor + ";font-weight:600\">" + confLabel + "</span></td>";
+          fhtml += "<td>" + (idx.rsi14 != null ? idx.rsi14.toFixed(1) : "—") + "</td>";
+          fhtml += "<td>" + (idx.last_close ? idx.last_close.toFixed(1) : "—") + "</td></tr>";
+        }
+        if (fhtml) forecastBody.innerHTML = fhtml;
+      }
+    }
+
+    // Regime Detection
+    if (d.scan_summary && d.scan_summary.regimes) {
+      var regimes = d.scan_summary.regimes;
+      var regimeGrid = document.getElementById("chronos-regime-grid");
+      var regimeColors = {risk_on:"var(--c-ok)",defensive:"var(--c-err)",mixed:"var(--c-warn)",outlier:"#9b59b6",unknown:"var(--c-text-dim)"};
+      var regimeLabels = {risk_on:"RISK ON",defensive:"DEFENSIVE",mixed:"MIXED",outlier:"OUTLIER",unknown:"—"};
+      var rhtml = "";
+      var rorder = ["US500","NAS100","US30","UK100","VIX","XAUUSD"];
+      for (var ri = 0; ri < rorder.length; ri++) {
+        var rsym = rorder[ri];
+        var rVal = regimes[rsym];
+        if (!rVal) continue;
+        var rcol = regimeColors[rVal] || "var(--c-text-dim)";
+        rhtml += "<div style=\"background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--s-2) var(--s-3);text-align:center\">";
+        rhtml += "<div style=\"font-size:var(--text-xs);color:var(--c-text-dim)\">" + rsym + "</div>";
+        rhtml += "<div style=\"font-weight:700;color:" + rcol + ";font-size:var(--text-sm)\">" + (regimeLabels[rVal] || rVal) + "</div>";
+        rhtml += "</div>";
+      }
+      if (rhtml) regimeGrid.innerHTML = rhtml;
+      document.getElementById("chronos-regime-status").textContent = d.scan_summary.regime_status === "fresh" ? "✅ Fresh" : "⚠ Stale";
+      document.getElementById("chronos-regime-fresh").textContent = (Object.keys(regimes).length) + " Assets analysiert";
+    } else {
+      document.getElementById("chronos-regime-status").textContent = "—";
+    }
 
   } catch(e) {
     console.error(e);
