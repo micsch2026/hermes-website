@@ -25,7 +25,7 @@
 
 <div class="page-header">
   <h1 class="page-title">Trading Bot — Leitfaden</h1>
-  <p class="page-subtitle">v2.7.0 — Chronos Multi-Asset Forecasting + Kimi-K2.6 Strategist + 8-Asset Watchlist</p>
+  <p class="page-subtitle">v3.1.0 — Chronos Reversal Engine (Indices Only) + Quantitative Signals + Stock Forecasting</p>
 </div>
 
 <blockquote>Unified Pipeline: Scanner + Chronos Forecasting erzeugen strukturierte Thesen. Der Reflector prüft Qualität. Kelly bestimmt die Größe. Institutionelle Guards blockieren vor dem Trade. Safety-first: Atomic SL, Margin-Caps, Emergency-Stop, Watchdog.</blockquote>
@@ -39,7 +39,7 @@
 <p><b>API:</b> cTrader Open API (gRPC/Protobuf)</p>
 <p><b>Konto:</b> Demo #47109084, ~500 EUR, 1:30 Hebel</p>
 <p><b>KI-Strategist:</b> Kimi K2.6 via OpenRouter (~0.12 EUR/Call, Budget 24/Tag)</p>
-<p><b>Forecasting:</b> Chronos (autogluon/chronos-2-small, 28M) — Multi-Asset Tages-Forecast</p>
+<p><b>Forecasting:</b> Chronos (autogluon/chronos-2, ~200M) — Tages-Bias pro Index + Stock Forecasting</p>
 <p><b>Dashboard:</b> <a href="/bot">hermes.nexusfortis.org/bot</a></p>
 
 <h2>2. DASHBOARD — Bedienoberfläche</h2>
@@ -84,9 +84,9 @@
 │  CHRONOS FORECASTER (ML, 0 EUR)                             │
 │  chronos_forecaster_multi.py                                │
 │  ── 8 Assets, 1-Tages-Horizont, pl=1, freq=1d               │
-│  ── Modell: autogluon/chronos-2-small (28M, CPU)            │
+│  ── Modell: autogluon/chronos-2 (~200M, CPU)                 │
 │  ── Bias-Tabelle für Strategist (Bullish/Bearish pro Asset) │
-│  ── Täglich 22:00 UTC via Cron                              │
+│  ── Alle 4h via Cron                                         │
 └───────────────────────┬─────────────────────────────────────┘
                         │ chronos_forecast_multi.json
                         ▼
@@ -149,7 +149,7 @@
   <tbody>
     <tr><td>*/5 Min</td><td>build_bot_status.py</td><td>Dashboard JSON (merge aller Datenquellen)</td></tr>
     <tr><td>0 */2 * * *</td><td>01_scanner.py</td><td>8 Symbole × 3 TFs, Indikatoren, Asset-Scores</td></tr>
-    <tr><td>0 22 * * *</td><td>chronos_refresh.py</td><td>Chronos Multi-Asset Forecast (täglich 22:00 UTC)</td></tr>
+    <tr><td>every 240m (4h)</td><td>chronos_refresh.py</td><td>Chronos Forecast — Bias + 15 Stock-Forecasts</td></tr>
     <tr><td>Fr 22:00 UTC</td><td>21_cot_fetcher.py</td><td>CFTC COT-Daten, Smart-Money-Pressure</td></tr>
   </tbody>
 </table>
@@ -158,17 +158,17 @@
 
 <h2>4. CHRONOS FORECASTING</h2>
 
-<p>Chronos liefert täglich einen <b>datengetriebenen Bias</b> für alle 8 Assets — unabhängig vom KI-Strategisten.</p>
+<p>Chronos liefert alle 4 Stunden einen <b>datengetriebenen Bias</b> für alle 4 Indizes. Zusätzlich forecastet Chronos 15 individuelle Aktien für die Watchlist (separat vom Bot-Trading).</p>
 
 <h3>Konfiguration</h3>
 <table>
   <thead><tr><th>Parameter</th><th>Wert</th><th>Begründung</th></tr></thead>
   <tbody>
-    <tr><td>Modell</td><td>autogluon/chronos-2-small</td><td>28M Parameter, CPU-optimiert</td></tr>
+    <tr><td>Modell</td><td>autogluon/chronos-2</td><td>~200M Parameter, CPU-optimiert (Full Model)</td></tr>
     <tr><td>Horizont</td><td>1 Tag (prediction_length=1)</td><td>Optimal: 81.8% DA bei EURUSD</td></tr>
     <tr><td>Frequenz</td><td>1d (täglich)</td><td>Bestes Signal/Rausch-Verhältnis</td></tr>
     <tr><td>Datenquelle</td><td>Yahoo Finance</td><td>4 direkte + 4 synthetische Crosses</td></tr>
-    <tr><td>Update</td><td>Täglich 22:00 UTC</td><td>Vor Asien-Eröffnung</td></tr>
+    <tr><td>Update</td><td>Alle 4 Stunden (every 240m)</td><td>Cron-basiert, regelmäßige Aktualisierung</td></tr>
   </tbody>
 </table>
 
@@ -290,7 +290,7 @@ Layer 4: Chronos Forecast (ML)              → Datengetriebener Bias pro Asset<
 <table>
   <thead><tr><th>Regel</th><th>Schwelle</th><th>Aktion</th></tr></thead>
   <tbody>
-    <tr><td>Tages-Loss-Limit</td><td>-3% Equity (~15 EUR)</td><td>Trading-Stop für den Tag</td></tr>
+    <tr><td>Tages-Loss-Limit</td><td>-3% Equity (~16 EUR)</td><td>Trading-Stop für den Tag</td></tr>
     <tr><td>Cooldown</td><td>3 Verluste in Folge</td><td>Trading pausiert bis Strategist-Neubewertung</td></tr>
     <tr><td>Emergency Stop</td><td>Equity < 10% von Reference-Balance</td><td>Alle Trading gestoppt</td></tr>
     <tr><td>Weekend-Block</td><td>Fr 21:00 - So 22:00 UTC</td><td>Keine neuen Orders</td></tr>
@@ -305,7 +305,7 @@ Layer 4: Chronos Forecast (ML)              → Datengetriebener Bias pro Asset<
   <li><b>Basis:</b> Quarter-Kelly aus historischer Performance</li>
   <li><b>VIX-Scaling:</b> Calm (×1.15) → Neutral (×1.0) → Elevated (×0.75) → Stress (×0.5)</li>
   <li><b>Conviction-Overlay:</b> 0.55→0.6×, 0.75→1.0×, 1.0→1.5×</li>
-  <li><b>Hard Limits:</b> Min 0.3% Equity, Max 5% Equity pro Trade</li>
+  <li><b>Hard Limits:</b> Min 0.3% Equity, Max 2% Equity pro Trade</li>
   <li><b>Margin-Limit:</b> Max 30% Equity als Margin</li>
 </ul>
 
@@ -378,7 +378,7 @@ req.maxSlippageInPoints = 30</code></pre>
 
 <h2>10. STATUS & ROADMAP</h2>
 
-<h3>Aktuell (v2.7.0)</h3>
+<h3>Aktuell (v3.1.0)</h3>
 <ul>
   <li>✅ <b>Chronos Multi-Asset Forecasting</b> — 8 Assets, 1d/pl=1, 54.9% avg DA</li>
   <li>✅ <b>8-Asset Watchlist</b> — Diversifiziert, keine redundanten Majors</li>
@@ -401,7 +401,7 @@ req.maxSlippageInPoints = 30</code></pre>
 
 <hr>
 
-<p><i>Letzte Aktualisierung: 2026-05-09 — v2.7.0 (Chronos Multi-Asset, 8-Symbol-Watchlist)</i></p>
+<p><i>Letzte Aktualisierung: 2026-05-14 — v3.1.0 (Chronos Reversal Engine + Stock Forecasting, Indices Only, Kein LLM)</i></p>
 
 </div>
 

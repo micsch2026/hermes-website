@@ -442,19 +442,52 @@ function renderKimiCards(data) {
   var ideas = data.new_ideas || [];
   var wlHtml = '';
   if (ideas.length > 0) {
-    wlHtml = '<table><tr><th>Asset</th><th>Action</th><th>Entry</th><th>Stop</th><th>Target</th><th>Size</th><th>Reason</th></tr>';
+    wlHtml = '<table><tr><th>Asset</th><th>Action</th><th>Chronos-2 Forecast</th><th>Entry / Detail</th><th>Stop</th><th>Target / R/R</th><th>Hebel</th><th>Size</th><th>Begründung / Risiko</th></tr>';
     for (var i = 0; i < ideas.length; i++) {
       var idea = ideas[i];
       wlHtml += '<tr>';
-      wlHtml += '<td><b>' + (idea.asset || '?') + '</b></td>';
+      var sector = idea.sector || '';
+      var sectorBadge = sector ? '<span class="badge badge-mittel">' + sector + '</span>' : '';
+      var timing = idea.timing || '';
+      wlHtml += '<td><b>' + (idea.asset || '?') + '</b><br>' + sectorBadge + '<br><span class="muted">' + timing + '</span></td>';
       var ideaAction = idea.action || '—';
       var ideaClass = ideaAction.toLowerCase().indexOf('kaufen') >= 0 ? 'badge-buy' : ideaAction.toLowerCase().indexOf('verkaufen') >= 0 ? 'badge-sell' : 'badge-hold';
-      wlHtml += '<td><span class="badge ' + ideaClass + '">' + ideaAction + '</span></td>';
-      wlHtml += '<td>' + (idea.entry || '—') + '</td>';
+      var conf = idea.confidence || 0;
+      var confColor = conf >= 0.7 ? '#22c55e' : conf >= 0.5 ? '#eab308' : '#ef4444';
+      wlHtml += '<td><span class="badge ' + ideaClass + '">' + ideaAction + '</span><br><span style="font-size:0.8em;color:' + confColor + '">● ' + Math.round(conf * 100) + '% Conf</span></td>';
+      // Chronos forecast (optional)
+      var chronos = idea.chronos || null;
+      if (chronos) {
+        var cDir = chronos.direction || '?';
+        var cMove = chronos.expected_move_pct || 0;
+        var cCi = chronos.ci80_pct || 0;
+        var cRsi = chronos.rsi14;
+        var cSignal = chronos.entry_signal || '';
+        var cLow = chronos.ci80_low || 0;
+        var cHigh = chronos.ci80_high || 0;
+        var cRel = chronos.reliability || '?';
+        var cRelScore = chronos.reliability_score || 0.5;
+        var cDirAcc = chronos.directional_accuracy || 50;
+        var dirColor = cDir === 'bullish' ? '#22c55e' : cDir === 'bearish' ? '#ef4444' : '#eab308';
+        var sigColor = cSignal.indexOf('OK') >= 0 ? '#22c55e' : cSignal.indexOf('WARTEN') >= 0 ? '#ef4444' : '#eab308';
+        var relColor = cRelScore >= 0.6 ? '#22c55e' : cRelScore >= 0.5 ? '#eab308' : '#ef4444';
+        wlHtml += '<td><span style="color:' + dirColor + '"><b>' + cDir.toUpperCase() + '</b> ' + (cMove >= 0 ? '+' : '') + cMove.toFixed(1) + '%</span>';
+        wlHtml += '<br><span class="muted" style="font-size:0.8em">CI80: ' + cLow + '-' + cHigh + ' (' + Math.round(cCi) + '%)</span>';
+        if (cRsi) wlHtml += '<br><span class="muted" style="font-size:0.8em">RSI: ' + Math.round(cRsi) + ' | DA: ' + cDirAcc + '%</span>';
+        wlHtml += '<br><span style="color:' + relColor + ';font-size:0.8em">Genauigkeit: ' + cRel + '</span>';
+        wlHtml += '<br><span style="color:' + sigColor + ';font-size:0.85em"><b>' + cSignal + '</b></span></td>';
+      } else {
+        wlHtml += '<td><span class="muted">—</span></td>';
+      }
+      var entryDetail = idea.entry_detail || '';
+      wlHtml += '<td><b>' + (idea.entry || '—') + '</b><br><span class="muted" style="font-size:0.85em">' + entryDetail + '</span></td>';
       wlHtml += '<td>' + (idea.stop || '—') + '</td>';
-      wlHtml += '<td>' + (idea.target || '—') + '</td>';
+      var rr = idea.rr_ratio || '—';
+      wlHtml += '<td>' + (idea.target || '—') + '<br><span class="muted" style="font-size:0.85em">R/R: ' + rr + '</span></td>';
+      wlHtml += '<td><b>' + (idea.leverage || '—') + '</b></td>';
       wlHtml += '<td>' + (idea.size || '—') + '</td>';
-      wlHtml += '<td class="muted">' + (idea.reason || '—') + '</td>';
+      var riskTxt = idea.risk || '';
+      wlHtml += '<td>' + (idea.reason || '—') + '<br><span style="font-size:0.85em;color:#ef4444">⚠ ' + riskTxt + '</span></td>';
       wlHtml += '</tr>';
     }
     wlHtml += '</table>';
