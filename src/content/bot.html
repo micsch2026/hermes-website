@@ -95,7 +95,7 @@ function safeFetch(path, opts) {
     <span id="next-scan-in" style="font-size:var(--text-sm);color:var(--c-text-dim)">—</span>
   </div>
   <div style="font-size:var(--text-sm);margin-bottom:var(--s-3);color:var(--c-text-dim)">
-    Sucht: <strong style="color:var(--c-text)">Long + Short Reversals</strong> auf <strong style="color:var(--c-text)">US500, NAS100, US30, UK100</strong>
+    Sucht: <strong style="color:var(--c-text)">Long + Short Reversals</strong> auf <strong style="color:var(--c-text)">US500, NAS100, US30, UK100, DE40</strong>
   </div>
   <div style="display:flex;flex-wrap:wrap;gap:var(--s-1)">
     <span class="config-chip">RSI(3) 10/90</span>
@@ -107,7 +107,7 @@ function safeFetch(path, opts) {
     <span class="config-chip">Dynamic TP (Expected Move)</span>
     <span class="config-chip">SL = 1.5·ATR</span>
     <span class="config-chip">TP = 5.0·ATR</span>
-    <span class="config-chip">NY 13–16 UTC</span>
+    <span class="config-chip">EU+US 07–19 UTC</span>
   </div>
 </div>
 
@@ -240,28 +240,39 @@ function fmtPrice(p, sym) {
   return p.toFixed(5);
 }
 
-/* NY-Open next scan countdown (13:00 UTC) */
-function getNextNYScan() {
+/* Session countdown (07-19 UTC weekdays) */
+function getNextScan() {
   var now = new Date();
-  var utcH = now.getUTCHours(), utcM = now.getUTCMinutes();
-  var target = new Date(now);
-  target.setUTCHours(13, 0, 0, 0);
-  if (utcH >= 16) { target.setUTCDate(target.getUTCDate() + 1); }
-  else if (utcH >= 13 && utcH < 16) { return { label: "AKTIV", inMs: 0, active: true }; }
-  var diff = target - now;
-  var h = Math.floor(diff / 3600000);
-  var m = Math.floor((diff % 3600000) / 60000);
-  return { label: "13:00 UTC", inMs: diff, inText: "in " + h + "h " + m + "m", active: false };
+  var utcH = now.getUTCHours(), utcD = now.getUTCDay();
+  // Weekend: next scan Monday 07 UTC
+  if (utcD === 0 || utcD === 6 || (utcD === 5 && utcH >= 19)) {
+    var daysToMon = utcD === 0 ? 1 : (utcD === 6 ? 2 : 3);
+    var target = new Date(now); target.setUTCDate(target.getUTCDate() + daysToMon); target.setUTCHours(7,0,0,0);
+    var diff = target - now; var h = Math.floor(diff/3600000); var m = Math.floor((diff%3600000)/60000);
+    return { label: "Mo 07:00 UTC", inMs: diff, inText: "in " + h + "h " + m + "m", active: false };
+  }
+  // Active session: 07-19 UTC
+  if (utcH >= 7 && utcH < 19) return { label: "AKTIV", inMs: 0, active: true };
+  // Before 07 UTC
+  if (utcH < 7) {
+    var target = new Date(now); target.setUTCHours(7,0,0,0);
+    var diff = target - now; var h = Math.floor(diff/3600000); var m = Math.floor((diff%3600000)/60000);
+    return { label: "07:00 UTC", inMs: diff, inText: "in " + h + "h " + m + "m", active: false };
+  }
+  // After 19 UTC
+  var target = new Date(now); target.setUTCDate(target.getUTCDate() + 1); target.setUTCHours(7,0,0,0);
+  var diff = target - now; var h = Math.floor(diff/3600000); var m = Math.floor((diff%3600000)/60000);
+  return { label: "Morgen 07:00 UTC", inMs: diff, inText: "in " + h + "h " + m + "m", active: false };
 }
 
 function renderNextScan() {
-  var ns = getNextNYScan();
+  var ns = getNextScan();
   var timeEl = document.getElementById("next-scan-time");
   var inEl = document.getElementById("next-scan-in");
   if (ns.active) {
     timeEl.textContent = "AKTIV";
     timeEl.style.color = "var(--c-ok)";
-    inEl.textContent = "Session läuft (13–16 UTC)";
+    inEl.textContent = "Session aktiv (07–19 UTC)";
     inEl.style.color = "var(--c-ok)";
   } else {
     timeEl.textContent = ns.label;
@@ -355,7 +366,7 @@ function renderBotFocus(d) {
     }
     el.innerHTML = html;
   } else {
-    var ns = getNextNYScan();
+    var ns = getNextScan();
     var msg = "Keine aktiven Signale.";
     if (!ns.active && ns.inText) msg += " Nächster Scan " + ns.inText + ".";
     else if (ns.active) msg += " Session aktiv — Bot scannt.";
@@ -502,7 +513,7 @@ function renderStrategyStatus(d) {
   var sub = document.getElementById("strategy-sub");
   var now = new Date();
   var utcH = now.getUTCHours();
-  var ns = getNextNYScan();
+  var ns = getNextScan();
 
   var connected = d.ctrader && d.ctrader.authenticated;
   var dot = document.getElementById("bot-dot");
@@ -518,10 +529,10 @@ function renderStrategyStatus(d) {
 
   if (ns.active) {
     el.innerHTML = "<span class=\"status-dot green\" style=\"width:10px;height:10px;margin-right:0\"></span> Reversal Engine";
-    sub.textContent = "Session aktiv — NY Open 13–16 UTC";
+    sub.textContent = "Session aktiv — EU+US 07–19 UTC";
   } else if (connected) {
-    el.innerHTML = "<span class=\"status-dot yellow\" style=\"width:10px;height:10px;margin-right:0\"></span> Wartet auf NY-Open";
-    sub.textContent = ns.inText || "Nächster Scan 13:00 UTC";
+    el.innerHTML = "<span class=\"status-dot yellow\" style=\"width:10px;height:10px;margin-right:0\"></span> Wartet auf nächste Session";
+    sub.textContent = ns.inText || "Nächster Scan 07:00 UTC";
   } else {
     el.innerHTML = "<span class=\"status-dot red\" style=\"width:10px;height:10px;margin-right:0\"></span> Offline";
     sub.textContent = "Keine Verbindung";
