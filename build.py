@@ -7,6 +7,7 @@ Usage: python3 build.py
 import json, os, re, subprocess, sys
 
 SITE_DIR = os.path.dirname(os.path.abspath(__file__))
+BUILD_DIR = os.path.join(SITE_DIR, '_build')
 SRC_DIR = os.path.join(SITE_DIR, 'src')
 DATA_DIR = os.path.join(SRC_DIR, 'data')
 TMPL_DIR = os.path.join(SRC_DIR, 'templates')
@@ -581,6 +582,17 @@ def git_auto_push():
 def main():
     print('Building Hermes site...')
 
+    # Ensure _build/ exists with symlinks to assets/ and api/
+    os.makedirs(BUILD_DIR, exist_ok=True)
+    for link_name in ['assets', 'api']:
+        link_target = os.path.join(SITE_DIR, link_name)
+        link_path = os.path.join(BUILD_DIR, link_name)
+        if os.path.isdir(link_target) and not os.path.exists(link_path):
+            os.symlink(link_target, link_path)
+            print(f'  Symlinked {link_name}/ -> {link_target}')
+        elif not os.path.isdir(link_target):
+            print(f'  Warning: {link_target} does not exist, skipping symlink')
+
     # 1. Generate widget pages from sections.json configs
     for root, dirs, files in os.walk(os.path.join(SITE_DIR, 'content')):
         for fname in files:
@@ -592,14 +604,14 @@ def main():
             out_path = os.path.join(CONTENT_DIR, rel_dir + '.html')
             build_widget_page(config_path, out_path)
 
-    # 2. Build all content files
+    # 2. Build all content files -> output to _build/
     for root, dirs, files in os.walk(CONTENT_DIR):
         for fname in files:
             if not fname.endswith('.html'):
                 continue
             content_path = os.path.join(root, fname)
             rel = os.path.relpath(content_path, CONTENT_DIR)
-            out_path = os.path.join(SITE_DIR, rel)
+            out_path = os.path.join(BUILD_DIR, rel)
             build_page(content_path, out_path)
 
     # 3. Auto git push
