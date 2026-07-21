@@ -1,0 +1,522 @@
+{
+  "id": 67,
+  "label": "#004",
+  "name": "MR RSI+BB+KC+body · Bot1 Config",
+  "display_name": "MR RSI+BB+KC+body · Bot1 Config",
+  "description": "Live Bot 1: RSI+BB+KC+body_ratio. Grid-optimized, 8 pairs. From real trading config.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "invalidated",
+  "readiness": "unknown",
+  "rejection_reason": null,
+  "overall_score": 1256.6,
+  "iteration_count": 5,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "mr-fx",
+  "created_at": "2026-06-29 17:19:34",
+  "updated_at": "2026-06-29 18:21:04",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 8r/1g/3b enter, exit=timeout\", \"pnl\": 2971.53, \"trades\": 680, \"score\": 1256.6}, {\"iter\": 2, \"change\": \"adjust_threshold: 8r/1g/3b enter, exit=timeout\", \"pnl\": -195.51, \"trades\": 137, \"score\": -88.0}, {\"iter\": 3, \"change\": \"adjust_threshold: 8r/1g/3b enter, exit=timeout\", \"pnl\": 2971.53, \"trades\": 680, \"score\": 1256.6}, {\"iter\": 4, \"change\": \"escape_add_gate: 8r/2g/3b enter, exit=timeout\", \"pnl\": 2059.49, \"trades\": 552, \"score\": 910.7}, {\"iter\": 5, \"change\": \"adjust_threshold: 8r/2g/3b enter, exit=timeout\", \"pnl\": -160.73, \"trades\": 384, \"score\": -89.8}], \"iterations\": 5, \"holdout\": {\"passed\": true, \"pnl\": 159.92, \"trades\": 90, \"pf\": 1.21, \"wr\": 47.8, \"monthly_pnls\": [[\"2025-12\", 25.05], [\"2026-01\", -11.24], [\"2026-02\", -15.95], [\"2026-03\", 236.8], [\"2026-04\", 66.44], [\"2026-05\", -41.94], [\"2026-06\", -99.24]], \"max_consec_loss_months\": 2, \"period\": \"2025-12-25 \\u2013 2026-06-23\", \"reason\": \"Passiert \\u2705\"}, \"anti_overfit\": {\"block_validation\": \"2-of-3 time blocks positive\", \"economic_hurdle\": \"PF >= 1.3 after costs\", \"holdout_months\": 6}}",
+  "concept": {
+    "name": "IT: Bot1_MR_combined_mr_kc",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "AUDCAD",
+      "AUDCHF",
+      "AUDNZD",
+      "AUDUSD",
+      "CADCHF",
+      "CADJPY",
+      "CHFJPY",
+      "EURAUD",
+      "EURCAD",
+      "EURCHF",
+      "EURGBP",
+      "EURJPY",
+      "EURNZD",
+      "EURUSD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPCHF",
+      "GBPJPY",
+      "GBPNZD",
+      "GBPUSD",
+      "NZDCAD",
+      "NZDCHF",
+      "NZDJPY",
+      "NZDUSD",
+      "USDCAD",
+      "USDCHF",
+      "USDJPY"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "mr_oversold_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 30
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.15
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.2
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "long",
+            "base_score": 40
+          },
+          {
+            "id": "mr_overbought_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": ">",
+                "value": 70
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.85
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.8
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "short",
+            "base_score": 40
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -80
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "value": -1.0
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": "==",
+                "value": 1
+              }
+            ],
+            "points": 10
+          }
+        ],
+        "gates": [
+          {
+            "condition": "OR",
+            "rules": [
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": "<",
+                "value": 0.95
+              },
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 35
+              }
+            ]
+          }
+        ],
+        "min_score": 40,
+        "merge_mode": "flat_and"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 72
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.5
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "AUDCAD",
+        "AUDCHF",
+        "AUDNZD",
+        "AUDUSD",
+        "CADCHF",
+        "CADJPY",
+        "CHFJPY",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURGBP",
+        "EURJPY",
+        "EURNZD",
+        "EURUSD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPCHF",
+        "GBPJPY",
+        "GBPNZD",
+        "GBPUSD",
+        "NZDCAD",
+        "NZDCHF",
+        "NZDJPY",
+        "NZDUSD",
+        "USDCAD",
+        "USDCHF",
+        "USDJPY"
+      ],
+      "pair_overrides": {
+        "AUDCAD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.8,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.9
+          }
+        },
+        "EURAUD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.7,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURCAD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.5,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURCHF": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.3,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURJPY": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.9,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.7
+          }
+        },
+        "EURNZD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.4,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        },
+        "GBPAUD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.7,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "GBPCAD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.7,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.7
+          }
+        },
+        "GBPNZD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.4,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        },
+        "NZDCAD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.5,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.4
+          }
+        },
+        "NZDUSD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.4,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Live Bot 1: RSI+BB+KC+body_ratio. Grid-optimized, 8 pairs. From real trading config."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -89.8,
+    "oos_pnl": -160.73,
+    "oos_trades": 384,
+    "oos_pass_rate": 0.398,
+    "iteration": 5,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {},
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": false,
+      "evaluated_at": "2026-07-16T18:15:24.028152+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 8r/1g/3b enter, exit=timeout",
+      "oos_pnl": 2971.53,
+      "oos_pf": 0,
+      "tier": "B",
+      "tested": true,
+      "strategy_id": 67,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 680,
+      "children": [
+        {
+          "change": "Iteration 2: adjust_threshold: 8r/1g/3b enter, exit=timeout",
+          "oos_pnl": -195.51,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 137,
+          "children": [
+            {
+              "change": "Iteration 3: adjust_threshold: 8r/1g/3b enter, exit=timeout",
+              "oos_pnl": 2971.53,
+              "oos_pf": 0,
+              "tier": "B",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 680,
+              "children": [
+                {
+                  "change": "Iteration 4: escape_add_gate: 8r/2g/3b enter, exit=timeout",
+                  "oos_pnl": 2059.49,
+                  "oos_pf": 0,
+                  "tier": "B",
+                  "tested": true,
+                  "strategy_id": null,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 552,
+                  "children": [
+                    {
+                      "change": "Iteration 5: adjust_threshold: 8r/2g/3b enter, exit=timeout",
+                      "oos_pnl": -160.73,
+                      "oos_pf": 0,
+                      "tier": "C",
+                      "tested": true,
+                      "strategy_id": null,
+                      "is_new_root": false,
+                      "win_rate": null,
+                      "trades": 384,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      67
+    ],
+    "stats": {
+      "total_variants": 5,
+      "new_trees": 0,
+      "best_pnl": 2971.53,
+      "base_pnl": 2971.53,
+      "improvement": 0.0,
+      "runtime_seconds": 3690.5
+    }
+  },
+  "best_oos_pnl": -160.73,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "C",
+  "best_oos_pass_rate": 0.398,
+  "oos_trades": 384,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 0,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

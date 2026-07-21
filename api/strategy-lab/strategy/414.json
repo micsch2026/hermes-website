@@ -1,0 +1,717 @@
+{
+  "id": 414,
+  "label": "#414",
+  "name": "RCP-CLUSTER: kimi_adx_regime_range_or_trend (20260714_192451)",
+  "display_name": "RCP-CLUSTER: kimi_adx_regime_range_or_trend (20260714_192451)",
+  "description": "Portfolio from recipe_llm_cluster (kimi_adx_regime_range_or_trend) — 1 cluster/tf combos, 0 assets",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "candidate",
+  "readiness": "bot_ready",
+  "rejection_reason": null,
+  "overall_score": 9740.0,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-15 15:37:31",
+  "updated_at": "2026-07-15 15:37:31",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"kimi_adx_regime_range_or_trend\"], \"clusters\": [\"kimi_phase23_all\"], \"total_assets\": 0, \"total_pnl\": 19.48}",
+  "concept": {
+    "name": "RCP-CLUSTER: kimi_adx_regime_range_or_trend",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "sig_long_range",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 20
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2
+                },
+                "op": "<",
+                "value": 0.25
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 35
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "cross_above",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 8
+                }
+              }
+            ],
+            "direction": "long",
+            "base_score": 55
+          },
+          {
+            "id": "sig_short_range",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 20
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2
+                },
+                "op": ">",
+                "value": 0.85
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 65
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "cross_below",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 8
+                }
+              }
+            ],
+            "direction": "short",
+            "base_score": 55
+          },
+          {
+            "id": "sig_long_trend",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 30
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "cross_above",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 21
+                }
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 50
+              },
+              {
+                "indicator": "ema_aligned",
+                "timeframe": "4h",
+                "params": {
+                  "fast": 8,
+                  "medium": 21,
+                  "slow": 50
+                },
+                "op": "==",
+                "value": "bullish"
+              }
+            ],
+            "direction": "long",
+            "base_score": 65
+          },
+          {
+            "id": "sig_short_trend",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 30
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "cross_below",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 21
+                }
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 50
+              },
+              {
+                "indicator": "ema_aligned",
+                "timeframe": "4h",
+                "params": {
+                  "fast": 8,
+                  "medium": 21,
+                  "slow": 50
+                },
+                "op": "==",
+                "value": "bearish"
+              }
+            ],
+            "direction": "short",
+            "base_score": 65
+          }
+        ],
+        "boosts": [],
+        "gates": [],
+        "min_score": 55,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 24
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 2.0
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.0
+      },
+      "risk_pct": 1.5,
+      "pairs": [],
+      "timeframe": "1h"
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 1.5,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Portfolio from recipe_llm_cluster (kimi_adx_regime_range_or_trend) — 1 cluster/tf combos, 0 assets"
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "oos_pnl": 19.48,
+    "oos_score": 9740.0,
+    "oos_pf": null,
+    "oos_wr": 0.0,
+    "oos_trades": 1,
+    "oos_pass_rate": 1.0,
+    "tier_reason": "Bedingt geeignet; Assets profitabel: 100%",
+    "clusters": [
+      {
+        "cluster": "kimi_phase23_all",
+        "timeframe": "1h",
+        "approach": "kimi_adx_regime_range_or_trend",
+        "approach_summary": [
+          {
+            "approach": "kimi_h4_h1_pullback_continuation",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_d1_support_resistance_h1_bounce",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_d1_correlated_pair_momentum_filter",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_asian_session_range_breakout",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_atr_percentile_regime_switch",
+            "score": 0.0,
+            "pnl": 17.14,
+            "recipe_used": false,
+            "trades": 4,
+            "wr": 50.0,
+            "pf": 1.18,
+            "pass_rate": 1.0,
+            "tier": "B"
+          },
+          {
+            "approach": "kimi_h4_aligned_h1_mean_reversion",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_index_overnight_gap_fade",
+            "score": 1025.0,
+            "pnl": 2.05,
+            "recipe_used": true,
+            "trades": 1,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 1.0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_ichimoku_cloud_tenkan_kijun_break",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_rsi_divergence_structure_break",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_mfi_volume_climax_reversal",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_nr7_bollinger_squeeze_breakout",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_adx_regime_range_or_trend",
+            "score": 9740.0,
+            "pnl": 19.48,
+            "recipe_used": true,
+            "trades": 1,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 1.0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_fibonacci_618_confluence",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "kimi_london_session_pivot_break",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          }
+        ],
+        "best_tree": {
+          "enter": {
+            "signals": [
+              {
+                "id": "sig_long_range",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "adx",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 20
+                  },
+                  {
+                    "indicator": "kc_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "mult": 2
+                    },
+                    "op": "<",
+                    "value": 0.25
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 35
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "cross_above",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 8
+                    }
+                  }
+                ],
+                "direction": "long",
+                "base_score": 55
+              },
+              {
+                "id": "sig_short_range",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "adx",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 20
+                  },
+                  {
+                    "indicator": "kc_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "mult": 2
+                    },
+                    "op": ">",
+                    "value": 0.85
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 65
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "cross_below",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 8
+                    }
+                  }
+                ],
+                "direction": "short",
+                "base_score": 55
+              },
+              {
+                "id": "sig_long_trend",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "adx",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 30
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "cross_above",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 21
+                    }
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 50
+                  },
+                  {
+                    "indicator": "ema_aligned",
+                    "timeframe": "4h",
+                    "params": {
+                      "fast": 8,
+                      "medium": 21,
+                      "slow": 50
+                    },
+                    "op": "==",
+                    "value": "bullish"
+                  }
+                ],
+                "direction": "long",
+                "base_score": 65
+              },
+              {
+                "id": "sig_short_trend",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "adx",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 30
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "cross_below",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 21
+                    }
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 50
+                  },
+                  {
+                    "indicator": "ema_aligned",
+                    "timeframe": "4h",
+                    "params": {
+                      "fast": 8,
+                      "medium": 21,
+                      "slow": 50
+                    },
+                    "op": "==",
+                    "value": "bearish"
+                  }
+                ],
+                "direction": "short",
+                "base_score": 65
+              }
+            ],
+            "boosts": [],
+            "gates": [],
+            "min_score": 55,
+            "merge_mode": "highest_score"
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 24
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 2.0
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.0
+          },
+          "risk_pct": 1.5,
+          "pairs": [
+            "EURUSD",
+            "GBPUSD",
+            "AUDUSD",
+            "USDJPY",
+            "XAUUSD",
+            "XAGUSD",
+            "NAS100",
+            "US30",
+            "US500",
+            "US2000",
+            "DE40",
+            "UK100"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 19.48,
+        "best_score": 9740.0,
+        "selected_assets": [],
+        "dropped_assets": [
+          "EURUSD",
+          "GBPUSD",
+          "AUDUSD",
+          "USDJPY",
+          "XAUUSD",
+          "XAGUSD",
+          "NAS100",
+          "US30",
+          "US500",
+          "US2000",
+          "DE40",
+          "UK100"
+        ],
+        "pair_overrides": {},
+        "recipe_used": true,
+        "trades": 1,
+        "pass_rate": 1.0,
+        "tier": "C",
+        "pf": null,
+        "wr": null,
+        "per_asset": {},
+        "updated_at": "2026-07-15T15:37:31.165106+00:00"
+      }
+    ],
+    "all_assets": [],
+    "pair_overrides": {},
+    "approaches_used": [
+      "kimi_adx_regime_range_or_trend"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": null,
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": false,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": true,
+      "evaluated_at": "2026-07-16T18:15:24.122685+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": null,
+  "best_oos_pnl": 19.48,
+  "best_pf": null,
+  "best_wr": 0.0,
+  "best_tier": "B",
+  "best_oos_pass_rate": 1.0,
+  "oos_trades": 1,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

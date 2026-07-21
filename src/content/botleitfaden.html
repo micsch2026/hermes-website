@@ -1,0 +1,302 @@
+<!--TITLE:Bot Leitfaden — Hermes-->
+<!--HEAD-->
+<style>
+  .guide { max-width: 900px; margin: 0 auto; line-height: 1.8; }
+  .guide h1 { font-size: var(--text-2xl); margin-bottom: var(--s-4); }
+  .guide h2 { font-size: var(--text-lg); margin-top: var(--s-8); margin-bottom: var(--s-3); border-bottom: 1px solid var(--c-border); padding-bottom: var(--s-2); }
+  .guide h3 { font-size: var(--text-md); margin-top: var(--s-4); margin-bottom: var(--s-2); }
+  .guide table { width: 100%; border-collapse: collapse; margin: var(--s-3) 0; font-size: var(--text-sm); }
+  .guide th { text-align: left; padding: var(--s-2); border-bottom: 1px solid var(--c-border); color: var(--c-text-dim); }
+  .guide td { padding: var(--s-2); border-bottom: 1px solid var(--c-border); }
+  .guide code { background: var(--c-surface); padding: 2px 6px; border-radius: var(--r-sm); font-size: var(--text-sm); }
+  .guide pre { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); overflow-x: auto; font-size: var(--text-sm); }
+  .guide pre code { background: transparent; padding: 0; }
+  .guide blockquote { border-left: 3px solid var(--c-border); padding-left: var(--s-4); color: var(--c-text-dim); font-style: italic; margin: var(--s-3) 0; }
+  .guide ul { padding-left: var(--s-6); margin: var(--s-3) 0; }
+  .guide li { margin-bottom: var(--s-1); }
+  .guide hr { border: none; border-top: 1px solid var(--c-border); margin: var(--s-6) 0; }
+  .guide .warn { background: var(--c-surface); border-left: 3px solid var(--c-warn); padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
+  .guide .success { background: var(--c-surface); border-left: 3px solid #4caf50; padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
+  .guide .param-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s-4); margin: var(--s-4) 0; }
+  .guide .param-card { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); }
+  .guide .param-card h4 { margin: 0 0 var(--s-2) 0; font-size: var(--text-sm); color: var(--c-text-dim); }
+  .guide .param-card .val { font-size: var(--text-xl); font-weight: 600; margin: var(--s-1) 0; }
+  .guide .param-card .desc { font-size: var(--text-sm); color: var(--c-text-dim); }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container guide">
+
+<div class="page-header">
+  <h1 class="page-title">Trading Bot — Leitfaden</h1>
+  <p class="page-subtitle">v5.0 — M15 Bullische Umkehr + Kerzenmuster (Grid-Search optimiert)</p>
+</div>
+
+<blockquote>Nur Long-Trades bei bullischen Kerzenmustern nahe Bollinger-Bändern. Shorts deaktiviert. Per-Asset-Optimierung via M15 Backtest auf echten Daten.</blockquote>
+
+<hr>
+
+<h2>1. ÜBERBLICK</h2>
+
+<p><b>Ziel:</b> Autonomer Trading Bot auf Pepperstone Demo → Live</p>
+<p><b>Strategie:</b> Bullische Umkehr auf M15 — Kerzenmuster + RSI + BB + EMA-Trend</p>
+<p><b>Assets:</b> 20 US Stocks (M15 Grid-Search optimiert)</p>
+<p><b>Broker:</b> Pepperstone GmbH (BaFin, Düsseldorf)</p>
+<p><b>API:</b> cTrader Open API (gRPC/Protobuf)</p>
+<p><b>Konto:</b> Demo #47109084, ~500 EUR</p>
+<p><b>Timeframe:</b> M15 (15-Minuten-Kerzen) für Entries</p>
+<p><b>Trading-Hours:</b> 14:30–21:00 UTC (US Session)</p>
+
+<hr>
+
+<h2>2. STRATEGIE — BULLISCHE UMKEHR</h2>
+
+<h3>Entry-Bedingungen (ALLE müssen erfüllt sein)</h3>
+<table>
+  <thead><tr><th>Bedingung</th><th>Wert</th><th>Begründung</th></tr></thead>
+  <tbody>
+    <tr><td><b>Kerzenmuster</b></td><td>Hammer, Bullish Engulfing, Pin Bar, Harami</td><td>Bullische Umkehr-Signale auf M15</td></tr>
+    <tr><td><b>RSI(14)</b></td><td>&lt; 45 (Asset-spezifisch: 35–45)</td><td>Oversold-Bereich für bessere Entries</td></tr>
+    <tr><td><b>BB-Nähe</b></td><td>Preis ≤ BB-Lower + 1.0×ATR</td><td>Nah am Unteren Bollinger-Band</td></tr>
+    <tr><td><b>EMA-Trend</b></td><td>Preis &gt; EMA200(1D)</td><td>Long-Trend-Filter auf Daily</td></tr>
+    <tr><td><b>ADX</b></td><td>Deaktiviert (99)</td><td>Kein Einfluss auf Performance</td></tr>
+    <tr><td><b>Richtung</b></td><td>Nur LONG</td><td>Shorts deaktiviert</td></tr>
+  </tbody>
+</table>
+
+<h3>Kerzenmuster-Erkennung</h3>
+<p>Die Engine prüft auf 4 bullische Kerzenmuster:</p>
+<ul>
+  <li><b>Hammer:</b> Kleiner Body oben, langer Lower Wick (>2× Body), Upper Wick klein</li>
+  <li><b>Bullish Engulfing:</b> Rote Kerze gefolgt von grüner Kerze die den Body komplett umhüllt</li>
+  <li><b>Pin Bar:</b> Kleiner Body, ein langer Wick (entweder oben oder unten), der andere sehr kurz</li>
+  <li><b>Harami:</b> Große Kerze gefolgt von kleiner Kerze die komplett innerhalb des vorherigen Bodies ist</li>
+</ul>
+<div class="warn">
+<b>Pflicht:</b> Mindestens EINES der 4 Kerzenmuster muss erkannt werden. Kein Muster = Kein Trade.
+</div>
+
+<h3>Exit-Logik</h3>
+<table>
+  <thead><tr><th>Exit</th><th>Bedingung</th></tr></thead>
+  <tbody>
+    <tr><td><b>Stop-Loss</b></td><td>Entry − (1.5 × 4H ATR) — Asset-spezifisch: 1.0–2.0×</td></tr>
+    <tr><td><b>Take-Profit</b></td><td>Entry + (5.0 × 4H ATR) — Asset-spezifisch: 3.0–5.0×</td></tr>
+    <tr><td><b>Time-Stop</b></td><td>72 Stunden ohne Ausführung</td></tr>
+    <tr><td><b>Weekend-Close</b></td><td>Freitag 19:30 UTC — alle Positionen schließen</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>3. PARAMETER</h2>
+
+<h3>Globale Defaults</h3>
+<div class="param-grid">
+  <div class="param-card">
+    <h4>RSI Low</h4>
+    <div class="val">45</div>
+    <div class="desc">Oversold-Threshold (Grid-Search M15)</div>
+  </div>
+  <div class="param-card">
+    <h4>RSI High</h4>
+    <div class="val">65</div>
+    <div class="desc">Overbought-Threshold</div>
+  </div>
+  <div class="param-card">
+    <h4>BB-Faktor</h4>
+    <div class="val">1.0</div>
+    <div class="desc">Preis ≤ BB-Lower + 1.0×ATR</div>
+  </div>
+  <div class="param-card">
+    <h4>SL Multiplikator</h4>
+    <div class="val">1.5</div>
+    <div class="desc">SL = 1.5 × 4H ATR</div>
+  </div>
+  <div class="param-card">
+    <h4>TP Multiplikator</h4>
+    <div class="val">5.0</div>
+    <div class="desc">TP = 5.0 × 4H ATR</div>
+  </div>
+  <div class="param-card">
+    <h4>ADX Max</h4>
+    <div class="val">99</div>
+    <div class="desc">Deaktiviert (kein Einfluss)</div>
+  </div>
+</div>
+
+<h3>Per-Asset Overrides (M15 Grid-Search 2026-05-23)</h3>
+<table>
+  <thead><tr><th>Asset</th><th>RSI</th><th>SL</th><th>TP</th><th>Trades/81T</th><th>WR</th><th>Exp</th></tr></thead>
+  <tbody>
+    <!-- Original 10 -->
+    <tr><td><b>INTC</b></td><td>45</td><td>2.0</td><td>5.0</td><td>18</td><td>66.7%</td><td>+2.79</td></tr>
+    <tr><td><b>AMD</b></td><td>35</td><td>1.0</td><td>5.0</td><td>14</td><td>50.0%</td><td>+2.17</td></tr>
+    <tr><td><b>CRWD</b></td><td>40</td><td>2.0</td><td>5.0</td><td>7</td><td>71.4%</td><td>+2.43</td></tr>
+    <tr><td><b>PANW</b></td><td>40</td><td>2.0</td><td>3.0</td><td>6</td><td>50.0%</td><td>+0.45</td></tr>
+    <tr><td><b>UNH</b></td><td>40</td><td>1.0</td><td>5.0</td><td>6</td><td>83.3%</td><td>+1.47</td></tr>
+    <tr><td><b>TSLA</b></td><td>35</td><td>1.0</td><td>5.0</td><td>9</td><td>55.6%</td><td>+1.90</td></tr>
+    <tr><td><b>NVDA</b></td><td>40</td><td>1.5</td><td>3.0</td><td>23</td><td>39.1%</td><td>+0.13</td></tr>
+    <tr><td><b>AMZN</b></td><td>35</td><td>1.5</td><td>5.0</td><td>9</td><td>55.6%</td><td>+1.15</td></tr>
+    <tr><td>CRM</td><td>45*</td><td>1.5*</td><td>5.0*</td><td>0</td><td>—</td><td>—</td></tr>
+    <tr><td>XOM</td><td>45*</td><td>1.5*</td><td>5.0*</td><td>0</td><td>—</td><td>—</td></tr>
+    <!-- Neue 10 -->
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>AAPL</b></td><td>45</td><td>2.0</td><td>5.0</td><td>15</td><td>53.3%</td><td>+1.95</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>GS</b></td><td>35</td><td>2.0</td><td>5.0</td><td>8</td><td>62.5%</td><td>+13.01</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>CAT</b></td><td>45</td><td>1.5</td><td>4.0</td><td>31</td><td>38.7%</td><td>+3.15</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>MU</b></td><td>45</td><td>2.0</td><td>5.0</td><td>20</td><td>45.0%</td><td>+5.48</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>CVX</b></td><td>45</td><td>1.5</td><td>3.0</td><td>16</td><td>62.5%</td><td>+0.91</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>COP</b></td><td>45</td><td>2.0</td><td>5.0</td><td>17</td><td>47.1%</td><td>+0.85</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>TXN</b></td><td>40</td><td>2.0</td><td>5.0</td><td>13</td><td>46.2%</td><td>+2.12</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>TSM</b></td><td>45</td><td>1.5</td><td>5.0</td><td>24</td><td>41.7%</td><td>+2.91</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>GOOGL</b></td><td>35</td><td>1.5</td><td>5.0</td><td>9</td><td>44.4%</td><td>+1.39</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td><b>JPM</b></td><td>45</td><td>1.0</td><td>5.0</td><td>10</td><td>40.0%</td><td>+1.40</td></tr>
+  </tbody>
+</table>
+<p style="font-size:var(--text-sm);color:var(--c-text-dim)">* Verwendet globalen Default (keine Trades im Fenster). Neue Assets (grün) hinzugefügt am 23.05.2026.</p>
+
+<hr>
+
+<h2>4. BACKTEST-ERGEBNISSE</h2>
+
+<h3>M15 Backtest (echte Daten, 81 Tage, 10 Assets)</h3>
+<table>
+  <thead><tr><th>Metrik</th><th>Wert</th><th>Bemerkung</th></tr></thead>
+  <tbody>
+    <tr><td>Trades gesamt</td><td>92</td><td>~1.1/Tag</td></tr>
+    <tr><td>Win Rate</td><td>~42%</td><td>Gesamt über alle Assets</td></tr>
+    <tr><td>Expectancy</td><td>+0.78</td><td>Pro Trade in ATR</td></tr>
+    <tr><td>Profit Factor</td><td>2.28</td><td>Gewinne/Verluste</td></tr>
+    <tr><td>Sharpe Ratio</td><td>~3.2</td><td>Risiko-adjustiert</td></tr>
+    <tr><td>Max Drawdown</td><td>~45%</td><td>Bei Aggressiv-Settings</td></tr>
+  </tbody>
+</table>
+
+<div class="success">
+<b>Top-Assets:</b> INTC (+2.79 Exp), CRWD (+2.43 Exp), AMD (+2.17 Exp) — alle mit RSI 35-45, SL 1.0-2.0, TP 5.0
+</div>
+
+<hr>
+
+<h2>5. RISIKO-MANAGEMENT</h2>
+
+<table>
+  <thead><tr><th>Regel</th><th>Schwelle</th><th>Aktion</th></tr></thead>
+  <tbody>
+    <tr><td>Max Risk/Trade</td><td>2% Equity</td><td>Kein Trade über 2% des Kapitals</td></tr>
+    <tr><td>Daily Loss Limit</td><td>-3% Equity</td><td>Trading-Stop für den Tag</td></tr>
+    <tr><td>Weekend-Close</td><td>Fr 19:30 UTC</td><td>Alle Positionen schließen</td></tr>
+    <tr><td>Trading-Hours</td><td>14:30–21:00 UTC</td><td>Keine Entries außerhalb</td></tr>
+    <tr><td>News-Blackout</td><td>FOMC/NFP: 60min vorher</td><td>Kein Entry während High-Impact Events</td></tr>
+    <tr><td>Cooldown</td><td>3 Verluste in Folge</td><td>Trading pausiert</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>6. SYMBOLE</h2>
+
+<table>
+  <thead><tr><th>Symbol</th><th>Name</th><th>cTrader ID</th><th>Sektor</th></tr></thead>
+  <tbody>
+    <!-- Original 10 -->
+    <tr><td>NVDA</td><td>NVIDIA</td><td>338</td><td>Tech</td></tr>
+    <tr><td>TSLA</td><td>Tesla</td><td>339</td><td>Auto/Tech</td></tr>
+    <tr><td>AMZN</td><td>Amazon</td><td>332</td><td>Tech/Retail</td></tr>
+    <tr><td>AMD</td><td>AMD</td><td>362</td><td>Tech</td></tr>
+    <tr><td>CRM</td><td>Salesforce</td><td>418</td><td>Tech</td></tr>
+    <tr><td>PANW</td><td>Palo Alto</td><td>1844</td><td>Cybersecurity</td></tr>
+    <tr><td>XOM</td><td>ExxonMobil</td><td>3831</td><td>Energy</td></tr>
+    <tr><td>INTC</td><td>Intel</td><td>3886</td><td>Tech</td></tr>
+    <tr><td>UNH</td><td>UnitedHealth</td><td>4034</td><td>Healthcare</td></tr>
+    <tr><td>CRWD</td><td>CrowdStrike</td><td>6706</td><td>Cybersecurity</td></tr>
+    <!-- Neue 10 -->
+    <tr style="background:rgba(76,175,80,0.1)"><td>AAPL</td><td>Apple</td><td>333</td><td>Tech</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>GS</td><td>Goldman Sachs</td><td>343</td><td>Finance</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>CAT</td><td>Caterpillar</td><td>3753</td><td>Industrial</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>MU</td><td>Micron</td><td>3952</td><td>Tech</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>CVX</td><td>Chevron</td><td>3759</td><td>Energy</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>COP</td><td>ConocoPhillips</td><td>3773</td><td>Energy</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>TXN</td><td>Texas Instruments</td><td>4017</td><td>Tech</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>TSM</td><td>TSMC</td><td>7168</td><td>Tech</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>GOOGL</td><td>Alphabet</td><td>335</td><td>Tech</td></tr>
+    <tr style="background:rgba(76,175,80,0.1)"><td>JPM</td><td>JPMorgan</td><td>345</td><td>Finance</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>7. SERVICES</h2>
+
+<table>
+  <thead><tr><th>Service</th><th>Script</th><th>Intervall</th><th>Aufgabe</th></tr></thead>
+  <tbody>
+    <tr><td>trading-bot</td><td>reversal_engine.py</td><td>15 Min</td><td>Scannt M15, prüft Kerzenmuster, sendet Signale</td></tr>
+    <tr><td>hermes-executor</td><td>19_executor_daemon.py</td><td>60 Min</td><td>Führt Trades aus (SL/TP/Time-Stop)</td></tr>
+    <tr><td>ctrader-stream</td><td>ctrader_stream.py</td><td>Live (5s)</td><td>Bid/Ask Streaming</td></tr>
+    <tr><td>hermes-snapshot</td><td>20_snapshot_daemon.py</td><td>5 Min</td><td>Trailing Stops, Performance</td></tr>
+    <tr><td>hermes-watchdog</td><td>20_watchdog.py</td><td>60s</td><td>Dead-Man-Switch</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>8. DATEIEN</h2>
+
+<h3>Code (src/)</h3>
+<pre><code>├── reversal_engine.py          ← M15 Kerzenmuster + RSI + BB + EMA-Engine
+├── 19_executor_daemon.py       ← Executor: SL/TP/Time-Stop Management
+├── 20_snapshot_daemon.py       ← Snapshot + Trailing + Performance
+├── 20_watchdog.py              ← Dead-Man-Switch
+├── ctrader_stream.py           ← cTrader Live Stream
+├── ctrader_api.py              ← cTrader API Wrapper
+├── build_bot_status.py         ← Dashboard JSON Generator
+│── asset_config.py             ← 20 Stocks, cTrader IDs, Sessions
+├── backtest_m15_real_data_v2.py ← M15 Backtest (echte Daten)
+└── backtest_m15_per_asset_optimize.py ← Per-Asset Grid-Search</code></pre>
+
+<h3>Daten (data/)</h3>
+<pre><code>├── history_m15/                ← cTrader M15 History (lokal)
+├── history_yahoo_m15/          ← Yahoo M15 History (~60 Tage)
+├── history_yahoo_1d/           ← Yahoo 1D History (2 Jahre, EMA200)
+├── trade_log.jsonl             ← Alle Trades
+├── exit_log.jsonl              ← Geschlossene Positionen
+├── grid_search_1h_results.json ← 1H Grid-Search (1500 Kombinationen)
+├── per_asset_optimization.json ← Per-Asset M15 Optimierung
+└── live/scan_summary.json      ← Scanner-Ergebnis</code></pre>
+
+<hr>
+
+<h2>9. STATUS & ROADMAP</h2>
+
+<h3>Aktuell (v5.0)</h3>
+<ul>
+  <li>✅ <b>M15 Kerzenmuster-Strategie</b> — Hammer, Engulfing, Pin Bar, Harami</li>
+  <li>✅ <b>Nur Longs</b> — Shorts deaktiviert</li>
+  <li>✅ <b>RSI + BB + EMA200</b> — 3-Filter Entry-System</li>
+  <li>✅ <b>ADX deaktiviert</b> — Kein Einfluss auf Performance</li>
+  <li>✅ <b>Per-Asset Optimierung</b> — RSI/SL/TP pro Asset via Grid-Search</li>
+  <li>✅ <b>M15 Backtest</b> — 81 Tage echte Daten, 10 Assets</li>
+  <li>✅ <b>1H Grid-Search</b> — 1500 Kombinationen, 2 Jahre Daten</li>
+  <li>✅ <b>SL 1.5×ATR / TP 5.0×ATR</b> — M15-optimiert</li>
+  <li>✅ <b>Weekend-Close</b> — Freitag 19:30 UTC</li>
+  <li>✅ <b>20 US Stocks</b> — Diversifiziert über 7 Sektoren (Tech, Finance, Industrial, Energy, Healthcare, Auto, Consumer)</li>
+</ul>
+
+<h3>Offen</h3>
+<ul>
+  <li>☐ Walk-Forward-Validierung (out-of-sample)</li>
+  <li>☐ Live-Tracking der Backtest-Parameter</li>
+  <li>☐ Demo → Live Wechsel (nach 50+ profitablen Trades)</li>
+</ul>
+
+<hr>
+
+<p><i>Letzte Aktualisierung: 2026-05-23 — v5.0 (M15 Kerzenmuster, per-Asset Grid-Search, nur Longs)</i></p>
+
+</div>
+
+<script>
+if (typeof lucide !== 'undefined') lucide.createIcons();
+</script>
+<!--/BODY-->

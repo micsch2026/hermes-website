@@ -1,0 +1,417 @@
+{
+  "id": 62,
+  "name": "IT: Master_MR_v2_Pairs_ADX",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 71.2,
+  "iteration_count": 7,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "created_at": "2026-06-29 12:23:07",
+  "updated_at": "2026-06-29 13:29:45",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 8r/1g/3b enter, exit=timeout\", \"pnl\": -596.19, \"trades\": 612, \"score\": -90.5}, {\"iter\": 2, \"change\": \"adjust_threshold: 8r/1g/3b enter, exit=timeout\", \"pnl\": -943.04, \"trades\": 496, \"score\": -88.3}, {\"iter\": 3, \"change\": \"sl_tp_change: 8r/1g/3b enter, exit=timeout\", \"pnl\": -233.23, \"trades\": 475, \"score\": -80.9}, {\"iter\": 4, \"change\": \"adjust_threshold: 8r/1g/3b enter, exit=timeout\", \"pnl\": -329.12, \"trades\": 779, \"score\": -81.1}, {\"iter\": 5, \"change\": \"add_gate: 8r/2g/3b enter, exit=timeout\", \"pnl\": 881.11, \"trades\": 1660, \"score\": 71.2}, {\"iter\": 6, \"change\": \"adjust_threshold: 8r/2g/3b enter, exit=timeout\", \"pnl\": -69.83, \"trades\": 444, \"score\": -84.5}, {\"iter\": 7, \"change\": \"escape_adjust_min_score: 8r/2g/3b enter, exit=timeout\", \"pnl\": -72.54, \"trades\": 391, \"score\": -84.3}], \"iterations\": 7, \"holdout\": {\"passed\": false, \"pnl\": -41.42, \"trades\": 250, \"pf\": 0.91, \"wr\": 42.8, \"monthly_pnls\": [[\"2025-12\", -4.46], [\"2026-01\", -65.05], [\"2026-02\", 12.59], [\"2026-03\", -1.2], [\"2026-04\", 29.21], [\"2026-05\", 13.31], [\"2026-06\", -25.82]], \"max_consec_loss_months\": 2, \"period\": \"2025-12-25 \\u2013 2026-06-23\", \"reason\": \"PF=0.91 < 1.0\"}, \"anti_overfit\": {\"block_validation\": \"2-of-3 time blocks positive\", \"economic_hurdle\": \"PF >= 1.3 after costs\", \"holdout_months\": 6}}",
+  "concept": {
+    "name": "IT: Master_MR_v2_Pairs_ADX",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "AUDCAD",
+      "AUDCHF",
+      "EURAUD",
+      "EURCAD",
+      "EURCHF",
+      "EURJPY",
+      "EURNZD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPNZD",
+      "NZDCAD",
+      "NZDUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "mr_oversold_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 25
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.15
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.2
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "long",
+            "base_score": 40
+          },
+          {
+            "id": "mr_overbought_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": ">",
+                "value": 75
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.85
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.8
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "short",
+            "base_score": 40
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -80
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "value": -1.0
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": "==",
+                "value": 1
+              }
+            ],
+            "points": 10
+          }
+        ],
+        "gates": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 30
+              }
+            ]
+          }
+        ],
+        "min_score": 40,
+        "merge_mode": "flat_and"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 72
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.5
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURJPY",
+        "EURNZD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPNZD",
+        "NZDCAD",
+        "NZDUSD"
+      ],
+      "pair_overrides": {
+        "EURAUD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.8,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 3.1
+          }
+        },
+        "EURCHF": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.6,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.4
+          }
+        },
+        "GBPCAD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.8,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.4
+          }
+        },
+        "NZDCAD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.8,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.8
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Mutation B: Winner-Pairs + ADX<25 Gate (range markets only)."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -84.3,
+    "oos_pnl": -72.54,
+    "oos_trades": 391,
+    "oos_pass_rate": 0.343,
+    "iteration": 7,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {}
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 8r/1g/3b enter, exit=timeout",
+      "oos_pnl": -596.19,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 612,
+      "children": [
+        {
+          "change": "Iteration 2: adjust_threshold: 8r/1g/3b enter, exit=timeout",
+          "oos_pnl": -943.04,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 496,
+          "children": [
+            {
+              "change": "Iteration 3: sl_tp_change: 8r/1g/3b enter, exit=timeout",
+              "oos_pnl": -233.23,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 475,
+              "children": [
+                {
+                  "change": "Iteration 4: adjust_threshold: 8r/1g/3b enter, exit=timeout",
+                  "oos_pnl": -329.12,
+                  "oos_pf": 0,
+                  "tier": "C",
+                  "tested": true,
+                  "strategy_id": null,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 779,
+                  "children": [
+                    {
+                      "change": "Iteration 5: add_gate: 8r/2g/3b enter, exit=timeout",
+                      "oos_pnl": 881.11,
+                      "oos_pf": 0,
+                      "tier": "B",
+                      "tested": true,
+                      "strategy_id": 62,
+                      "is_new_root": false,
+                      "win_rate": null,
+                      "trades": 1660,
+                      "children": [
+                        {
+                          "change": "Iteration 6: adjust_threshold: 8r/2g/3b enter, exit=timeout",
+                          "oos_pnl": -69.83,
+                          "oos_pf": 0,
+                          "tier": "C",
+                          "tested": true,
+                          "strategy_id": null,
+                          "is_new_root": false,
+                          "win_rate": null,
+                          "trades": 444,
+                          "children": [
+                            {
+                              "change": "Iteration 7: escape_adjust_min_score: 8r/2g/3b enter, exit=timeout",
+                              "oos_pnl": -72.54,
+                              "oos_pf": 0,
+                              "tier": "C",
+                              "tested": true,
+                              "strategy_id": null,
+                              "is_new_root": false,
+                              "win_rate": null,
+                              "trades": 391,
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      62
+    ],
+    "stats": {
+      "total_variants": 7,
+      "new_trees": 0,
+      "best_pnl": 881.11,
+      "base_pnl": -596.19,
+      "improvement": 1477.3000000000002,
+      "runtime_seconds": 3998.4
+    }
+  }
+}

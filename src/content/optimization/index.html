@@ -1,0 +1,1189 @@
+<!--TITLE:Optimization Dashboard — Hermes-->
+<!--HEAD-->
+<style>
+  /* ── Optimization Dashboard ─────────────────────────────── */
+  .opt-container { max-width: 1400px; margin: 0 auto; padding: var(--s-6) var(--s-4); }
+
+  /* Header */
+  .opt-header { margin-bottom: var(--s-6); }
+  .opt-header h1 { margin: 0 0 var(--s-1); font-size: var(--text-2xl); font-weight: 700; }
+  .opt-header p { color: var(--c-text-dim); font-size: var(--text-sm); margin: 0; }
+  .opt-header-links { display: flex; gap: var(--s-3); margin-top: var(--s-3); flex-wrap: wrap; }
+  .opt-header-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; background: rgba(113,50,245,0.12); border: 1px solid rgba(113,50,245,0.3);
+    border-radius: var(--r-lg); font-size: var(--text-sm); font-weight: 600;
+    color: var(--c-accent); text-decoration: none; transition: background 0.15s;
+  }
+  .opt-header-link:hover { background: rgba(113,50,245,0.2); text-decoration: none; }
+
+  /* Stats row */
+  .opt-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-6); }
+  .opt-stat {
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    padding: var(--s-4); text-align: center;
+  }
+  .opt-stat-value { font-size: var(--text-2xl); font-weight: 700; }
+  .opt-stat-label { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: var(--s-1); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* Tabs */
+  .opt-tabs {
+    display: flex; gap: var(--s-1); margin-bottom: var(--s-5);
+    border-bottom: 1px solid var(--c-border); padding-bottom: 0;
+    overflow-x: auto;
+  }
+  .opt-tab {
+    padding: var(--s-3) var(--s-4); font-size: var(--text-sm); font-weight: 600;
+    cursor: pointer; border: none; background: none; color: var(--c-text-dim);
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .opt-tab:hover { color: var(--c-text); }
+  .opt-tab.active { color: var(--c-accent); border-bottom-color: var(--c-accent); }
+
+  /* Section */
+  .opt-section { display: none; }
+  .opt-section.active { display: block; }
+  .opt-section-title { font-size: var(--text-lg); font-weight: 700; margin-bottom: var(--s-4); }
+
+  /* Filter bar */
+  .opt-filters {
+    display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
+    margin-bottom: var(--s-5); padding: var(--s-3) var(--s-4);
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+  }
+  .opt-filter-label { font-size: var(--text-xs); color: var(--c-text-dim); font-weight: 600; text-transform: uppercase; }
+  .opt-select {
+    padding: 6px 12px; border-radius: var(--r-md); font-size: var(--text-xs);
+    background: var(--c-surface-2); color: var(--c-text); border: 1px solid var(--c-border);
+    cursor: pointer;
+  }
+  .opt-select:focus { outline: none; border-color: var(--c-accent); }
+
+  /* Chart grid */
+  .opt-chart-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: var(--s-5); margin-bottom: var(--s-6);
+  }
+  .opt-chart-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4); position: relative;
+  }
+  .opt-chart-title {
+    font-size: var(--text-sm); font-weight: 600; color: var(--c-text);
+    margin-bottom: var(--s-3); display: flex; align-items: center; justify-content: space-between;
+  }
+  .opt-chart-title .badge {
+    font-size: 10px; padding: 2px 8px; border-radius: var(--r-sm);
+    background: rgba(113,50,245,0.15); color: var(--c-accent); font-weight: 700;
+  }
+  .opt-chart-canvas { width: 100%; }
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+  /* Heatmap specific */
+  .heatmap-legend {
+    display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-3);
+    font-size: var(--text-xs); color: var(--c-text-dim);
+  }
+  .heatmap-gradient {
+    width: 120px; height: 12px; border-radius: var(--r-xs);
+    background: linear-gradient(90deg, #e85c5c, #f0b940, #149e61);
+  }
+
+  /* Parallel coords */
+  .pc-canvas { width: 100%; height: 350px; }
+
+  /* ── Top-Configs Table ─────────────────────────────────── */
+  .tc-table-wrap {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); overflow: hidden;
+  }
+  .tc-table {
+    width: 100%; border-collapse: collapse; font-size: var(--text-xs);
+  }
+  .tc-table th {
+    padding: 10px 12px; text-align: left; font-weight: 700; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.05em; color: var(--c-text-dim);
+    background: var(--c-surface-2); border-bottom: 1px solid var(--c-border);
+    cursor: pointer; user-select: none; white-space: nowrap; position: relative;
+  }
+  .tc-table th:hover { color: var(--c-accent); }
+  .tc-table th .sort-arrow { margin-left: 4px; font-size: 9px; opacity: 0.5; }
+  .tc-table th.sorted .sort-arrow { opacity: 1; color: var(--c-accent); }
+  .tc-table td {
+    padding: 8px 12px; border-bottom: 1px solid rgba(42,37,69,0.3);
+    color: var(--c-text); white-space: nowrap;
+  }
+  .tc-table tr:hover td { background: rgba(113,50,245,0.06); }
+  .tc-table .tc-pair { font-weight: 700; color: var(--c-accent); }
+  .tc-table .tc-param { color: var(--c-text-dim); font-family: monospace; font-size: 10px; }
+  .tc-pager {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; font-size: var(--text-xs); color: var(--c-text-dim);
+  }
+  .tc-pager button {
+    padding: 4px 12px; border-radius: var(--r-md); font-size: var(--text-xs);
+    background: var(--c-surface-2); color: var(--c-text); border: 1px solid var(--c-border);
+    cursor: pointer;
+  }
+  .tc-pager button:disabled { opacity: 0.3; cursor: default; }
+  .tc-pager button:hover:not(:disabled) { border-color: var(--c-accent); }
+  .tc-count { font-weight: 600; color: var(--c-accent); }
+
+  /* ── Comparison View ───────────────────────────────────── */
+  .cmp-container { max-width: 1000px; }
+  .cmp-pair-selector { margin-bottom: var(--s-5); }
+  .cmp-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4);
+  }
+  .cmp-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4);
+  }
+  .cmp-card-best { border-color: rgba(20,158,97,0.4); }
+  .cmp-card-current { border-color: rgba(240,185,64,0.4); }
+  .cmp-card h3 {
+    font-size: var(--text-sm); font-weight: 700; margin: 0 0 var(--s-3);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .cmp-card h3 .cmp-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: var(--r-sm); font-weight: 700;
+  }
+  .cmp-badge-best { background: rgba(20,158,97,0.2); color: #149e61; }
+  .cmp-badge-current { background: rgba(240,185,64,0.2); color: #f0b940; }
+  .cmp-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid rgba(42,37,69,0.3);
+    font-size: var(--text-xs);
+  }
+  .cmp-row:last-child { border-bottom: none; }
+  .cmp-label { color: var(--c-text-dim); }
+  .cmp-value { font-weight: 600; font-family: monospace; }
+  .cmp-better { color: var(--c-ok); }
+  .cmp-worse { color: var(--c-err); }
+  .cmp-neutral { color: var(--c-text); }
+  .cmp-delta {
+    font-size: 10px; padding: 2px 6px; border-radius: var(--r-sm);
+    margin-left: 8px; font-weight: 700;
+  }
+  .cmp-delta-pos { background: rgba(20,158,97,0.15); color: #149e61; }
+  .cmp-delta-neg { background: rgba(232,92,92,0.15); color: #e85c5c; }
+  .cmp-delta-zero { background: rgba(168,163,191,0.1); color: var(--c-text-dim); }
+  .cmp-empty {
+    text-align: center; padding: var(--s-6); color: var(--c-text-dim); font-size: var(--text-sm);
+  }
+
+  /* ── Walk-Forward Timeline ─────────────────────────────── */
+  .wf-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: var(--s-5); margin-bottom: var(--s-6);
+  }
+  .wf-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4);
+  }
+  .wf-card-title {
+    font-size: var(--text-sm); font-weight: 700; margin-bottom: var(--s-3);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .wf-status-badge {
+    font-size: 10px; padding: 3px 10px; border-radius: var(--r-sm); font-weight: 700;
+  }
+  .wf-status-PASS { background: rgba(20,158,97,0.2); color: #149e61; }
+  .wf-status-WARN { background: rgba(240,185,64,0.2); color: #f0b940; }
+  .wf-status-FAIL { background: rgba(232,92,92,0.2); color: #e85c5c; }
+  .wf-timeline {
+    display: flex; gap: 3px; margin-bottom: var(--s-3); height: 36px; border-radius: var(--r-md); overflow: hidden;
+  }
+  .wf-bar-is {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff; border-radius: var(--r-md) 0 0 var(--r-md);
+  }
+  .wf-bar-oos {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff; border-radius: 0 var(--r-md) var(--r-md) 0;
+  }
+  .wf-metrics {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3);
+    font-size: var(--text-xs);
+  }
+  .wf-metric-group h4 {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--c-text-dim); margin: 0 0 var(--s-2); font-weight: 700;
+  }
+  .wf-metric-row {
+    display: flex; justify-content: space-between; padding: 3px 0;
+  }
+  .wf-metric-label { color: var(--c-text-dim); }
+  .wf-metric-value { font-weight: 600; font-family: monospace; }
+  .wf-drop {
+    text-align: center; padding: var(--s-2) 0; font-size: var(--text-xs);
+    color: var(--c-text-dim); margin-top: var(--s-2);
+    border-top: 1px solid rgba(42,37,69,0.3);
+  }
+  .wf-drop .wf-drop-val { font-weight: 700; margin-left: 4px; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .opt-chart-grid, .wf-grid { grid-template-columns: 1fr; }
+    .cmp-grid { grid-template-columns: 1fr; }
+    .opt-tabs { gap: 0; }
+    .opt-tab { padding: var(--s-2) var(--s-3); font-size: var(--text-xs); }
+    .tc-table { font-size: 10px; }
+    .tc-table th, .tc-table td { padding: 6px 8px; }
+  }
+
+  /* Tooltip */
+  .opt-tooltip {
+    position: fixed; pointer-events: none; z-index: 1000;
+    background: var(--c-surface-2); border: 1px solid var(--c-border);
+    border-radius: var(--r-md); padding: var(--s-2) var(--s-3);
+    font-size: var(--text-xs); color: var(--c-text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    max-width: 280px; display: none;
+  }
+  .opt-tooltip .tt-title { font-weight: 700; margin-bottom: 4px; }
+  .opt-tooltip .tt-row { display: flex; justify-content: space-between; gap: var(--s-3); }
+  .opt-tooltip .tt-label { color: var(--c-text-dim); }
+  .opt-tooltip .tt-value { font-weight: 600; }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="opt-container">
+  <!-- Header -->
+  <div class="opt-header">
+    <h1>⚡ Optimization Dashboard</h1>
+    <p>Interactive Grid-Search Results — Heatmaps, Sensitivity, Top Configs, Walk-Forward</p>
+    <div class="opt-header-links">
+      <a href="/backtest/" class="opt-header-link">← Backtest Dashboard</a>
+      <a href="/backtest/compare" class="opt-header-link">Compare Runs</a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="opt-stats" id="opt-stats"></div>
+
+  <!-- Tabs -->
+  <div class="opt-tabs" id="opt-tabs">
+    <button class="opt-tab active" data-tab="heatmaps">🔥 Heatmaps</button>
+    <button class="opt-tab" data-tab="sensitivity">📈 Sensitivity</button>
+    <button class="opt-tab" data-tab="parallel">🕸️ Parallel Coords</button>
+    <button class="opt-tab" data-tab="topconfigs">📊 Top Configs</button>
+    <button class="opt-tab" data-tab="compare">🔄 Compare</button>
+    <button class="opt-tab" data-tab="walkforward">⏱️ Walk-Forward</button>
+  </div>
+
+  <!-- Filters -->
+  <div class="opt-filters" id="opt-filters">
+    <span class="opt-filter-label">Source:</span>
+    <select class="opt-select" id="filter-source"><option value="all">All Sources</option></select>
+    <span class="opt-filter-label" id="filter-pair-label">Pair:</span>
+    <select class="opt-select" id="filter-pair"><option value="all">All Pairs</option></select>
+    <span class="opt-filter-label">Metric:</span>
+    <select class="opt-select" id="filter-metric"><option value="auto">Auto</option></select>
+  </div>
+
+  <!-- Heatmaps Section -->
+  <div class="opt-section active" id="section-heatmaps">
+    <div class="opt-chart-grid" id="heatmap-grid"></div>
+  </div>
+
+  <!-- Sensitivity Section -->
+  <div class="opt-section" id="section-sensitivity">
+    <div class="opt-chart-grid" id="sensitivity-grid"></div>
+  </div>
+
+  <!-- Parallel Coordinates Section -->
+  <div class="opt-section" id="section-parallel">
+    <div id="parallel-grid"></div>
+  </div>
+
+  <!-- Top Configs Section -->
+  <div class="opt-section" id="section-topconfigs">
+    <div id="topconfigs-content"></div>
+  </div>
+
+  <!-- Compare Section -->
+  <div class="opt-section" id="section-compare">
+    <div id="compare-content"></div>
+  </div>
+
+  <!-- Walk-Forward Section -->
+  <div class="opt-section" id="section-walkforward">
+    <div id="walkforward-content"></div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="opt-tooltip" id="opt-tooltip"></div>
+
+<!--DATA:/src/data/optimization.json-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2.0.1/dist/chartjs-chart-matrix.min.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  const D = window.__DATA__ || {};
+  const tooltip = document.getElementById('opt-tooltip');
+
+  // ── Color helpers ──────────────────────────────────────────
+  function valueToColor(val, min, max) {
+    if (val == null) return 'rgba(42,37,69,0.5)';
+    const t = Math.max(0, Math.min(1, (val - min) / (max - min || 1)));
+    if (t < 0.5) {
+      const s = t * 2;
+      const r = Math.round(232 - s * (232 - 240));
+      const g = Math.round(92 + s * (185 - 92));
+      const b = Math.round(92 - s * (92 - 64));
+      return `rgba(${r},${g},${b},0.85)`;
+    } else {
+      const s = (t - 0.5) * 2;
+      const r = Math.round(240 - s * (240 - 20));
+      const g = Math.round(185 + s * (158 - 185));
+      const b = Math.round(64 + s * (97 - 64));
+      return `rgba(${r},${g},${b},0.85)`;
+    }
+  }
+
+  function metricLabel(key) {
+    const labels = {
+      total_pips: 'Total Pips', wr: 'Win Rate %', pf: 'Profit Factor',
+      return_pct: 'Return %', max_dd_pct: 'Max DD %', calmar: 'Calmar Ratio',
+      total_pnl_pips: 'PnL (pips)', quality: 'Quality Score',
+      combined_quality: 'Combined Quality', score: 'Score',
+      win_rate: 'Win Rate %', profit_factor: 'Profit Factor',
+      is_pnl: 'IS PnL', oos_pnl: 'OOS PnL',
+      expectancy: 'Expectancy', trades_per_week: 'Trades/Wk',
+      max_drawdown_pips: 'Max DD (pips)', rr_ratio: 'R:R Ratio',
+      avg_pnl_pips: 'Avg PnL (pips)',
+    };
+    return labels[key] || key;
+  }
+
+  function fmtNum(v, dec) {
+    if (v == null || v === '') return '—';
+    if (typeof v === 'string') v = parseFloat(v);
+    if (isNaN(v)) return '—';
+    return v.toFixed(dec != null ? dec : (Math.abs(v) < 10 ? 2 : 1));
+  }
+
+  /** Set .chart-wrap height from canvas data-height attribute (avoids hardcoding). */
+  function fixChartHeight(canvas) {
+    const h = canvas.getAttribute('data-height');
+    if (!h) return;
+    const wrap = canvas.closest('.chart-wrap');
+    if (wrap) wrap.style.height = h + 'px';
+  }
+
+  // ── Stats ──────────────────────────────────────────────────
+  function renderStats() {
+    const el = document.getElementById('opt-stats');
+    const sources = D.sources || {};
+    const sourceCount = Object.keys(sources).length;
+    const pairCount = (D.pairs || []).length;
+    const botCount = (D.bots || []).length;
+    const tcCount = (D.top_configs || []).length;
+    const wfCount = (D.walk_forward || []).length;
+    const entityLabel = botCount > 0 && pairCount === 0 ? 'Bots' : 'Pairs';
+    const entityCount = botCount > 0 && pairCount === 0 ? botCount : pairCount;
+    el.innerHTML = `
+      <div class="opt-stat"><div class="opt-stat-value" style="color:var(--c-accent)">${(D.total_configs||0).toLocaleString()}</div><div class="opt-stat-label">Total Configs</div></div>
+      <div class="opt-stat"><div class="opt-stat-value" style="color:var(--c-ok)">${tcCount.toLocaleString()}</div><div class="opt-stat-label">Top Configs</div></div>
+      <div class="opt-stat"><div class="opt-stat-value" style="color:var(--c-warn)">${sourceCount}</div><div class="opt-stat-label">Data Sources</div></div>
+      <div class="opt-stat"><div class="opt-stat-value">${entityCount}</div><div class="opt-stat-label">${entityLabel}</div></div>
+      <div class="opt-stat"><div class="opt-stat-value" style="color:var(--c-accent)">${wfCount}</div><div class="opt-stat-label">Walk-Forward</div></div>
+    `;
+  }
+
+  // ── Filters ────────────────────────────────────────────────
+  function populateFilters() {
+    const sourceSel = document.getElementById('filter-source');
+    const pairSel = document.getElementById('filter-pair');
+    const metricSel = document.getElementById('filter-metric');
+
+    const sources = D.sources || {};
+    Object.keys(sources).forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sourceSel.appendChild(opt);
+    });
+
+    // Use bots if no real pairs are present (SQLite grid_results has no pair column)
+    const useBots = (D.pairs || []).length === 0 && (D.bots || []).length > 0;
+    const entities = useBots ? (D.bots || []) : (D.pairs || []);
+    const label = document.getElementById('filter-pair-label');
+    if (label) label.textContent = useBots ? 'BOT:' : 'PAIR:';
+    pairSel.options[0].textContent = useBots ? 'All Bots' : 'All Pairs';
+    entities.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      pairSel.appendChild(opt);
+    });
+
+    const metrics = new Set();
+    (D.heatmaps || []).forEach(hm => metrics.add(hm.metric));
+    (D.sensitivities || []).forEach(s => Object.keys(s.metrics || {}).forEach(m => metrics.add(m)));
+    metrics.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = metricLabel(m);
+      metricSel.appendChild(opt);
+    });
+  }
+
+  // ── Tooltip ────────────────────────────────────────────────
+  function showTooltip(e, html) {
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+    const rect = tooltip.getBoundingClientRect();
+    let x = e.clientX + 12;
+    let y = e.clientY - 12;
+    if (x + rect.width > window.innerWidth - 10) x = e.clientX - rect.width - 12;
+    if (y + rect.height > window.innerHeight - 10) y = e.clientY - rect.height - 12;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top = y + 'px';
+  }
+  function hideTooltip() { tooltip.style.display = 'none'; }
+
+  // ── Heatmaps ───────────────────────────────────────────────
+  function renderHeatmaps(filter) {
+    const grid = document.getElementById('heatmap-grid');
+    grid.innerHTML = '';
+    let heatmaps = D.heatmaps || [];
+
+    if (filter.source && filter.source !== 'all') {
+      heatmaps = heatmaps.filter(hm => {
+        return hm.pair === filter.source || hm.title?.toLowerCase().includes(filter.source);
+      });
+    }
+    if (filter.pair && filter.pair !== 'all') {
+      heatmaps = heatmaps.filter(hm => hm.pair === filter.pair || hm.title?.includes(filter.pair));
+    }
+    if (filter.metric && filter.metric !== 'auto') {
+      heatmaps = heatmaps.filter(hm => hm.metric === filter.metric);
+    }
+
+    if (heatmaps.length === 0) {
+      grid.innerHTML = '<div class="opt-chart-card"><p style="color:var(--c-text-dim)">No heatmaps match the current filters.</p></div>';
+      return;
+    }
+
+    heatmaps.forEach((hm, idx) => {
+      const card = document.createElement('div');
+      card.className = 'opt-chart-card';
+      card.innerHTML = `
+        <div class="opt-chart-title">
+          <span>${hm.title || 'Heatmap'}</span>
+          <span class="badge">${hm.x_key} × ${hm.y_key}</span>
+        </div>
+        <div class="chart-wrap"><canvas id="hm-${idx}" data-height="300"></canvas></div>
+        <div class="heatmap-legend">
+          <span>Low</span>
+          <div class="heatmap-gradient"></div>
+          <span>High</span>
+          <span style="margin-left:auto;color:var(--c-text-dim)">${metricLabel(hm.metric)}</span>
+        </div>
+      `;
+      grid.appendChild(card);
+
+      const data = [];
+      const allVals = hm.matrix.flat().filter(v => v != null);
+      const minVal = Math.min(...allVals);
+      const maxVal = Math.max(...allVals);
+
+      for (let yi = 0; yi < hm.y_values.length; yi++) {
+        for (let xi = 0; xi < hm.x_values.length; xi++) {
+          const v = hm.matrix[yi][xi];
+          data.push({ x: hm.x_values[xi], y: hm.y_values[yi], v: v });
+        }
+      }
+
+      const ctx = document.getElementById(`hm-${idx}`).getContext('2d');
+      new Chart(ctx, {
+        type: 'matrix',
+        data: {
+          datasets: [{
+            label: hm.metric,
+            data: data,
+            backgroundColor(ctx) {
+              const v = ctx.dataset.data[ctx.dataIndex]?.v;
+              return valueToColor(v, minVal, maxVal);
+            },
+            borderColor: 'rgba(13,11,26,0.3)',
+            borderWidth: 1,
+            width: ({chart}) => {
+              const area = chart.chartArea;
+              if (!area) return 14;
+              return (area.right - area.left) / hm.x_values.length - 2;
+            },
+            height: ({chart}) => {
+              const area = chart.chartArea;
+              if (!area) return 14;
+              return (area.bottom - area.top) / hm.y_values.length - 2;
+            },
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              enabled: false,
+              external: function(ctx) {
+                const p = ctx.tooltip;
+                if (p.opacity === 0) { hideTooltip(); return; }
+                const d = p.dataPoints?.[0]?.raw;
+                if (!d) return;
+                showTooltip({
+                  clientX: p.caretX + ctx.chart.canvas.getBoundingClientRect().left,
+                  clientY: p.caretY + ctx.chart.canvas.getBoundingClientRect().top,
+                }, `<div class="tt-title">${hm.x_key}=${d.x}, ${hm.y_key}=${d.y}</div>
+                    <div class="tt-row"><span class="tt-label">${metricLabel(hm.metric)}</span><span class="tt-value">${d.v != null ? d.v.toFixed(1) : 'N/A'}</span></div>`);
+              },
+            },
+          },
+          scales: {
+            x: {
+              type: 'linear', offset: true,
+              ticks: { stepSize: 1, color: '#6b6685', font: { size: 10 } },
+              grid: { display: false },
+              title: { display: true, text: hm.x_key, color: '#a8a3bf', font: { size: 11 } },
+            },
+            y: {
+              type: 'linear', offset: true,
+              ticks: { stepSize: 1, color: '#6b6685', font: { size: 10 } },
+              grid: { display: false },
+              title: { display: true, text: hm.y_key, color: '#a8a3bf', font: { size: 11 } },
+            },
+          },
+        },
+      });
+      fixChartHeight(document.getElementById(`hm-${idx}`));
+    });
+  }
+
+  // ── Sensitivity Charts ─────────────────────────────────────
+  function renderSensitivities(filter) {
+    const grid = document.getElementById('sensitivity-grid');
+    grid.innerHTML = '';
+    let sens = D.sensitivities || [];
+
+    if (filter.pair && filter.pair !== 'all') {
+      sens = sens.filter(s => s.pair === filter.pair || s.pair === 'ALL');
+    }
+
+    if (sens.length === 0) {
+      grid.innerHTML = '<div class="opt-chart-card"><p style="color:var(--c-text-dim)">No sensitivity data matches filters.</p></div>';
+      return;
+    }
+
+    sens.forEach((s, idx) => {
+      const card = document.createElement('div');
+      card.className = 'opt-chart-card';
+      card.innerHTML = `
+        <div class="opt-chart-title">
+          <span>${s.title || s.param_key}</span>
+          <span class="badge">${s.pair}</span>
+        </div>
+        <div class="chart-wrap"><canvas id="sens-${idx}" data-height="250"></canvas></div>
+      `;
+      grid.appendChild(card);
+
+      const colors = ['#7132f5', '#149e61', '#f0b940', '#e85c5c'];
+      const datasets = [];
+      let ci = 0;
+      for (const [mk, mv] of Object.entries(s.metrics || {})) {
+        datasets.push({
+          label: metricLabel(mk),
+          data: mv.mean,
+          borderColor: colors[ci % colors.length],
+          backgroundColor: colors[ci % colors.length] + '20',
+          fill: false, tension: 0.3, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2,
+        });
+        datasets.push({
+          label: metricLabel(mk) + ' range',
+          data: mv.max,
+          borderColor: 'transparent',
+          backgroundColor: colors[ci % colors.length] + '10',
+          fill: '+1', pointRadius: 0, borderWidth: 0,
+        });
+        datasets.push({
+          label: '',
+          data: mv.min,
+          borderColor: 'transparent',
+          backgroundColor: colors[ci % colors.length] + '10',
+          fill: false, pointRadius: 0, borderWidth: 0,
+        });
+        ci++;
+      }
+
+      const ctx = document.getElementById(`sens-${idx}`).getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: { labels: s.values.map(v => String(v)), datasets: datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: { color: '#a8a3bf', font: { size: 11 }, filter: (item) => item.text && !item.text.includes('range') },
+            },
+            tooltip: {
+              backgroundColor: '#1e1a35', titleColor: '#f0eef5', bodyColor: '#a8a3bf',
+              borderColor: '#2a2545', borderWidth: 1,
+              filter: (item) => item.dataset.label && !item.dataset.label.includes('range'),
+            },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: s.param_key, color: '#a8a3bf', font: { size: 11 } },
+              ticks: { color: '#6b6685', font: { size: 10 } },
+              grid: { color: 'rgba(42,37,69,0.5)' },
+            },
+            y: {
+              ticks: { color: '#6b6685', font: { size: 10 } },
+              grid: { color: 'rgba(42,37,69,0.5)' },
+            },
+          },
+        },
+      });
+      fixChartHeight(document.getElementById(`sens-${idx}`));
+    });
+  }
+
+  // ── Parallel Coordinates ───────────────────────────────────
+  function renderParallelCoords(filter) {
+    const grid = document.getElementById('parallel-grid');
+    grid.innerHTML = '';
+    let pcs = D.parallel_coords || [];
+
+    if (pcs.length === 0) {
+      grid.innerHTML = '<div class="opt-chart-card"><p style="color:var(--c-text-dim)">No parallel coordinate data.</p></div>';
+      return;
+    }
+
+    pcs.forEach((pc, idx) => {
+      const card = document.createElement('div');
+      card.className = 'opt-chart-card';
+      card.innerHTML = `
+        <div class="opt-chart-title">
+          <span>${pc.title || 'Parallel Coordinates'}</span>
+          <span class="badge">${pc.lines.length} lines</span>
+        </div>
+        <canvas class="pc-canvas" id="pc-${idx}" height="350"></canvas>
+      `;
+      grid.appendChild(card);
+
+      const canvas = document.getElementById(`pc-${idx}`);
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width = canvas.offsetWidth * 2;
+      const H = canvas.height = 700;
+      canvas.style.height = '350px';
+
+      const axes = pc.axes;
+      if (axes.length < 2) return;
+
+      const pad = { top: 40, bottom: 60, left: 60, right: 60 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+      const axStep = plotW / (axes.length - 1);
+
+      function norm(val, ax) {
+        if (ax.max === ax.min) return 0.5;
+        return (val - ax.min) / (ax.max - ax.min);
+      }
+
+      const metricVals = pc.lines.map(l => l.metric);
+      const mMin = Math.min(...metricVals);
+      const mMax = Math.max(...metricVals);
+
+      ctx.strokeStyle = '#2a2545';
+      ctx.lineWidth = 1;
+      axes.forEach((ax, i) => {
+        const x = pad.left + i * axStep;
+        ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + plotH); ctx.stroke();
+        ctx.fillStyle = '#a8a3bf'; ctx.font = '20px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(ax.key.replace('param_', ''), x, H - 20);
+        ctx.fillStyle = '#6b6685'; ctx.font = '16px sans-serif';
+        ctx.fillText(ax.min, x, pad.top + plotH + 24);
+        ctx.fillText(ax.max, x, pad.top - 10);
+      });
+
+      pc.lines.forEach(line => {
+        ctx.beginPath();
+        ctx.strokeStyle = valueToColor(line.metric, mMin, mMax);
+        ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
+        let started = false;
+        axes.forEach((ax, i) => {
+          const val = line.values[ax.key];
+          if (val == null) return;
+          const x = pad.left + i * axStep;
+          const y = pad.top + plotH - norm(val, ax) * plotH;
+          if (!started) { ctx.moveTo(x, y); started = true; }
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke(); ctx.globalAlpha = 1;
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = (e.clientX - rect.left) * 2;
+        const my = (e.clientY - rect.top) * 2;
+        let bestDist = 30; let bestLine = null;
+        pc.lines.forEach(line => {
+          let totalDist = 0; let count = 0;
+          axes.forEach((ax, i) => {
+            const val = line.values[ax.key];
+            if (val == null) return;
+            const x = pad.left + i * axStep;
+            const y = pad.top + plotH - norm(val, ax) * plotH;
+            totalDist += Math.sqrt((mx - x) ** 2 + (my - y) ** 2);
+            count++;
+          });
+          if (count > 0) { const avg = totalDist / count; if (avg < bestDist) { bestDist = avg; bestLine = line; } }
+        });
+        if (bestLine) {
+          let html = `<div class="tt-title">${bestLine.pair} — ${metricLabel(pc.metric)}: ${bestLine.metric.toFixed(1)}</div>`;
+          for (const [k, v] of Object.entries(bestLine.values)) {
+            html += `<div class="tt-row"><span class="tt-label">${k.replace('param_', '')}</span><span class="tt-value">${v}</span></div>`;
+          }
+          showTooltip(e, html);
+        } else { hideTooltip(); }
+      });
+      canvas.addEventListener('mouseleave', hideTooltip);
+    });
+  }
+
+  // ── Top Configs Table ──────────────────────────────────────
+  let tcSortKey = 'score';
+  let tcSortAsc = false;
+  let tcPage = 0;
+  const TC_PAGE_SIZE = 50;
+
+  function renderTopConfigs(filter) {
+    const el = document.getElementById('topconfigs-content');
+    let configs = D.top_configs || [];
+
+    // Filter by pair
+    if (filter.pair && filter.pair !== 'all') {
+      configs = configs.filter(c => c.pair === filter.pair);
+    }
+
+    // Sort
+    configs.sort((a, b) => {
+      let va = a[tcSortKey], vb = b[tcSortKey];
+      if (va == null) va = tcSortAsc ? Infinity : -Infinity;
+      if (vb == null) vb = tcSortAsc ? Infinity : -Infinity;
+      if (typeof va === 'string') return tcSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+      return tcSortAsc ? va - vb : vb - va;
+    });
+
+    const totalPages = Math.ceil(configs.length / TC_PAGE_SIZE);
+    if (tcPage >= totalPages) tcPage = Math.max(0, totalPages - 1);
+    const pageConfigs = configs.slice(tcPage * TC_PAGE_SIZE, (tcPage + 1) * TC_PAGE_SIZE);
+
+    const columns = [
+      { key: 'rank', label: '#', fmt: v => v },
+      { key: 'pair', label: 'Config', fmt: v => `<span class="tc-pair">${v}</span>` },
+      { key: 'param_summary', label: 'Params', fmt: v => `<span style="font-size:10px;opacity:0.6">${v || ''}</span>` },
+      { key: 'score', label: 'Score', fmt: v => fmtNum(v, 1) },
+      { key: 'win_rate', label: 'WR %', fmt: v => fmtNum(v, 1) },
+      { key: 'profit_factor', label: 'PF', fmt: v => fmtNum(v, 2) },
+      { key: 'total_pnl_pips', label: 'PnL (pips)', fmt: v => fmtNum(v, 0) },
+      { key: 'max_drawdown_pips', label: 'Max DD', fmt: v => fmtNum(v, 0) },
+      { key: 'total_trades', label: 'Trades', fmt: v => v || '—' },
+      { key: 'rr_ratio', label: 'R:R', fmt: v => fmtNum(v, 2) },
+      { key: 'expectancy', label: 'E[x]', fmt: v => fmtNum(v, 2) },
+    ];
+
+    // Param columns (compact)
+    const paramCols = [
+      { key: 'rsi_period', label: 'RSI' },
+      { key: 'rsi_oversold', label: 'OS' },
+      { key: 'rsi_overbought', label: 'OB' },
+      { key: 'bb_period', label: 'BB' },
+      { key: 'bb_mult', label: 'BBμ' },
+      { key: 'sl_pips', label: 'SL' },
+      { key: 'tp_pips', label: 'TP' },
+      { key: 'max_hold', label: 'Hold' },
+    ];
+
+    let html = `
+      <div class="tc-table-wrap">
+        <div style="overflow-x:auto">
+          <table class="tc-table">
+            <thead><tr>`;
+
+    columns.forEach(col => {
+      const sorted = tcSortKey === col.key;
+      const arrow = sorted ? (tcSortAsc ? '▲' : '▼') : '⇅';
+      html += `<th class="${sorted ? 'sorted' : ''}" data-sort="${col.key}">${col.label}<span class="sort-arrow">${arrow}</span></th>`;
+    });
+    html += `<th style="border-left:1px solid var(--c-border);color:var(--c-accent)">Parameters</th>`;
+    paramCols.forEach(col => {
+      const sorted = tcSortKey === col.key;
+      const arrow = sorted ? (tcSortAsc ? '▲' : '▼') : '⇅';
+      html += `<th class="tc-param ${sorted ? 'sorted' : ''}" data-sort="${col.key}">${col.label}<span class="sort-arrow">${arrow}</span></th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    pageConfigs.forEach(cfg => {
+      html += '<tr>';
+      columns.forEach(col => {
+        const val = cfg[col.key];
+        let style = '';
+        // Color code key metrics
+        if (col.key === 'win_rate' && val >= 60) style = 'color:#149e61';
+        else if (col.key === 'win_rate' && val < 40) style = 'color:#e85c5c';
+        else if (col.key === 'profit_factor' && val >= 2) style = 'color:#149e61';
+        else if (col.key === 'profit_factor' && val < 1) style = 'color:#e85c5c';
+        else if (col.key === 'score' && val >= 500) style = 'color:#149e61;font-weight:700';
+        else if (col.key === 'max_drawdown_pips' && val > 200) style = 'color:#e85c5c';
+        html += `<td style="${style}">${col.fmt(val)}</td>`;
+      });
+      html += `<td style="border-left:1px solid var(--c-border)"></td>`;
+      paramCols.forEach(col => {
+        html += `<td class="tc-param">${cfg[col.key] != null ? cfg[col.key] : '—'}</td>`;
+      });
+      html += '</tr>';
+    });
+
+    html += `</tbody></table></div>
+      <div class="tc-pager">
+        <button id="tc-prev" ${tcPage === 0 ? 'disabled' : ''}>← Prev</button>
+        <span>Showing <span class="tc-count">${tcPage * TC_PAGE_SIZE + 1}–${Math.min((tcPage + 1) * TC_PAGE_SIZE, configs.length)}</span> of ${configs.length} configs</span>
+        <button id="tc-next" ${tcPage >= totalPages - 1 ? 'disabled' : ''}>Next →</button>
+      </div>
+    </div>`;
+
+    el.innerHTML = html;
+
+    // Sort handlers
+    el.querySelectorAll('.tc-table th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort;
+        if (tcSortKey === key) { tcSortAsc = !tcSortAsc; }
+        else { tcSortKey = key; tcSortAsc = false; }
+        tcPage = 0;
+        renderTopConfigs(getFilters());
+      });
+    });
+
+    // Pager handlers
+    const prevBtn = document.getElementById('tc-prev');
+    const nextBtn = document.getElementById('tc-next');
+    if (prevBtn) prevBtn.addEventListener('click', () => { tcPage--; renderTopConfigs(getFilters()); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { tcPage++; renderTopConfigs(getFilters()); });
+  }
+
+  // ── Compare: Best vs Current ───────────────────────────────
+  function renderCompare(filter) {
+    const el = document.getElementById('compare-content');
+    const topConfigs = D.top_configs || [];
+    const currentConfigs = D.current_configs || {};
+
+    // Get available pairs
+    const pairs = Object.keys(currentConfigs).sort();
+    if (pairs.length === 0) {
+      el.innerHTML = '<div class="cmp-empty">No current configs available for comparison.</div>';
+      return;
+    }
+
+    // Pair selector
+    let selectedPair = filter.pair && filter.pair !== 'all' ? filter.pair : pairs[0];
+    if (!currentConfigs[selectedPair]) selectedPair = pairs[0];
+
+    let html = `
+      <div class="cmp-pair-selector">
+        <span class="opt-filter-label">Pair:</span>
+        <select class="opt-select" id="cmp-pair-select">
+          ${pairs.map(p => `<option value="${p}" ${p === selectedPair ? 'selected' : ''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="cmp-grid" id="cmp-grid"></div>
+    `;
+    el.innerHTML = html;
+
+    function renderComparison(pair) {
+      const grid = document.getElementById('cmp-grid');
+      const current = currentConfigs[pair];
+      // Find best config for this pair (rank 1)
+      const best = topConfigs.find(c => c.pair === pair && c.rank === 1);
+
+      if (!current || !best) {
+        grid.innerHTML = '<div class="cmp-empty">No data for this pair.</div>';
+        return;
+      }
+
+      // Metrics to compare
+      const metrics = [
+        { key: 'win_rate', label: 'Win Rate', unit: '%', higher: true },
+        { key: 'profit_factor', label: 'Profit Factor', unit: '', higher: true },
+        { key: 'total_pnl_pips', label: 'Total PnL', unit: 'pips', higher: true },
+        { key: 'score', label: 'Score', unit: '', higher: true },
+        { key: 'rr_ratio', label: 'R:R Ratio', unit: '', higher: true },
+        { key: 'expectancy', label: 'Expectancy', unit: 'pips', higher: true },
+        { key: 'max_drawdown_pips', label: 'Max Drawdown', unit: 'pips', higher: false },
+        { key: 'total_trades', label: 'Total Trades', unit: '', higher: true },
+      ];
+
+      // Params to compare
+      const params = [
+        { key: 'rsi_period', label: 'RSI Period' },
+        { key: 'rsi_oversold', label: 'RSI Oversold' },
+        { key: 'rsi_overbought', label: 'RSI Overbought' },
+        { key: 'bb_period', label: 'BB Period' },
+        { key: 'bb_mult', label: 'BB Multiplier' },
+        { key: 'sl_pips', label: 'Stop Loss', unit: 'pips' },
+        { key: 'tp_pips', label: 'Take Profit', unit: 'pips' },
+        { key: 'max_hold', label: 'Max Hold', unit: 'h' },
+      ];
+
+      function buildCard(title, badge, badgeClass, config, isBest) {
+        let cardHtml = `
+          <div class="cmp-card ${isBest ? 'cmp-card-best' : 'cmp-card-current'}">
+            <h3>${title} <span class="cmp-badge ${badgeClass}">${badge}</span></h3>`;
+
+        // Metrics
+        cardHtml += '<div style="margin-bottom:var(--s-3)">';
+        metrics.forEach(m => {
+          let val = config[m.key];
+          if (val != null && typeof val === 'string') val = parseFloat(val);
+          const display = val != null ? fmtNum(val, m.key === 'total_trades' ? 0 : 2) : '—';
+          const unit = m.unit && val != null ? ` ${m.unit}` : '';
+          cardHtml += `<div class="cmp-row"><span class="cmp-label">${m.label}</span><span class="cmp-value">${display}${unit}</span></div>`;
+        });
+        cardHtml += '</div>';
+
+        // Params
+        cardHtml += '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--c-text-dim);margin-bottom:var(--s-2);font-weight:700">Parameters</div>';
+        params.forEach(p => {
+          let val = config[p.key];
+          if (val != null && typeof val === 'string') val = parseFloat(val);
+          const display = val != null ? (p.unit ? `${val} ${p.unit}` : val) : '—';
+          cardHtml += `<div class="cmp-row"><span class="cmp-label">${p.label}</span><span class="cmp-value" style="font-size:var(--text-xs)">${display}</span></div>`;
+        });
+
+        cardHtml += '</div>';
+        return cardHtml;
+      }
+
+      grid.innerHTML = buildCard('🏆 Best Config', `Rank #1`, 'cmp-badge-best', best, true)
+                      + buildCard('📌 Current Config', 'Live', 'cmp-badge-current', current, false);
+
+      // Add note about current config metrics
+      grid.innerHTML += '<div style="grid-column:1/-1;text-align:center;font-size:var(--text-xs);color:var(--c-text-dim);margin-top:calc(-1 * var(--s-2))">Performance-Metriken der aktuellen Config nicht verfügbar (nur Parameter gespeichert). Die Metriken links zeigen die Backtest-Performance des besten Grid-Search Ergebnisses.</div>';
+
+      // Add delta summary below
+      let deltaHtml = '<div style="grid-column:1/-1;margin-top:var(--s-3)"><div class="opt-chart-card"><div class="opt-chart-title"><span>📊 Delta: Best vs Current</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--s-3)">';
+      metrics.forEach(m => {
+        let bv = best[m.key], cv = current[m.key];
+        if (bv != null && typeof bv === 'string') bv = parseFloat(bv);
+        if (cv != null && typeof cv === 'string') cv = parseFloat(cv);
+        if (bv == null || cv == null) return;
+        const delta = bv - cv;
+        const isPositive = m.higher ? delta > 0 : delta < 0;
+        const isZero = Math.abs(delta) < 0.01;
+        const cls = isZero ? 'cmp-delta-zero' : (isPositive ? 'cmp-delta-pos' : 'cmp-delta-neg');
+        const sign = delta > 0 ? '+' : '';
+        deltaHtml += `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0"><span class="cmp-label">${m.label}</span><span class="cmp-delta ${cls}">${sign}${fmtNum(delta, 2)}</span></div>`;
+      });
+      deltaHtml += '</div></div></div>';
+      grid.innerHTML += deltaHtml;
+    }
+
+    renderComparison(selectedPair);
+
+    document.getElementById('cmp-pair-select').addEventListener('change', (e) => {
+      renderComparison(e.target.value);
+    });
+  }
+
+  // ── Walk-Forward Timeline (real data) ──────────────────────
+  function renderWalkForward() {
+    const el = document.getElementById('walkforward-content');
+    const wfData = D.walk_forward || [];
+
+    if (wfData.length === 0) {
+      el.innerHTML = '<div class="opt-chart-card"><p style="color:var(--c-text-dim)">No Walk-Forward data available. Run walk-forward analysis to generate splits.</p></div>';
+      return;
+    }
+
+    // Summary stats
+    const passCount = wfData.filter(w => w.status === 'PASS').length;
+    const warnCount = wfData.filter(w => w.status === 'WARN').length;
+    const failCount = wfData.filter(w => w.status === 'FAIL').length;
+
+    let html = `
+      <div style="display:flex;gap:var(--s-4);margin-bottom:var(--s-5);flex-wrap:wrap">
+        <div class="opt-stat" style="flex:1;min-width:120px"><div class="opt-stat-value" style="color:#149e61">${passCount}</div><div class="opt-stat-label">PASS</div></div>
+        <div class="opt-stat" style="flex:1;min-width:120px"><div class="opt-stat-value" style="color:#f0b940">${warnCount}</div><div class="opt-stat-label">WARN</div></div>
+        <div class="opt-stat" style="flex:1;min-width:120px"><div class="opt-stat-value" style="color:#e85c5c">${failCount}</div><div class="opt-stat-label">FAIL</div></div>
+        <div class="opt-stat" style="flex:1;min-width:120px"><div class="opt-stat-value">${wfData.length}</div><div class="opt-stat-label">Total Pairs</div></div>
+      </div>
+      <div class="wf-grid">`;
+
+    wfData.forEach(wf => {
+      const isBars = wf.is_bars || 1;
+      const oosBars = wf.oos_bars || 1;
+      const totalBars = wf.total_bars || (isBars + oosBars);
+      const isPct = (isBars / totalBars * 100).toFixed(0);
+      const oosPct = (oosBars / totalBars * 100).toFixed(0);
+
+      // Status-based OOS color
+      const oosColor = wf.status === 'PASS' ? '#149e61' : (wf.status === 'WARN' ? '#f0b940' : '#e85c5c');
+
+      html += `
+        <div class="wf-card">
+          <div class="wf-card-title">
+            <span>${wf.pair}${wf.param_summary ? ' <span style="font-size:10px;opacity:0.5;font-weight:400">(' + wf.param_summary + ')</span>' : ''}</span>
+            <span class="wf-status-badge wf-status-${wf.status}">${wf.status}</span>
+          </div>
+          <div class="wf-timeline">
+            <div class="wf-bar-is" style="flex:${isPct};background:rgba(113,50,245,0.6)">IS ${isPct}%</div>
+            <div class="wf-bar-oos" style="flex:${oosPct};background:${oosColor}80">OOS ${oosPct}%</div>
+          </div>
+          <div class="wf-metrics">
+            <div class="wf-metric-group">
+              <h4 style="color:#7132f5">In-Sample</h4>
+              <div class="wf-metric-row"><span class="wf-metric-label">Trades</span><span class="wf-metric-value">${wf.is.trades || 0}</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">Win Rate</span><span class="wf-metric-value" style="color:${(wf.is.win_rate||0) >= 50 ? '#149e61' : '#e85c5c'}">${fmtNum(wf.is.win_rate, 1)}%</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">PF</span><span class="wf-metric-value" style="color:${(wf.is.profit_factor||0) >= 1 ? '#149e61' : '#e85c5c'}">${fmtNum(wf.is.profit_factor, 2)}</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">PnL</span><span class="wf-metric-value">${fmtNum(wf.is.total_pnl, 1)} pips</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">Expectancy</span><span class="wf-metric-value">${fmtNum(wf.is.expectancy, 2)}</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">Max DD</span><span class="wf-metric-value" style="color:#e85c5c">${fmtNum(wf.is.max_dd_eur, 0)}€</span></div>
+            </div>
+            <div class="wf-metric-group">
+              <h4 style="color:${oosColor}">Out-of-Sample</h4>
+              <div class="wf-metric-row"><span class="wf-metric-label">Trades</span><span class="wf-metric-value">${wf.oos.trades || 0}</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">Win Rate</span><span class="wf-metric-value" style="color:${(wf.oos.win_rate||0) >= 50 ? '#149e61' : '#e85c5c'}">${fmtNum(wf.oos.win_rate, 1)}%</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">PF</span><span class="wf-metric-value" style="color:${(wf.oos.profit_factor||0) >= 1 ? '#149e61' : '#e85c5c'}">${fmtNum(wf.oos.profit_factor, 2)}</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">PnL</span><span class="wf-metric-value">${fmtNum(wf.oos.total_pnl, 1)} pips</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">Expectancy</span><span class="wf-metric-value">${fmtNum(wf.oos.expectancy, 2)}</span></div>
+              <div class="wf-metric-row"><span class="wf-metric-label">Max DD</span><span class="wf-metric-value" style="color:#e85c5c">${fmtNum(wf.oos.max_dd_eur, 0)}€</span></div>
+            </div>
+          </div>
+          <div class="wf-drop">
+            WR Decay:<span class="wf-drop-val" style="color:${(wf.wr_drop_pp||0) > 15 ? '#e85c5c' : '#f0b940'}">${wf.wr_drop_pp > 0 ? '-' : '+'}${fmtNum(Math.abs(wf.wr_drop_pp), 1)}pp</span>
+            ${wf.reason ? `<span style="margin-left:8px;opacity:0.6">— ${wf.reason}</span>` : ''}
+          </div>
+        </div>`;
+    });
+
+    html += '</div>';
+
+    // WF Bar Chart
+    html += '<div class="opt-chart-card" style="margin-top:var(--s-5)"><div class="opt-chart-title"><span>Walk-Forward: IS vs OOS Performance</span></div><div class="chart-wrap"><canvas id="wf-bar-chart" data-height="300"></canvas></div></div>';
+
+    el.innerHTML = html;
+
+    // Render bar chart
+    const ctx = document.getElementById('wf-bar-chart');
+    if (ctx) {
+      new Chart(ctx.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: wfData.map(w => w.pair),
+          datasets: [
+            {
+              label: 'IS Win Rate %',
+              data: wfData.map(w => w.is.win_rate),
+              backgroundColor: 'rgba(113,50,245,0.6)',
+              borderRadius: 4,
+            },
+            {
+              label: 'OOS Win Rate %',
+              data: wfData.map(w => w.oos.win_rate),
+              backgroundColor: wfData.map(w =>
+                w.status === 'PASS' ? 'rgba(20,158,97,0.6)' :
+                w.status === 'WARN' ? 'rgba(240,185,64,0.6)' : 'rgba(232,92,92,0.6)'
+              ),
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#a8a3bf', font: { size: 11 } } },
+            tooltip: {
+              backgroundColor: '#1e1a35', titleColor: '#f0eef5', bodyColor: '#a8a3bf',
+              borderColor: '#2a2545', borderWidth: 1,
+            },
+          },
+          scales: {
+            x: { ticks: { color: '#6b6685', font: { size: 10 } }, grid: { display: false } },
+            y: {
+              title: { display: true, text: 'Win Rate %', color: '#a8a3bf', font: { size: 11 } },
+              ticks: { color: '#6b6685', font: { size: 10 } },
+              grid: { color: 'rgba(42,37,69,0.5)' },
+            },
+          },
+        },
+      });
+      fixChartHeight(ctx);
+    }
+  }
+
+  // ── Tab Navigation (lazy rendering) ──────────────────────────
+  const renderedTabs = new Set(['heatmaps']); // heatmaps tab is active on load
+
+  function renderTab(tabName) {
+    if (renderedTabs.has(tabName)) return;
+    renderedTabs.add(tabName);
+    const f = getFilters();
+    if (tabName === 'sensitivities') renderSensitivities(f);
+    if (tabName === 'parallel') renderParallelCoords(f);
+    if (tabName === 'topconfigs') renderTopConfigs(f);
+    if (tabName === 'compare') renderCompare(f);
+    if (tabName === 'walkforward') renderWalkForward();
+  }
+
+  document.querySelectorAll('.opt-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.opt-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.opt-section').forEach(s => s.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('section-' + tab.dataset.tab).classList.add('active');
+      renderTab(tab.dataset.tab);
+    });
+  });
+
+  // ── Filter Handlers ────────────────────────────────────────
+  function getFilters() {
+    return {
+      source: document.getElementById('filter-source').value,
+      pair: document.getElementById('filter-pair').value,
+      metric: document.getElementById('filter-metric').value,
+    };
+  }
+
+  document.getElementById('filter-source').addEventListener('change', () => {
+    const f = getFilters();
+    const active = document.querySelector('.opt-tab.active')?.dataset.tab;
+    if (active === 'heatmaps') renderHeatmaps(f);
+  });
+  document.getElementById('filter-pair').addEventListener('change', () => {
+    const f = getFilters();
+    renderedTabs.clear(); // force re-render on pair change
+    renderedTabs.add('heatmaps');
+    renderHeatmaps(f);
+  });
+  document.getElementById('filter-metric').addEventListener('change', () => {
+    const f = getFilters();
+    const active = document.querySelector('.opt-tab.active')?.dataset.tab;
+    if (active === 'heatmaps') renderHeatmaps(f);
+  });
+
+  // ── Init (only render active tab — rest is lazy) ───────────
+  renderStats();
+  populateFilters();
+  renderHeatmaps(getFilters());
+  // Other tabs render on first switch via renderTab()
+
+})();
+</script>
+<!--/BODY-->

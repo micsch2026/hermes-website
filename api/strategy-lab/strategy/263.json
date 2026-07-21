@@ -1,0 +1,283 @@
+{
+  "id": 263,
+  "label": "#263",
+  "name": "IT: KB_30_trend",
+  "display_name": "IT: KB_30_trend",
+  "description": "Alexander Elder's Triple Screen: HTF bestimmt Trendrichtung, MTF bestimmt Entry-Zone, LTF bestimmt exakten Entry. Nur Trades in Richtung des HTF-Trends.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": -87.9,
+  "iteration_count": 4,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-12 19:04:38",
+  "updated_at": "2026-07-12 19:17:26",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 2r/2g/2b enter, exit=timeout\", \"pnl\": -747.24, \"trades\": 163, \"score\": -88.7}, {\"iter\": 2, \"change\": \"change_pairs: 2r/2g/2b enter, exit=timeout\", \"pnl\": -747.24, \"trades\": 163, \"score\": -88.7}, {\"iter\": 3, \"change\": \"sl_tp_change: 2r/2g/2b enter, exit=timeout\", \"pnl\": -614.8, \"trades\": 162, \"score\": -88.3}, {\"iter\": 4, \"change\": \"add_gate: 2r/3g/2b enter, exit=timeout\", \"pnl\": -488.83, \"trades\": 140, \"score\": -87.9}], \"iterations\": 4, \"holdout\": null, \"anti_overfit\": null}",
+  "concept": {
+    "name": "IT: KB_30_trend",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "EURUSD",
+      "GBPUSD",
+      "XAUUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "kb_trend_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "pin_bar",
+                "op": "==",
+                "value": 1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "kb_trend_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "pin_bar",
+                "op": "==",
+                "value": -1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "support_resistance",
+                "params": {
+                  "lookback": 50,
+                  "threshold": 0.002
+                },
+                "op": "!=",
+                "value": 0
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "params": {
+                  "period": 14
+                },
+                "op": "between",
+                "min": 40,
+                "max": 50
+              }
+            ],
+            "points": 15
+          }
+        ],
+        "gates": [
+          {
+            "indicator": "close_vs_ema",
+            "params": {
+              "ema_period": 50
+            },
+            "op": ">",
+            "value": 0,
+            "timeframe": "1h"
+          },
+          {
+            "indicator": "ema_slope",
+            "params": {
+              "period": 20
+            },
+            "op": ">",
+            "value": 0,
+            "timeframe": "1h"
+          },
+          {
+            "indicator": "adx",
+            "params": {
+              "period": 14
+            },
+            "op": ">",
+            "value": 45,
+            "timeframe": "1h"
+          }
+        ],
+        "min_score": 0,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.5
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "EURUSD",
+        "GBPUSD",
+        "XAUUSD"
+      ]
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Alexander Elder's Triple Screen: HTF bestimmt Trendrichtung, MTF bestimmt Entry-Zone, LTF bestimmt exakten Entry. Nur Trades in Richtung des HTF-Trends."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -87.9,
+    "oos_pnl": -488.83,
+    "oos_trades": 140,
+    "oos_pass_rate": 0.379,
+    "iteration": 4,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {},
+    "selected_assets": [],
+    "dropped_assets": [
+      "EURUSD",
+      "GBPUSD",
+      "NAS100",
+      "US500"
+    ],
+    "pair_overrides": {},
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": false,
+      "evaluated_at": "2026-07-16T18:15:24.074712+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [
+    "EURUSD",
+    "GBPUSD",
+    "NAS100",
+    "US500"
+  ],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 2r/2g/2b enter, exit=timeout",
+      "oos_pnl": -747.24,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 163,
+      "children": [
+        {
+          "change": "Iteration 2: change_pairs: 2r/2g/2b enter, exit=timeout",
+          "oos_pnl": -747.24,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 163,
+          "children": [
+            {
+              "change": "Iteration 3: sl_tp_change: 2r/2g/2b enter, exit=timeout",
+              "oos_pnl": -614.8,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 162,
+              "children": [
+                {
+                  "change": "Iteration 4: add_gate: 2r/3g/2b enter, exit=timeout",
+                  "oos_pnl": -488.83,
+                  "oos_pf": 0,
+                  "tier": "C",
+                  "tested": true,
+                  "strategy_id": 263,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 140,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      263
+    ],
+    "stats": {
+      "total_variants": 4,
+      "new_trees": 0,
+      "best_pnl": -488.83,
+      "base_pnl": -747.24,
+      "improvement": 258.41,
+      "runtime_seconds": 767.9
+    }
+  },
+  "best_oos_pnl": -488.83,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "C",
+  "best_oos_pass_rate": 0.379,
+  "oos_trades": 140,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 0,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

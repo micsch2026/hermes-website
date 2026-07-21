@@ -1,0 +1,1392 @@
+<!--TITLE:FX Mean Reversion Bot — Hermes-->
+<!--HEAD-->
+<style>
+  /* ── FX Bot Dashboard ─────────────────────────────────────── */
+  .fx-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-6); }
+  .fx-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-5); }
+  .fx-card-title { font-weight: 600; font-size: var(--text-sm); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--s-3); display: flex; align-items: center; gap: var(--s-2); }
+  .fx-card-value { font-size: var(--text-2xl); font-weight: 700; }
+  .fx-card-sub { font-size: var(--text-sm); color: var(--c-text-dim); margin-top: var(--s-1); }
+  .fx-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: var(--s-2); }
+  .fx-status-dot.green { background: var(--c-ok); box-shadow: 0 0 6px var(--c-ok); }
+  .fx-status-dot.yellow { background: var(--c-warn); }
+  .fx-status-dot.red { background: var(--c-err); }
+  .fx-health-banner {
+    display: none; padding: var(--s-3) var(--s-4); border-radius: var(--r-lg);
+    margin-bottom: var(--s-4); font-size: var(--text-sm); font-weight: 500;
+    align-items: center; gap: var(--s-2);
+  }
+  .fx-health-banner.visible { display: flex; }
+  .fx-health-banner.warn { background: rgba(240,185,64,0.12); border: 1px solid rgba(240,185,64,0.3); color: #f0b940; }
+  .fx-health-banner.error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+  .fx-health-banner .fx-health-icon { font-size: var(--text-lg); }
+  .fx-health-banner .fx-health-text { flex: 1; }
+  .fx-health-banner .fx-health-time { font-size: var(--text-xs); opacity: 0.8; }
+  .fx-badge { display: inline-block; padding: 2px 10px; border-radius: var(--r-lg); font-size: var(--text-xs); font-weight: 600; }
+  .fx-badge-buy { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .fx-badge-sell { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .fx-badge-demo { background: rgba(100,149,237,0.15); color: #6495ed; }
+  .fx-badge-live { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .fx-badge-signal { background: rgba(113,50,245,0.15); color: #7132f5; }
+  table.fx-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  .fx-table th { text-align: left; color: var(--c-text-dim); font-weight: 600; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border); font-size: var(--text-xs); text-transform: uppercase; white-space: nowrap; }
+  .fx-table td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border); }
+  .fx-table tr:last-child td { border-bottom: none; }
+  .fx-pos-row { cursor: pointer; transition: background var(--t); }
+  .fx-pos-row:hover { background: rgba(91,141,239,0.08); }
+  .fx-section-title { font-size: var(--text-lg); font-weight: 600; margin: var(--s-5) 0 var(--s-3); color: var(--c-text); border-bottom: 1px solid var(--c-border); padding-bottom: var(--s-2); }
+  .fx-chart-container { position: relative; width: 100%; max-height: 320px; margin: var(--s-3) 0; }
+  .fx-chart-container canvas { width: 100% !important; }
+  .fx-chart-summary { display: flex; gap: var(--s-4); flex-wrap: wrap; margin-top: var(--s-2); font-size: var(--text-xs); color: var(--c-text-dim); }
+  .fx-chart-summary b { color: var(--c-text); }
+  .fx-no-data { color: var(--c-text-dim); font-style: italic; padding: var(--s-4); text-align: center; }
+  .fx-pnl-pos { color: #22c55e; }
+  .fx-pnl-neg { color: #ef4444; }
+  .fx-refresh-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s-4); }
+  .fx-config-chip { display: inline-block; padding: 3px 10px; border-radius: var(--r-md); font-size: var(--text-xs); background: var(--c-border); margin: 2px; font-family: monospace; }
+  .fx-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .fx-signal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--s-3); }
+  .fx-signal-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3); text-align: center; }
+  .fx-signal-pair { font-size: var(--text-xs); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.03em; }
+  .fx-signal-status { font-size: var(--text-lg); font-weight: 700; margin-top: var(--s-1); }
+  .fx-strategy-info { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-bottom: var(--s-4); }
+  .fx-strategy-tag { display: inline-flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-4); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); font-size: var(--text-sm); }
+  .fx-strategy-tag .label { color: var(--c-text-dim); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; }
+  .fx-strategy-tag .value { font-weight: 600; }
+  @media (max-width: 600px) {
+    .fx-grid { grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+    .fx-card { padding: var(--s-3); }
+    .fx-card-value { font-size: var(--text-xl); }
+    .fx-section-title { font-size: var(--text-base); }
+    .fx-table th, .fx-table td { padding: var(--s-1) var(--s-2); font-size: var(--text-xs); }
+    .fx-signal-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 400px) {
+    .fx-grid { grid-template-columns: 1fr; }
+    .fx-signal-grid { grid-template-columns: 1fr 1fr; }
+  }
+  /* ── Candlestick Chart Panel ──────────────────────────────── */
+  .fx-chart-panel {
+    display: none;
+    margin-top: var(--s-4);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-xl);
+    padding: var(--s-4);
+    animation: fxChartFadeIn 0.3s ease;
+  }
+  .fx-chart-panel.active { display: block; }
+  @keyframes fxChartFadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .fx-chart-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: var(--s-3); flex-wrap: wrap; gap: var(--s-2);
+  }
+  .fx-chart-pair-name { font-size: var(--text-xl); font-weight: 700; }
+  .fx-chart-close {
+    background: var(--c-border); border: none; color: var(--c-text-dim);
+    border-radius: var(--r-md); padding: 4px 12px; cursor: pointer;
+    font-size: var(--text-sm); transition: background var(--t);
+  }
+  .fx-chart-close:hover { background: var(--c-surface-2, #2a2a30); color: var(--c-text); }
+  .fx-range-nav {
+    display: flex; gap: 4px; margin-bottom: var(--s-2);
+  }
+  .fx-range-chip {
+    display: inline-block; padding: 2px 10px; border-radius: var(--r-md);
+    font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    color: var(--c-text-dim); transition: all 0.15s; letter-spacing: 0.02em;
+  }
+  .fx-range-chip:hover { border-color: var(--c-accent, #5b8def); color: var(--c-text); }
+  .fx-range-chip.fx-range-active {
+    background: var(--c-accent, #5b8def); color: #fff;
+    border-color: var(--c-accent, #5b8def); box-shadow: 0 0 6px rgba(91,141,239,0.3);
+  }
+  .fx-chart-config { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-3); }
+  .fx-chart-config .fx-config-chip { font-size: 11px; padding: 2px 8px; }
+  .fx-pair-nav {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--s-2);
+    padding: var(--s-1) 0; border-bottom: 1px solid var(--c-border);
+  }
+  .fx-pair-chip {
+    display: inline-block; padding: 2px 8px; border-radius: var(--r-md);
+    font-size: 11px; font-weight: 600; cursor: pointer; user-select: none;
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    color: var(--c-text-dim); transition: all 0.15s; letter-spacing: 0.02em;
+  }
+  .fx-pair-chip:hover { border-color: var(--c-accent, #5b8def); color: var(--c-text); }
+  .fx-pair-chip.fx-pair-active {
+    background: var(--c-accent, #5b8def); color: #fff;
+    border-color: var(--c-accent, #5b8def); box-shadow: 0 0 6px rgba(91,141,239,0.3);
+  }
+  .fx-chart-wrap { position: relative; width: 100%; }
+  .fx-chart-rsi-label {
+    font-size: 10px; color: var(--c-text-dim); text-transform: uppercase;
+    letter-spacing: 0.06em; margin-top: var(--s-2); margin-bottom: var(--s-1);
+    padding-left: 4px;
+  }
+  .fx-signal-card { cursor: pointer; transition: border-color var(--t), transform 0.15s; }
+  .fx-signal-card:hover { border-color: var(--c-accent, #5b8def); transform: translateY(-1px); }
+  .fx-signal-card.fx-active-card { border-color: var(--c-accent, #5b8def); box-shadow: 0 0 0 1px var(--c-accent, #5b8def); }
+  /* ── Performance Heatmap ─────────────────────────────── */
+  .fx-heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--s-2);
+  }
+  .fx-heatmap-cell {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    padding: var(--s-3);
+    text-align: center;
+    transition: border-color var(--t), transform 0.15s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .fx-heatmap-cell:hover { border-color: var(--c-border-2); transform: translateY(-1px); }
+  .fx-heatmap-cell .pair-name {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-bottom: var(--s-1);
+  }
+  .fx-heatmap-cell .wr-value {
+    font-size: var(--text-lg);
+    font-weight: 700;
+  }
+  .fx-heatmap-cell .pnl-value {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .fx-heatmap-cell .trade-count {
+    font-size: 10px;
+    color: var(--c-text-dim);
+    margin-top: 2px;
+  }
+  .fx-heatmap-cell .rr-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: var(--r-md);
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 3px;
+  }
+  .fx-heatmap-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+function safeFetch(path, opts) {
+  var url = window.location.origin + path + (path.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now();
+  opts = opts || {};
+  opts.cache = "no-store";
+  opts.credentials = "same-origin";
+  return fetch(url, opts);
+}
+</script>
+<!--/HEAD-->
+<!--BODY-->
+
+<!-- 1. STATUS ROW -->
+<div class="fx-refresh-bar">
+  <div>
+    <span class="fx-status-dot" id="fx-dot"></span>
+    <span id="fx-status">Loading...</span>
+    <span class="fx-badge" id="fx-mode-badge" style="margin-left:8px"></span>
+  </div>
+  <span id="fx-last-update" style="color:var(--c-text-dim);font-size:var(--text-xs)">—</span>
+</div>
+
+<!-- 1b. HEALTH WARNING BANNER (hidden by default) -->
+<div class="fx-health-banner" id="fx-health-banner">
+  <span class="fx-health-icon">⚠️</span>
+  <span class="fx-health-text" id="fx-health-text"></span>
+  <span class="fx-health-time" id="fx-health-time"></span>
+</div>
+
+<!-- 2. STRATEGY INFO -->
+<div class="fx-strategy-info">
+  <div class="fx-strategy-tag">
+    <span class="label">Strategy</span>
+    <span class="value" id="fx-strategy-name">RSI(10) 35/65 + BB — Grid-Search optimiert</span>
+  </div>
+  <div class="fx-strategy-tag">
+    <span class="label">Timeframe</span>
+    <span class="value">1H</span>
+  </div>
+  <div class="fx-strategy-tag">
+    <span class="label">Pairs</span>
+    <span class="value" id="fx-pairs-count">5 Pairs</span>
+  </div>
+  <div class="fx-strategy-tag">
+    <span class="label">Type</span>
+    <span class="value">Mean Reversion</span>
+  </div>
+</div>
+
+<!-- 3. BALANCE & P&L CARDS -->
+<div class="fx-grid" id="fx-status-row">
+  <div class="fx-card">
+    <div class="fx-card-title">Balance</div>
+    <div class="fx-card-value" id="fx-balance">—</div>
+    <div class="fx-card-sub" id="fx-equity-sub">—</div>
+  </div>
+  <div class="fx-card">
+    <div class="fx-card-title">Open Positions</div>
+    <div class="fx-card-value" id="fx-positions-count">—</div>
+    <div class="fx-card-sub" id="fx-positions-sub">—</div>
+  </div>
+  <div class="fx-card">
+    <div class="fx-card-title">Daily P&L</div>
+    <div class="fx-card-value" id="fx-daily-pnl">—</div>
+    <div class="fx-card-sub" id="fx-trades-today">—</div>
+  </div>
+  <div class="fx-card">
+    <div class="fx-card-title">Total P&L</div>
+    <div class="fx-card-value" id="fx-total-pnl">—</div>
+    <div class="fx-card-sub" id="fx-winrate-sub">—</div>
+  </div>
+</div>
+
+<!-- 4. PERFORMANCE METRICS -->
+<p class="fx-section-title">📊 Performance</p>
+<div class="fx-grid" id="fx-perf-grid">
+  <div class="fx-card">
+    <div class="fx-card-title">Win Rate</div>
+    <div class="fx-card-value" id="fx-winrate">—</div>
+    <div class="fx-card-sub" id="fx-winrate-detail">—</div>
+  </div>
+  <div class="fx-card">
+    <div class="fx-card-title">Profit Factor</div>
+    <div class="fx-card-value" id="fx-profit-factor">—</div>
+    <div class="fx-card-sub">Target: &gt; 1.5</div>
+  </div>
+  <div class="fx-card">
+    <div class="fx-card-title">Expectancy</div>
+    <div class="fx-card-value" id="fx-expectancy">—</div>
+    <div class="fx-card-sub">Per trade</div>
+  </div>
+  <div class="fx-card">
+    <div class="fx-card-title">Max Drawdown</div>
+    <div class="fx-card-value" id="fx-max-dd">—</div>
+    <div class="fx-card-sub">Limit: 10%</div>
+  </div>
+</div>
+
+<!-- 5. EQUITY CURVE CHART -->
+<p class="fx-section-title">📈 Equity Curve</p>
+<div class="fx-card">
+  <div class="fx-chart-container"><canvas id="fx-equity-chart"></canvas></div>
+  <div class="fx-chart-summary" id="fx-equity-summary"></div>
+</div>
+
+<!-- 6. SIGNAL OVERVIEW -->
+<p class="fx-section-title">📡 Signal Overview</p>
+<div class="fx-signal-grid" id="fx-signal-grid">
+  <div class="fx-signal-card"><div class="fx-no-data">Loading signals...</div></div>
+</div>
+
+<!-- 6b. CANDLESTICK CHART PANEL (hidden until signal card clicked) -->
+<div class="fx-chart-panel" id="fx-chart-panel">
+  <div class="fx-chart-header">
+    <div>
+      <span class="fx-chart-pair-name" id="fx-chart-pair">—</span>
+      <span class="fx-badge fx-badge-signal" id="fx-chart-strategy" style="margin-left:8px"></span>
+    </div>
+    <div style="display:flex;gap:var(--s-2);align-items:center">
+      <button id="fx-trade-toggle" class="fx-chart-close" onclick="toggleFxTradeLines()" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">📊 Theoretical Trades: ON</button>
+      <button class="fx-chart-close" onclick="closeFxChart()">✕ Close</button>
+    </div>
+  </div>
+  <div class="fx-pair-nav" id="fx-pair-nav"></div>
+  <div class="fx-range-nav" id="fx-range-nav">
+    <span class="fx-range-chip fx-range-active" data-days="0" onclick="setFxRange(0)">All</span>
+    <span class="fx-range-chip" data-days="90" onclick="setFxRange(90)">3M</span>
+    <span class="fx-range-chip" data-days="30" onclick="setFxRange(30)">1M</span>
+    <span class="fx-range-chip" data-days="14" onclick="setFxRange(14)">2W</span>
+    <span class="fx-range-chip" data-days="7" onclick="setFxRange(7)">1W</span>
+  </div>
+  <div class="fx-chart-config" id="fx-chart-config"></div>
+  <div class="fx-chart-legend" style="display:flex;gap:var(--s-3);flex-wrap:wrap;margin-bottom:var(--s-2);font-size:var(--text-xs);color:var(--c-text-dim)">
+    <span><span style="color:#22c55e">━</span> Profit</span>
+    <span><span style="color:#ef4444">━</span> Loss</span>
+    <span><span style="color:#22c55e">┈</span> Timeout (profit)</span>
+    <span><span style="color:#ef4444">┈</span> Timeout (loss)</span>
+    <span style="opacity:0.6">Each arrow = one simulated backtest trade</span>
+  </div>
+  <div class="fx-chart-wrap">
+    <div id="fx-candle-chart" style="height:320px"></div>
+    <div class="fx-chart-rsi-label">RSI</div>
+    <div id="fx-rsi-chart" style="height:100px"></div>
+  </div>
+</div>
+
+<!-- 7. OPEN POSITIONS -->
+<p class="fx-section-title">🔵 Open Positions</p>
+<div class="fx-card fx-table-wrap">
+  <table class="fx-table">
+    <thead><tr><th>Pair</th><th>Direction</th><th>Score</th><th>Entry</th><th>SL</th><th>TP</th><th>Margin</th><th>P&L</th><th>Duration</th></tr></thead>
+    <tbody id="fx-positions-body"><tr><td colspan="9" class="fx-no-data">Loading...</td></tr></tbody>
+  </table>
+</div>
+
+<!-- 8. TRADE HISTORY -->
+<p class="fx-section-title">📋 Trade History</p>
+<div class="fx-card fx-table-wrap">
+  <table class="fx-table">
+    <thead><tr><th>Time</th><th>Pair</th><th>Direction</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Duration</th></tr></thead>
+    <tbody id="fx-history-body"><tr><td colspan="7" class="fx-no-data">No trades yet</td></tr></tbody>
+  </table>
+</div>
+
+<!-- 9. STRATEGY DETAILS -->
+<p class="fx-section-title">⚙️ Strategy Details</p>
+<div class="fx-card">
+  <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)" id="fx-config-chips">
+    <span class="fx-config-chip">RSI(10) · 35/65 levels</span>
+    <span class="fx-config-chip">BB(20, 2.0)</span>
+    <span class="fx-config-chip">Mean Reversion — Grid-Search optimiert</span>
+    <span class="fx-config-chip">1H Timeframe</span>
+    <span class="fx-config-chip">21 FX Pairs</span>
+    <span class="fx-config-chip">Bidirectional (Long + Short)</span>
+  </div>
+  <details style="font-size:var(--text-xs)">
+    <summary style="cursor:pointer;color:var(--c-text-dim);user-select:none">Per-Pair Parameters ▸</summary>
+    <div style="margin-top:var(--s-2);overflow-x:auto">
+      <table class="fx-table" style="font-size:var(--text-xs)" id="fx-pair-params">
+        <thead><tr><th>Pair</th><th>RSI Levels</th><th>Strategy</th><th>SL (pips)</th><th>TP (pips)</th><th>R:R</th><th>Exp/Trade</th></tr></thead>
+        <tbody id="fx-pair-params-body">
+          <tr><td colspan="7" class="fx-no-data">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</div>
+
+<!-- 10. PERFORMANCE HEATMAP -->
+<p class="fx-section-title">🗺️ Pair Performance Heatmap</p>
+<div class="fx-card">
+  <div class="fx-heatmap-grid" id="fx-heatmap-grid">
+    <div class="fx-no-data">Loading heatmap...</div>
+  </div>
+</div>
+
+
+<script>
+/* ── Helpers ─────────────────────────────────────────────────── */
+function fxTime(iso) {
+  if (!iso) return "—";
+  try {
+    if (typeof iso === "number") iso = new Date(iso * 1000);
+    else {
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(iso)) iso += "Z";
+      iso = new Date(iso);
+    }
+    return iso.toLocaleString("en-GB", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", timeZone:"UTC"}) + " UTC";
+  } catch(e) { return iso; }
+}
+
+function fxPnlClass(val) { return val >= 0 ? "fx-pnl-pos" : "fx-pnl-neg"; }
+
+function findNearestBarTime(bars, isoTime) {
+  if (!isoTime || !bars || bars.length === 0) return null;
+  var ts;
+  if (typeof isoTime === "number") {
+    ts = isoTime > 1e12 ? isoTime / 1000 : isoTime;
+  } else {
+    var s = isoTime;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(s)) s += "Z";
+    ts = new Date(s).getTime() / 1000;
+  }
+  if (isNaN(ts)) return null;
+  var best = null, bestDiff = Infinity;
+  for (var i = 0; i < bars.length; i++) {
+    var diff = Math.abs(bars[i].time - ts);
+    if (diff < bestDiff) { bestDiff = diff; best = bars[i].time; }
+  }
+  return best;
+}
+function fxPnlFormat(val) { if (val == null) return "—"; return (val >= 0 ? "+" : "") + val.toFixed(2); }
+function fxDotClass(active) { return active ? "fx-status-dot green" : "fx-status-dot red"; }
+
+function fxPrice(p, pair) {
+  if (p == null) return "—";
+  if (String(pair).indexOf("JPY") >= 0) return p.toFixed(3);
+  return p.toFixed(5);
+}
+
+function fxDuration(openedAt) {
+  if (!openedAt) return "—";
+  try {
+    var opened = new Date(openedAt);
+    var now = new Date();
+    var diffMs = now - opened;
+    var diffH = diffMs / 3600000;
+    if (diffH < 1) return Math.floor(diffMs / 60000) + "m";
+    if (diffH < 24) return diffH.toFixed(1) + "h";
+    return Math.floor(diffH / 24) + "d " + Math.floor(diffH % 24) + "h";
+  } catch(e) { return "—"; }
+}
+
+/* ── Render Functions ────────────────────────────────────────── */
+
+function renderFxStatus(d) {
+  var isActive = !!(d.status && d.status.active);
+  document.getElementById("fx-dot").className = fxDotClass(isActive);
+  document.getElementById("fx-status").textContent = isActive ? "Bot active" : (d.status && d.status.message ? d.status.message : "Bot inactive");
+
+  var mode = d.mode || "demo";
+  var badge = document.getElementById("fx-mode-badge");
+  badge.textContent = mode.toUpperCase();
+  badge.className = "fx-badge " + (mode === "live" ? "fx-badge-live" : "fx-badge-demo");
+
+  document.getElementById("fx-last-update").textContent = "Updated: " + fxTime(d.timestamp || d.last_update);
+
+  // Health banner — show warning when connection is unhealthy or data is stale
+  var banner = document.getElementById("fx-health-banner");
+  var healthText = document.getElementById("fx-health-text");
+  var healthTime = document.getElementById("fx-health-time");
+  var st = d.status || {};
+  var bannerVisible = false;
+
+  if (!isActive) {
+    // Connection is down — show error banner
+    banner.className = "fx-health-banner visible error";
+    healthText.textContent = st.last_error_msg || st.message || "cTrader connection lost — no new trades, charts may show stale data";
+    if (st.last_error) healthTime.textContent = "since " + fxTime(st.last_error);
+    else healthTime.textContent = "";
+    bannerVisible = true;
+  } else if (st.consecutive_errors > 0) {
+    // Connection recovered but had recent errors — show yellow warning
+    banner.className = "fx-health-banner visible warn";
+    healthText.textContent = st.consecutive_errors + " recent cTrader error(s). Last: " + (st.last_error_msg || "unknown");
+    if (st.last_success) healthTime.textContent = "last OK: " + fxTime(st.last_success);
+    else healthTime.textContent = "";
+    bannerVisible = true;
+  } else if (st.health_age_seconds != null && st.health_age_seconds > 300) {
+    // Data is getting stale (>5 min for a 5-min sync cycle)
+    var ageMin = Math.round(st.health_age_seconds / 60);
+    banner.className = "fx-health-banner visible warn";
+    healthText.textContent = "Data may be stale — last cTrader sync " + ageMin + " min ago";
+    healthTime.textContent = "";
+    bannerVisible = true;
+  }
+
+  if (!bannerVisible) {
+    banner.className = "fx-health-banner";
+  }
+}
+
+function renderFxCards(d) {
+  // Balance
+  var bal = d.account ? d.account.balance : d.balance;
+  var eq = d.account ? d.account.equity : d.equity;
+  document.getElementById("fx-balance").textContent = bal != null ? "€" + bal.toFixed(2) : "—";
+  document.getElementById("fx-equity-sub").textContent = eq != null ? "Equity: €" + eq.toFixed(2) : "—";
+
+  // Positions
+  var pos = d.positions || [];
+  document.getElementById("fx-positions-count").textContent = pos.length;
+  var totalMargin = d.performance ? d.performance.total_margin_eur : null;
+  var marginText = totalMargin != null ? " | Margin: €" + totalMargin.toFixed(2) : "";
+  document.getElementById("fx-positions-sub").textContent = (pos.length === 1 ? "open position" : "open positions") + marginText;
+
+  // Pairs count
+  var pairCount = d.asset_count || (d.assets ? d.assets.length : 0);
+  if (pairCount > 0) {
+    document.getElementById("fx-pairs-count").textContent = pairCount + " Pairs";
+  }
+
+  // Daily P&L — show breakdown: realized + unrealized
+  var daily = d.daily_pnl != null ? d.daily_pnl : (d.performance ? d.performance.daily_pnl : 0) || 0;
+  var realized = d.realized_pnl != null ? d.realized_pnl : (d.performance ? d.performance.realized_pnl : 0) || 0;
+  var unrealized = d.unrealized_pnl != null ? d.unrealized_pnl : (d.performance ? d.performance.unrealized_pnl : 0) || 0;
+  var dailyEl = document.getElementById("fx-daily-pnl");
+  dailyEl.textContent = fxPnlFormat(daily) + " " + (d.account ? d.account.currency || "EUR" : "EUR");
+  dailyEl.className = "fx-card-value " + fxPnlClass(daily);
+  var tday = d.trades_today || 0;
+  // Show realized/unrealized breakdown if there are closed trades
+  var subText = tday + " trade" + (tday === 1 ? "" : "s") + " today";
+  if (realized !== 0) {
+    subText += " | Realized: " + fxPnlFormat(realized) + " | Unrealized: " + fxPnlFormat(unrealized);
+  }
+  document.getElementById("fx-trades-today").textContent = subText;
+
+  // Total P&L
+  var perf = d.performance || {};
+  var totalPnl = perf.total_pnl || 0;
+  var totalEl = document.getElementById("fx-total-pnl");
+  totalEl.textContent = fxPnlFormat(totalPnl) + " EUR";
+  totalEl.className = "fx-card-value " + fxPnlClass(totalPnl);
+  document.getElementById("fx-winrate-sub").textContent = (perf.total_trades || 0) + " total trades";
+}
+
+function renderFxPerformance(d) {
+  var perf = d.performance || {};
+  var totalTrades = perf.total_trades || 0;
+  var wins = perf.wins || perf.winning_trades || 0;
+  var losses = perf.losses || perf.losing_trades || 0;
+  var wr = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) + "%" : "—";
+
+  var winrateEl = document.getElementById("fx-winrate");
+  winrateEl.textContent = wr;
+  if (totalTrades > 0) {
+    var wrNum = (wins / totalTrades) * 100;
+    winrateEl.className = "fx-card-value " + (wrNum >= 50 ? "fx-pnl-pos" : "fx-pnl-neg");
+  }
+  document.getElementById("fx-winrate-detail").textContent = wins + "W / " + losses + "L";
+
+  var pf = perf.profit_factor;
+  var pfEl = document.getElementById("fx-profit-factor");
+  pfEl.textContent = pf != null ? pf.toFixed(2) : "—";
+  if (pf != null) pfEl.className = "fx-card-value " + (pf >= 1.5 ? "fx-pnl-pos" : "fx-pnl-neg");
+
+  var exp = perf.expectancy || 0;
+  var expEl = document.getElementById("fx-expectancy");
+  expEl.textContent = (exp >= 0 ? "+" : "") + exp.toFixed(2) + " EUR";
+  expEl.className = "fx-card-value " + fxPnlClass(exp);
+
+  var dd = perf.max_drawdown || 0;
+  var ddEl = document.getElementById("fx-max-dd");
+  ddEl.textContent = dd.toFixed(2) + "%";
+  ddEl.className = "fx-card-value " + (dd <= 10 ? "fx-pnl-pos" : "fx-pnl-neg");
+}
+
+function renderFxPositions(d) {
+  var tbody = document.getElementById("fx-positions-body");
+  var pos = d.positions || [];
+  if (pos.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="fx-no-data">No open positions</td></tr>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < pos.length; i++) {
+    var p = pos[i];
+    var dir = (p.direction || p.side || "").toLowerCase();
+    var dirBadge = dir === "sell" || dir === "short"
+      ? '<span class="fx-badge fx-badge-sell">SHORT</span>'
+      : '<span class="fx-badge fx-badge-buy">LONG</span>';
+    var upnl = p.unrealized_pnl != null ? p.unrealized_pnl : (p.pnl || 0);
+    html += "<tr class=\"fx-pos-row\" onclick=\"openFxChart('" + (p.symbol || p.pair) + "')\">";
+    html += "<td><b>" + (p.symbol || p.pair || "—") + "</b></td>";
+    html += "<td>" + dirBadge + "</td>";
+    var sc = p.score != null ? p.score : "—";
+    var scClass = sc >= 60 ? "fx-pnl-pos" : (sc >= 50 ? "" : "fx-pnl-neg");
+    html += '<td style="font-size:var(--text-xs)" class="' + scClass + '"><b>' + sc + '</b></td>';
+    var ep = p.entry_price || p.entry || null;
+    html += "<td>" + fxPrice(ep, p.symbol || p.pair) + "</td>";
+    html += "<td>" + fxPrice(p.sl, p.symbol || p.pair) + "</td>";
+    html += "<td>" + fxPrice(p.tp, p.symbol || p.pair) + "</td>";
+    var margin = p.margin_eur;
+    html += "<td>" + (margin != null ? "€" + margin.toFixed(2) : "—") + "</td>";
+    html += '<td class="' + fxPnlClass(upnl) + '"><b>' + fxPnlFormat(upnl) + '</b></td>';
+    html += '<td style="font-size:var(--text-xs)">' + fxDuration(p.opened_at || p.timestamp) + '</td>';
+    html += "</tr>";
+  }
+  tbody.innerHTML = html;
+}
+
+function renderFxHistory(d) {
+  var tbody = document.getElementById("fx-history-body");
+  var trades = d.trade_history || d.round_trips || d.last_trades || [];
+  if (trades.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="fx-no-data">No completed trades</td></tr>';
+    return;
+  }
+  var html = "";
+  var limit = Math.min(trades.length, 20);
+  for (var i = trades.length - 1; i >= trades.length - limit; i--) {
+    var t = trades[i];
+    var dir = (t.direction || t.side || "").toLowerCase();
+    var dirBadge = dir === "sell" || dir === "short"
+      ? '<span class="fx-badge fx-badge-sell">SHORT</span>'
+      : '<span class="fx-badge fx-badge-buy">LONG</span>';
+    var pnl = t.pnl != null ? t.pnl : (t.realized_pnl || t.profit || 0);
+    var dur = t.duration || (t.duration_hours != null ? t.duration_hours.toFixed(1) + "h" : (t.hold_time_hours ? t.hold_time_hours.toFixed(1) + "h" : "—"));
+    html += "<tr class=\"fx-pos-row\" onclick=\"openFxChart('" + (t.symbol || t.pair) + "')\">";
+    html += "<td>" + fxTime(t.close_time || t.closed_at || t.exit_time || t.timestamp) + "</td>";
+    html += "<td><b>" + (t.symbol || t.pair || "—") + "</b></td>";
+    html += "<td>" + dirBadge + "</td>";
+    html += "<td>" + fxPrice(t.entry_price || t.open_price || t.entry, t.symbol || t.pair) + "</td>";
+    html += "<td>" + fxPrice(t.close_price || t.exit_price || t.current_price, t.symbol || t.pair) + "</td>";
+    html += '<td class="' + fxPnlClass(pnl) + '"><b>' + fxPnlFormat(pnl) + '</b></td>';
+    html += '<td style="font-size:var(--text-xs)">' + dur + "</td>";
+    html += "</tr>";
+  }
+  tbody.innerHTML = html;
+}
+
+function renderFxSignals(d) {
+  var grid = document.getElementById("fx-signal-grid");
+  var indicators = d.indicators || {};
+  var assets = d.assets || Object.keys(indicators);
+  var signals = d.active_signals || [];
+  var html = "";
+
+  // Store all pairs for chart nav chips
+  fxAllPairs = assets.slice();
+
+  // Build lookup of active signals by symbol
+  var sigLookup = {};
+  for (var s = 0; s < signals.length; s++) {
+    sigLookup[signals[s].symbol] = signals[s];
+  }
+
+  for (var i = 0; i < assets.length; i++) {
+    var pair = assets[i];
+    var ind = indicators[pair] || {};
+    var sig = sigLookup[pair];
+    var rsi = ind.rsi;
+    var os_ = ind.rsi_oversold || 35;
+    var ob_ = ind.rsi_overbought || 65;
+    var bbSqueeze = ind.bb_squeeze;
+    var strategy = ind.strategy || "";
+
+    var direction = "neutral";
+    if (sig) {
+      direction = sig.direction || "neutral";
+    } else if (rsi != null) {
+      if (rsi < os_) direction = "long";
+      else if (rsi > ob_) direction = "short";
+    }
+
+    var dirColor = direction === "long" ? "#22c55e" : (direction === "short" ? "#ef4444" : "var(--c-text-dim)");
+    var dirLabel = direction === "long" ? "▲ BUY" : (direction === "short" ? "▼ SELL" : "—");
+    var squeezeLabel = bbSqueeze ? "SQUEEZE" : "";
+    var squeezeColor = bbSqueeze ? "var(--c-warn)" : "transparent";
+
+    html += '<div class="fx-signal-card" onclick="openFxChart(\'' + pair + '\')" data-pair="' + pair + '">';
+    html += '<div class="fx-signal-pair">' + pair + '</div>';
+    html += '<div class="fx-signal-status" style="color:' + dirColor + '">' + dirLabel + '</div>';
+    html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-1)">RSI(' + (ind.rsi_period||10) + '): ' + (rsi != null ? rsi.toFixed(1) : "—") + '</div>';
+    if (ind.live_price) html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">' + ind.live_price + '</div>';
+    html += '<div style="font-size:var(--text-xs);color:' + squeezeColor + ';margin-top:2px">' + squeezeLabel + '</div>';
+    html += '<div style="font-size:10px;color:var(--c-text-dim);margin-top:4px;opacity:0.6">📊 Chart</div>';
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+/* ── Equity Chart ───────────────────────────────────────────── */
+var fxChartInstance = null;
+function renderFxChart(d) {
+  var data = d.equity_history || d.balance_history || [];
+  if (data.length === 0) return;
+
+  var labels = [], values = [];
+  for (var i = 0; i < data.length; i++) {
+    var pt = data[i];
+    var ts = pt.timestamp || pt.time || pt.date;
+    if (ts && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(ts)) ts += "Z";
+    labels.push(new Date(ts));
+    values.push(pt.adjusted_equity != null ? pt.adjusted_equity : (pt.equity || pt.balance || pt.value));
+  }
+  var minV = Math.min.apply(null, values), maxV = Math.max.apply(null, values);
+  var padding = (maxV - minV) * 0.1 || 50;
+
+  if (typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
+  var ctx = document.getElementById("fx-equity-chart").getContext("2d");
+  if (fxChartInstance) fxChartInstance.destroy();
+  fxChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Equity (€)",
+        data: values,
+        borderColor: "#22c55e",
+        backgroundColor: "rgba(34,197,94,0.08)",
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHitRadius: 8,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return "€" + ctx.parsed.y.toFixed(2); }
+          }
+        }
+      },
+      scales: {
+        x: { type: "time", time: { unit: "day", tooltipFormat: "dd.MM.yyyy HH:mm" }, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8b949e", maxTicksLimit: 10 } },
+        y: { min: Math.floor(minV - padding), max: Math.ceil(maxV + padding), grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8b949e", callback: function(v){ return "€" + v; } } }
+      }
+    }
+  });
+  // Summary
+  var first = values[0], last = values[values.length - 1];
+  var change = last - first, pct = ((change / first) * 100).toFixed(1);
+  var sign = change >= 0 ? "+" : "";
+  document.getElementById("fx-equity-summary").innerHTML =
+    "<span>Start: <b>€" + first.toFixed(2) + "</b></span>" +
+    "<span>Current: <b>€" + last.toFixed(2) + "</b></span>" +
+    "<span>Change: <b style='color:" + (change >= 0 ? "#22c55e" : "#ef4444") + "'>" + sign + change.toFixed(2) + " € (" + sign + pct + "%)</b></span>" +
+    "<span>Points: <b>" + values.length + "</b></span>";
+}
+
+/* ── Candlestick Chart ─────────────────────────────────────── */
+var fxMainChart = null, fxRsiChart = null, fxMainSeries = null;
+var fxBbUpper = null, fxBbMiddle = null, fxBbLower = null;
+var fxRsiSeries = null, fxRsiOsb = null, fxRsiOb = null;
+var fxTradeLineSeries = [];  // stored references for toggle
+var fxLiveTradeSeries = [];  // live trade overlay series (for cleanup)
+var fxLivePriceLines = [];   // SL/TP price lines on open positions
+var fxTradeMarkersShown = true;
+var fxAllPairs = [];         // all pair names for nav chips
+var fxDashboard = null;      // cached dashboard data for live trade overlays
+var fxChartRawData = null;   // full chart data for range filtering
+var fxRangeDays = 0;         // 0 = all, 7/14/30/90 = days
+
+function closeFxChart() {
+  var panel = document.getElementById("fx-chart-panel");
+  panel.classList.remove("active");
+  // Highlight
+  var cards = document.querySelectorAll(".fx-signal-card");
+  for (var i = 0; i < cards.length; i++) cards[i].classList.remove("fx-active-card");
+  if (fxMainChart) { fxMainChart.remove(); fxMainChart = null; }
+  if (fxRsiChart) { fxRsiChart.remove(); fxRsiChart = null; }
+  fxTradeLineSeries = [];
+  fxLiveTradeSeries = [];
+  fxLivePriceLines = [];
+  fxTradeMarkersShown = true;
+  // Clear pair nav
+  var nav = document.getElementById("fx-pair-nav");
+  if (nav) nav.innerHTML = "";
+  // Reset toggle button
+  var btn = document.getElementById("fx-trade-toggle");
+  if (btn) { btn.textContent = "📊 Theoretical Trades: ON"; btn.style.background = "rgba(34,197,94,0.15)"; btn.style.color = "#22c55e"; btn.style.borderColor = "rgba(34,197,94,0.3)"; }
+}
+
+function toggleFxTradeLines() {
+  fxTradeMarkersShown = !fxTradeMarkersShown;
+  var btn = document.getElementById("fx-trade-toggle");
+
+  // Dim candlesticks when trades are visible (better line contrast)
+  if (fxMainSeries) {
+    if (fxTradeMarkersShown) {
+      fxMainSeries.applyOptions({
+        upColor: "rgba(34,197,94,0.35)", downColor: "rgba(239,68,68,0.35)",
+        borderUpColor: "rgba(34,197,94,0.35)", borderDownColor: "rgba(239,68,68,0.35)",
+        wickUpColor: "rgba(34,197,94,0.35)", wickDownColor: "rgba(239,68,68,0.35)",
+      });
+      if (fxBbUpper) fxBbUpper.applyOptions({ color: "rgba(91,141,239,0.15)" });
+      if (fxBbMiddle) fxBbMiddle.applyOptions({ color: "rgba(91,141,239,0.2)" });
+      if (fxBbLower) fxBbLower.applyOptions({ color: "rgba(91,141,239,0.15)" });
+    } else {
+      fxMainSeries.applyOptions({
+        upColor: "#22c55e", downColor: "#ef4444",
+        borderUpColor: "#22c55e", borderDownColor: "#ef4444",
+        wickUpColor: "#22c55e", wickDownColor: "#ef4444",
+      });
+      if (fxBbUpper) fxBbUpper.applyOptions({ color: "rgba(91,141,239,0.4)" });
+      if (fxBbMiddle) fxBbMiddle.applyOptions({ color: "rgba(91,141,239,0.6)" });
+      if (fxBbLower) fxBbLower.applyOptions({ color: "rgba(91,141,239,0.4)" });
+    }
+  }
+
+  // Toggle trade line series visibility
+  for (var i = 0; i < fxTradeLineSeries.length; i++) {
+    fxTradeLineSeries[i].applyOptions({ visible: fxTradeMarkersShown });
+  }
+
+  // Update button appearance
+  if (btn) {
+    if (fxTradeMarkersShown) {
+      btn.textContent = "📊 Theoretical Trades: ON";
+      btn.style.background = "rgba(34,197,94,0.15)";
+      btn.style.color = "#22c55e";
+      btn.style.borderColor = "rgba(34,197,94,0.3)";
+    } else {
+      btn.textContent = "📊 Theoretical Trades: OFF";
+      btn.style.background = "rgba(100,100,100,0.15)";
+      btn.style.color = "#8b949e";
+      btn.style.borderColor = "rgba(100,100,100,0.3)";
+    }
+  }
+}
+
+function setFxRange(days) {
+  fxRangeDays = days;
+  // Update chip styles
+  var chips = document.querySelectorAll("#fx-range-nav .fx-range-chip");
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].classList.toggle("fx-range-active", parseInt(chips[i].getAttribute("data-days")) === days);
+  }
+  // Re-render with cached data
+  if (fxChartRawData) {
+    renderFxChartPanel(fxChartRawData);
+  }
+}
+
+function openFxChart(pair) {
+  var panel = document.getElementById("fx-chart-panel");
+  panel.classList.add("active");
+  // Reset range to "All" on pair switch
+  fxRangeDays = 0;
+  var rangeChips = document.querySelectorAll("#fx-range-nav .fx-range-chip");
+  for (var ri = 0; ri < rangeChips.length; ri++) {
+    rangeChips[ri].classList.toggle("fx-range-active", parseInt(rangeChips[ri].getAttribute("data-days")) === 0);
+  }
+
+  // Highlight active card
+  var cards = document.querySelectorAll(".fx-signal-card");
+  for (var i = 0; i < cards.length; i++) {
+    cards[i].classList.toggle("fx-active-card", cards[i].getAttribute("data-pair") === pair);
+  }
+
+  // Populate pair nav chips (only once, or update active)
+  var nav = document.getElementById("fx-pair-nav");
+  if (nav.children.length === 0 && fxAllPairs.length > 0) {
+    var chipHtml = "";
+    for (var p = 0; p < fxAllPairs.length; p++) {
+      chipHtml += '<span class="fx-pair-chip" data-pair="' + fxAllPairs[p] + '" onclick="openFxChart(\'' + fxAllPairs[p] + '\')">' + fxAllPairs[p] + '</span>';
+    }
+    nav.innerHTML = chipHtml;
+  }
+  // Highlight active chip
+  var chips = nav.querySelectorAll(".fx-pair-chip");
+  for (var c = 0; c < chips.length; c++) {
+    chips[c].classList.toggle("fx-pair-active", chips[c].getAttribute("data-pair") === pair);
+  }
+
+  // Scroll to chart
+  setTimeout(function() { panel.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 100);
+
+  // Load chart data
+  safeFetch("/api/fx/charts/" + pair + ".json").then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(d) {
+    // Attach live trades for this pair
+    if (fxDashboard) {
+      d._livePositions = (fxDashboard.positions || []).filter(function(p) { return (p.symbol || p.pair) === pair; });
+      d._liveTrades = (fxDashboard.trade_history || fxDashboard.round_trips || fxDashboard.last_trades || []).filter(function(t) { return (t.symbol || t.pair) === pair; });
+    }
+    fxChartRawData = d;  // cache for range filtering
+    renderFxChartPanel(d);
+  }).catch(function(e) {
+    console.error("Chart load failed:", e);
+    document.getElementById("fx-candle-chart").innerHTML = '<div class="fx-no-data">Chart data not available for ' + pair + '</div>';
+  });
+}
+
+function renderFxChartPanel(d) {
+  var pair = d.symbol;
+  var cfg = d.config || {};
+  var bars = d.bars || [];
+  var markers = d.markers || [];
+
+  // Range filter: if fxRangeDays > 0, only show bars within the last N days
+  if (fxRangeDays > 0 && bars.length > 0) {
+    var nowTs = Date.now();
+    var cutoff = nowTs - fxRangeDays * 24 * 60 * 60 * 1000;
+    var allBars = bars;
+    bars = bars.filter(function(b) {
+      var barMs = typeof b.time === 'number' ? b.time * 1000 : new Date(b.time).getTime();
+      return barMs >= cutoff;
+    });
+    // Filter trade_lines to same range (from original unfiltered copy)
+    if (d.trade_lines) {
+      var origLines = fxChartRawData._origTradeLines || d.trade_lines;
+      fxChartRawData._origTradeLines = origLines;
+      d.trade_lines = origLines.filter(function(tl) {
+        var tlMs = typeof tl.entry_time === 'number' ? tl.entry_time * 1000 : new Date(tl.entry_time).getTime();
+        return tlMs >= cutoff;
+      });
+    }
+    if (markers) {
+      markers = markers.filter(function(m) {
+        var mMs = typeof m.time === 'number' ? m.time * 1000 : new Date(m.time).getTime();
+        return mMs >= cutoff;
+      });
+    }
+  } else {
+    // "All" selected — restore original trade_lines if we cached them
+    if (fxChartRawData && fxChartRawData._origTradeLines) {
+      d.trade_lines = fxChartRawData._origTradeLines;
+    }
+  }
+
+  // Header
+  document.getElementById("fx-chart-pair").textContent = pair;
+  document.getElementById("fx-chart-strategy").textContent = cfg.strategy || "RSI10_35_65";
+
+  // Backtest summary in header
+  var bt = d.backtest_summary || {};
+  if (bt.trades > 0) {
+    var btColor = bt.win_rate >= 55 ? "#22c55e" : bt.win_rate >= 45 ? "#f0b940" : "#ef4444";
+    document.getElementById("fx-chart-strategy").textContent =
+      (cfg.strategy || "RSI") + " — " + bt.trades + " trades, " +
+      bt.win_rate + "% WR, " + (bt.total_pnl_pips >= 0 ? "+" : "") + bt.total_pnl_pips + "p";
+    document.getElementById("fx-chart-strategy").style.color = btColor;
+  }
+
+  // Config chips
+  var chips = document.getElementById("fx-chart-config");
+  var isJpy = pair.indexOf("JPY") >= 0;
+  var pipStr = isJpy ? "0.01" : "0.0001";
+  chips.innerHTML =
+    '<span class="fx-config-chip">SL: ' + (cfg.sl_pips || "—") + 'p</span>' +
+    '<span class="fx-config-chip">TP: ' + (cfg.tp_pips || "—") + 'p</span>' +
+    '<span class="fx-config-chip">RSI(' + (cfg.rsi_period || 10) + '): ' + (cfg.rsi_oversold || 35) + '/' + (cfg.rsi_overbought || 65) + '</span>' +
+    '<span class="fx-config-chip">Pip: ' + pipStr + '</span>' +
+    '<span class="fx-config-chip">' + (cfg.direction || "both") + '</span>' +
+    (cfg.notes ? '<span class="fx-config-chip">' + cfg.notes + '</span>' : '');
+
+  // Cleanup old charts
+  if (fxMainChart) { fxMainChart.remove(); fxMainChart = null; }
+  if (fxRsiChart) { fxRsiChart.remove(); fxRsiChart = null; }
+
+  var chartBg = getComputedStyle(document.documentElement).getPropertyValue("--c-surface").trim() || "#131318";
+  var gridColor = "rgba(255,255,255,0.05)";
+  var textColor = "#8b949e";
+
+  // ── Main Candlestick Chart ──
+  var mainEl = document.getElementById("fx-candle-chart");
+  mainEl.innerHTML = "";
+  fxMainChart = LightweightCharts.createChart(mainEl, {
+    width: mainEl.clientWidth,
+    height: 320,
+    layout: { background: { type: "solid", color: chartBg }, textColor: textColor },
+    grid: { vertLines: { color: gridColor }, horzLines: { color: gridColor } },
+    crosshair: { mode: 0 },
+    rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+    timeScale: { borderColor: "rgba(255,255,255,0.1)", timeVisible: true },
+  });
+
+  // Candlestick series
+  fxMainSeries = fxMainChart.addCandlestickSeries({
+    upColor: "#22c55e", downColor: "#ef4444",
+    borderUpColor: "#22c55e", borderDownColor: "#ef4444",
+    wickUpColor: "#22c55e", wickDownColor: "#ef4444",
+  });
+
+  var candleData = bars.map(function(b) {
+    return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
+  });
+  fxMainSeries.setData(candleData);
+
+  // Bollinger Bands
+  var bbUpperData = [], bbMiddleData = [], bbLowerData = [];
+  for (var i = 0; i < bars.length; i++) {
+    if (bars[i].bb_upper != null) {
+      bbUpperData.push({ time: bars[i].time, value: bars[i].bb_upper });
+      bbMiddleData.push({ time: bars[i].time, value: bars[i].bb_middle });
+      bbLowerData.push({ time: bars[i].time, value: bars[i].bb_lower });
+    }
+  }
+
+  fxBbUpper = fxMainChart.addLineSeries({
+    color: "rgba(91,141,239,0.4)", lineWidth: 1, lineStyle: 2,
+    priceLineVisible: false, lastValueVisible: false,
+  });
+  fxBbMiddle = fxMainChart.addLineSeries({
+    color: "rgba(91,141,239,0.6)", lineWidth: 1,
+    priceLineVisible: false, lastValueVisible: false,
+  });
+  fxBbLower = fxMainChart.addLineSeries({
+    color: "rgba(91,141,239,0.4)", lineWidth: 1, lineStyle: 2,
+    priceLineVisible: false, lastValueVisible: false,
+  });
+  fxBbUpper.setData(bbUpperData);
+  fxBbMiddle.setData(bbMiddleData);
+  fxBbLower.setData(bbLowerData);
+
+  // No arrow markers — trade lines speak for themselves
+  // Trade lines: diagonal lines from entry to exit (theoretical trades)
+  fxTradeLineSeries = [];
+  var tradeLines = d.trade_lines || [];
+  for (var tl = 0; tl < tradeLines.length; tl++) {
+    var tr = tradeLines[tl];
+    var lineSeries = fxMainChart.addLineSeries({
+      color: tr.color,
+      lineWidth: 2,
+      lineStyle: tr.dashed ? LightweightCharts.LineStyle.Dashed : LightweightCharts.LineStyle.Solid,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    lineSeries.setData([
+      { time: tr.entry_time, value: tr.price },
+      { time: tr.exit_time, value: tr.exit_price },
+    ]);
+    fxTradeLineSeries.push(lineSeries);
+  }
+
+  // Apply dimming if trades are currently toggled on
+  if (fxTradeMarkersShown) {
+    fxMainSeries.applyOptions({
+      upColor: "rgba(34,197,94,0.35)", downColor: "rgba(239,68,68,0.35)",
+      borderUpColor: "rgba(34,197,94,0.35)", borderDownColor: "rgba(239,68,68,0.35)",
+      wickUpColor: "rgba(34,197,94,0.35)", wickDownColor: "rgba(239,68,68,0.35)",
+    });
+    if (fxBbUpper) fxBbUpper.applyOptions({ color: "rgba(91,141,239,0.15)" });
+    if (fxBbMiddle) fxBbMiddle.applyOptions({ color: "rgba(91,141,239,0.2)" });
+    if (fxBbLower) fxBbLower.applyOptions({ color: "rgba(91,141,239,0.15)" });
+  }
+
+  // Live price line
+  if (d.live_price) {
+    fxMainSeries.createPriceLine({
+      price: d.live_price, color: "#f0b940", lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.LargeDashed,
+      axisLabelVisible: true, title: "Live",
+    });
+  }
+
+  // ── Live Trade Overlays ──
+  fxLiveTradeSeries = [];
+  fxLivePriceLines = [];
+  var liveMarkers = [];
+
+  // Open positions → entry marker + SL/TP lines
+  var livePos = d._livePositions || [];
+  for (var lp = 0; lp < livePos.length; lp++) {
+    var pos = livePos[lp];
+    var posDir = (pos.direction || pos.side || "").toLowerCase();
+    var isLong = posDir !== "sell" && posDir !== "short";
+    var entryPrice = pos.entry_price || pos.entry;
+    var entryTime = pos.opened_at || pos.timestamp;
+
+    // Find nearest bar time for marker
+    var entryBarTime = findNearestBarTime(bars, entryTime);
+    if (entryBarTime && entryPrice) {
+      liveMarkers.push({
+        time: entryBarTime,
+        position: isLong ? "belowBar" : "aboveBar",
+        color: isLong ? "#22c55e" : "#ef4444",
+        shape: isLong ? "arrowUp" : "arrowDown",
+        text: "OPEN " + (pos.symbol || pos.pair || ""),
+      });
+    }
+
+    // SL line (red dashed)
+    if (pos.sl) {
+      var slLine = fxMainSeries.createPriceLine({
+        price: pos.sl, color: "#ef4444", lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true, title: "SL",
+      });
+      fxLivePriceLines.push(slLine);
+    }
+    // TP line (green dashed)
+    if (pos.tp) {
+      var tpLine = fxMainSeries.createPriceLine({
+        price: pos.tp, color: "#22c55e", lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true, title: "TP",
+      });
+      fxLivePriceLines.push(tpLine);
+    }
+  }
+
+  // Closed trades → entry + exit markers
+  var liveTrades = d._liveTrades || [];
+  for (var lt = 0; lt < liveTrades.length; lt++) {
+    var tr = liveTrades[lt];
+    var trDir = (tr.direction || tr.side || "").toLowerCase();
+    var trLong = trDir !== "sell" && trDir !== "short";
+    var trPnl = tr.pnl != null ? tr.pnl : (tr.realized_pnl || 0);
+    var trColor = trPnl >= 0 ? "#22c55e" : "#ef4444";
+    var trEntry = tr.entry_price || tr.open_price || tr.entry;
+    var trExit = tr.close_price || tr.exit_price || tr.current_price;
+    var trEntryTime = findNearestBarTime(bars, tr.opened_at || tr.timestamp);
+    var trExitTime = findNearestBarTime(bars, tr.close_time || tr.closed_at || tr.exit_time);
+
+    if (trEntryTime && trEntry) {
+      liveMarkers.push({
+        time: trEntryTime,
+        position: trLong ? "belowBar" : "aboveBar",
+        color: trColor,
+        shape: trLong ? "arrowUp" : "arrowDown",
+        text: (trPnl >= 0 ? "+" : "") + trPnl.toFixed(2),
+      });
+    }
+    if (trExitTime && trExit) {
+      liveMarkers.push({
+        time: trExitTime,
+        position: trLong ? "aboveBar" : "belowBar",
+        color: trColor,
+        shape: "circle",
+        text: "EXIT",
+      });
+    }
+    // Entry→Exit line for closed trades
+    if (trEntryTime && trExitTime && trEntry && trExit) {
+      var trLine = fxMainChart.addLineSeries({
+        color: trColor, lineWidth: 3,
+        priceLineVisible: false, lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      trLine.setData([
+        { time: trEntryTime, value: trEntry },
+        { time: trExitTime, value: trExit },
+      ]);
+      fxLiveTradeSeries.push(trLine);
+    }
+  }
+
+  // Apply markers to main series
+  if (liveMarkers.length > 0) {
+    fxMainSeries.setMarkers(liveMarkers);
+  }
+
+  // Fit content
+  fxMainChart.timeScale().fitContent();
+
+  // ── RSI Sub-Chart ──
+  var rsiEl = document.getElementById("fx-rsi-chart");
+  rsiEl.innerHTML = "";
+  fxRsiChart = LightweightCharts.createChart(rsiEl, {
+    width: rsiEl.clientWidth,
+    height: 100,
+    layout: { background: { type: "solid", color: chartBg }, textColor: textColor },
+    grid: { vertLines: { color: gridColor }, horzLines: { color: gridColor } },
+    rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+    timeScale: { borderColor: "rgba(255,255,255,0.1)", visible: false },
+    crosshair: { mode: 0 },
+  });
+
+  var rsiData = [];
+  for (var k = 0; k < bars.length; k++) {
+    if (bars[k].rsi != null) {
+      rsiData.push({ time: bars[k].time, value: bars[k].rsi });
+    }
+  }
+
+  var osLevel = cfg.rsi_oversold || 35;
+  var obLevel = cfg.rsi_overbought || 65;
+
+  // Single RSI line — purple
+  fxRsiSeries = fxRsiChart.addLineSeries({
+    color: "#a78bfa", lineWidth: 1.5,
+    priceLineVisible: false, lastValueVisible: true,
+  });
+  fxRsiSeries.setData(rsiData);
+
+  // Colored zone bands using baseline series (os=green bg, ob=red bg)
+  // Oversold band: flat line at OS level, green below
+  var osBand = fxRsiChart.addBaselineSeries({
+    baseValue: { type: "price", price: osLevel },
+    topFillColor1: "transparent", topFillColor2: "transparent",
+    bottomFillColor1: "rgba(34,197,94,0.25)", bottomFillColor2: "rgba(34,197,94,0.05)",
+    topLineColor: "transparent", bottomLineColor: "transparent",
+    lineWidth: 0, priceLineVisible: false, lastValueVisible: false,
+  });
+  osBand.setData(rsiData.map(function(d) { return { time: d.time, value: Math.min(d.value, osLevel) }; }));
+
+  // Overbought band: flat line at OB level, red above
+  var obBand = fxRsiChart.addBaselineSeries({
+    baseValue: { type: "price", price: obLevel },
+    topFillColor1: "rgba(239,68,68,0.25)", topFillColor2: "rgba(239,68,68,0.05)",
+    bottomFillColor1: "transparent", bottomFillColor2: "transparent",
+    topLineColor: "transparent", bottomLineColor: "transparent",
+    lineWidth: 0, priceLineVisible: false, lastValueVisible: false,
+  });
+  obBand.setData(rsiData.map(function(d) { return { time: d.time, value: Math.max(d.value, obLevel) }; }));
+
+  // RSI oversold/overbought lines
+  fxRsiOsb = fxRsiSeries.createPriceLine({
+    price: osLevel, color: "rgba(255,255,255,0.12)", lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: true, title: "OS",
+  });
+  fxRsiOb = fxRsiSeries.createPriceLine({
+    price: obLevel, color: "rgba(255,255,255,0.12)", lineWidth: 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: true, title: "OB",
+  });
+  // 50 line
+  fxRsiSeries.createPriceLine({
+    price: 50, color: "rgba(255,255,255,0.15)", lineWidth: 1,
+    axisLabelVisible: false,
+  });
+
+  fxRsiChart.timeScale().fitContent();
+
+  // Sync crosshair between charts
+  fxMainChart.timeScale().subscribeVisibleLogicalRangeChange(function(range) {
+    if (range) fxRsiChart.timeScale().setVisibleLogicalRange(range);
+  });
+  fxRsiChart.timeScale().subscribeVisibleLogicalRangeChange(function(range) {
+    if (range) fxMainChart.timeScale().setVisibleLogicalRange(range);
+  });
+
+  // Resize handler
+  var resizeObserver = new ResizeObserver(function() {
+    if (fxMainChart) fxMainChart.applyOptions({ width: mainEl.clientWidth });
+    if (fxRsiChart) fxRsiChart.applyOptions({ width: rsiEl.clientWidth });
+  });
+  resizeObserver.observe(mainEl);
+}
+
+/* ── Per-Pair Parameters Table ──────────────────────────────── */
+function renderFxPairParams(d) {
+  var tbody = document.getElementById("fx-pair-params-body");
+  var indicators = d.indicators || {};
+  var assets = d.assets || Object.keys(indicators);
+  if (assets.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="fx-no-data">No data</td></tr>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < assets.length; i++) {
+    var pair = assets[i];
+    var ind = indicators[pair] || {};
+    var sl = ind.sl_pips || 0;
+    var tp = ind.tp_pips || 0;
+    var rr = sl > 0 ? (tp / sl) : 0;
+    var strat = ind.strategy || "RSI10_35_65";
+    var rsiLevels = (ind.rsi_oversold || 35) + " / " + (ind.rsi_overbought || 65);
+    var rrColor = rr >= 1.0 ? "fx-pnl-pos" : (rr >= 0.5 ? "" : "fx-pnl-neg");
+    html += "<tr>";
+    html += "<td><b>" + pair + "</b></td>";
+    html += "<td>" + rsiLevels + "</td>";
+    html += "<td>" + strat + "</td>";
+    html += "<td>" + sl + "</td>";
+    html += "<td>" + tp + "</td>";
+    html += '<td class="' + rrColor + '">1:' + rr.toFixed(1) + "</td>";
+    html += "<td>—</td>";
+    html += "</tr>";
+  }
+  tbody.innerHTML = html;
+}
+
+/* ── Performance Heatmap ────────────────────────────────────── */
+function renderFxHeatmap() {
+  safeFetch("/api/fx/performance_heatmap.json").then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(d) {
+    var grid = document.getElementById("fx-heatmap-grid");
+    var pairs = d.pairs || {};
+    var symbols = Object.keys(pairs).sort();
+    if (symbols.length === 0) {
+      grid.innerHTML = '<div class="fx-no-data">No trade data yet</div>';
+      return;
+    }
+
+    var html = "";
+    for (var i = 0; i < symbols.length; i++) {
+      var sym = symbols[i];
+      var p = pairs[sym];
+      var wr = p.win_rate || 0;
+      var pnl = p.total_pnl || 0;
+      var trades = p.trades || 0;
+      var rr = p.rr_ratio || 0;
+      var open = p.open_positions || 0;
+
+      // Color by win rate: red (0%) → yellow (50%) → green (70%+)
+      var wrColor;
+      if (trades === 0) wrColor = "var(--c-text-dim)";
+      else if (wr >= 70) wrColor = "#22c55e";
+      else if (wr >= 50) wrColor = "#f0b940";
+      else if (wr >= 30) wrColor = "#f0a050";
+      else wrColor = "#ef4444";
+
+      // P&L color
+      var pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
+      var pnlSign = pnl >= 0 ? "+" : "";
+
+      // R:R badge color
+      var rrBg = rr >= 2 ? "rgba(34,197,94,0.15)" : rr >= 1 ? "rgba(240,185,64,0.15)" : "rgba(239,68,68,0.15)";
+      var rrColor = rr >= 2 ? "#22c55e" : rr >= 1 ? "#f0b940" : "#ef4444";
+
+      // Bottom bar = WR%
+      var barWidth = Math.max(0, Math.min(100, wr));
+      var barColor = wr >= 70 ? "#22c55e" : wr >= 50 ? "#f0b940" : "#ef4444";
+
+      html += '<div class="fx-heatmap-cell" onclick="openFxChart(\'' + sym + '\')" data-pair="' + sym + '">';
+      html += '<div class="pair-name">' + sym + '</div>';
+      if (trades > 0) {
+        html += '<div class="wr-value" style="color:' + wrColor + '">' + wr.toFixed(0) + '%</div>';
+        html += '<div class="pnl-value" style="color:' + pnlColor + '">' + pnlSign + pnl.toFixed(1) + '€</div>';
+        html += '<div class="trade-count">' + trades + ' trade' + (trades !== 1 ? 's' : '') + (open > 0 ? ' · ' + open + ' open' : '') + '</div>';
+        html += '<div class="rr-badge" style="background:' + rrBg + ';color:' + rrColor + '">R:R ' + rr.toFixed(1) + '</div>';
+      } else {
+        html += '<div class="wr-value" style="color:var(--c-text-dim)">—</div>';
+        html += '<div class="trade-count">No trades</div>';
+      }
+      html += '<div class="fx-heatmap-bar" style="width:' + barWidth + '%;background:' + barColor + ';opacity:0.6"></div>';
+      html += '</div>';
+    }
+
+    // Summary bar
+    var s = d.summary || {};
+    var sumHtml = '<div style="display:flex;gap:var(--s-4);flex-wrap:wrap;margin-bottom:var(--s-3);font-size:var(--text-xs);color:var(--c-text-dim)">';
+    sumHtml += '<span>Total: <b style="color:var(--c-text)">' + (s.total_trades || 0) + ' trades</b></span>';
+    sumHtml += '<span>WR: <b style="color:' + ((s.overall_win_rate||0) >= 50 ? '#22c55e' : '#ef4444') + '">' + (s.overall_win_rate||0).toFixed(1) + '%</b></span>';
+    sumHtml += '<span>W/L: <b style="color:#22c55e">' + (s.total_wins||0) + '</b> / <b style="color:#ef4444">' + (s.total_losses||0) + '</b></span>';
+    sumHtml += '</div>';
+
+    grid.innerHTML = sumHtml + html;
+  }).catch(function(e) {
+    console.warn("Heatmap load failed:", e);
+    document.getElementById("fx-heatmap-grid").innerHTML = '<div class="fx-no-data">Heatmap data not available</div>';
+  });
+}
+
+/* ── Main Render ────────────────────────────────────────────── */
+function renderFxAll(d) {
+  fxDashboard = d;
+  var renders = [
+    function() { renderFxStatus(d); },
+    function() { renderFxCards(d); },
+    function() { renderFxPerformance(d); },
+    function() { renderFxPositions(d); },
+    function() { renderFxHistory(d); },
+    function() { renderFxSignals(d); },
+    function() { renderFxChart(d); },
+    function() { renderFxPairParams(d); },
+    function() { renderFxHeatmap(); }
+  ];
+  for (var i = 0; i < renders.length; i++) {
+    try { renders[i](); } catch(e) { console.warn('FX render error #' + i + ':', e); }
+  }
+}
+
+/* ── Load Data ──────────────────────────────────────────────── */
+function loadFxData() {
+  safeFetch("/api/fx/dashboard.json").then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(d) {
+    renderFxAll(d);
+  }).catch(function(e) {
+    console.error("FX dashboard load failed:", e);
+    document.getElementById("fx-status").textContent = "Connection error";
+    document.getElementById("fx-dot").className = "fx-status-dot red";
+    // Show health banner for dashboard fetch failure
+    var banner = document.getElementById("fx-health-banner");
+    var healthText = document.getElementById("fx-health-text");
+    var healthTime = document.getElementById("fx-health-time");
+    banner.className = "fx-health-banner visible error";
+    healthText.textContent = "Dashboard data unavailable — cTrader sync may be down. Charts and positions may be stale.";
+    healthTime.textContent = "";
+  });
+}
+
+// Initial + 60s interval
+loadFxData();
+setInterval(loadFxData, 60000);
+</script>
+<!--/BODY-->

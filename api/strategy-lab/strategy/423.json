@@ -1,0 +1,182 @@
+{
+  "id": 423,
+  "label": "#423",
+  "name": "RCP-RECIPE: EMA_Trend_RSI_PB_v4 ATR-Gated (USDCAD+EURJPY)",
+  "display_name": "RCP-RECIPE: EMA_Trend_RSI_PB_v4 ATR-Gated (USDCAD+EURJPY)",
+  "description": "",
+  "strategy_type": "trend",
+  "timeframe": "1h",
+  "status": "validated",
+  "readiness": "bot_ready",
+  "rejection_reason": null,
+  "overall_score": 895.21,
+  "iteration_count": 1,
+  "source": "recipe_v4",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "recipe-archetype-v4",
+  "created_at": "2026-07-17T06:29:15.013983+00:00",
+  "updated_at": "2026-07-17T06:29:15.013983+00:00",
+  "notes": null,
+  "concept": {
+    "name": "EMA_Trend_RSI_PB_v4",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "USDCAD",
+      "EURJPY"
+    ],
+    "tree": {
+      "name": "EMA Trend + RSI Pullback v4",
+      "archetype": "trend",
+      "description": "EMA v4: USDCAD+EURJPY only (proven winners) + ATR gate against noise.",
+      "timeframe": "1h",
+      "assets_candidate": [
+        "USDCAD",
+        "EURJPY"
+      ],
+      "enter": {
+        "signals": [
+          {
+            "id": "ema_trend_rsi_pullback_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "close_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "id": "ema_trend_rsi_pullback_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "close_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 50
+              }
+            ]
+          }
+        ],
+        "gates": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": ">",
+                "value": 0.2
+              },
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 15
+              }
+            ]
+          }
+        ]
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "mult": 2.0,
+        "period": 14
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.5
+      },
+      "notes": "v4: USDCAD+EURJPY only. EMA=20, RSI=50 fixed (v3 winners). ATR>20%ile+ADX>15 gate filters dead markets."
+    }
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "A",
+    "oos_pnl": 895.21,
+    "oos_pf": 1.19,
+    "oos_wr": 39.4,
+    "oos_trades": 620,
+    "oos_pass_rate": 0.605,
+    "mode": "recipe_v4",
+    "tier_v2": "A",
+    "tier_v2_gates": "A",
+    "hold_out": {
+      "pnl": -90.07,
+      "trades": 34,
+      "pf": 0.71
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "v4 ATR-gated: {\"sl_mult\": 2.0, \"tp_r\": 2.5, \"max_hold\": 48}",
+      "oos_pnl": 895.21,
+      "oos_pf": 1.19,
+      "tier": "A",
+      "tested": true,
+      "children": []
+    }
+  },
+  "best_oos_pnl": 895.21,
+  "best_pf": 1.19,
+  "best_wr": 39.4,
+  "best_tier": "A",
+  "best_oos_pass_rate": 0.605,
+  "oos_trades": 620,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

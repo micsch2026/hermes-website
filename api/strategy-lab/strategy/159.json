@@ -1,0 +1,393 @@
+{
+  "id": 159,
+  "label": "#159",
+  "name": "RCP: mean_reversion_broad",
+  "display_name": "RCP: mean_reversion_broad",
+  "description": "Loaded from /root/strategy-lab/data/seeds/mean_reversion_broad.json",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "invalidated",
+  "readiness": "unknown",
+  "rejection_reason": null,
+  "overall_score": 898.8,
+  "iteration_count": 0,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "mr-fx",
+  "created_at": "2026-07-05 08:52:56",
+  "updated_at": "2026-07-05 08:54:15",
+  "notes": "{\"history\": [{\"iter\": 0, \"change\": \"baseline\", \"pnl\": 2742.94, \"trades\": 623, \"score\": 898.8}], \"iterations\": 0, \"mode\": \"recipe\"}",
+  "concept": {
+    "name": "RCP: mean_reversion_broad",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "AUDCAD",
+      "AUDCHF",
+      "AUDJPY",
+      "AUDNZD",
+      "CADCHF",
+      "CADJPY",
+      "CHFJPY",
+      "EURAUD",
+      "EURCAD",
+      "EURCHF",
+      "EURGBP",
+      "EURJPY",
+      "EURNZD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPCHF",
+      "GBPJPY",
+      "GBPNZD",
+      "NZDCAD",
+      "NZDCHF",
+      "NZDJPY"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "mr_oversold_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 30
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.15
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.2
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "long",
+            "base_score": 40
+          },
+          {
+            "id": "mr_overbought_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": ">",
+                "value": 70
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.85
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.8
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "short",
+            "base_score": 40
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -80
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "value": -1.0
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": "==",
+                "value": 1
+              }
+            ],
+            "points": 10
+          }
+        ],
+        "gates": [
+          {
+            "condition": "OR",
+            "rules": [
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": "<",
+                "value": 0.95
+              },
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 35
+              }
+            ]
+          }
+        ],
+        "min_score": 40,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 72
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.5
+      },
+      "risk_pct": 3.0,
+      "pairs": [
+        "AUDCAD",
+        "AUDCHF",
+        "AUDJPY",
+        "AUDNZD",
+        "CADCHF",
+        "CADJPY",
+        "CHFJPY",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURGBP",
+        "EURJPY",
+        "EURNZD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPCHF",
+        "GBPJPY",
+        "GBPNZD",
+        "NZDCAD",
+        "NZDCHF",
+        "NZDJPY"
+      ],
+      "pair_overrides": {
+        "AUDCAD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.9
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.9
+          }
+        },
+        "EURAUD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.6
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURJPY": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.9
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.7
+          }
+        },
+        "EURNZD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.4
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        },
+        "GBPAUD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.5
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        },
+        "GBPNZD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.5
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURCHF": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.3
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 3.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Loaded from /root/strategy-lab/data/seeds/mean_reversion_broad.json"
+  },
+  "screening_result": null,
+  "wfo_result": null,
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 0: baseline",
+      "oos_pnl": 2742.94,
+      "oos_pf": 0,
+      "tier": "B",
+      "tested": true,
+      "strategy_id": 159,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 623,
+      "children": []
+    },
+    "best_path_ids": [
+      159
+    ],
+    "stats": {
+      "total_variants": 1,
+      "new_trees": 0,
+      "best_pnl": 2742.94,
+      "base_pnl": 2742.94,
+      "improvement": 0.0,
+      "runtime_seconds": 79.7
+    }
+  },
+  "best_oos_pnl": null,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": null,
+  "best_oos_pass_rate": null,
+  "oos_trades": null,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

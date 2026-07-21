@@ -1,0 +1,409 @@
+<!--TITLE:Strategy Lab — Hermes-->
+<!--HEAD-->
+<!--/HEAD-->
+<!--BODY-->
+<!-- Strategy Lab v4 — Auto-generated -->
+<link rel="stylesheet" href="/assets/sl-v4.css">
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b22; --border: #30363d; --text: #e6edf3;
+  --dim: #7d8590; --blue: #58a6ff; --green: #3fb950; --red: #f85149;
+  --yellow: #d29922; --purple: #bc8cff;
+  --blue-dim: rgba(88,166,255,0.1); --green-dim: rgba(63,185,80,0.1);
+  --red-dim: rgba(248,81,73,0.1); --yellow-dim: rgba(210,153,34,0.1);
+}
+.sl4-wrap { max-width: 1400px; margin: 0 auto; padding: 1rem; }
+.sl4-header { margin-bottom: 1.5rem; }
+.sl4-header h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+.sl4-header .meta { color: var(--dim); font-size: 0.8rem; }
+.sl4-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.sl4-tab { padding: 0.5rem 1rem; cursor: pointer; border: none; background: none; color: var(--dim);
+  font-size: 0.9rem; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.sl4-tab:hover { color: var(--text); }
+.sl4-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.sl4-tab .badge { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 10px;
+  font-size: 0.7rem; font-weight: 600; background: var(--border); color: var(--text); margin-left: 4px; }
+.sl4-tab.active .badge { background: var(--blue-dim); color: var(--blue); }
+
+.sl4-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.sl4-table th { text-align: left; padding: 0.5rem 0.6rem; color: var(--dim); font-weight: 600;
+  cursor: pointer; white-space: nowrap; border-bottom: 1px solid var(--border); user-select: none; }
+.sl4-table th:hover { color: var(--blue); }
+.sl4-table th.sorted-asc::after { content: " ↑"; color: var(--blue); }
+.sl4-table th.sorted-desc::after { content: " ↓"; color: var(--blue); }
+.sl4-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(48,54,61,0.5); }
+.sl4-table tbody tr { cursor: pointer; transition: background 0.1s; }
+.sl4-table tbody tr:hover { background: rgba(88,166,255,0.04); }
+.sl4-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sl4-table .pos { color: var(--green); }
+.sl4-table .neg { color: var(--red); }
+.sl4-table .tier-a { color: var(--green); font-weight: 600; }
+.sl4-table .tier-b { color: var(--yellow); }
+.sl4-table .tier-c { color: var(--dim); }
+.sl4-table .gate { font-size: 0.7rem; padding: 1px 4px; border-radius: 3px; }
+.sl4-table .gate-pass { background: var(--green-dim); color: var(--green); }
+.sl4-table .gate-fail { background: var(--red-dim); color: var(--red); }
+.sl4-table .bot-badge { display: inline-block; padding: 1px 6px; border-radius: 8px;
+  font-size: 0.7rem; font-weight: 600; background: var(--blue-dim); color: var(--blue); }
+.sl4-table .new-badge { display: inline-block; padding: 1px 5px; border-radius: 8px;
+  font-size: 0.65rem; font-weight: 600; background: var(--green-dim); color: var(--green); }
+
+/* Search + filter bar */
+.sl4-toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; align-items: center; flex-wrap: wrap; }
+.sl4-search { flex: 1; min-width: 200px; padding: 0.4rem 0.6rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.85rem; }
+.sl4-search:focus { border-color: var(--blue); outline: none; }
+.sl4-filter { padding: 0.35rem 0.7rem; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--dim); font-size: 0.8rem; cursor: pointer; }
+.sl4-filter.active { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+
+/* Detail modal */
+.sl4-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 1000; justify-content: center; align-items: flex-start; padding: 2rem; overflow-y: auto; }
+.sl4-modal-overlay.show { display: flex; }
+.sl4-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  max-width: 700px; width: 100%; padding: 1.5rem; }
+.sl4-modal h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.sl4-modal .close { float: right; cursor: pointer; color: var(--dim); font-size: 1.2rem; }
+.sl4-modal .close:hover { color: var(--text); }
+.sl4-modal .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem; }
+.sl4-modal .detail-item { padding: 0.4rem; background: rgba(48,54,61,0.3); border-radius: 6px; }
+.sl4-modal .detail-label { color: var(--dim); font-size: 0.75rem; }
+.sl4-modal .detail-value { font-size: 0.9rem; font-weight: 600; }
+
+.sl4-summary { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.sl4-summary .stat { text-align: center; }
+.sl4-summary .stat-value { font-size: 1.4rem; font-weight: 700; }
+.sl4-summary .stat-label { font-size: 0.75rem; color: var(--dim); }
+</style>
+
+<div class="sl4-wrap">
+  <div class="sl4-header">
+    <h1>Strategy Lab</h1>
+    <div class="meta" id="sl4-updated">Loading...</div>
+    <div id="sl4-pipeline-status" style="margin-top:0.5rem;font-size:0.8rem;"></div>
+  </div>
+  <div class="sl4-summary" id="sl4-summary"></div>
+  <div class="sl4-tabs">
+    <button class="sl4-tab active" data-tab="deploy">🚀 Deploy-Kandidaten <span class="badge" id="badge-deploy">0</span></button>
+    <button class="sl4-tab" data-tab="pipeline">🔬 Pipeline <span class="badge" id="badge-pipeline">0</span></button>
+    <button class="sl4-tab" data-tab="shadow">👻 Shadow <span class="badge" id="badge-shadow">0</span></button>
+    <button class="sl4-tab" data-tab="archive">📦 Archiv <span class="badge" id="badge-archive">0</span></button>
+  </div>
+  <div class="sl4-toolbar" id="sl4-toolbar">
+    <input class="sl4-search" id="sl4-search" placeholder="Suche nach Name, Asset, Typ..." type="text">
+    <button class="sl4-filter active" data-filter="all">Alle</button>
+    <button class="sl4-filter" data-filter="recipe">🧬 Archetypes</button>
+    <button class="sl4-filter" data-filter="tier-a">⭐ Tier A</button>
+    <button class="sl4-filter" data-filter="ho-passed">✅ HO bestanden</button>
+    <button class="sl4-filter" data-filter="fire">🔥 Feuer-Test</button>
+  </div>
+  <div id="sl4-content"></div>
+</div>
+
+<div class="sl4-modal-overlay" id="sl4-modal-overlay">
+  <div class="sl4-modal" id="sl4-modal-content"></div>
+</div>
+
+<script>
+let catalogData = null;
+let shadowData = null;
+let pipelineStatus = null;
+let currentTab = 'deploy';
+let currentFilter = 'all';
+let sortCol = 'score';
+let sortDir = 'desc';
+let searchTerm = '';
+
+async function loadData() {
+  const resp = await fetch('/api/strategy-lab/catalog.json?_=' + Date.now());
+  catalogData = await resp.json();
+  // Load shadow portfolio
+  try {
+    const sr = await fetch('/api/strategy-lab/shadow_portfolio.json?_=' + Date.now());
+    shadowData = await sr.json();
+  } catch(e) { shadowData = {strategies: [], open_positions: [], total_trades: 0}; }
+  // Load pipeline status
+  try {
+    const pr = await fetch('/api/strategy-lab/pipeline_status.json?_=' + Date.now());
+    pipelineStatus = await pr.json();
+  } catch(e) { pipelineStatus = null; }
+  render();
+}
+
+function render() {
+  if (!catalogData) return;
+  document.getElementById('sl4-updated').textContent =
+    'Updated: ' + new Date(catalogData.updated_at).toLocaleString('de-DE');
+
+  // Pipeline status banner
+  if (pipelineStatus) {
+    let html = '';
+    const dot = pipelineStatus.is_running ? '🔴' : '🟢';
+    const state = pipelineStatus.is_running ? 'Pipeline läuft' : 'Pipeline idle';
+    html += `<span style="color:${pipelineStatus.is_running?'var(--blue)':'var(--dim)'}">${dot} ${state}</span>`;
+    if (pipelineStatus.running_recipe) {
+      html += ` · <span style="color:var(--blue)">${pipelineStatus.running_recipe.name}</span>`;
+    }
+    if (pipelineStatus.queue_size > 0) {
+      html += ` · 📋 ${pipelineStatus.queue_size} in Queue`;
+    }
+    if (pipelineStatus.last_run) {
+      const lastTime = new Date(pipelineStatus.last_run.completed_at + 'Z').toLocaleString('de-DE');
+      html += ` · Last: <span style="color:var(--dim)">${pipelineStatus.last_run.name} (${lastTime})</span>`;
+    }
+    if (pipelineStatus.shadow) {
+      html += ` · 👻 ${pipelineStatus.shadow.strategies} Strategien`;
+      if (pipelineStatus.shadow.open_positions > 0) {
+        html += ` · ${pipelineStatus.shadow.open_positions} offene Shadow-Positionen`;
+      }
+    }
+    html += ` · ⏰ R&D: ${pipelineStatus.rd_schedule.execution}`;
+    document.getElementById('sl4-pipeline-status').innerHTML = html;
+  }
+  // Summary
+  const s = catalogData.summary;
+  document.getElementById('sl4-summary').innerHTML = `
+    <div class="stat"><div class="stat-value" style="color:var(--green)">${s.deploy_candidates}</div><div class="stat-label">Deploy-Kandidaten</div></div>
+    <div class="stat"><div class="stat-value" style="color:var(--blue)">${s.pipeline_recipes}</div><div class="stat-label">Pipeline Recipes</div></div>
+    <div class="stat"><div class="stat-value" style="color:var(--dim)">${s.archive_strategies}</div><div class="stat-label">Archiv</div></div>
+  `;
+  document.getElementById('badge-deploy').textContent = s.deploy_candidates;
+  document.getElementById('badge-pipeline').textContent = s.pipeline_recipes;
+  if (shadowData) {
+    document.getElementById('badge-shadow').textContent = shadowData.total_trades || 0;
+    // Update summary with shadow stats
+    const ss = shadowData;
+    const nStrat = (ss.strategies||[]).length;
+    const totalTrades = ss.total_trades || 0;
+    const openPos = (ss.open_positions||[]).length;
+    const profitStrats = (ss.strategies||[]).filter(x => x.net_pnl > 0).length;
+    document.getElementById('sl4-summary').innerHTML += `
+      <div class="stat"><div class="stat-value" style="color:var(--purple)">${nStrat}</div><div class="stat-label">Shadow Strategien</div></div>
+      <div class="stat"><div class="stat-value" style="color:var(--blue)">${totalTrades}</div><div class="stat-label">Shadow Trades</div></div>
+      <div class="stat"><div class="stat-value" style="color:var(--green)">${profitStrats}</div><div class="stat-label">Profitabel</div></div>
+      <div class="stat"><div class="stat-value" style="color:var(--yellow)">${openPos}</div><div class="stat-label">Offen</div></div>
+    `;
+  }
+  document.getElementById('badge-archive').textContent = s.archive_strategies;
+  renderTable();
+}
+
+function renderTable() {
+  let data = [];
+  let columns = [];
+  if (currentTab === 'deploy') { data = catalogData.deploy; columns = deployCols; }
+  else if (currentTab === 'pipeline') { data = catalogData.pipeline; columns = pipelineCols; }
+  else if (currentTab === 'shadow') { data = (shadowData && shadowData.strategies) ? shadowData.strategies : []; columns = shadowCols; }
+  else { data = catalogData.archive.top_archive; columns = archiveCols; }
+
+  // Filter
+  data = data.filter(row => {
+    if (currentFilter === 'recipe' && !row.is_recipe && currentTab === 'deploy') return false;
+    if (currentFilter === 'tier-a' && row.tier !== 'A') return false;
+    if (currentFilter === 'ho-passed' && row.ho_status !== 'passed') return false;
+    if (currentFilter === 'fire' && !row.fire_test && currentTab === 'deploy') return false;
+    if (searchTerm) {
+      const hay = JSON.stringify(row).toLowerCase();
+      if (!hay.includes(searchTerm.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  data.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (sortDir === 'asc') return va > vb ? 1 : -1;
+    return va < vb ? 1 : -1;
+  });
+
+  let html = '<table class="sl4-table"><thead><tr>';
+  for (const col of columns) {
+    const cls = sortCol === col.key ? 'sorted-' + sortDir : '';
+    html += `<th class="${cls}" onclick="setSort('${col.key}')">${col.label}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  for (const row of data) {
+    html += '<tr onclick="showDetail(' + JSON.stringify(row).replace(/"/g, '&quot;') + ')">';
+    for (const col of columns) {
+      html += '<td' + (col.num ? ' class="num"' : '') + '>' + (col.render ? col.render(row) : (row[col.key] ?? '—')) + '</td>';
+    }
+    html += '</tr>';
+  }
+  if (data.length === 0) html += '<tr><td colspan="' + columns.length + '" style="text-align:center;color:var(--dim);padding:2rem">Keine Ergebnisse</td></tr>';
+  html += '</tbody></table>';
+  document.getElementById('sl4-content').innerHTML = html;
+}
+
+const deployCols = [
+  {key:'id', label:'ID', render: r => `<strong>#${r.id}</strong>`},
+  {key:'score', label:'Score', num: true},
+  {key:'pf', label:'PF', num: true, render: r => r.pf.toFixed(2)},
+  {key:'pnl', label:'PnL', num: true, render: r => `<span class="${r.pnl>0?'pos':'neg'}">${r.pnl>0?'+':''}${r.pnl}€</span>`},
+  {key:'pnl_per_month', label:'€/Mon', num: true, render: r => r.pnl_per_month ? `<span class="${r.pnl_per_month>0?'pos':'neg'}" style="font-weight:600">${r.pnl_per_month>0?'+':''}${r.pnl_per_month}€</span>` : '—'},
+  {key:'trades', label:'Tr', num: true},
+  {key:'trades_per_week', label:'Tr/Wk', num: true, render: r => r.trades_per_week != null ? r.trades_per_week : '—'},
+  {key:'avg_trade', label:'€/Tr', num: true, render: r => r.avg_trade != null ? `<span class="${r.avg_trade>0?'pos':'neg'}">${r.avg_trade>0?'+':''}${r.avg_trade}€</span>` : '—'},
+  {key:'tier', label:'Tier', render: r => `<span class="tier-${r.tier.toLowerCase()}">${r.tier}</span>`},
+  {key:'assets', label:'Assets', render: r => (r.assets||[]).join(', ').slice(0,30)},
+  {key:'archetype', label:'Typ', render: r => r.is_new ? '<span class="new-badge">ARCHETYPE</span> ' + r.archetype.slice(0,15) : r.archetype.slice(0,15)},
+  {key:'bot', label:'Bot', render: r => r.bot ? `<span class="bot-badge">${r.bot}</span>` : ''},
+  {key:'fire_test', label:'🔥', render: r => r.fire_test === true ? '✅' : r.fire_test === false ? '❌' : '—'},
+  {key:'ho_status', label:'HO', render: r => {
+    if (r.ho_status === 'passed') return '<span class="gate gate-pass">✅</span>';
+    if (r.ho_status === 'warning') return '<span class="gate gate-fail">⚠️</span>';
+    return '<span style="color:var(--dim)">➖</span>';
+  }},
+];
+const pipelineCols = [
+  {key:'score', label:'Score', num: true},
+  {key:'best_pf', label:'PF', num: true},
+  {key:'best_pnl', label:'PnL', num: true, render: r => `<span class="${r.best_pnl>0?'pos':'neg'}">${r.best_pnl>0?'+':''}${r.best_pnl}€</span>`},
+  {key:'best_trades', label:'Trades', num: true},
+  {key:'tier', label:'Tier', render: r => `<span class="tier-${(r.tier||'c').toLowerCase()}">${r.tier||'?'}</span>`},
+  {key:'name', label:'Recipe'},
+  {key:'assets', label:'Assets', render: r => (r.assets||[]).join(', ').slice(0,25)},
+  {key:'profitable_combos', label:'Profit', num: true, render: r => `${r.profitable_combos}/${r.total_combos}`},
+];
+const archiveCols = [
+  {key:'id', label:'ID'},
+  {key:'name', label:'Name'},
+  {key:'pf', label:'PF', num: true, render: r => r.pf.toFixed(2)},
+  {key:'pnl', label:'PnL', num: true, render: r => `<span class="${r.pnl>0?'pos':'neg'}">${r.pnl>0?'+':''}${r.pnl}€</span>`},
+  {key:'trades', label:'Trades', num: true},
+  {key:'tier', label:'Tier', render: r => `<span class="tier-${(r.tier||'c').toLowerCase()}">${r.tier||'?'}</span>`},
+  {key:'status', label:'Status'},
+];
+
+const shadowCols = [
+  {key:'id', label:'ID', render: r => `<strong>#${r.id}</strong>`},
+  {key:'days_active', label:'Tage', num: true, render: r => {
+    if (!r.days_active || r.days_active === 0) return '—';
+    const d = Math.floor(r.days_active);
+    const start = r.start_date ? new Date(r.start_date).toLocaleDateString('de-DE') : '';
+    return `<span style="color:var(--dim)">${d}d</span> <span style="font-size:0.65rem;color:var(--dim)">seit ${start}</span>`;
+  }},
+  {key:'equity', label:'Konto', num: true, render: r => {
+    const pct = ((r.equity - 1000) / 1000 * 100);
+    const cls = r.equity >= 1000 ? 'pos' : 'neg';
+    return `<span class="${cls}" style="font-weight:600">${r.equity.toFixed(0)}€</span> <span style="font-size:0.7rem;color:var(--dim)">${pct>=0?'+':''}${pct.toFixed(1)}%</span>`;
+  }},
+  {key:'net_pnl', label:'PnL', num: true, render: r => r.net_pnl !== 0 ? `<span class="${r.net_pnl>=0?'pos':'neg'}" style="font-weight:600">${r.net_pnl>=0?'+':''}${r.net_pnl.toFixed(2)}€</span>` : '—'},
+  {key:'trades', label:'Live Tr', num: true, render: r => r.trades > 0 ? r.trades : '—'},
+  {key:'shadow_trades_week', label:'Tr/Wk', num: true, render: r => {
+    if (r.shadow_trades_week != null) return `<span style="color:var(--blue)">${r.shadow_trades_week}</span>`;
+    if (r.oos_trades_week != null) return `<span style="color:var(--dim)">${r.oos_trades_week}</span>`;
+    return '—';
+  }},
+  {key:'shadow_avg_trade', label:'€/Tr', num: true, render: r => {
+    if (r.shadow_avg_trade != null) return `<span class="${r.shadow_avg_trade>=0?'pos':'neg'}">${r.shadow_avg_trade>=0?'+':''}${r.shadow_avg_trade}€</span>`;
+    if (r.oos_avg_trade != null) return `<span style="color:var(--dim)">${r.oos_avg_trade}€</span>`;
+    return '—';
+  }},
+  {key:'pnl_per_week', label:'€/Wk', num: true, render: r => {
+    if (r.pnl_per_week != null) return `<span class="${r.pnl_per_week>=0?'pos':'neg'}" style="font-weight:600">${r.pnl_per_week>=0?'+':''}${r.pnl_per_week}€</span>`;
+    return '—';
+  }},
+  {key:'win_rate', label:'WR', num: true, render: r => r.trades > 0 ? r.win_rate.toFixed(0)+'%' : '—'},
+  {key:'oos_pf', label:'OOS PF', num: true, render: r => `<span style="color:var(--dim)">${r.oos_pf.toFixed(2)}</span>`},
+  {key:'oos_avg_trade', label:'OOS €/Tr', num: true, render: r => r.oos_avg_trade != null ? `<span style="color:var(--dim)">${r.oos_avg_trade}€</span>` : '—'},
+  {key:'gap_pct', label:'Gap', num: true, render: r => {
+    if (r.gap_pct == null) return '—';
+    const cls = r.gap_pct > 0 ? 'pos' : 'neg';
+    return `<span class="${cls}">${r.gap_pct}%</span>`;
+  }},
+  {key:'max_consec_loss', label:'Max Loss', num: true, render: r => r.max_consec_loss > 3 ? `<span class="neg">⚠️ ${r.max_consec_loss}</span>` : (r.max_consec_loss || '—')},
+];
+
+function setSort(col) {
+  if (sortCol === col) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+  else { sortCol = col; sortDir = 'desc'; }
+  renderTable();
+}
+
+function showDetail(row) {
+  const m = document.getElementById('sl4-modal-content');
+  let html = `<span class="close" onclick="document.getElementById('sl4-modal-overlay').classList.remove('show')">×</span>`;
+  html += `<h2>${row.name || row.label || '#' + row.id}</h2>`;
+  html += '<div class="detail-grid">';
+  const fields = [
+    ['ID', '#' + row.id], ['Score', row.score], ['PF', row.pf || row.best_pf],
+    ['PnL', (row.pnl>=0?'+':'') + (row.pnl||row.best_pnl) + '€'],
+    ['€/Monat', row.pnl_per_month ? (row.pnl_per_month>0?'+':'') + row.pnl_per_month + '€' : '—'],
+    ['Trades/Woche', row.trades_per_week != null ? row.trades_per_week : '—'],
+    ['€/Trade', row.avg_trade != null ? (row.avg_trade>0?'+':'') + row.avg_trade + '€' : '—'],
+    ['Trades', row.trades || row.best_trades], ['Tier', row.tier],
+    ['Win Rate', (row.wr||0) + '%'], ['Pass Rate', (row.pass_rate||0) + '%'],
+    ['Assets', (row.assets||[]).join(', ')], ['Timeframe', row.timeframe || '1h'],
+    ['Source', row.source || row.archetype || '?'], ['Bot', row.bot || '—'],
+  ];
+  for (const [label, val] of fields) {
+    html += `<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-value">${val}</div></div>`;
+  }
+  html += '</div>';
+
+  // Gates
+  if (row.gates) {
+    html += '<div style="margin-top:1rem"><strong>Gates:</strong> ';
+    for (const [k, v] of Object.entries(row.gates)) {
+      if (v === null) continue;
+      html += `<span class="gate ${v?'gate-pass':'gate-fail'}">${k.toUpperCase()}: ${v?'✅':'❌'}</span> `;
+    }
+    html += '</div>';
+  }
+
+  // Fire test
+  if (row.fire_test !== undefined && row.fire_test !== null) {
+    html += `<div style="margin-top:0.5rem"><strong>Feuer-Test:</strong> ${row.fire_test?'✅ Passed':'❌ Failed'}`;
+    if (row.signals_per_week) html += ` (${row.signals_per_week} Signale/Woche)`;
+    html += '</div>';
+  }
+
+  // Hold-Out
+  if (row.ho_status) {
+    if (row.ho_status === 'passed') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ✅ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades</div>`;
+    else if (row.ho_status === 'warning') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ⚠️ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades — negativ bei ausreichender Sample-Size</div>`;
+    else html += `<div style="margin-top:0.25rem;color:var(--dim)"><strong>Hold-Out:</strong> ➖ ${row.ho_trades||0} Trades — zu wenige für Aussage</div>`;
+  }
+
+  m.innerHTML = html;
+  document.getElementById('sl4-modal-overlay').classList.add('show');
+}
+
+// Tab switching
+document.querySelectorAll('.sl4-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sl4-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentTab = tab.dataset.tab;
+    sortCol = 'score'; sortDir = 'desc';
+    renderTable();
+  });
+});
+
+// Filter buttons
+document.querySelectorAll('.sl4-filter').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sl4-filter').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderTable();
+  });
+});
+
+// Search
+document.getElementById('sl4-search').addEventListener('input', e => {
+  searchTerm = e.target.value;
+  renderTable();
+});
+
+// Close modal on overlay click
+document.getElementById('sl4-modal-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.target.classList.remove('show');
+});
+
+loadData();
+</script>
+<!--/BODY-->

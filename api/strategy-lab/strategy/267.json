@@ -1,0 +1,749 @@
+{
+  "id": 267,
+  "label": "#267",
+  "name": "IT: KB_64_harmonic_pattern",
+  "display_name": "IT: KB_64_harmonic_pattern",
+  "description": "Price forms geometric patterns based on Fibonacci ratios (XABCD). When pattern completes at point D (PRZ), price reverses because institutional orders cluster at Fibonacci levels.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "promising",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 135.5,
+  "iteration_count": 8,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-12 20:20:27",
+  "updated_at": "2026-07-12 20:49:34",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 2r/0g/1b enter, exit=timeout\", \"pnl\": 7464.61, \"trades\": 1296, \"score\": 0.0}, {\"iter\": 2, \"change\": \"change_pairs: 2r/0g/1b enter, exit=timeout\", \"pnl\": 7464.61, \"trades\": 1296, \"score\": 0.0}, {\"iter\": 3, \"change\": \"adjust_threshold: 2r/0g/1b enter, exit=timeout\", \"pnl\": 15593.5, \"trades\": 1310, \"score\": 135.5}, {\"iter\": 4, \"change\": \"add_gate: 2r/1g/1b enter, exit=timeout\", \"pnl\": 15593.5, \"trades\": 1310, \"score\": 135.5}, {\"iter\": 5, \"change\": \"adjust_threshold: 2r/1g/1b enter, exit=timeout\", \"pnl\": 15593.5, \"trades\": 1310, \"score\": 135.5}, {\"iter\": 6, \"change\": \"escape_adjust_threshold: 2r/1g/1b enter, exit=timeout\", \"pnl\": 15593.5, \"trades\": 1310, \"score\": 135.5}, {\"iter\": 7, \"change\": \"escape_adjust_min_score: 2r/1g/1b enter, exit=timeout\", \"pnl\": -495.6, \"trades\": 264, \"score\": -78.0}, {\"iter\": 8, \"change\": \"escape_adjust_min_score: 2r/1g/1b enter, exit=timeout\", \"pnl\": 15593.5, \"trades\": 1310, \"score\": 135.5}], \"iterations\": 8, \"holdout\": {\"passed\": false, \"pnl\": -248.38, \"trades\": 104, \"pf\": 0.84, \"wr\": 35.6, \"monthly_pnls\": [[\"2026-01\", -17.86], [\"2026-02\", 102.06], [\"2026-03\", 101.21], [\"2026-04\", -167.88], [\"2026-05\", 12.03], [\"2026-06\", -298.98], [\"2026-07\", 21.04]], \"max_consec_loss_months\": 1, \"period\": \"2026-01-11 \\u2013 2026-07-10\", \"reason\": \"PF=0.84 < 1.0\"}, \"anti_overfit\": {\"block_validation\": \"2-of-3 time blocks positive\", \"economic_hurdle\": \"PF >= 1.3 after costs\", \"holdout_months\": 6}}",
+  "concept": {
+    "name": "IT: KB_64_harmonic_pattern",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "USDJPY",
+      "XAUUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "kb_harmonic_pattern_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi_divergence",
+                "params": {
+                  "period": 14,
+                  "lookback": 30
+                },
+                "op": "==",
+                "value": 1,
+                "timeframe": "1h,4h,1d"
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "kb_harmonic_pattern_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi_divergence",
+                "params": {
+                  "period": 14,
+                  "lookback": 30
+                },
+                "op": "==",
+                "value": -1,
+                "timeframe": "1h,4h,1d"
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "fibonacci_level",
+                "params": {
+                  "lookback": 50,
+                  "fib": 0.618
+                },
+                "op": "<",
+                "value": 2.0
+              }
+            ],
+            "points": 15
+          }
+        ],
+        "gates": [],
+        "min_score": 0,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 3.0
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "USDJPY",
+        "XAUUSD"
+      ],
+      "pair_overrides": {
+        "USDJPY": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.5,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 3.9
+          }
+        },
+        "XAUUSD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.0,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.1
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Price forms geometric patterns based on Fibonacci ratios (XABCD). When pattern completes at point D (PRZ), price reverses because institutional orders cluster at Fibonacci levels."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "A",
+    "oos_score": 135.5,
+    "oos_pnl": 15593.5,
+    "oos_trades": 1310,
+    "oos_pass_rate": 0.722,
+    "iteration": 8,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 1,
+    "splits": [
+      {
+        "oos_range": "2026-01-15 → 2026-04-16",
+        "oos_pnl": -614.28,
+        "oos_trades": 261,
+        "oos_wr": 26.4,
+        "oos_pf": 0.77,
+        "oos_gp": 2039.67,
+        "oos_gl": 2653.95
+      }
+    ],
+    "asset_results": {
+      "EURUSD": {
+        "oos_pf": 0.31,
+        "oos_wr": 25.0,
+        "oos_pnl_total": -209.23,
+        "oos_trades": 44,
+        "oos_pass_rate": 0.722,
+        "wfo_splits": [
+          {
+            "split": 0,
+            "is_range": "2025-07-16 → 2026-01-15",
+            "oos_range": "2026-01-15 → 2026-04-16",
+            "best_sl_mult": 2.0,
+            "best_tp_val": 3.9,
+            "is_pnl": -196.52,
+            "is_trades": 77,
+            "oos_pnl": -209.23,
+            "oos_trades": 44,
+            "oos_wr": 25.0,
+            "oos_pf": 0.31,
+            "oos_profitable": false,
+            "oos_gp": 92.43,
+            "oos_gl": 301.66
+          }
+        ],
+        "tier": "C"
+      },
+      "GBPUSD": {
+        "oos_pf": 0.96,
+        "oos_wr": 30.2,
+        "oos_pnl_total": -12.44,
+        "oos_trades": 53,
+        "oos_pass_rate": 0.722,
+        "wfo_splits": [
+          {
+            "split": 0,
+            "is_range": "2025-07-16 → 2026-01-15",
+            "oos_range": "2026-01-15 → 2026-04-16",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 3.0,
+            "is_pnl": -178.05,
+            "is_trades": 91,
+            "oos_pnl": -12.44,
+            "oos_trades": 53,
+            "oos_wr": 30.2,
+            "oos_pf": 0.96,
+            "oos_profitable": false,
+            "oos_gp": 323.19,
+            "oos_gl": 335.63
+          }
+        ],
+        "tier": "C"
+      },
+      "USDJPY": {
+        "oos_pf": 1.16,
+        "oos_wr": 25.0,
+        "oos_pnl_total": 51.81,
+        "oos_trades": 44,
+        "oos_pass_rate": 0.722,
+        "wfo_splits": [
+          {
+            "split": 0,
+            "is_range": "2025-07-16 → 2026-01-15",
+            "oos_range": "2026-01-15 → 2026-04-16",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 3.9,
+            "is_pnl": -2.93,
+            "is_trades": 92,
+            "oos_pnl": 51.81,
+            "oos_trades": 44,
+            "oos_wr": 25.0,
+            "oos_pf": 1.16,
+            "oos_profitable": true,
+            "oos_gp": 381.8,
+            "oos_gl": 329.99
+          }
+        ],
+        "tier": "A"
+      },
+      "XAUUSD": {
+        "oos_pf": 1.08,
+        "oos_wr": 25.58888888888889,
+        "oos_pnl_total": 15541.69,
+        "oos_trades": 1266,
+        "oos_pass_rate": 0.722,
+        "wfo_splits": [
+          {
+            "split": 0,
+            "is_range": "2023-07-19 → 2024-01-18",
+            "oos_range": "2024-01-18 → 2024-04-18",
+            "best_sl_mult": 2.0,
+            "best_tp_val": 2.1,
+            "is_pnl": 666.29,
+            "is_trades": 207,
+            "oos_pnl": -666.09,
+            "oos_trades": 217,
+            "oos_wr": 26.7,
+            "oos_pf": 0.71,
+            "oos_profitable": false,
+            "oos_gp": 1657.87,
+            "oos_gl": 2323.96
+          },
+          {
+            "split": 1,
+            "is_range": "2023-10-19 → 2024-04-18",
+            "oos_range": "2024-04-18 → 2024-07-19",
+            "best_sl_mult": 1.0,
+            "best_tp_val": 2.1,
+            "is_pnl": -83.88,
+            "is_trades": 96,
+            "oos_pnl": 0,
+            "oos_trades": 0,
+            "oos_wr": 0,
+            "oos_pf": 0,
+            "oos_profitable": false,
+            "oos_gp": 0,
+            "oos_gl": 0
+          },
+          {
+            "split": 2,
+            "is_range": "2024-01-18 → 2024-07-19",
+            "oos_range": "2024-07-19 → 2024-10-18",
+            "best_sl_mult": 1.0,
+            "best_tp_val": 2.1,
+            "is_pnl": -83.88,
+            "is_trades": 96,
+            "oos_pnl": 301.76,
+            "oos_trades": 190,
+            "oos_wr": 37.9,
+            "oos_pf": 1.2,
+            "oos_profitable": true,
+            "oos_gp": 1808.59,
+            "oos_gl": 1506.83
+          },
+          {
+            "split": 3,
+            "is_range": "2024-04-18 → 2024-10-18",
+            "oos_range": "2024-10-18 → 2025-01-17",
+            "best_sl_mult": 1.0,
+            "best_tp_val": 2.1,
+            "is_pnl": 301.76,
+            "is_trades": 190,
+            "oos_pnl": 0,
+            "oos_trades": 0,
+            "oos_wr": 0,
+            "oos_pf": 0,
+            "oos_profitable": false,
+            "oos_gp": 0,
+            "oos_gl": 0
+          },
+          {
+            "split": 4,
+            "is_range": "2024-07-19 → 2025-01-17",
+            "oos_range": "2025-01-17 → 2025-04-19",
+            "best_sl_mult": 1.0,
+            "best_tp_val": 2.1,
+            "is_pnl": 301.76,
+            "is_trades": 190,
+            "oos_pnl": 903.48,
+            "oos_trades": 235,
+            "oos_wr": 38.7,
+            "oos_pf": 1.33,
+            "oos_profitable": true,
+            "oos_gp": 3670.96,
+            "oos_gl": 2767.48
+          },
+          {
+            "split": 5,
+            "is_range": "2024-10-18 → 2025-04-19",
+            "oos_range": "2025-04-19 → 2025-07-19",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 3.0,
+            "is_pnl": 1503.69,
+            "is_trades": 161,
+            "oos_pnl": 715.3,
+            "oos_trades": 175,
+            "oos_wr": 26.9,
+            "oos_pf": 1.18,
+            "oos_profitable": true,
+            "oos_gp": 4736.55,
+            "oos_gl": 4021.25
+          },
+          {
+            "split": 6,
+            "is_range": "2025-01-17 → 2025-07-19",
+            "oos_range": "2025-07-19 → 2025-10-18",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 2.1,
+            "is_pnl": 2344.91,
+            "is_trades": 396,
+            "oos_pnl": -569.51,
+            "oos_trades": 58,
+            "oos_wr": 31.0,
+            "oos_pf": 0.63,
+            "oos_profitable": false,
+            "oos_gp": 973.82,
+            "oos_gl": 1543.33
+          },
+          {
+            "split": 7,
+            "is_range": "2025-04-19 → 2025-10-18",
+            "oos_range": "2025-10-18 → 2026-01-18",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 2.1,
+            "is_pnl": 596.27,
+            "is_trades": 258,
+            "oos_pnl": 40286.88,
+            "oos_trades": 354,
+            "oos_wr": 47.5,
+            "oos_pf": 1.68,
+            "oos_profitable": true,
+            "oos_gp": 99834.71,
+            "oos_gl": 59547.83
+          },
+          {
+            "split": 8,
+            "is_range": "2025-07-19 → 2026-01-18",
+            "oos_range": "2026-01-18 → 2026-04-19",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 3.0,
+            "is_pnl": 55059.15,
+            "is_trades": 310,
+            "oos_pnl": -25430.13,
+            "oos_trades": 37,
+            "oos_wr": 21.6,
+            "oos_pf": 0.79,
+            "oos_profitable": false,
+            "oos_gp": 98415.41,
+            "oos_gl": 123845.54
+          }
+        ],
+        "tier": "A"
+      },
+      "US500": {
+        "oos_pf": 0.8,
+        "oos_wr": 43.8,
+        "oos_pnl_total": -5.16,
+        "oos_trades": 32,
+        "oos_pass_rate": 0.722,
+        "wfo_splits": [
+          {
+            "split": 0,
+            "is_range": "2025-07-16 → 2026-01-15",
+            "oos_range": "2026-01-15 → 2026-04-16",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 3.9,
+            "is_pnl": -838.17,
+            "is_trades": 51,
+            "oos_pnl": -5.16,
+            "oos_trades": 32,
+            "oos_wr": 43.8,
+            "oos_pf": 0.8,
+            "oos_profitable": false,
+            "oos_gp": 20.63,
+            "oos_gl": 25.79
+          }
+        ],
+        "tier": "C"
+      }
+    },
+    "selected_assets": [
+      "USDJPY",
+      "XAUUSD"
+    ],
+    "dropped_assets": [
+      "EURUSD",
+      "GBPUSD",
+      "US500"
+    ],
+    "pair_overrides": {
+      "USDJPY": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.5,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 3.9
+        }
+      },
+      "XAUUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.1
+        }
+      }
+    },
+    "tier_v2": "C",
+    "tier_v2_gates": {
+      "g1_data": true,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": true,
+      "evaluated_at": "2026-07-16T18:15:24.074922+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "EURUSD",
+      "tier": "C",
+      "oos_pnl_total": -209.23,
+      "oos_pf": 0.31,
+      "oos_wr": 25.0,
+      "oos_trades": 44,
+      "oos_pass_rate": 0.722,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "GBPUSD",
+      "tier": "C",
+      "oos_pnl_total": -12.44,
+      "oos_pf": 0.96,
+      "oos_wr": 30.2,
+      "oos_trades": 53,
+      "oos_pass_rate": 0.722,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "USDJPY",
+      "tier": "A",
+      "oos_pnl_total": 51.81,
+      "oos_pf": 1.16,
+      "oos_wr": 25.0,
+      "oos_trades": 44,
+      "oos_pass_rate": 0.722,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.5,
+      "tp_override": 3.9,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "XAUUSD",
+      "tier": "A",
+      "oos_pnl_total": 15541.69,
+      "oos_pf": 1.08,
+      "oos_wr": 25.58888888888889,
+      "oos_trades": 1266,
+      "oos_pass_rate": 0.722,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.0,
+      "tp_override": 2.1,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "US500",
+      "tier": "C",
+      "oos_pnl_total": -5.16,
+      "oos_pf": 0.8,
+      "oos_wr": 43.8,
+      "oos_trades": 32,
+      "oos_pass_rate": 0.722,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    }
+  ],
+  "selected_assets": [
+    "USDJPY",
+    "XAUUSD"
+  ],
+  "dropped_assets": [
+    "EURUSD",
+    "GBPUSD",
+    "US500"
+  ],
+  "splits": [
+    {
+      "oos_range": "2026-01-15 → 2026-04-16",
+      "oos_pnl": -614.28,
+      "oos_trades": 261,
+      "oos_wr": 26.4,
+      "oos_pf": 0.77,
+      "oos_gp": 2039.67,
+      "oos_gl": 2653.95
+    }
+  ],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 2r/0g/1b enter, exit=timeout",
+      "oos_pnl": 7464.61,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 1296,
+      "children": [
+        {
+          "change": "Iteration 2: change_pairs: 2r/0g/1b enter, exit=timeout",
+          "oos_pnl": 7464.61,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 1296,
+          "children": [
+            {
+              "change": "Iteration 3: adjust_threshold: 2r/0g/1b enter, exit=timeout",
+              "oos_pnl": 15593.5,
+              "oos_pf": 0,
+              "tier": "B",
+              "tested": true,
+              "strategy_id": 267,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 1310,
+              "children": [
+                {
+                  "change": "Iteration 4: add_gate: 2r/1g/1b enter, exit=timeout",
+                  "oos_pnl": 15593.5,
+                  "oos_pf": 0,
+                  "tier": "B",
+                  "tested": true,
+                  "strategy_id": null,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 1310,
+                  "children": [
+                    {
+                      "change": "Iteration 5: adjust_threshold: 2r/1g/1b enter, exit=timeout",
+                      "oos_pnl": 15593.5,
+                      "oos_pf": 0,
+                      "tier": "B",
+                      "tested": true,
+                      "strategy_id": null,
+                      "is_new_root": false,
+                      "win_rate": null,
+                      "trades": 1310,
+                      "children": [
+                        {
+                          "change": "Iteration 6: escape_adjust_threshold: 2r/1g/1b enter, exit=timeout",
+                          "oos_pnl": 15593.5,
+                          "oos_pf": 0,
+                          "tier": "B",
+                          "tested": true,
+                          "strategy_id": null,
+                          "is_new_root": false,
+                          "win_rate": null,
+                          "trades": 1310,
+                          "children": [
+                            {
+                              "change": "Iteration 7: escape_adjust_min_score: 2r/1g/1b enter, exit=timeout",
+                              "oos_pnl": -495.6,
+                              "oos_pf": 0,
+                              "tier": "C",
+                              "tested": true,
+                              "strategy_id": null,
+                              "is_new_root": false,
+                              "win_rate": null,
+                              "trades": 264,
+                              "children": [
+                                {
+                                  "change": "Iteration 8: escape_adjust_min_score: 2r/1g/1b enter, exit=timeout",
+                                  "oos_pnl": 15593.5,
+                                  "oos_pf": 0,
+                                  "tier": "B",
+                                  "tested": true,
+                                  "strategy_id": null,
+                                  "is_new_root": false,
+                                  "win_rate": null,
+                                  "trades": 1310,
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      267
+    ],
+    "stats": {
+      "total_variants": 8,
+      "new_trees": 0,
+      "best_pnl": 15593.5,
+      "base_pnl": 7464.61,
+      "improvement": 8128.89,
+      "runtime_seconds": 1747.2
+    }
+  },
+  "best_oos_pnl": 15593.5,
+  "best_pf": 1.16,
+  "best_wr": null,
+  "best_tier": "A",
+  "best_oos_pass_rate": 0.722,
+  "oos_trades": 1310,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 1,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

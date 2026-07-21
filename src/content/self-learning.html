@@ -1,0 +1,581 @@
+<!-- Self-Learning Parameter Dashboard -->
+<link rel="stylesheet" href="/assets/bot.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<!-- 1. STATUS BAR -->
+<div class="bot-status-bar">
+  <div>
+    <span class="bot-status-dot" id="fx-sl-dot"></span>
+    <span id="fx-sl-status">Loading...</span>
+    <span class="bot-badge" id="fx-sl-mode-badge" style="margin-left:8px">PHASE 1: MONITOR</span>
+  </div>
+  <span id="fx-sl-last-update" style="color:var(--c-text-dim);font-size:var(--text-xs)">—</span>
+</div>
+
+<!-- 2. STRATEGY INFO -->
+<div class="bot-strategy-info">
+  <div class="bot-strategy-tag">
+    <span class="label">System</span>
+    <span class="value">Self-Learning Parameter Engine</span>
+  </div>
+  <div class="bot-strategy-tag">
+    <span class="label">Mode</span>
+    <span class="value">Monitoring Only (Phase 1)</span>
+  </div>
+  <div class="bot-strategy-tag">
+    <span class="label">Window</span>
+    <span class="value" id="fx-sl-window">20 Trades</span>
+  </div>
+  <div class="bot-strategy-tag">
+    <span class="label">Pairs</span>
+    <span class="value" id="fx-sl-pairs-count">—</span>
+  </div>
+</div>
+
+<!-- 3. GLOBAL KPI CARDS -->
+<div class="bot-grid" id="fx-sl-kpi-row">
+  <div class="bot-card">
+    <div class="bot-card-title">Global Win Rate</div>
+    <div class="bot-card-value" id="fx-sl-global-wr">—</div>
+    <div class="bot-card-sub" id="fx-sl-global-wr-sub">—</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Global P&L</div>
+    <div class="bot-card-value" id="fx-sl-global-pnl">—</div>
+    <div class="bot-card-sub" id="fx-sl-global-pnl-sub">—</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Total Trades</div>
+    <div class="bot-card-value" id="fx-sl-total-trades">—</div>
+    <div class="bot-card-sub" id="fx-sl-total-trades-sub">—</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Parameter Changes</div>
+    <div class="bot-card-value" id="fx-sl-param-changes">—</div>
+    <div class="bot-card-sub">Auto-adjustments logged</div>
+  </div>
+</div>
+
+<!-- 4. PER-PAIR PERFORMANCE TABLE -->
+<p class="bot-section-title">📊 Rolling Performance (Last 20 Trades per Pair)</p>
+<div class="bot-card bot-table-wrap">
+  <table class="bot-table">
+    <thead>
+      <tr>
+        <th>Pair</th>
+        <th>WR%</th>
+        <th>PF</th>
+        <th>Avg PnL</th>
+        <th>Total PnL</th>
+        <th>Trades</th>
+        <th>R:R</th>
+        <th>Kelly%</th>
+        <th>Last Trade</th>
+      </tr>
+    </thead>
+    <tbody id="fx-sl-perf-body">
+      <tr><td colspan="9" class="bot-no-data">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 5. CURRENT PARAMETERS TABLE -->
+<p class="bot-section-title">⚙️ Current Parameters (from assets.toml)</p>
+<div class="bot-card bot-table-wrap">
+  <table class="bot-table">
+    <thead>
+      <tr>
+        <th>Pair</th>
+        <th>Strategy</th>
+        <th>SL (pips)</th>
+        <th>TP (pips)</th>
+        <th>RSI OS</th>
+        <th>RSI OB</th>
+        <th>BB Mult</th>
+        <th>KC Mult</th>
+        <th>Body Ratio</th>
+        <th>Direction</th>
+      </tr>
+    </thead>
+    <tbody id="fx-sl-params-body">
+      <tr><td colspan="10" class="bot-no-data">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 6. EQUITY / PNL CHART PER PAIR -->
+<p class="bot-section-title">📈 Cumulative P&L by Pair</p>
+<div class="bot-card">
+  <div class="bot-pair-nav" id="fx-sl-pair-nav"></div>
+  <div class="bot-chart-container"><canvas id="fx-sl-pnl-chart"></canvas></div>
+  <div class="bot-chart-summary" id="fx-sl-pnl-summary"></div>
+</div>
+
+<!-- 7. PARAMETER HISTORY TIMELINE -->
+<p class="bot-section-title">🕐 Parameter Change History</p>
+<div class="bot-card bot-table-wrap">
+  <table class="bot-table">
+    <thead>
+      <tr>
+        <th>Time (Berlin)</th>
+        <th>Pair</th>
+        <th>Parameter</th>
+        <th>Old Value</th>
+        <th>New Value</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody id="fx-sl-history-body">
+      <tr><td colspan="6" class="bot-no-data">No parameter changes yet — monitoring mode</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 8. PARAMETER EVOLUTION CHART -->
+<p class="bot-section-title">📉 Parameter Evolution</p>
+<div class="bot-card">
+  <div style="display:flex;gap:var(--s-2);flex-wrap:wrap;margin-bottom:var(--s-3)">
+    <select id="fx-sl-param-select" style="background:var(--c-bg);color:var(--c-text);border:1px solid var(--c-border);padding:4px 8px;border-radius:var(--r-sm);font-size:var(--text-xs)">
+      <option value="sl_pips">SL (pips)</option>
+      <option value="tp_pips">TP (pips)</option>
+      <option value="rsi_oversold">RSI Oversold</option>
+      <option value="rsi_overbought">RSI Overbought</option>
+      <option value="bb_mult">BB Multiplier</option>
+      <option value="kc_mult">KC Multiplier</option>
+    </select>
+  </div>
+  <div class="bot-chart-container"><canvas id="fx-sl-param-chart"></canvas></div>
+</div>
+
+<!-- 9. BOUNDS / SAFETY LIMITS -->
+<p class="bot-section-title">🛡️ Safety Bounds (Hard Limits)</p>
+<div class="bot-card">
+  <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)" id="fx-sl-bounds-chips">
+  </div>
+  <details style="font-size:var(--text-xs)">
+    <summary style="cursor:pointer;color:var(--c-text-dim);user-select:none">Safety Mechanisms ▸</summary>
+    <div style="margin-top:var(--s-3);color:var(--c-text-dim);line-height:1.6">
+      <p><strong>Cooldown:</strong> Min 10 trades between adjustments per pair</p>
+      <p><strong>Max Delta:</strong> Max ±20% change per step</p>
+      <p><strong>Rollback:</strong> Auto-rollback if performance degrades in next 10 trades</p>
+      <p><strong>Human Override:</strong> <code>manual_override = true</code> in TOML → engine skips</p>
+      <p><strong>Hard Bounds:</strong> Parameters NEVER exceed min/max limits above</p>
+    </div>
+  </details>
+</div>
+
+<!-- INIT SCRIPT -->
+<script>
+(function() {
+  'use strict';
+
+  var API_STATUS = '/api/self-learning/status.json';
+  var API_HISTORY = '/api/self-learning/history.json';
+  var REFRESH_INTERVAL = 60000;
+  var _pnlChart = null;
+  var _paramChart = null;
+  var _statusData = null;
+  var _historyData = null;
+  var _currentPair = null;
+
+  function el(id) { return document.getElementById(id); }
+
+  function safeFetch(path) {
+    return fetch(window.location.origin + path + '?_t=' + Date.now(), {
+      cache: 'no-store', credentials: 'same-origin'
+    });
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    try {
+      if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(iso) && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(iso)) iso += 'Z';
+      var d = new Date(iso);
+      return d.toLocaleString('de-DE', {
+        day: '2-digit', month: '2-digit', year: '2-digit',
+        hour: '2-digit', minute: '2-digit',
+        timeZone: 'Europe/Berlin'
+      });
+    } catch(e) { return String(iso); }
+  }
+
+  function fmtEur(v) {
+    if (v == null) return '—';
+    var n = Number(v);
+    return (n >= 0 ? '+' : '') + n.toFixed(2) + ' €';
+  }
+
+  function fmtPct(v) {
+    if (v == null) return '—';
+    return Number(v).toFixed(1) + '%';
+  }
+
+  function pnlClass(v) {
+    return Number(v) >= 0 ? 'bot-pnl-pos' : 'bot-pnl-neg';
+  }
+
+  function wrClass(v) {
+    v = Number(v);
+    if (v >= 55) return 'bot-pnl-pos';
+    if (v >= 45) return '';
+    return 'bot-pnl-neg';
+  }
+
+  function pfClass(v) {
+    v = Number(v);
+    if (v >= 1.5) return 'bot-pnl-pos';
+    if (v >= 1.0) return '';
+    return 'bot-pnl-neg';
+  }
+
+  // ── Render Global KPIs ──
+  function renderGlobal(data) {
+    var g = data.global || {};
+    el('fx-sl-dot').className = 'bot-status-dot green';
+    el('fx-sl-status').textContent = 'Self-Learning Engine Active — Phase 1 (Monitoring)';
+    el('fx-sl-last-update').textContent = 'Updated: ' + fmtTime(data.generated_at);
+    el('fx-sl-pairs-count').textContent = data.pairs.length + ' FX Pairs';
+
+    var wr = g.global_win_rate || 0;
+    el('fx-sl-global-wr').textContent = fmtPct(wr);
+    el('fx-sl-global-wr').className = 'bot-card-value ' + wrClass(wr);
+    el('fx-sl-global-wr-sub').textContent = g.total_wins + 'W / ' + g.total_losses + 'L';
+
+    var pnl = g.global_pnl || 0;
+    el('fx-sl-global-pnl').textContent = fmtEur(pnl);
+    el('fx-sl-global-pnl').className = 'bot-card-value ' + pnlClass(pnl);
+    el('fx-sl-global-pnl-sub').textContent = 'Since ' + fmtTime(g.first_trade).split(',')[0];
+
+    el('fx-sl-total-trades').textContent = g.total_trades || 0;
+    el('fx-sl-total-trades-sub').textContent = 'Closed trades total';
+
+    el('fx-sl-window').textContent = data.rolling_window + ' Trades';
+  }
+
+  // ── Render Performance Table ──
+  function renderPerformance(pairs) {
+    var body = el('fx-sl-perf-body');
+    if (!pairs || pairs.length === 0) {
+      body.innerHTML = '<tr><td colspan="9" class="bot-no-data">No trade data</td></tr>';
+      return;
+    }
+    var html = '';
+    pairs.forEach(function(p) {
+      var m = p.metrics || {};
+      if (!m.total_trades) return;
+      html += '<tr>';
+      html += '<td><strong>' + p.pair + '</strong></td>';
+      html += '<td class="' + wrClass(m.win_rate) + '">' + fmtPct(m.win_rate) + '</td>';
+      html += '<td class="' + pfClass(m.profit_factor) + '">' + (m.profit_factor || '—') + '</td>';
+      html += '<td class="' + pnlClass(m.avg_pnl) + '">' + fmtEur(m.avg_pnl) + '</td>';
+      html += '<td class="' + pnlClass(m.total_pnl) + '">' + fmtEur(m.total_pnl) + '</td>';
+      html += '<td>' + m.total_trades + ' (' + m.wins + 'W/' + m.losses + 'L)</td>';
+      html += '<td>' + (m.rr_ratio || '—') + '</td>';
+      html += '<td>' + (m.kelly_fraction || '—') + '%</td>';
+      html += '<td>' + fmtTime(m.last_trade_at) + '</td>';
+      html += '</tr>';
+    });
+    body.innerHTML = html || '<tr><td colspan="9" class="bot-no-data">No closed trades yet</td></tr>';
+  }
+
+  // ── Render Parameters Table ──
+  function renderParameters(pairs) {
+    var body = el('fx-sl-params-body');
+    if (!pairs || pairs.length === 0) {
+      body.innerHTML = '<tr><td colspan="10" class="bot-no-data">No pairs configured</td></tr>';
+      return;
+    }
+    var html = '';
+    pairs.forEach(function(p) {
+      var pr = p.parameters || {};
+      html += '<tr>';
+      html += '<td><strong>' + p.pair + '</strong></td>';
+      html += '<td>' + (p.strategy || '—') + '</td>';
+      html += '<td>' + (pr.sl_pips || '—') + '</td>';
+      html += '<td>' + (pr.tp_pips || '—') + '</td>';
+      html += '<td>' + (pr.rsi_oversold || '—') + '</td>';
+      html += '<td>' + (pr.rsi_overbought || '—') + '</td>';
+      html += '<td>' + (pr.bb_mult || '—') + '</td>';
+      html += '<td>' + (pr.kc_mult || '—') + '</td>';
+      html += '<td>' + (pr.min_body_ratio || '—') + '</td>';
+      html += '<td>' + (pr.direction || '—') + '</td>';
+      html += '</tr>';
+    });
+    body.innerHTML = html;
+  }
+
+  // ── Render Pair Nav Chips ──
+  function renderPairNav(pairs) {
+    var nav = el('fx-sl-pair-nav');
+    var pairsWithData = pairs.filter(function(p) { return p.metrics && p.metrics.total_trades > 0; });
+    if (pairsWithData.length === 0) {
+      nav.innerHTML = '';
+      return;
+    }
+    var html = '';
+    pairsWithData.forEach(function(p, i) {
+      var cls = i === 0 ? 'bot-pair-chip bot-pair-active' : 'bot-pair-chip';
+      html += '<span class="' + cls + '" data-pair="' + p.pair + '" onclick="window._slSelectPair(\'' + p.pair + '\')">' + p.pair + '</span>';
+    });
+    nav.innerHTML = html;
+    if (pairsWithData.length > 0) {
+      _currentPair = pairsWithData[0].pair;
+    }
+  }
+
+  // ── Render PnL Chart ──
+  function renderPnlChart(pair) {
+    if (!_statusData) return;
+    var pairData = _statusData.pairs.find(function(p) { return p.pair === pair; });
+    if (!pairData || !pairData.metrics || !pairData.metrics.rolling_pnl) return;
+
+    var series = pairData.metrics.rolling_pnl;
+    var labels = series.map(function(s, i) { return '#' + (series.length - i); });
+    var cumData = series.map(function(s) { return s.cumulative; });
+    var pnlData = series.map(function(s) { return s.pnl; });
+
+    var ctx = el('fx-sl-pnl-chart').getContext('2d');
+    if (_pnlChart) _pnlChart.destroy();
+
+    _pnlChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            type: 'line',
+            label: 'Cumulative P&L',
+            data: cumData,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.1)',
+            fill: true,
+            tension: 0.3,
+            yAxisID: 'y',
+            order: 0,
+          },
+          {
+            type: 'bar',
+            label: 'Trade P&L',
+            data: pnlData,
+            backgroundColor: pnlData.map(function(v) { return v >= 0 ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)'; }),
+            yAxisID: 'y1',
+            order: 1,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                return ctx.dataset.label + ': ' + (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + ' €';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.08)' } },
+          y: {
+            type: 'linear', position: 'left',
+            title: { display: true, text: 'Cumulative €', color: '#94a3b8' },
+            ticks: { color: '#64748b', callback: function(v) { return v.toFixed(0) + '€'; } },
+            grid: { color: 'rgba(148,163,184,0.08)' },
+          },
+          y1: {
+            type: 'linear', position: 'right',
+            title: { display: true, text: 'Per Trade €', color: '#94a3b8' },
+            ticks: { color: '#64748b', callback: function(v) { return v.toFixed(0) + '€'; } },
+            grid: { drawOnChartArea: false },
+          }
+        }
+      }
+    });
+
+    // Summary
+    var m = pairData.metrics;
+    el('fx-sl-pnl-summary').innerHTML =
+      '<strong>' + pair + '</strong> — ' +
+      m.total_trades + ' trades, WR ' + fmtPct(m.win_rate) +
+      ', PF ' + m.profit_factor +
+      ', Total: <span class="' + pnlClass(m.total_pnl) + '">' + fmtEur(m.total_pnl) + '</span>';
+  }
+
+  // ── Render History Table ──
+  function renderHistory(history) {
+    var body = el('fx-sl-history-body');
+    if (!history || !history.events || history.events.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" class="bot-no-data">No parameter changes yet — monitoring mode</td></tr>';
+      return;
+    }
+    var html = '';
+    history.events.forEach(function(evt) {
+      html += '<tr>';
+      html += '<td>' + fmtTime(evt.timestamp) + '</td>';
+      html += '<td>' + (evt.pair || '—') + '</td>';
+      html += '<td>' + (evt.parameter || '—') + '</td>';
+      html += '<td>' + (evt.old_value != null ? evt.old_value : '—') + '</td>';
+      html += '<td>' + (evt.new_value != null ? evt.new_value : '—') + '</td>';
+      html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + (evt.reason || '—') + '</td>';
+      html += '</tr>';
+    });
+    body.innerHTML = html;
+    el('fx-sl-param-changes').textContent = history.total_events || 0;
+  }
+
+  // ── Render Parameter Evolution Chart ──
+  function renderParamChart(paramKey) {
+    if (!_historyData || !_historyData.events) return;
+
+    var filtered = _historyData.events.filter(function(e) {
+      return e.parameter === paramKey && e.new_value != null;
+    });
+
+    if (filtered.length === 0) {
+      // Show flat line from current config
+      if (_statusData) {
+        var pairs = _statusData.pairs.map(function(p) { return p.pair; });
+        var currentVals = _statusData.pairs.map(function(p) {
+          return p.parameters ? (p.parameters[paramKey] || 0) : 0;
+        });
+
+        var ctx = el('fx-sl-param-chart').getContext('2d');
+        if (_paramChart) _paramChart.destroy();
+        _paramChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: pairs,
+            datasets: [{
+              label: 'Current ' + paramKey,
+              data: currentVals,
+              backgroundColor: 'rgba(59,130,246,0.5)',
+              borderColor: '#3b82f6',
+              borderWidth: 1,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: '#94a3b8' } },
+              title: { display: true, text: 'Current ' + paramKey + ' per Pair (no changes yet)', color: '#94a3b8' }
+            },
+            scales: {
+              x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.08)' } },
+              y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.08)' } }
+            }
+          }
+        });
+      }
+      return;
+    }
+
+    // Group by pair
+    var byPair = {};
+    filtered.forEach(function(e) {
+      if (!byPair[e.pair]) byPair[e.pair] = [];
+      byPair[e.pair].push(e);
+    });
+
+    var colors = ['#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899'];
+    var datasets = [];
+    var idx = 0;
+    Object.keys(byPair).forEach(function(pair) {
+      var events = byPair[pair].sort(function(a, b) { return a.timestamp.localeCompare(b.timestamp); });
+      datasets.push({
+        label: pair,
+        data: events.map(function(e) { return { x: e.timestamp, y: Number(e.new_value) || 0 }; }),
+        borderColor: colors[idx % colors.length],
+        backgroundColor: 'transparent',
+        tension: 0.2,
+        pointRadius: 4,
+      });
+      idx++;
+    });
+
+    var ctx = el('fx-sl-param-chart').getContext('2d');
+    if (_paramChart) _paramChart.destroy();
+    _paramChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets: datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#94a3b8' } },
+          title: { display: true, text: paramKey + ' Evolution', color: '#94a3b8' }
+        },
+        scales: {
+          x: { type: 'time', time: { unit: 'day' }, ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.08)' } },
+          y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.08)' } }
+        }
+      }
+    });
+  }
+
+  // ── Render Bounds Chips ──
+  function renderBounds(bounds) {
+    var container = el('fx-sl-bounds-chips');
+    if (!bounds) return;
+    var html = '';
+    Object.keys(bounds).forEach(function(param) {
+      var b = bounds[param];
+      html += '<span class="bot-config-chip">' + param + ': ' + b.min + ' – ' + b.max + '</span>';
+    });
+    container.innerHTML = html;
+  }
+
+  // ── Global select pair function ──
+  window._slSelectPair = function(pair) {
+    _currentPair = pair;
+    // Update nav chips
+    document.querySelectorAll('#fx-sl-pair-nav .bot-pair-chip').forEach(function(chip) {
+      chip.classList.toggle('bot-pair-active', chip.getAttribute('data-pair') === pair);
+    });
+    renderPnlChart(pair);
+  };
+
+  // ── Main Load ──
+  function load() {
+    Promise.all([
+      safeFetch(API_STATUS).then(function(r) { return r.json(); }),
+      safeFetch(API_HISTORY).then(function(r) { return r.json(); }),
+    ]).then(function(results) {
+      _statusData = results[0];
+      _historyData = results[1];
+
+      renderGlobal(_statusData);
+      renderPerformance(_statusData.pairs);
+      renderParameters(_statusData.pairs);
+      renderPairNav(_statusData.pairs);
+      renderBounds(_statusData.bounds);
+      renderHistory(_historyData);
+
+      if (_currentPair) {
+        renderPnlChart(_currentPair);
+      }
+
+      var paramSelect = el('fx-sl-param-select');
+      renderParamChart(paramSelect.value);
+
+    }).catch(function(err) {
+      console.error('[self-learning] Load error:', err);
+      el('fx-sl-status').textContent = 'Error loading data';
+      el('fx-sl-dot').className = 'bot-status-dot red';
+    });
+  }
+
+  // Param select change
+  el('fx-sl-param-select').addEventListener('change', function() {
+    renderParamChart(this.value);
+  });
+
+  // Initial load + refresh
+  load();
+  setInterval(load, REFRESH_INTERVAL);
+})();
+</script>

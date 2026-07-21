@@ -1,0 +1,200 @@
+{
+  "id": 426,
+  "label": "#426",
+  "name": "RCP-RECIPE: FVG_Fill_v1 (EURUSD)",
+  "display_name": "RCP-RECIPE: FVG_Fill_v1 (EURUSD)",
+  "description": "",
+  "strategy_type": "fvg",
+  "timeframe": "1h",
+  "status": "validated",
+  "readiness": "bot_ready",
+  "rejection_reason": null,
+  "overall_score": 48.31,
+  "iteration_count": 1,
+  "source": "recipe_v1",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "recipe-archetype-10",
+  "created_at": "2026-07-17T08:53:14.167693+00:00",
+  "updated_at": "2026-07-17T08:53:14.167693+00:00",
+  "notes": null,
+  "concept": {
+    "name": "FVG_Fill",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "EURUSD"
+    ],
+    "tree": {
+      "name": "Fair Value Gap Fill",
+      "archetype": "fvg",
+      "description": "FVG detection + price near the gap + trend filter. Catches price returning to fill imbalances.",
+      "timeframe": "1h",
+      "assets_candidate": [
+        "EURUSD",
+        "GBPUSD",
+        "US30"
+      ],
+      "enter": {
+        "signals": [
+          {
+            "id": "fvg_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "fvg",
+                "timeframe": "1h",
+                "params": {
+                  "window": 3,
+                  "min_gap_pct": 0.5
+                },
+                "op": "==",
+                "value": 1
+              },
+              {
+                "indicator": "close_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "id": "fvg_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "fvg",
+                "timeframe": "1h",
+                "params": {
+                  "window": 3,
+                  "min_gap_pct": 0.5
+                },
+                "op": "==",
+                "value": -1
+              },
+              {
+                "indicator": "close_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 50
+              }
+            ]
+          }
+        ],
+        "gates": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 15
+              },
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": ">",
+                "value": 0.2
+              }
+            ]
+          }
+        ]
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "mult": 1.0,
+        "period": 14
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.5
+      },
+      "notes": "Archetype 10: FVG Fill. FVG detected + price trending back (close_vs_ema) + RSI confirming pullback. ADX+ATR gate for market quality."
+    }
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "A",
+    "oos_pnl": 48.31,
+    "oos_pf": 1.18,
+    "oos_wr": 32.8,
+    "oos_trades": 36,
+    "oos_pass_rate": 0.75,
+    "mode": "recipe_v1",
+    "tier_v2": "A",
+    "hold_out": {
+      "pnl": -62.02,
+      "trades": 10,
+      "pf": 0.36
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "v1: {\"fvg_gap\": 0.3, \"sl_mult\": 1.0, \"tp_r\": 2.5}",
+      "oos_pnl": 48.31,
+      "oos_pf": 1.18,
+      "tier": "A",
+      "tested": true
+    }
+  },
+  "best_oos_pnl": 48.31,
+  "best_pf": 1.18,
+  "best_wr": 32.8,
+  "best_tier": "A",
+  "best_oos_pass_rate": 0.75,
+  "oos_trades": 36,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

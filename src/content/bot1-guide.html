@@ -1,0 +1,551 @@
+<!--TITLE:FX Mean Reversion Bot — Erklärung—Hermes-->
+<!--HEAD-->
+<style>
+  .guide { max-width: 900px; margin: 0 auto; line-height: 1.8; }
+  .guide h1 { font-size: var(--text-2xl); margin-bottom: var(--s-4); }
+  .guide h2 { font-size: var(--text-lg); margin-top: var(--s-8); margin-bottom: var(--s-3); border-bottom: 1px solid var(--c-border); padding-bottom: var(--s-2); }
+  .guide h3 { font-size: var(--text-md); margin-top: var(--s-4); margin-bottom: var(--s-2); }
+  .guide table { width: 100%; border-collapse: collapse; margin: var(--s-3) 0; font-size: var(--text-sm); }
+  .guide th { text-align: left; padding: var(--s-2); border-bottom: 1px solid var(--c-border); color: var(--c-text-dim); font-size: var(--text-xs); text-transform: uppercase; }
+  .guide td { padding: var(--s-2); border-bottom: 1px solid var(--c-border); }
+  .guide code { background: var(--c-surface); padding: 2px 6px; border-radius: var(--r-sm); font-size: var(--text-sm); }
+  .guide pre { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); overflow-x: auto; font-size: var(--text-sm); line-height: 1.5; }
+  .guide pre code { background: transparent; padding: 0; }
+  .guide blockquote { border-left: 3px solid var(--c-border); padding-left: var(--s-4); color: var(--c-text-dim); font-style: italic; margin: var(--s-3) 0; }
+  .guide ul, .guide ol { padding-left: var(--s-6); margin: var(--s-3) 0; }
+  .guide li { margin-bottom: var(--s-1); }
+  .guide hr { border: none; border-top: 1px solid var(--c-border); margin: var(--s-6) 0; }
+  .guide .warn { background: var(--c-surface); border-left: 3px solid var(--c-warn); padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
+  .guide .success { background: var(--c-surface); border-left: 3px solid #4caf50; padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
+  .guide .info { background: var(--c-surface); border-left: 3px solid #6495ed; padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin: var(--s-3) 0; }
+  .guide .param-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s-4); margin: var(--s-4) 0; }
+  .guide .param-card { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); border: 1px solid var(--c-border); }
+  .guide .param-card h4 { margin: 0 0 var(--s-2) 0; font-size: var(--text-xs); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .guide .param-card .val { font-size: var(--text-xl); font-weight: 600; margin: var(--s-1) 0; }
+  .guide .param-card .desc { font-size: var(--text-sm); color: var(--c-text-dim); }
+  .guide .flow { display: flex; flex-wrap: wrap; gap: var(--s-3); margin: var(--s-4) 0; align-items: center; }
+  .guide .flow-step { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); font-size: var(--text-sm); text-align: center; min-width: 120px; }
+  .guide .flow-arrow { color: var(--c-text-dim); font-size: var(--text-lg); }
+  .guide .pair-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-2); margin: var(--s-3) 0; }
+  .guide .pair-chip { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--s-2) var(--s-3); font-size: var(--text-sm); font-family: monospace; text-align: center; }
+  .guide .pair-chip.inactive { opacity: 0.4; text-decoration: line-through; }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container guide">
+
+<div class="page-header">
+  <h1 class="page-title">FX Mean Reversion Bot</h1>
+  <p class="page-subtitle">Ausführliche Strategie-Erklärung · RSI + Bollinger Bands · Grid-Search optimiert</p>
+</div>
+
+<blockquote>
+  „Der Markt pendelt immer wieder zum Mittelwert zurück." — Dieser Bot nutzt extreme Übertreibungen auf dem 1H-Chart aus, um von der Rückkehr zum Durchschnitt zu profitieren.
+</blockquote>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>1. Überblick</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="param-grid">
+  <div class="param-card">
+    <h4>Strategie</h4>
+    <div class="val">Mean Reversion</div>
+    <div class="desc">RSI + Bollinger Bands auf 1H-Kerzen</div>
+  </div>
+  <div class="param-card">
+    <h4>Paare</h4>
+    <div class="val">20 aktiv</div>
+    <div class="desc">Grid-Search optimiert, 7 gepflügt</div>
+  </div>
+  <div class="param-card">
+    <h4>Risiko</h4>
+    <div class="val">1% pro Trade</div>
+    <div class="desc">Max. 10 Positionen gleichzeitig</div>
+  </div>
+  <div class="param-card">
+    <h4>Broker</h4>
+    <div class="val">Pepperstone</div>
+    <div class="desc">Razor Account · cTrader API · Hebel 1:30</div>
+  </div>
+  <div class="param-card">
+    <h4>Timeframe</h4>
+    <div class="val">1 Hour (1H)</div>
+    <div class="desc">Signal-Scan alle 60 min, Execution alle 15 min</div>
+  </div>
+  <div class="param-card">
+    <h4>Max. Haltezeit</h4>
+    <div class="val">96 Stunden</div>
+    <div class="desc">Timeout-Exit wenn weder SL noch TP erreicht</div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>2. Kernkonzept: Mean Reversion</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Mean Reversion (Mittelwert-Rückkehr) basiert auf der Beobachtung, dass Finanzmärikte nach Extremausreißern tendieren, zum Durchschnitt zurückzukehren. Wenn ein Währungspaar überverkauft ist (RSI extrem niedrig), steigt die Wahrscheinlichkeit einer Erholung — und umgekehrt.</p>
+
+<h3>Warum funktioniert das bei Forex?</h3>
+<ul>
+  <li><b>Zentralbanken</b> intervenieren bei extremen Kursbewegungen</li>
+  <li><b>Carry Trades</b> werden bei Extrema aufgelöst → Gegenbewegung</li>
+  <li><b>Algorithmischer Handel</b> verstärkt Mean-Reversion-Signale</li>
+  <li><b>Forex ist range-bound</b> — ca. 70% der Zeit bewegen sich Währungen in einer Spanne</li>
+</ul>
+
+<div class="warn">
+  <b>⚠️ Wichtig:</b> Mean Reversion handelt <em>gegen</em> den Trend. Kein Trendfilter verwenden — das würde 57% der profitablen Trades entfernen!
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>3. Signalerzeugung — Schritt für Schritt</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Der Bot scannt stündlich alle 20 aktiven Paare. Für jedes Paar werden drei Indikatoren berechnet und kombiniert:</p>
+
+<div class="flow">
+  <div class="flow-step"><b>1</b><br>Kerzen laden<br><span style="font-size:var(--text-xs);color:var(--c-text-dim)">200 × 1H-Bars</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>2</b><br>RSI berechnen<br><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Per Paar optimiert</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>3</b><br>Bollinger Bands<br><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Per Paar optimiert</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>4</b><br>Momentum prüfen<br><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Min. Bewegung in 3 Bars</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>5</b><br>Signal erzeugen<br><span style="font-size:var(--text-xs);color:var(--c-text-dim)">Score 40–85</span></div>
+</div>
+
+<h3>3.1 RSI (Relative Strength Index)</h3>
+<p>Der RSI misst die Geschwindigkeit und das Ausmaß jüngster Preisbewegungen. Werte unter 30 gelten als überverkauft, über 70 als überkauft.</p>
+
+<pre><code>RSI = 100 - (100 / (1 + RS))
+RS  = Average Gain / Average Loss (über N Perioden)</code></pre>
+
+<p>Der Bot verwendet <b>RSI(7)</b> oder <b>RSI(10)</b> — je nach Paar. Kürzere Perioden reagieren schneller auf Extrema.</p>
+
+<h3>3.2 Bollinger Bands (BB)</h3>
+<p>Bollinger Bands bestehen aus drei Linien: einem SMA (Mitte) und zwei Standardabweichungen darüber und darunter. Preisbewegungen nahe den äußeren Bändern signalisieren Extreme.</p>
+
+<pre><code>Upper Band = SMA(N) + K × σ(N)
+Lower Band = SMA(N) - K × σ(N)
+Bandwidth  = (Upper - Lower) / SMA</code></pre>
+
+<p>Der Bot prüft, ob der Preis innerhalb von <b>0.2%</b> des unteren/oberen Bands liegt.</p>
+
+<h3>3.3 BB Squeeze (Volatilitätsfilter)</h3>
+<p>Ein <b>BB Squeeze</b> liegt vor, wenn die Bandweite in den unteren 20% ihres 120-Bar-Bereichs liegt. Das bedeutet: niedrige Volatilität → Kontraktion → bevorstehende Expansion. Signale während eines Squeeze erhalten <b>+20 Score-Punkte</b>.</p>
+
+<h3>3.4 Momentum-Filter</h3>
+<p>Der Bot prüft, ob sich der Preis in den letzten 3 Kerzen um mindestens <code>momentum_threshold</code> Pips bewegt hat. Das filtert Signale in Seitwärtsmärkten ohne echte Bewegung heraus.</p>
+
+<pre><code>momentum = |close[now] - close[3 bars ago]| / pip_size
+→ Nur traden wenn momentum ≥ threshold (paar-spezifisch)</code></pre>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>4. Entry-Logik</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<h3>LONG (Kaufen)</h3>
+<p>Alle Bedingungen müssen gleichzeitig erfüllt sein:</p>
+<table>
+  <thead><tr><th>Bedingung</th><th>Details</th></tr></thead>
+  <tbody>
+    <tr><td><b>RSI ≤ Schwelle</b></td><td>Paar-spezifisch: 25 oder 35 (Grid-Search optimiert)</td></tr>
+    <tr><td><b>Preis ≤ unteres BB × 1.002</b></td><td>Innerhalb von 0.2% des unteren Bollinger Bands</td></tr>
+    <tr><td><b>Momentum ≥ Threshold</b></td><td>Mindestbewegung in den letzten 3 Kerzen (0–50p je Paar)</td></tr>
+  </tbody>
+</table>
+
+<h3>SHORT (Verkaufen)</h3>
+<table>
+  <thead><tr><th>Bedingung</th><th>Details</th></tr></thead>
+  <tbody>
+    <tr><td><b>RSI ≥ Schwelle</b></td><td>Paar-spezifisch: 60, 70 oder 75 (Grid-Search optimiert)</td></tr>
+    <tr><td><b>Preis ≥ oberes BB × 0.998</b></td><td>Innerhalb von 0.2% des oberen Bollinger Bands</td></tr>
+    <tr><td><b>Momentum ≥ Threshold</b></td><td>Mindestbewegung in den letzten 3 Kerzen</td></tr>
+  </tbody>
+</table>
+
+<div class="info">
+  <b>ℹ️ Richtung:</b> Der Bot tradet in <b>beide Richtungen</b> (Long + Short). Es gibt keinen Trendfilter — Mean Reversion funktioniert gegen den Trend.
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>5. Scoring-System</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Jedes Signal erhält einen Score von 40–85 Punkten. Höher = besser. Der Score bestimmt die Priorität bei der Execution (höchster Score zuerst).</p>
+
+<table>
+  <thead><tr><th>Komponente</th><th>Punkte</th><th>Begründung</th></tr></thead>
+  <tbody>
+    <tr><td><b>Basis-Score</b></td><td>+40</td><td>RSI-Trigger + BB-Berührung</td></tr>
+    <tr><td><b>BB Squeeze aktiv</b></td><td>+20</td><td>Volatilitätskontraktion → höhere Erfolgswahrscheinlichkeit</td></tr>
+    <tr><td><b>Extremer RSI</b></td><td>+15</td><td>RSI < 15 (Long) oder RSI > 85 (Short)</td></tr>
+    <tr><td><b>Bestätigungskerze</b></td><td>+10</td><td>Bullish/Bearish Candle in Handelsrichtung</td></tr>
+  </tbody>
+</table>
+
+<p><b>Beispiel:</b> RSI=12, BB Squeeze, Bullish Candle → Score = 40 + 20 + 15 + 10 = <b>85</b></p>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>6. Risikomanagement</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="param-grid">
+  <div class="param-card">
+    <h4>Risiko pro Trade</h4>
+    <div class="val">1.0%</div>
+    <div class="desc">Vom aktuellen Equity, nicht vom Anfangsbalance</div>
+  </div>
+  <div class="param-card">
+    <h4>Max. Positionen</h4>
+    <div class="val">10</div>
+    <div class="desc">Gleichzeitig offene Trades</div>
+  </div>
+  <div class="param-card">
+    <h4>Max. Margin</h4>
+    <div class="val">80%</div>
+    <div class="desc">Sicherheitsgrenze für verwendete Margin</div>
+  </div>
+  <div class="param-card">
+    <h4>Tägl. Verlustlimit</h4>
+    <div class="val">10%</div>
+    <div class="desc">Vom Equity — Bot stoppt bei Erreichen</div>
+  </div>
+  <div class="param-card">
+    <h4>Max. Volumen</h4>
+    <div class="val">0.05 Lot</div>
+    <div class="desc">5× Mindestvolumen (100k × 0.01)</div>
+  </div>
+  <div class="param-card">
+    <h4>Hebel</h4>
+    <div class="val">1:30</div>
+    <div class="desc">ESMA-Limit für Retail-Forex</div>
+  </div>
+</div>
+
+<h3>Positionsgrößen-Berechnung</h3>
+<pre><code>Risiko in EUR = Equity × 1.0%
+SL in Pips    = paar-spezifisch (aus assets.toml)
+Pip-Wert      = paar-spezifisch (0.0001 oder 0.01 bei JPY)
+
+Volumen (risk-based)  = Risiko_EUR / (SL_Pips × Pip_Wert)
+Volumen (margin-based) = Freie_Margin / Margin_pro_MicroLot
+
+→ Verwendet wird das MINIMUM von beiden</code></pre>
+
+<div class="warn">
+  <b>⚠️ Margin-Cap:</b> Ohne die Margin-Begrenzung kann der Bot Positionen eröffnen, die das verfügbare Kapital übersteigen. Die Formel <code>min(risk-based, margin-based)</code> verhindert das.
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>7. SL/TP — Per Paar optimiert</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Jedes Paar hat eigene SL- und TP-Werte, die durch Grid-Search über 89 Tage 1H-cTrader-Daten optimiert wurden. Die Optimierung testete alle Kombinationen von SL-Multiplikatoren [0.5, 0.7, 1.0, 1.3, 1.5, 2.0] × TP-Multiplikatoren [0.5, 0.7, 1.0, 1.3, 1.5, 2.0].</p>
+
+<h3>Typische Muster</h3>
+<table>
+  <thead><tr><th>Paar-Typ</th><th>SL</th><th>TP</th><th>R:R</th><th>Beispiele</th></tr></thead>
+  <tbody>
+    <tr><td><b>JPY-Paare</b></td><td>Eng (25–50p)</td><td>Weit (70–200p)</td><td>1:3 bis 1:4</td><td>AUDJPY, CADJPY, GBPJPY</td></tr>
+    <tr><td><b>EUR-Kreuze</b></td><td>Weit (26–40p)</td><td>Weit (25–100p)</td><td>1:1 bis 1:4</td><td>EURAUD, EURCAD, EURCHF</td></tr>
+    <tr><td><b>GBP-Kreuze</b></td><td>Weit (30–78p)</td><td>Weit (75–200p)</td><td>1:2 bis 1:7</td><td>GBPAUD, GBPCAD, GBPNZD</td></tr>
+    <tr><td><b>NZD-Paare</b></td><td>Moderat (50–78p)</td><td>Moderat (50–140p)</td><td>1:1 bis 1:3</td><td>NZDCAD, NZDCHF, NZDJPY</td></tr>
+  </tbody>
+</table>
+
+<pre><code>SL-Preis = Entry ∓ SL_Pips × Pip_Size   (Long: minus, Short: plus)
+TP-Preis = Entry ± TP_Pips × Pip_Size   (Long: plus, Short: minus)</code></pre>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>8. Aktive Paare (20)</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Nach iterativem Pair Pruning (Entfernung schwacher Paare) handelt der Bot 20 Paare. Das Pruning entfernte 7 Paare und verbesserte die Performance um das 3,3-fache.</p>
+
+<div class="pair-grid">
+  <div class="pair-chip">AUDCAD</div>
+  <div class="pair-chip">AUDCHF</div>
+  <div class="pair-chip">AUDJPY</div>
+  <div class="pair-chip">AUDNZD</div>
+  <div class="pair-chip">CADJPY</div>
+  <div class="pair-chip">CHFJPY</div>
+  <div class="pair-chip">EURAUD</div>
+  <div class="pair-chip">EURCAD</div>
+  <div class="pair-chip">EURCHF</div>
+  <div class="pair-chip">EURGBP</div>
+  <div class="pair-chip">EURJPY</div>
+  <div class="pair-chip">GBPAUD</div>
+  <div class="pair-chip">GBPCAD</div>
+  <div class="pair-chip">GBPJPY</div>
+  <div class="pair-chip">GBPNZD</div>
+  <div class="pair-chip">GBPUSD</div>
+  <div class="pair-chip">NZDCAD</div>
+  <div class="pair-chip">NZDCHF</div>
+  <div class="pair-chip">NZDJPY</div>
+  <div class="pair-chip">USDJPY</div>
+</div>
+
+<h3>Entfernte Paare (7)</h3>
+<div class="pair-grid">
+  <div class="pair-chip inactive">AUDUSD</div>
+  <div class="pair-chip inactive">CADCHF</div>
+  <div class="pair-chip inactive">EURNZD</div>
+  <div class="pair-chip inactive">EURUSD</div>
+  <div class="pair-chip inactive">GBPCHF</div>
+  <div class="pair-chip inactive">NZDUSD</div>
+  <div class="pair-chip inactive">USDCAD</div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>9. Pair Pruning — Warum weniger mehr ist</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Das Entfernen schwacher Paare ist der <b>größte Hebel</b> für die Portfolio-Performance. Der Mechanismus:</p>
+
+<ol>
+  <li>Schwache Paare verbrauchen Margin, die starken Trades fehlt</li>
+  <li>Mit max. 10 Positionen verdrängt jeder schwache Trade einen potenziell stärkeren</li>
+  <li>Weniger Paare → größere Positionen pro Trade → besserer Zinseszinseffekt</li>
+</ol>
+
+<h3>Iterativer Pruning-Algorithmus</h3>
+<pre><code>Score = PnL/Monat × (1 - MaxDD% / 100)
+
+Für jedes Paar:
+  1. Simuliere Portfolio OHNE dieses Paar
+  2. Berechne Score
+  3. Entferne das Paar mit dem höchsten Score-Gewinn (wenn ≥2%)
+
+Wiederhole bis keine Verbesserung mehr möglich.</code></pre>
+
+<h3>Ergebnis (€1.000 Account)</h3>
+<table>
+  <thead><tr><th>Schritt</th><th>Entfernt</th><th>Paare</th><th>PnL/Monat</th><th>Max DD</th><th>Score</th></tr></thead>
+  <tbody>
+    <tr><td>Start</td><td>—</td><td>27</td><td>+242€</td><td>12.3%</td><td>212</td></tr>
+    <tr><td>1</td><td>CADCHF</td><td>26</td><td>+356€</td><td>10.6%</td><td>318</td></tr>
+    <tr><td>2</td><td>AUDUSD</td><td>25</td><td>+528€</td><td>9.2%</td><td>480</td></tr>
+    <tr><td>3</td><td>EURUSD</td><td>24</td><td>+626€</td><td>8.6%</td><td>572</td></tr>
+    <tr><td>4</td><td>EURNZD</td><td>23</td><td>+685€</td><td>9.0%</td><td>623</td></tr>
+    <tr><td>5</td><td>USDCHF</td><td>22</td><td>+735€</td><td>8.1%</td><td>675</td></tr>
+    <tr><td>6</td><td>NZDUSD</td><td>21</td><td>+782€</td><td>8.1%</td><td>719</td></tr>
+    <tr style="background:rgba(34,197,94,0.08)"><td><b>7</b></td><td><b>GBPCHF</b></td><td><b>20</b></td><td><b>+802€</b></td><td><b>7.9%</b></td><td><b>738</b></td></tr>
+  </tbody>
+</table>
+
+<div class="success">
+  <b>✅ Ergebnis:</b> 3,3× mehr PnL, 36% weniger Drawdown — nur durch Entfernen von 7 schwachen Paaren.
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>10. Architektur</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<h3>Komponenten</h3>
+<table>
+  <thead><tr><th>Komponente</th><th>Service</th><th>Intervall</th><th>Aufgabe</th></tr></thead>
+  <tbody>
+    <tr><td><b>fx_daemon.py</b></td><td>fx-daemon</td><td>60 min</td><td>Scannt alle Paare, erzeugt Signale → fx_signals.json</td></tr>
+    <tr><td><b>fx_executor.py</b></td><td>fx-executor</td><td>15 min</td><td>Wählt beste Signale, prüft Risiko, sendet Orders an cTrader</td></tr>
+    <tr><td><b>fx_order_bridge.py</b></td><td>fx-order-bridge</td><td>Kontinuierlich</td><td>Brücke zwischen Bot und cTrader API (gRPC)</td></tr>
+    <tr><td><b>fx_position_monitor.py</b></td><td>—</td><td>On-Demand</td><td>Üwacht offene Positionen, SL/TP-Management</td></tr>
+  </tbody>
+</table>
+
+<h3>Datenfluss</h3>
+<div class="flow">
+  <div class="flow-step"><b>cTrader API</b><br>1H Kerzen</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>fx_daemon</b><br>RSI + BB + Momentum</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>fx_signals.json</b><br>Sortiert nach Score</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>fx_executor</b><br>Risiko-Check + Order</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><b>cTrader API</b><br>Marktorder</div>
+</div>
+
+<h3>Dateien</h3>
+<pre><code>/root/fx-bot/
+├── config/
+│   ├── assets.toml          ← 20 aktive Paare + Grid-Search Parameter
+│   └── risk.toml            ← Risiko-Limits (1%, max 10 Pos, 80% Margin)
+├── src/
+│   ├── fx_engine.py         ← Signal-Generator (RSI + BB + Momentum)
+│   ├── fx_daemon.py         ← Stündlicher Scanner-Daemon
+│   ├── fx_executor.py       ← 15-min Order-Executor
+│   ├── fx_order_bridge.py   ← cTrader API Brücke
+│   └── fx_pair_prune.py     ← Pair Pruning Algorithmus
+├── data/
+│   ├── fx_signals.json      ← Aktuelle Signale
+│   ├── balance.json          ← Letzter Kontostand
+│   └── trades.jsonl          ← Trade-Log
+└── logs/</code></pre>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>11. Backtest-Ergebnisse</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Grid-Search über 89 Tage echte 1H-cTrader-Daten (Pepperstone Razor Konditionen):</p>
+
+<div class="param-grid">
+  <div class="param-card">
+    <h4>PnL / Monat</h4>
+    <div class="val" style="color:#22c55e">+802€</div>
+    <div class="desc">Auf €1.000 Startkapital (80.2% ROI/Monat)</div>
+  </div>
+  <div class="param-card">
+    <h4>Max Drawdown</h4>
+    <div class="val" style="color:#ef4444">7.9%</div>
+    <div class="desc">Maximaler Kontoverlust vom Höchststand</div>
+  </div>
+  <div class="param-card">
+    <h4>Win Rate</h4>
+    <div class="val">44.5%</div>
+    <div class="desc">Gewinn-Trade-Rate (alle 20 Paare)</div>
+  </div>
+  <div class="param-card">
+    <h4>Trades / Tag</h4>
+    <div class="val">~3.4</div>
+    <div class="desc">Durchschnittliche Trades pro Tag</div>
+  </div>
+  <div class="param-card">
+    <h4>End-Equity</h4>
+    <div class="val" style="color:#22c55e">€4.224</div>
+    <div class="desc">Nach 89 Tagen (von €1.000 Start)</div>
+  </div>
+  <div class="param-card">
+    <h4>Max Hold</h4>
+    <div class="val">96h</div>
+    <div class="desc">Optimiert: +6% WR gegenüber 48h</div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>12. Was funktioniert — und was nicht</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<h3>✅ Was funktioniert</h3>
+<table>
+  <thead><tr><th>Optimierung</th><th>Impact</th><th>Warum</th></tr></thead>
+  <tbody>
+    <tr><td>Per-Paar SL/TP Grid-Search</td><td>+59% PnL</td><td>Jedes Paar braucht andere R:R</td></tr>
+    <tr><td><b>Pair Pruning</b></td><td><b>3.3× PnL, -36% DD</b></td><td>Margin frei für stärkere Trades</td></tr>
+    <tr><td>Score-Schwelle 40 (statt 50)</td><td>+43% PnL</td><td>Mehr Signale, Basis-Score im Engine ist 40</td></tr>
+    <tr><td>Max Hold 96h (statt 48h)</td><td>+6% WR</td><td>Viele Trades brauchen mehr Zeit zum TP</td></tr>
+    <tr><td>Momentum-Filter</td><td>Bessere Signalqualität</td><td>Filtert Seitwärtsmärkte ohne echte Bewegung</td></tr>
+  </tbody>
+</table>
+
+<h3>❌ Was schadet</h3>
+<table>
+  <thead><tr><th>Optimierung</th><th>Impact</th><th>Warum</th></tr></thead>
+  <tbody>
+    <tr><td>Trendfilter (SMA20/50)</td><td>-8.930 Pips</td><td>Mean Reversion handelt GEGEN den Trend</td></tr>
+    <tr><td>Trailing Stop</td><td>-10.365 Pips</td><td>Schneidet Gewinner ab</td></tr>
+    <tr><td>Bestätigungskerze abwarten</td><td>-6.860 Pips</td><td>Verpasst den besten Entry-Preis</td></tr>
+    <tr><td>Partial Profit (50% bei TP1)</td><td>-1.536 Pips</td><td>Reduziert den Aufwärtspotenzial</td></tr>
+    <tr><td>Session-Filter (London/NY)</td><td>-50-75% PnL</td><td>RSI-Extreme passieren rund um die Uhr</td></tr>
+    <tr><td>Volatilitätsfilter</td><td>Kein Effekt</td><td>Keine Verbesserung messbar</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>13. Minimalkapital & Skalierung</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<table>
+  <thead><tr><th>Kapital</th><th>Max. Positionen</th><th>PnL/Monat (ca.)</th><th>Max DD</th></tr></thead>
+  <tbody>
+    <tr><td>€500</td><td>4</td><td>~160€</td><td>~8%</td></tr>
+    <tr><td>€1.000</td><td>10</td><td>~802€</td><td>~8%</td></tr>
+    <tr><td>€2.000</td><td>10</td><td>~1.600€</td><td>~8%</td></tr>
+    <tr><td>€5.000</td><td>10</td><td>~4.000€</td><td>~8%</td></tr>
+  </tbody>
+</table>
+
+<h3>Minimalkapital-Berechnung</h3>
+<pre><code>Margin pro Position ≈ 33–43€ (je nach Paar)
+10 Positionen       ≈ 380€ Margin
+Puffer (1.5× MaxDD) ≈ 570€
+────────────────────────────
+Minimum             ≈ 950€
+Empfohlen           ≈ 1.140€ (20% Sicherheitspuffer)</code></pre>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>14. Kosten (Pepperstone Razor)</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<table>
+  <thead><tr><th>Posten</th><th>Wert</th><th>Pro 0.01 Lot (Micro)</th></tr></thead>
+  <tbody>
+    <tr><td><b>Spread</b></td><td>0.0–1.6 Pips (je nach Paar)</td><td>~€0.01–0.16</td></tr>
+    <tr><td><b>Kommission</b></td><td>$3.50 pro $100k (Round-Turn)</td><td>~€0.03</td></tr>
+    <tr><td><b>Swap (über Nacht)</b></td><td>~0.1 Pip/Nacht (Razor)</td><td>~€0.001/Nacht</td></tr>
+  </tbody>
+</table>
+
+<div class="info">
+  <b>ℹ️ Kostenanteil:</b> Bei Pepperstone Razor werden ca. 8.9% des Brutto-Gewinns durch Kosten verbraucht. Konservative Schätzungen (3 Pips Swap/Nacht) zeigten 93.7% — daher: immer mit echten Broker-Kosten kalkulieren!
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>15. Typische Fallen</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<ol>
+  <li><b>Trendfilter verwenden</b> — Mean Reversion handelt gegen den Trend. SMA/EMA-Filter entfernen die profitabelsten Trades.</li>
+  <li><b>Zu viele Paare</b> — Mehr Paare ≠ mehr Gewinn. Mit begrenzter Margin verdrängen schwache Trades starke. Erst optimieren, dann pflügen.</li>
+  <li><b>Zu wenig Kerzen</b> — 500 Bars = 21 Tage. Für belastbare Ergebnisse braucht man 2000+ Bars (89 Tage).</li>
+  <li><b>Kosten unterschätzen</b> — Konservative Swap-Schätzungen machen die Strategie unprofitabel. Echte Broker-Daten verwenden.</li>
+  <li><b>JPY-Paare falsch berechnen</b> — JPY-Paare haben pip_size=0.01 (nicht 0.0001). Fehler = 100× falscher PnL.</li>
+  <li><b>Trailing Stop</b> — Schneidet Gewinner ab. Fixed TP funktioniert bei Mean Reversion besser.</li>
+  <li><b>Bestätigungskerze abwarten</b> — Verpasst den besten Entry. Mean Reversion = Umkehr VOR dem Preis.</li>
+</ol>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>16. Dashboard</h2>
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<p>Das Live-Dashboard zeigt aktuelle Signale, offene Positionen, Balance-Verlauf und Kerzencharts mit Trade-Markierungen:</p>
+
+<p><a href="/bot1" style="color:var(--c-accent)">→ Bot #1 Dashboard öffnen</a></p>
+
+</div>
+<!--/BODY-->

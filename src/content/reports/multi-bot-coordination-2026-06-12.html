@@ -1,0 +1,733 @@
+<!--TITLE:Multi-Bot Koordination — Hermes Report-->
+<!--HEAD-->
+<style>
+  /* ── Report Page ─────────────────────────────────────── */
+  .rpt-breadcrumb { margin-bottom: var(--s-4); font-size: var(--text-sm); }
+  .rpt-breadcrumb a { color: var(--c-accent, #5b8def); text-decoration: none; }
+  .rpt-breadcrumb a:hover { text-decoration: underline; }
+  .rpt-breadcrumb span { color: var(--c-text-dim); margin: 0 var(--s-2); }
+
+  .rpt-hero {
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl);
+    padding: var(--s-6); margin-bottom: var(--s-6);
+  }
+  .rpt-hero-title { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--s-2); }
+  .rpt-hero-meta { display: flex; gap: var(--s-4); flex-wrap: wrap; font-size: var(--text-sm); color: var(--c-text-dim); }
+  .rpt-hero-meta i { vertical-align: middle; margin-right: 4px; }
+
+  .rpt-section { margin-bottom: var(--s-8); }
+  .rpt-section-title {
+    font-size: var(--text-lg); font-weight: 700; margin: var(--s-6) 0 var(--s-4);
+    color: var(--c-text); border-bottom: 2px solid var(--c-border); padding-bottom: var(--s-2);
+    display: flex; align-items: center; gap: var(--s-2);
+  }
+  .rpt-section-title:first-of-type { margin-top: 0; }
+
+  .rpt-card {
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl);
+    padding: var(--s-5); margin-bottom: var(--s-4);
+  }
+  .rpt-card-title {
+    font-weight: 600; font-size: var(--text-sm); color: var(--c-text-dim);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--s-3);
+  }
+
+  .rpt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-4); }
+  .rpt-grid-3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+  .rpt-kpi { font-size: var(--text-2xl); font-weight: 700; }
+  .rpt-kpi-sub { font-size: var(--text-sm); color: var(--c-text-dim); margin-top: var(--s-1); }
+  .pnl-pos { color: var(--c-ok); }
+  .pnl-neg { color: var(--c-err); }
+
+  .rpt-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  .rpt-table th {
+    text-align: left; color: var(--c-text-dim); font-weight: 600;
+    padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border);
+    font-size: var(--text-xs); text-transform: uppercase;
+  }
+  .rpt-table td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border); }
+  .rpt-table tr:last-child td { border-bottom: none; }
+
+  .rpt-alert {
+    border-left: 4px solid; padding: var(--s-3) var(--s-4);
+    border-radius: 0 var(--r-md) var(--r-md) 0; margin-bottom: var(--s-3);
+  }
+  .rpt-alert-ok { border-color: var(--c-ok); background: rgba(63,185,80,0.08); }
+  .rpt-alert-warn { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+  .rpt-alert-err { border-color: var(--c-err); background: rgba(248,81,73,0.08); }
+  .rpt-alert-title { font-size: var(--text-sm); font-weight: 700; margin-bottom: var(--s-1); }
+  .rpt-alert-ok .rpt-alert-title { color: var(--c-ok); }
+  .rpt-alert-warn .rpt-alert-title { color: #f59e0b; }
+  .rpt-alert-err .rpt-alert-title { color: var(--c-err); }
+  .rpt-alert-text { font-size: var(--text-sm); color: var(--c-text); line-height: 1.6; }
+
+  .rpt-prose { font-size: var(--text-sm); line-height: 1.7; color: var(--c-text); }
+  .rpt-prose p { margin: 0 0 var(--s-3); }
+  .rpt-prose ul { margin: var(--s-2) 0 var(--s-3); padding-left: var(--s-5); }
+  .rpt-prose li { margin-bottom: var(--s-1); }
+  .rpt-prose strong { color: var(--c-text); }
+
+  .rpt-badge {
+    display: inline-block; padding: 2px 10px; border-radius: var(--r-lg);
+    font-size: var(--text-xs); font-weight: 600;
+  }
+  .rpt-badge-green { background: rgba(63,185,80,0.15); color: var(--c-ok); }
+  .rpt-badge-yellow { background: rgba(210,153,34,0.15); color: var(--c-warn); }
+  .rpt-badge-red { background: rgba(248,81,73,0.15); color: var(--c-err); }
+  .rpt-badge-blue { background: rgba(100,149,237,0.15); color: #6495ed; }
+
+  /* Conflict matrix */
+  .conflict-matrix { overflow-x: auto; }
+  .conflict-cell { text-align: center; font-weight: 600; }
+  .conflict-low { color: var(--c-ok); }
+  .conflict-med { color: var(--c-warn); }
+  .conflict-high { color: var(--c-err); }
+
+  /* Recommendation box */
+  .rpt-recommendation {
+    background: linear-gradient(135deg, rgba(91,141,239,0.08), rgba(113,50,245,0.08));
+    border: 1px solid rgba(91,141,239,0.3); border-radius: var(--r-xl);
+    padding: var(--s-6); margin-top: var(--s-4);
+  }
+  .rpt-recommendation h3 { margin: 0 0 var(--s-3); font-size: var(--text-lg); }
+
+  .rpt-chart-placeholder {
+    background: var(--c-surface); border: 1px dashed var(--c-border); border-radius: var(--r-xl);
+    padding: var(--s-6); text-align: center; color: var(--c-text-dim); font-style: italic;
+    min-height: 200px; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Equity chart */
+  .equity-chart { width: 100%; height: 240px; }
+  .equity-chart .grid-line { stroke: var(--c-border); stroke-width: 0.5; }
+  .equity-chart .equity-line { fill: none; stroke: var(--c-ok); stroke-width: 2; }
+  .equity-chart .equity-area { fill: url(#equityGradient); opacity: 0.3; }
+  .equity-chart .dd-area { fill: var(--c-err); opacity: 0.15; }
+
+  /* Risk matrix */
+  .risk-matrix { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+  .risk-item { display: flex; align-items: center; gap: var(--s-2); font-size: var(--text-sm); }
+  .risk-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .risk-dot-red { background: var(--c-err); }
+  .risk-dot-yellow { background: #f59e0b; }
+  .risk-dot-green { background: var(--c-ok); }
+
+  @media (max-width: 600px) {
+    .rpt-grid { grid-template-columns: 1fr; }
+    .rpt-grid-3 { grid-template-columns: 1fr; }
+    .rpt-hero { padding: var(--s-4); }
+    .rpt-hero-title { font-size: var(--text-xl); }
+    .rpt-table th, .rpt-table td { padding: var(--s-1) var(--s-2); font-size: var(--text-xs); }
+    .risk-matrix { grid-template-columns: 1fr; }
+  }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container">
+
+  <!-- Breadcrumb -->
+  <div class="rpt-breadcrumb">
+    <a href="/reports">Reports</a>
+    <span>›</span>
+    <span style="color:var(--c-text)">Multi-Bot Koordination</span>
+  </div>
+
+  <!-- Hero -->
+  <div class="rpt-hero">
+    <h1 class="rpt-hero-title">Multi-Bot Koordination</h1>
+    <div class="rpt-hero-meta">
+      <span><i data-lucide="calendar" style="width:14px;height:14px"></i>12. Juni 2026</span>
+      <span><i data-lucide="tag" style="width:14px;height:14px"></i>Analyse</span>
+      <span><i data-lucide="bot" style="width:14px;height:14px"></i>FX Bot + Trend Bot</span>
+      <span><i data-lucide="git-branch" style="width:14px;height:14px"></i>4 Worker synthesiert</span>
+    </div>
+  </div>
+
+  <!-- ═══ 1. EXECUTIVE SUMMARY ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="clipboard-list" style="width:20px;height:20px"></i>Executive Summary</h2>
+
+    <div class="rpt-grid">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Gesamtbewertung</div>
+        <div class="rpt-kpi"><span class="rpt-badge rpt-badge-yellow">Bedingt Ready</span></div>
+        <div class="rpt-kpi-sub">Bot#2 deploy-ready, Bot#1 nicht</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Paar-Überlappung</div>
+        <div class="rpt-kpi">3 Paare</div>
+        <div class="rpt-kpi-sub">AUDNZD kritisch, AUDJPY/EURJPY mittel</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Kombinierter MaxDD</div>
+        <div class="rpt-kpi">14.13%</div>
+        <div class="rpt-kpi-sub">89 Tage Backtest (nicht signifikant)</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Empfehlung</div>
+        <div class="rpt-kpi"><span class="rpt-badge rpt-badge-green">Bot#2 alleine</span></div>
+        <div class="rpt-kpi-sub">Bot#1 Timeout-Problem fixen</div>
+      </div>
+    </div>
+
+    <div class="rpt-prose">
+      <p><strong>Zusammenfassung:</strong> Die Koordination zwischen FX Mean Reversion Bot (#1) und Trend Bot (#2) wurde anhand von 4 analysierenden Workern bewertet. Das Ergebnis ist eindeutig: <strong>Bot#2 ist deploy-ready</strong> (PF 2.02, OOS-validiert, 9 Paare), während <strong>Bot#1 im Realistic Backtest scheitert</strong> (PF 0.67, 99.5% Timeout-Exits). Die Portfolio-Korrelation von -0.031 ist exzellent für Diversifikation, aber das fundamentale Problem ist Bot#1's eigene Nicht-Profitabilität — nicht der Konflikt mit Bot#2.</p>
+      <p><strong>Kritischer Befund:</strong> Der kombinierte Backtest zeigt +80.17% auf 89 Tagen, aber Bot#1 liefert nur 6 von 237 Trades. Die Daten sind statistisch nicht signifikant. Bot#2 dominiert mit 231 Trades und +7.178€ PnL.</p>
+    </div>
+
+    <div class="rpt-alert rpt-alert-warn">
+      <div class="rpt-alert-title">⚠️ Datenqualität</div>
+      <div class="rpt-alert-text">Der kombinierte Backtest basiert auf 89 Tagen Daten (Feb-Jun 2026). Für statistische Signifikanz werden mindestens 250+ Handelstage (1 Jahr) empfohlen. Die Ergebnisse sind vorläufig.</div>
+    </div>
+  </div>
+
+  <!-- ═══ 2. BOT #1 OVERVIEW ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="activity" style="width:20px;height:20px"></i>Bot #1 — FX Mean Reversion</h2>
+
+    <div class="rpt-grid rpt-grid-3">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Strategie</div>
+        <div style="font-weight:700;font-size:var(--text-lg)">Mean Reversion</div>
+        <div class="rpt-kpi-sub">RSI + Bollinger Crossover, Δ10</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Aktive Paare</div>
+        <div class="rpt-kpi">8</div>
+        <div class="rpt-kpi-sub">AUDCHF, AUDNZD, EURCHF, EURJPY, EURUSD, GBPUSD, NZDUSD, GBPAUD</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Realistic Backtest</div>
+        <div class="rpt-kpi pnl-neg">PF 0.67</div>
+        <div class="rpt-kpi-sub">❌ Nicht profitabel</div>
+      </div>
+    </div>
+
+    <div class="rpt-grid rpt-grid-3">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Backtest P&L</div>
+        <div class="rpt-kpi pnl-neg">-798 €</div>
+        <div class="rpt-kpi-sub">9.606 Trades, 38.2% WR</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Profit Factor</div>
+        <div class="rpt-kpi pnl-neg">0.67</div>
+        <div class="rpt-kpi-sub">Ziel: > 1.5 ❌</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Max Drawdown</div>
+        <div class="rpt-kpi pnl-neg">99.8%</div>
+        <div class="rpt-kpi-sub">Final Equity: 1.67€ ❌</div>
+      </div>
+    </div>
+
+    <div class="rpt-alert rpt-alert-err">
+      <div class="rpt-alert-title">❌ Kritisches Problem: Timeout-Exits</div>
+      <div class="rpt-alert-text">99.5% der Trades laufen über den 72h-Timeout hinaus. Das bedeutet die Mean Reversion funktioniert zeitlich NICHT — der Preis kehrt nicht innerhalb der Haltedauer um. Die Grid-optimierten Einzel-Pair-Metriken (PF 1.8-5.9) sind irreführend, da sie Kosten und das Timeout-Problem ignorieren.</div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Grid-Optimierte Einzel-Pair-Metriken (Referenz)</div>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>Paar</th><th>WR</th><th>PF</th><th>Trades</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>AUDCHF</td><td>80.0%</td><td>5.93</td><td>20</td><td><span class="rpt-badge rpt-badge-green">STABLE</span></td></tr>
+          <tr><td>AUDNZD</td><td>77.8%</td><td>5.53</td><td>27</td><td><span class="rpt-badge rpt-badge-yellow">FRAGILE</span></td></tr>
+          <tr><td>GBPUSD</td><td>67.7%</td><td>3.47</td><td>31</td><td><span class="rpt-badge rpt-badge-green">STABLE</span></td></tr>
+          <tr><td>EURJPY</td><td>68.0%</td><td>3.53</td><td>25</td><td><span class="rpt-badge rpt-badge-blue">OK</span></td></tr>
+          <tr><td>EURCHF</td><td>63.9%</td><td>2.79</td><td>36</td><td><span class="rpt-badge rpt-badge-green">STABLE</span></td></tr>
+          <tr><td>NZDUSD</td><td>72.7%</td><td>1.89</td><td>22</td><td><span class="rpt-badge rpt-badge-blue">REVIVED</span></td></tr>
+          <tr><td>EURUSD</td><td>50.0%</td><td>2.89</td><td>20</td><td><span class="rpt-badge rpt-badge-blue">REVIVED</span></td></tr>
+          <tr><td>GBPAUD</td><td>50.0%</td><td>2.54</td><td>6</td><td><span class="rpt-badge rpt-badge-yellow">WF PASS</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Konfiguration</div>
+      <div class="rpt-prose">
+        <ul>
+          <li><strong>Risk Mapping:</strong> Ternary (score ≥50 = 1%, ≥60 = 2%, ≥70 = 3%)</li>
+          <li><strong>Max Positionen:</strong> 10 gleichzeitig</li>
+          <li><strong>Hold Limit:</strong> 72 Stunden</li>
+          <li><strong>Min Score:</strong> 50</li>
+          <li><strong>Extras:</strong> RSI Divergence Detection (+12 Score)</li>
+          <li><strong>Kosten:</strong> 1.298€ im Backtest (>80% des PnL)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 3. BOT #2 OVERVIEW ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="trending-up" style="width:20px;height:20px"></i>Bot #2 — Trend Bot</h2>
+
+    <div class="rpt-grid rpt-grid-3">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Strategie</div>
+        <div style="font-weight:700;font-size:var(--text-lg)">Trend Following</div>
+        <div class="rpt-kpi-sub">EMA + ADX Crossover, Grid-optimiert</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Aktive Paare</div>
+        <div class="rpt-kpi">9</div>
+        <div class="rpt-kpi-sub">EURNZD, AUDNZD, AUDJPY, CADCHF, NZDCHF, AUDUSD, USDCAD, EURJPY, GBPJPY</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">OOS Validierung</div>
+        <div class="rpt-kpi"><span class="rpt-badge rpt-badge-green">9/9 PASS</span></div>
+        <div class="rpt-kpi-sub">Alle Paare bestanden</div>
+      </div>
+    </div>
+
+    <div class="rpt-grid rpt-grid-3">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Portfolio P&L</div>
+        <div class="rpt-kpi pnl-pos">+1.929 €</div>
+        <div class="rpt-kpi-sub">162 Trades, 54.9% WR</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Profit Factor</div>
+        <div class="rpt-kpi pnl-pos">2.02</div>
+        <div class="rpt-kpi-sub">Ziel: > 1.5 ✅</div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Max Drawdown</div>
+        <div class="rpt-kpi">11.2%</div>
+        <div class="rpt-kpi-sub">PnL/Monat: 643€ ✅</div>
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">OOS Validation — Alle 9 Paare</div>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>Paar</th><th>OOS WR</th><th>OOS PF</th><th>OOS Pips</th><th>Degradation</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>EURNZD</td><td>73.3%</td><td>4.39</td><td>+434</td><td>1.26</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+          <tr><td>AUDNZD</td><td>80.0%</td><td>9.89</td><td>+148</td><td>0.59</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+          <tr><td>AUDJPY</td><td>60.0%</td><td>1.93</td><td>+270</td><td>0.76</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+          <tr><td>CADCHF</td><td>100%</td><td>67.6</td><td>+68</td><td>7.12</td><td><span class="rpt-badge rpt-badge-yellow">PASS ⚠️</span></td></tr>
+          <tr><td>NZDCHF</td><td>61.5%</td><td>1.63</td><td>+22</td><td>1.22</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+          <tr><td>AUDUSD</td><td>54.3%</td><td>1.60</td><td>+261</td><td>0.87</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+          <tr><td>USDCAD</td><td>53.8%</td><td>1.73</td><td>+184</td><td>1.27</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+          <tr><td>EURJPY</td><td>57.9%</td><td>2.06</td><td>+352</td><td>1.60</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+          <tr><td>GBPJPY</td><td>35.1%</td><td>1.65</td><td>+423</td><td>0.86</td><td><span class="rpt-badge rpt-badge-green">PASS</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Konfiguration</div>
+      <div class="rpt-prose">
+        <ul>
+          <li><strong>Config:</strong> trend_assets.toml + trend_risk.toml</li>
+          <li><strong>Risk pro Trade:</strong> 3% (flat)</li>
+          <li><strong>Max Positionen:</strong> 6 gleichzeitig</li>
+          <li><li><strong>Margin Limit:</strong> 80% des verfügbaren Margins</li>
+          <li><strong>Max Hold:</strong> 96 Stunden</li>
+          <li><strong>Korrelation zu Bot#1:</strong> -0.031 (near-zero, exzellent)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 4. KONFLIKT-ANALYSE ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="alert-triangle" style="width:20px;height:20px"></i>Konflikt-Analyse</h2>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Paar-Überlappung</div>
+      <div class="rpt-prose">
+        <p>Beide Bots handeln auf demselben Pepperstone Razor Account (CTID 47490067). 3 Paare sind in BEIDEN Bots aktiv:</p>
+      </div>
+      <table class="rpt-table" style="margin-top:var(--s-3)">
+        <thead>
+          <tr><th>Paar</th><th>Bot #1 (MR)</th><th>Bot #2 (Trend)</th><th>Konflikt</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>AUDNZD</strong></td>
+            <td>both, SL=105, TP=230</td>
+            <td>both, SL=2.0×ATR</td>
+            <td><span class="rpt-badge rpt-badge-red">HOCH</span></td>
+          </tr>
+          <tr>
+            <td><strong>AUDJPY</strong></td>
+            <td>direction=none ⚠️</td>
+            <td>both</td>
+            <td><span class="rpt-badge rpt-badge-yellow">MITTEL</span></td>
+          </tr>
+          <tr>
+            <td><strong>EURJPY</strong></td>
+            <td>direction=none ⚠️</td>
+            <td>both</td>
+            <td><span class="rpt-badge rpt-badge-yellow">MITTEL</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rpt-grid">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Margin-Analyse</div>
+        <div class="rpt-prose">
+          <p><strong>Worst-Case:</strong> Wenn alle 8 Bot#1 + 9 Bot#2 Positionen gleichzeitig offen sind (17 total):</p>
+          <ul>
+            <li><strong>Geschätzt:</strong> ~5.000-8.000 EUR Margin benötigt</li>
+            <li><strong>1.000€ Account:</strong> ❌ Unmöglich — Margin Call</li>
+            <li><strong>5.000€ Account:</strong> ⚠️ Knapp, aber riskant</li>
+            <li><strong>10.000€ Account:</strong> ✅ Machbar (50-80%)</li>
+          </ul>
+          <p><strong>Empfehlung:</strong> Minimum 5.000€ für beide Bots gleichzeitig. Max 10-12 simultane Positionen.</p>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Korrelation</div>
+        <div class="rpt-prose">
+          <p><strong>Portfolio-Korrelation: -0.031</strong></p>
+          <p>Das ist exzellent — die Bots bewegen sich unabhängig. Die near-zero Korrelation ist das stärkste Argument FÜR den Shared Account.</p>
+          <p><strong>Aber:</strong> Auf Trade-Ebene können einzelne Paare (AUDNZD) trotzdem gegenläufig sein. MR vs Trend ist fundamental gegenläufig — in Trends verliert Bot#1, in Ranges verliert Bot#2.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rpt-grid">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Risiko-Rating</div>
+        <div class="risk-matrix">
+          <div class="risk-item"><div class="risk-dot risk-dot-red"></div>Direkte Paar-Konflikte: HOCH</div>
+          <div class="risk-item"><div class="risk-dot risk-dot-red"></div>Strategie-Konflikt: HOCH</div>
+          <div class="risk-item"><div class="risk-dot risk-dot-yellow"></div>Margin-Druck: MITTEL</div>
+          <div class="risk-item"><div class="risk-dot risk-dot-green"></div>Korrelation (Portfolio): LOW</div>
+          <div class="risk-item"><div class="risk-dot risk-dot-red"></div>Bot#1 Robustheit: HOCH</div>
+          <div class="risk-item"><div class="risk-dot risk-dot-green"></div>Bot#2 Robustheit: LOW</div>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Konflikt-Szenarien</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>Starker Trend (ADX>25):</strong> Bot#2 profitiert, Bot#1 verliert ("falling knife")</li>
+            <li><strong>Range/Choppy (ADX<20):</strong> Bot#1 profitiert, Bot#2 verliert (Whipsaws)</li>
+            <li><strong>Mean Reversion erfolgreich:</strong> Bot#1 TP, Bot#2 verliert wenn Short</li>
+          </ul>
+          <p>Beide können 3-4 Tage gleichzeitig in gegenläufigen Positionen sein (Bot#1: 72h, Bot#2: 96h max hold).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 5. KOMBINIERTER BACKTEST ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="bar-chart-3" style="width:20px;height:20px"></i>Kombinierter Backtest</h2>
+
+    <div class="rpt-grid">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Kombinierte Metriken</div>
+        <div class="rpt-grid rpt-grid-3" style="margin-bottom:0">
+          <div>
+            <div style="font-size:var(--text-xs);color:var(--c-text-dim);text-transform:uppercase">Gesamt P&L</div>
+            <div class="rpt-kpi pnl-pos">+8.017 €</div>
+            <div class="rpt-kpi-sub">+80.17% Return</div>
+          </div>
+          <div>
+            <div style="font-size:var(--text-xs);color:var(--c-text-dim);text-transform:uppercase">Max DD</div>
+            <div class="rpt-kpi">14.13%</div>
+            <div class="rpt-kpi-sub">Sharpe: 5.06</div>
+          </div>
+          <div>
+            <div style="font-size:var(--text-xs);color:var(--c-text-dim);text-transform:uppercase">Win Rate</div>
+            <div class="rpt-kpi">50.6%</div>
+            <div class="rpt-kpi-sub">PF: 1.61</div>
+          </div>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Per-Bot Verteilung</div>
+        <div class="rpt-grid rpt-grid-3" style="margin-bottom:0">
+          <div>
+            <div style="font-size:var(--text-xs);color:var(--c-text-dim);text-transform:uppercase">Bot#1 Trades</div>
+            <div class="rpt-kpi">6</div>
+            <div class="rpt-kpi-sub">+838€ (PF 3.27)</div>
+          </div>
+          <div>
+            <div style="font-size:var(--text-xs);color:var(--c-text-dim);text-transform:uppercase">Bot#2 Trades</div>
+            <div class="rpt-kpi">231</div>
+            <div class="rpt-kpi-sub">+7.178€ (PF 1.56)</div>
+          </div>
+          <div>
+            <div style="font-size:var(--text-xs);color:var(--c-text-dim);text-transform:uppercase">Konflikte</div>
+            <div class="rpt-kpi">0</div>
+            <div class="rpt-kpi-sub">Nur 1 Overlap-Paar</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Per-Pair P&L (Kombiniert)</div>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>Paar</th><th>P&L</th><th>Trades</th><th>Bot</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GBPJPY</td><td class="pnl-pos">+2.145€</td><td>49</td><td>Bot#2</td></tr>
+          <tr><td>EURJPY</td><td class="pnl-pos">+1.349€</td><td>18</td><td>Bot#2</td></tr>
+          <tr><td>EURNZD</td><td class="pnl-pos">+1.031€</td><td>22</td><td>Bot#2</td></tr>
+          <tr><td>AUDNZD</td><td class="pnl-pos">+874€</td><td>13</td><td>Beide</td></tr>
+          <tr><td>USDCAD</td><td class="pnl-pos">+719€</td><td>41</td><td>Bot#2</td></tr>
+          <tr><td>AUDJPY</td><td class="pnl-pos">+717€</td><td>14</td><td>Bot#2</td></tr>
+          <tr><td>CADCHF</td><td class="pnl-pos">+497€</td><td>10</td><td>Bot#2</td></tr>
+          <tr><td>GBPCHF</td><td class="pnl-pos">+400€</td><td>1</td><td>Bot#1</td></tr>
+          <tr><td>AUDCHF</td><td class="pnl-pos">+219€</td><td>1</td><td>Bot#1</td></tr>
+          <tr><td>GBPUSD</td><td class="pnl-pos">+219€</td><td>4</td><td>Bot#1</td></tr>
+          <tr><td>NZDCHF</td><td class="pnl-pos">+105€</td><td>19</td><td>Bot#2</td></tr>
+          <tr><td>AUDUSD</td><td class="pnl-neg">-263€</td><td>45</td><td>Bot#2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Monatliche Performance</div>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>Monat</th><th>P&L</th><th>Bewertung</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Feb 2026</td><td class="pnl-pos">+219€</td><td>Startphase</td></tr>
+          <tr><td>Mär 2026</td><td class="pnl-pos">+2.075€</td><td>Starker Monat</td></tr>
+          <tr><td>Apr 2026</td><td class="pnl-pos">+2.360€</td><td>Bester Monat</td></tr>
+          <tr><td>Mai 2026</td><td class="pnl-pos">+2.394€</td><td>Konsistent</td></tr>
+          <tr><td>Jun 2026</td><td class="pnl-pos">+980€</td><td>Laufend (11 Tage)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rpt-alert rpt-alert-warn">
+      <div class="rpt-alert-title">⚠️ Backtest-Einschränkungen</div>
+      <div class="rpt-alert-text">
+        <strong>Nur 89 Tage Daten</strong> (Feb-Jun 2026) — statistisch nicht signifikant.<br>
+        <strong>Bot#1 liefert nur 6 Trades</strong> — zu seltene Crossover-Signale, keine Aussagekraft.<br>
+        <strong>Konflikt-Resolution nie getriggert</strong> — 0 Konflikte weil nur 1 Overlap-Paar (AUDNZD).<br>
+        <strong>CAGR 554%</strong> ist unrealistisch für 89 Tage — braucht längeren Zeitraum zur Validierung.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 6. KOORDINATIONS-REGELN ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="shield" style="width:20px;height:20px"></i>Koordinations-Regeln</h2>
+
+    <div class="rpt-prose">
+      <p>7 Regelkategorien wurden designed und als lauffähiges Modul implementiert (<code>portfolio_coordinator.py</code>). Getestet mit 8 Szenarien.</p>
+    </div>
+
+    <div class="rpt-grid">
+      <div class="rpt-card">
+        <div class="rpt-card-title">1. Margin-Management</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>Shared State:</strong> <code>portfolio_state.json</code> — beide Bots schreiben ihre Metriken</li>
+            <li><strong>Bot#1 Cap:</strong> 50% des Equity</li>
+            <li><strong>Bot#2 Cap:</strong> 40% des Equity</li>
+            <li><strong>Kombiniert:</strong> 80% Hard Limit</li>
+            <li><strong>Min Reserve:</strong> 20% freie Margin</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">2. Konflikt-Resolution</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>Paar-Lock:</strong> <code>pair_locks.json</code> für AUDNZD/NZDCHF</li>
+            <li><strong>Score-basiert:</strong> Höherer Score gewinnt bei gegenläufigen Signalen</li>
+            <li><strong>Direction-Check:</strong> Gleiche Richtung = OK, gegenläufig = Score-Entscheidung</li>
+            <li><strong>Stale Lock:</strong> Nach 96h automatisch übernehmbar</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">3. Portfolio-Korrelation</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>JPY Cap:</strong> Max 4 Positionen gesamt</li>
+            <li><strong>USD Cap:</strong> Max 3 Positionen</li>
+            <li><strong>CHF/NZD/AUD:</strong> Max 3 pro Quote</li>
+            <li><strong>CAD/GBP:</strong> Max 2 pro Quote</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">4. DD Circuit Breaker</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>YELLOW (>5%):</strong> Risk halbieren</li>
+            <li><strong>ORANGE (>8%):</strong> Keine neuen Trades</li>
+            <li><strong>RED (>12%):</strong> Alle schließen, 24h Pause</li>
+            <li><strong>EQUITY DD (>15%):</strong> Keine neuen Trades bis DD<10%</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">5. Position-Limits</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>&lt;€500:</strong> Max 6 (4+2)</li>
+            <li><strong>€500-1000:</strong> Max 12 (7+5) ← Aktuell</li>
+            <li><strong>€1000-2000:</strong> Max 14 (8+6)</li>
+            <li><strong>≥€2000:</strong> Max 16 (10+6)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">6. Scan-Stagger</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>Bot#1:</strong> XX:00, XX:15, XX:30, XX:45</li>
+            <li><strong>Bot#2:</strong> XX:07:30, XX:22:30, XX:37:30, XX:52:30</li>
+            <li><strong>Offset:</strong> 7.5 Minuten</li>
+            <li><strong>Zweck:</strong> Verhindert TOCTOU Race auf Order Bridge</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Implementierungs-Prioritäten</div>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>#</th><th>Regel</th><th>Dringlichkeit</th><th>Aufwand</th><th>Impact</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Portfolio State File + Margin Check</td><td><span class="rpt-badge rpt-badge-red">KRITISCH</span></td><td>2-3h</td><td>Verhindert >80% Margin</td></tr>
+          <tr><td>2</td><td>Scan-Stagger</td><td><span class="rpt-badge rpt-badge-red">HOCH</span></td><td>30min</td><td>Verhindert Race Conditions</td></tr>
+          <tr><td>3</td><td>Paar-Lock (Overlaps)</td><td><span class="rpt-badge rpt-badge-red">HOCH</span></td><td>1-2h</td><td>Verhindert gegenläufige Trades</td></tr>
+          <tr><td>4</td><td>Kombiniertes Position-Limit</td><td><span class="rpt-badge rpt-badge-yellow">MITTEL</span></td><td>30min</td><td>Reduziert Gesamtrisiko</td></tr>
+          <tr><td>5</td><td>Portfolio Correlation Cap</td><td><span class="rpt-badge rpt-badge-yellow">MITTEL</span></td><td>1h</td><td>Reduziert Klumpenrisiko</td></tr>
+          <tr><td>6</td><td>DD Circuit Breaker</td><td><span class="rpt-badge rpt-badge-yellow">MITTEL</span></td><td>2h</td><td>Schutz vor Crash</td></tr>
+          <tr><td>7</td><td>Konflikt-Resolution (Score)</td><td><span class="rpt-badge rpt-badge-blue">NIEDRIG</span></td><td>30min</td><td>Nice-to-have</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ 7. OPTIMIERUNGSVORSCHLÄGE ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="lightbulb" style="width:20px;height:20px"></i>Optimierungsvorschläge</h2>
+
+    <div class="rpt-grid">
+      <div class="rpt-card">
+        <div class="rpt-card-title">Sofort umsetzbar</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>AUDNZD in EINEM Bot deaktivieren</strong> — Konflikt minimieren</li>
+            <li><strong>Bot#1 Realistic Backtest wiederholen</strong> — mit Friday-Filter und reduziertem Portfolio (4 Paare)</li>
+            <li><strong>Max simultane Positionen auf 10-12 begrenzen</strong> — Margin-Schutz</li>
+            <li><strong>Portfolio State File implementieren</strong> — beide Bots sehen sich</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rpt-card">
+        <div class="rpt-card-title">Vor Deploy</div>
+        <div class="rpt-prose">
+          <ul>
+            <li><strong>Bot#1 muss profitabel werden</strong> — aktuell PF 0.67 = systematischer Verlust</li>
+            <li><strong>Gemeinsamer Backtest</strong> — beide Bots auf gleichem Zeitraum, kombinierte Equity-Kurve</li>
+            <li><strong>Margin-Stress-Test</strong> — was passiert wenn alle 17 Positionen im Drawdown?</li>
+            <li><strong>Timeout-Problem lösen</strong> — 99.5% Timeout-Exits sind das Kernproblem</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Architektur-Optionen</div>
+      <table class="rpt-table">
+        <thead>
+          <tr><th>Option</th><th>Beschreibung</th><th>Vorteil</th><th>Nachteil</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A: Separate Accounts</strong></td>
+            <td>Jeder Bot auf eigenem Account</td>
+            <td>Eliminiert Margin-Konflikte</td>
+            <td>Verdoppelt Mindesteinlage</td>
+          </tr>
+          <tr>
+            <td><strong>B: Shared + Limits</strong></td>
+            <td>Gemeinsamer Account mit Positionslimits</td>
+            <td>Kapitaleffizient</td>
+            <td>Koordination nötig</td>
+          </tr>
+          <tr>
+            <td><strong>C: ADX-Separation</strong></td>
+            <td>Bot#1 nur ADX<20, Bot#2 nur ADX>20</td>
+            <td>Natürliche Separation</td>
+            <td>Bot#1 verliert Trades</td>
+          </tr>
+          <tr>
+            <td><strong>D: Bot#1 überarbeiten</strong></td>
+            <td>Timeout-Problem (99.5%) lösen</td>
+            <td>Kernproblem adressiert</td>
+            <td>Aufwendig</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="rpt-card">
+      <div class="rpt-card-title">Explizit ausgeschlossen (REJECTED)</div>
+      <div class="rpt-prose">
+        <p>Diese Filter wurden bereits getestet und verworfen:</p>
+        <ul>
+          <li>❌ <strong>Rolling Re-Optimization</strong> — schlechter als static, +2.5x Kosten</li>
+          <li>❌ <strong>Session-Filter / Hour-of-Day</strong> — p>0.05, kein signifikanter Edge</li>
+          <li>❌ <strong>Hurst Exponent Filter</strong> — -100% PnL im Backtest</li>
+          <li>❌ <strong>Momentum Threshold</strong> — -59% PnL im Backtest</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 8. EMPFEHLUNG ═══ -->
+  <div class="rpt-section">
+    <h2 class="rpt-section-title"><i data-lucide="check-circle" style="width:20px;height:20px"></i>Empfehlung</h2>
+
+    <div class="rpt-recommendation">
+      <h3>🎯 Fazit: Bot#2 alleine deployen</h3>
+      <div class="rpt-prose">
+        <p><strong>Bot#2 ist deploy-ready.</strong> OOS-validiert auf 9 Paaren, PF 2.02, MaxDD 11.2%, +1.929€ Portfolio-PnL. Die Trend-Following-Strategie ist robust und profitabel.</p>
+
+        <p><strong>Bot#1 ist es NICHT.</strong> Das Timeout-Problem (99.5% der Trades laufen über 72h) ist das Kernproblem. Die Grid-optimierten Einzel-Pair-Metriken (PF 1.8-5.9) sind irreführend — im Realistic Backtest mit Kosten und Slippage ergibt sich PF 0.67 = systematischer Verlust.</p>
+
+        <p><strong>Der Konflikt zwischen den Bots ist real aber handhabbar.</strong> Portfolio-Korrelation -0.031 = excellent Diversifikation. 3 Paare überlappen (AUDNZD kritisch), aber die Konflikt-Resolution wurde nie getriggert (0 Konflikte im Backtest).</p>
+
+        <p><strong>Nächste Schritte:</strong></p>
+        <ol>
+          <li><strong>Bot#2 alleine deployen</strong> auf Pepperstone Razor (CTID 47490067)</li>
+          <li><strong>Bot#1 separat fixen</strong> — Timeout-Problem lösen bevor Shared Account</li>
+          <li><strong>Koordinations-Regeln implementieren</strong> — Portfolio State File + Scan-Stagger (Quick Wins)</li>
+          <li><strong>Längeren Backtest</strong> — mindestens 1 Jahr Daten für statistische Signifikanz</li>
+        </ol>
+
+        <p><strong>Minimum Account-Größe:</strong> 5.000€ für beide Bots gleichzeitig. Aktuell ~1.192€ → nur Bot#2 alleine.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Footer -->
+  <div style="text-align:center;padding:var(--s-6) 0 var(--s-4);border-top:1px solid var(--c-border);margin-top:var(--s-8)">
+    <p style="color:var(--c-text-dim);font-size:var(--text-xs)">
+      Generiert am 12. Juni 2026 · Hermes Trading System · 4 Worker synthesiert
+      <br>Report ID: multi-bot-coordination-2026-06-12
+      <br>Datenquellen: Combined Backtest (t_06016802), Conflict Analysis (t_37d5540c), Report Pages (t_4a88e18c), Coordination Rules (t_5389f035)
+    </p>
+  </div>
+
+</div>
+<!--/BODY-->

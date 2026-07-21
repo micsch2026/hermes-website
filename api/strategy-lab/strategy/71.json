@@ -1,0 +1,196 @@
+{
+  "id": 71,
+  "name": "IT: KB Fibonacci Loosened",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 148.4,
+  "iteration_count": 2,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "created_at": "2026-06-29 21:27:56",
+  "updated_at": "2026-06-29 22:43:57",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 2r/1g/1b enter, exit=timeout\", \"pnl\": 469.63, \"trades\": 727, \"score\": 148.4}, {\"iter\": 2, \"change\": \"sl_tp_change: 2r/1g/1b enter, exit=timeout\", \"pnl\": -250.8, \"trades\": 134, \"score\": -87.3}], \"iterations\": 2, \"holdout\": {\"passed\": false, \"pnl\": -247.24, \"trades\": 156, \"pf\": 0.73, \"wr\": 33.3, \"monthly_pnls\": [[\"2025-12\", -53.2], [\"2026-01\", -69.6], [\"2026-02\", -23.75], [\"2026-03\", -6.37], [\"2026-04\", -13.96], [\"2026-05\", -26.68], [\"2026-06\", -53.68]], \"max_consec_loss_months\": 7, \"period\": \"2025-12-25 \\u2013 2026-06-23\", \"reason\": \"PF=0.73 < 1.0 | 7 aufeinanderfolgende Verlustmonate\"}, \"anti_overfit\": {\"block_validation\": \"2-of-3 time blocks positive\", \"economic_hurdle\": \"PF >= 1.3 after costs\", \"holdout_months\": 6}}",
+  "concept": {
+    "name": "IT: KB Fibonacci Loosened",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "EURUSD",
+      "GBPUSD",
+      "NAS100"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "kb_fibonacci_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "pin_bar",
+                "op": "==",
+                "value": 1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "kb_fibonacci_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "pin_bar",
+                "op": "==",
+                "value": -1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "fibonacci_level",
+                "params": {
+                  "lookback": 50,
+                  "fib": 0.382
+                },
+                "op": "<",
+                "value": 2.0
+              }
+            ],
+            "points": 15
+          }
+        ],
+        "gates": [
+          {
+            "indicator": "swing_high",
+            "params": {
+              "lookback": 10
+            },
+            "op": ">",
+            "value": 0,
+            "timeframe": "1h"
+          }
+        ],
+        "min_score": 0,
+        "merge_mode": "flat_and"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 96
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.0
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "EURUSD",
+        "GBPUSD",
+        "NAS100"
+      ],
+      "pair_overrides": {
+        "EURUSD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 2.0,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.8
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "A Fibonacci pullback strategy that now only requires a recent swing high to generate entry signals."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -87.3,
+    "oos_pnl": -250.8,
+    "oos_trades": 134,
+    "oos_pass_rate": 0.373,
+    "iteration": 2,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {}
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 2r/1g/1b enter, exit=timeout",
+      "oos_pnl": 469.63,
+      "oos_pf": 0,
+      "tier": "B",
+      "tested": true,
+      "strategy_id": 71,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 727,
+      "children": [
+        {
+          "change": "Iteration 2: sl_tp_change: 2r/1g/1b enter, exit=timeout",
+          "oos_pnl": -250.8,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 134,
+          "children": []
+        }
+      ]
+    },
+    "best_path_ids": [
+      71
+    ],
+    "stats": {
+      "total_variants": 2,
+      "new_trees": 0,
+      "best_pnl": 469.63,
+      "base_pnl": 469.63,
+      "improvement": 0.0,
+      "runtime_seconds": 4628.1
+    }
+  }
+}

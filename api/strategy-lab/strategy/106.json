@@ -1,0 +1,316 @@
+{
+  "id": 106,
+  "name": "IT: Master_MR_M5_VWAP_Scalp",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": -81.1,
+  "iteration_count": 4,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "created_at": "2026-06-30 14:32:30",
+  "updated_at": "2026-06-30 14:57:15",
+  "notes": "Rejected: wrong asset assignment (all forex, no indices)",
+  "concept": {
+    "name": "IT: Master_MR_M5_VWAP_Scalp",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "AUDCAD",
+      "AUDCHF",
+      "AUDJPY",
+      "AUDNZD",
+      "AUDUSD",
+      "CADCHF",
+      "CADJPY",
+      "CHFJPY",
+      "EURAUD",
+      "EURCAD",
+      "EURCHF",
+      "EURGBP",
+      "EURJPY",
+      "EURNZD",
+      "EURUSD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPCHF",
+      "GBPJPY",
+      "GBPNZD",
+      "GBPUSD",
+      "NZDCAD",
+      "NZDCHF",
+      "NZDJPY",
+      "NZDUSD",
+      "USDCAD",
+      "USDCHF",
+      "USDJPY"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "vwap_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "timeframe": "m5",
+                "params": {},
+                "op": "<",
+                "value": -1.0
+              },
+              {
+                "indicator": "stoch_k",
+                "timeframe": "m5",
+                "params": {
+                  "k_period": 14,
+                  "smooth": 3
+                },
+                "op": "<",
+                "value": 20
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "m5",
+                "params": {},
+                "op": ">",
+                "value": 0.15
+              }
+            ],
+            "direction": "long",
+            "base_score": 40
+          },
+          {
+            "id": "vwap_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "timeframe": "m5",
+                "params": {},
+                "op": ">",
+                "value": 1.0
+              },
+              {
+                "indicator": "stoch_k",
+                "timeframe": "m5",
+                "params": {
+                  "k_period": 14,
+                  "smooth": 3
+                },
+                "op": ">",
+                "value": 80
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "m5",
+                "params": {},
+                "op": ">",
+                "value": 0.15
+              }
+            ],
+            "direction": "short",
+            "base_score": 40
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "stoch_d",
+                "timeframe": "m5",
+                "params": {
+                  "k_period": 14,
+                  "d_period": 3,
+                  "smooth": 3
+                },
+                "op": "<",
+                "value": 20
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "bb_position",
+                "timeframe": "m5",
+                "params": {
+                  "period": 10,
+                  "mult": 1.5
+                },
+                "op": "<",
+                "value": 0.1
+              }
+            ],
+            "points": 10
+          }
+        ],
+        "gates": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "session_london",
+                "timeframe": "m5",
+                "params": {},
+                "op": "==",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "min_score": 40,
+        "merge_mode": "flat_and"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 3
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.0
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.0
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "AUDCAD",
+        "AUDCHF",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDUSD",
+        "CADCHF",
+        "CADJPY",
+        "CHFJPY",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURGBP",
+        "EURJPY",
+        "EURNZD",
+        "EURUSD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPCHF",
+        "GBPJPY",
+        "GBPNZD",
+        "GBPUSD",
+        "NZDCAD",
+        "NZDCHF",
+        "NZDJPY",
+        "NZDUSD",
+        "USDCAD",
+        "USDCHF",
+        "USDJPY"
+      ]
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "M5 Scalping: VWAP+Stochastic+London Session Gate. 28 pairs."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -86.4,
+    "oos_pnl": -226.79,
+    "oos_trades": 118,
+    "oos_pass_rate": 0.364,
+    "iteration": 4,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {}
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 6r/1g/2b enter, exit=timeout",
+      "oos_pnl": -479.67,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 244,
+      "children": [
+        {
+          "change": "Iteration 2: sl_tp_change: 6r/1g/2b enter, exit=timeout",
+          "oos_pnl": -549.19,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": 106,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 238,
+          "children": [
+            {
+              "change": "Iteration 3: adjust_threshold: 6r/1g/2b enter, exit=timeout",
+              "oos_pnl": -540.85,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 238,
+              "children": [
+                {
+                  "change": "Iteration 4: add_gate: 6r/2g/2b enter, exit=timeout",
+                  "oos_pnl": -226.79,
+                  "oos_pf": 0,
+                  "tier": "C",
+                  "tested": true,
+                  "strategy_id": null,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 118,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      106
+    ],
+    "stats": {
+      "total_variants": 4,
+      "new_trees": 0,
+      "best_pnl": -549.19,
+      "base_pnl": -479.67,
+      "improvement": -69.52000000000004,
+      "runtime_seconds": 1485.5
+    }
+  }
+}

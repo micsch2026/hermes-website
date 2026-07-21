@@ -1,0 +1,345 @@
+<!--TITLE:Backtest Compare — Hermes-->
+<!--HEAD-->
+<style>
+  /* ── Backtest Compare ─────────────────────────────────── */
+  .cmp-container { max-width: 1200px; margin: 0 auto; padding: var(--s-6) var(--s-4); }
+  .cmp-header { margin-bottom: var(--s-6); }
+  .cmp-header h1 { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--s-1); }
+  .cmp-header p { color: var(--c-text-dim); font-size: var(--text-sm); margin: 0; }
+
+  .cmp-selector {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--s-4); align-items: end;
+    margin-bottom: var(--s-6);
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    padding: var(--s-5);
+  }
+  .cmp-vs { font-size: var(--text-xl); font-weight: 700; color: var(--c-text-dim); text-align: center; padding-bottom: var(--s-2); }
+  @media (max-width: 640px) { .cmp-selector { grid-template-columns: 1fr; } .cmp-vs { padding: var(--s-2) 0; } }
+
+  .cmp-field label { display: block; font-size: var(--text-xs); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: var(--s-2); }
+  .cmp-field select {
+    width: 100%; padding: 8px 12px; border-radius: var(--r-md); font-size: var(--text-sm);
+    background: var(--c-surface-2, #1e1a35); color: var(--c-text); border: 1px solid var(--c-border);
+  }
+  .cmp-field select:focus { outline: none; border-color: var(--c-accent); }
+  .cmp-field .cmp-preview { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: var(--s-1); }
+
+  .cmp-btn {
+    grid-column: 1 / -1; justify-self: center;
+    background: var(--c-accent); color: #fff; border: none;
+    padding: 10px 32px; border-radius: var(--r-md); cursor: pointer;
+    font-size: var(--text-sm); font-weight: 600;
+    transition: opacity 0.15s;
+  }
+  .cmp-btn:hover { opacity: 0.9; }
+  .cmp-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Chart */
+  .cmp-chart-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-5); margin-bottom: var(--s-6);
+  }
+  .cmp-chart-card h3 { margin: 0 0 var(--s-3); font-size: var(--text-xs); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .cmp-chart-wrap { position: relative; height: 350px; }
+
+  /* Metric table */
+  .cmp-table-wrap { overflow-x: auto; }
+  table.cmp-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  .cmp-table th {
+    text-align: left; color: var(--c-text-dim); font-weight: 600;
+    padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border);
+    font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .cmp-table td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border); }
+  .cmp-table tr:last-child td { border-bottom: none; }
+  .cmp-table .winner { font-weight: 700; }
+  .cmp-table .winner-a { color: var(--c-accent); }
+  .cmp-table .winner-b { color: var(--c-ok); }
+  .cmp-delta { font-size: var(--text-xs); padding: 2px 8px; border-radius: var(--r-sm); }
+  .cmp-delta-pos { background: rgba(20,158,97,0.12); color: var(--c-ok); }
+  .cmp-delta-neg { background: rgba(232,92,92,0.12); color: var(--c-err); }
+
+  /* Loading */
+  .cmp-loading { text-align: center; padding: var(--s-8); color: var(--c-text-dim); }
+  .cmp-loading .spinner {
+    display: inline-block; width: 24px; height: 24px; border: 3px solid var(--c-border);
+    border-top-color: var(--c-accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-bottom: var(--s-3);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .clr-ok { color: var(--c-ok); }
+  .clr-err { color: var(--c-err); }
+  .clr-dim { color: var(--c-text-dim); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+function safeFetch(path, opts) {
+  var url = window.location.origin + path + (path.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now();
+  opts = opts || {}; opts.cache = "no-store"; opts.credentials = "same-origin";
+  return fetch(url, opts);
+}
+</script>
+<!--/HEAD-->
+<!--BODY-->
+
+<div class="cmp-container">
+  <div class="cmp-header">
+    <h1>⚖️ Backtest Compare</h1>
+    <p>Zwei Backtest-Läufe vergleichen — Equity Overlay, Metriken, Deltas</p>
+    <a href="/backtest/" style="display:inline-flex;align-items:center;gap:6px;margin-top:var(--s-3);font-size:var(--text-sm);color:var(--c-text-dim)">← Zurück zur Übersicht</a>
+  </div>
+
+  <div class="cmp-selector" id="cmp-selector">
+    <div class="cmp-field">
+      <label>Backtest A</label>
+      <select id="cmp-a"><option value="">Lade...</option></select>
+      <div class="cmp-preview" id="cmp-a-info"></div>
+    </div>
+    <div class="cmp-vs">VS</div>
+    <div class="cmp-field">
+      <label>Backtest B</label>
+      <select id="cmp-b"><option value="">Lade...</option></select>
+      <div class="cmp-preview" id="cmp-b-info"></div>
+    </div>
+    <button class="cmp-btn" id="cmp-run" disabled onclick="runComparison()">Vergleichen</button>
+  </div>
+
+  <div id="cmp-results"></div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var INDEX = [];
+  var cAccent = '#7132f5'; var cOk = '#149e61'; var cErr = '#e85c5c';
+
+  function fmt(n, dec) {
+    if (n == null || isNaN(n)) return '—';
+    return Number(n).toLocaleString('de-DE', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec != null ? dec : 2 });
+  }
+  function fmtPct(n) { return n != null ? fmt(n, 2) + ' %' : '—'; }
+  function fmtEur(n) { return n != null ? (n >= 0 ? '+' : '') + fmt(n, 2) + ' €' : '—'; }
+  function pnlClass(v) { return v > 0 ? 'clr-ok' : v < 0 ? 'clr-err' : 'clr-dim'; }
+  function safe(v, fb) { return v != null ? v : (fb != null ? fb : '—'); }
+  function escHtml(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s)); return d.innerHTML; }
+
+  function populateSelects() {
+    safeFetch('/api/backtest/index.json')
+      .then(function(r) { return r.json(); })
+      .then(function(json) {
+        INDEX = json.backtests || [];
+        var selA = document.getElementById('cmp-a');
+        var selB = document.getElementById('cmp-b');
+        selA.innerHTML = '<option value="">— wählen —</option>';
+        selB.innerHTML = '<option value="">— wählen —</option>';
+
+        INDEX.forEach(function(bt) {
+          var label = (bt.name || bt.id) + ' (' + (bt.generated_at ? new Date(bt.generated_at).toLocaleDateString('de-DE') : '—') + ')';
+          selA.innerHTML += '<option value="' + bt.id + '">' + escHtml(label) + '</option>';
+          selB.innerHTML += '<option value="' + bt.id + '">' + escHtml(label) + '</option>';
+        });
+
+        /* Pre-select from URL params */
+        var qs = new URLSearchParams(window.location.search);
+        var a = qs.get('a'); var b = qs.get('b');
+        if (a) selA.value = a;
+        if (b) selB.value = b;
+
+        selA.addEventListener('change', updatePreview);
+        selB.addEventListener('change', updatePreview);
+        updateBtn();
+      })
+      .catch(function(err) {
+        document.getElementById('cmp-results').innerHTML = '<div style="color:var(--c-err);padding:var(--s-4)">Fehler: ' + err.message + '</div>';
+      });
+  }
+
+  function updatePreview() {
+    ['a', 'b'].forEach(function(side) {
+      var sel = document.getElementById('cmp-' + side);
+      var info = document.getElementById('cmp-' + side + '-info');
+      var bt = INDEX.find(function(b) { return b.id === sel.value; });
+      if (bt) {
+        var s = bt.summary || {};
+        info.textContent = 'Trades: ' + safe(s.total_trades, 0) + ' · WR: ' + fmtPct(s.win_rate_pct || s.win_rate) + ' · PF: ' + fmt(s.profit_factor, 2) + ' · P&L: ' + fmtEur(s.total_pnl_eur || s.total_pnl);
+      } else {
+        info.textContent = '';
+      }
+    });
+    updateBtn();
+  }
+
+  function updateBtn() {
+    var a = document.getElementById('cmp-a').value;
+    var b = document.getElementById('cmp-b').value;
+    document.getElementById('cmp-run').disabled = !(a && b && a !== b);
+  }
+
+  window.runComparison = function() {
+    var aId = document.getElementById('cmp-a').value;
+    var bId = document.getElementById('cmp-b').value;
+    if (!aId || !bId || aId === bId) return;
+
+    var results = document.getElementById('cmp-results');
+    results.innerHTML = '<div class="cmp-loading"><div class="spinner"></div><br>Lade Vergleich...</div>';
+
+    Promise.all([
+      safeFetch('/api/backtest/' + encodeURIComponent(aId) + '.json').then(function(r) { return r.json(); }),
+      safeFetch('/api/backtest/' + encodeURIComponent(bId) + '.json').then(function(r) { return r.json(); })
+    ]).then(function(data) {
+      renderComparison(results, data[0], data[1]);
+    }).catch(function(err) {
+      results.innerHTML = '<div style="color:var(--c-err);padding:var(--s-4)">Fehler: ' + err.message + '</div>';
+    });
+  };
+
+  function renderComparison(root, btA, btB) {
+    var sA = btA.summary || {}; var rA = btA.risk || {}; var raA = btA.ratios || {};
+    var sB = btB.summary || {}; var rB = btB.risk || {}; var raB = btB.ratios || {};
+
+    /* Metric comparison table */
+    var metrics = [
+      { label: 'Trades', vA: sA.total_trades || sA.trades, vB: sB.total_trades || sB.trades, fmt: function(v) { return safe(v, '—'); }, higher: 'more' },
+      { label: 'Win Rate', vA: sA.win_rate_pct || sA.win_rate, vB: sB.win_rate_pct || sB.win_rate, fmt: fmtPct, higher: 'better' },
+      { label: 'Profit Factor', vA: sA.profit_factor || raA.profit_factor, vB: sB.profit_factor || raB.profit_factor, fmt: function(v) { return fmt(v, 2); }, higher: 'better' },
+      { label: 'Total P&L', vA: sA.total_pnl_eur || sA.total_pnl, vB: sB.total_pnl_eur || sB.total_pnl, fmt: fmtEur, higher: 'better', colorize: true },
+      { label: 'Max Drawdown', vA: sA.max_dd_pct || rA.max_drawdown_pct, vB: sB.max_dd_pct || rB.max_drawdown_pct, fmt: fmtPct, higher: 'worse' },
+      { label: 'Sharpe', vA: raA.sharpe_ratio || sA.sharpe, vB: raB.sharpe_ratio || sB.sharpe, fmt: function(v) { return fmt(v, 2); }, higher: 'better' },
+      { label: 'Sortino', vA: raA.sortino_ratio || sA.sortino, vB: raB.sortino_ratio || sB.sortino, fmt: function(v) { return fmt(v, 2); }, higher: 'better' },
+      { label: 'SQN', vA: raA.sqn, vB: raB.sqn, fmt: function(v) { return fmt(v, 2); }, higher: 'better' },
+      { label: 'Calmar', vA: rA.calmar_ratio || sA.calmar, vB: rB.calmar_ratio || sB.calmar, fmt: function(v) { return fmt(v, 2); }, higher: 'better' },
+      { label: 'Expectancy', vA: raA.expectancy || sA.expectancy, vB: raB.expectancy || sB.expectancy, fmt: fmtEur, higher: 'better', colorize: true },
+      { label: 'Recovery Factor', vA: rA.recovery_factor || sA.recovery_factor, vB: rB.recovery_factor || sB.recovery_factor, fmt: function(v) { return fmt(v, 2); }, higher: 'better' }
+    ];
+
+    var html = '';
+
+    /* Equity overlay chart */
+    var eqA = btA.equity_curve; if (eqA && eqA.points) eqA = eqA.points;
+    var eqB = btB.equity_curve; if (eqB && eqB.points) eqB = eqB.points;
+
+    if (eqA && eqA.length && eqB && eqB.length) {
+      html += '<div class="cmp-chart-card"><h3>📈 Equity Overlay</h3><div class="cmp-chart-wrap"><canvas id="cmp-equity"></canvas></div></div>';
+    }
+
+    /* Metric table */
+    html += '<div class="cmp-chart-card"><h3>📊 Metriken-Vergleich</h3><div class="cmp-table-wrap"><table class="cmp-table"><thead><tr>' +
+      '<th>Metric</th><th style="color:' + cAccent + '">' + escHtml(btA.name || btA.id || 'A') + '</th>' +
+      '<th style="color:' + cOk + '">' + escHtml(btB.name || btB.id || 'B') + '</th>' +
+      '<th>Δ</th><th>Better</th></tr></thead><tbody>';
+
+    metrics.forEach(function(m) {
+      if (m.vA == null && m.vB == null) return;
+      var cA = m.colorize ? pnlClass(m.vA) : '';
+      var cB = m.colorize ? pnlClass(m.vB) : '';
+      var diff = (typeof m.vA === 'number' && typeof m.vB === 'number') ? m.vB - m.vA : null;
+      var diffHtml = '—';
+      var winner = '';
+
+      if (diff != null) {
+        var diffCls = diff > 0 ? 'cmp-delta-pos' : diff < 0 ? 'cmp-delta-neg' : '';
+        diffHtml = '<span class="cmp-delta ' + diffCls + '">' + (diff > 0 ? '+' : '') + m.fmt(diff) + '</span>';
+
+        if (m.higher === 'better') {
+          winner = diff > 0 ? '<span class="winner winner-b">B</span>' : diff < 0 ? '<span class="winner winner-a">A</span>' : '—';
+        } else if (m.higher === 'worse') {
+          winner = diff < 0 ? '<span class="winner winner-b">B</span>' : diff > 0 ? '<span class="winner winner-a">A</span>' : '—';
+        }
+      }
+
+      html += '<tr>' +
+        '<td style="font-weight:500">' + m.label + '</td>' +
+        '<td class="' + cA + '" style="font-weight:600">' + m.fmt(m.vA) + '</td>' +
+        '<td class="' + cB + '" style="font-weight:600">' + m.fmt(m.vB) + '</td>' +
+        '<td>' + diffHtml + '</td>' +
+        '<td>' + winner + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+
+    /* Verdict comparison */
+    var vA = btA.verdict || {}; var vB = btB.verdict || {};
+    if (vA.rating || vB.rating) {
+      html += '<div class="cmp-chart-card"><h3>🏁 Verdict</h3>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s-4)">' +
+        '<div style="text-align:center"><div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:var(--s-2)">' + escHtml(btA.name || 'A') + '</div>' +
+        '<div style="font-size:var(--text-2xl);font-weight:700;color:' + verdictColor(vA.rating) + '">' + safe(vA.rating, '—') + '</div></div>' +
+        '<div style="text-align:center"><div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:var(--s-2)">' + escHtml(btB.name || 'B') + '</div>' +
+        '<div style="font-size:var(--text-2xl);font-weight:700;color:' + verdictColor(vB.rating) + '">' + safe(vB.rating, '—') + '</div></div>' +
+        '</div></div>';
+    }
+
+    root.innerHTML = html;
+
+    /* Render equity overlay */
+    if (eqA && eqA.length && eqB && eqB.length) {
+      requestAnimationFrame(function() {
+        if (Chart.defaults) {
+          Chart.defaults.color = '#7d7899';
+          Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+        }
+
+        var ctx = document.getElementById('cmp-equity');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            datasets: [
+              {
+                label: btA.name || 'A',
+                data: eqA.map(function(d) { return { x: d.date || (d.ts ? new Date(d.ts * 1000).toISOString().split('T')[0] : ''), y: d.equity || d.value }; }),
+                borderColor: cAccent,
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false
+              },
+              {
+                label: btB.name || 'B',
+                data: eqB.map(function(d) { return { x: d.date || (d.ts ? new Date(d.ts * 1000).toISOString().split('T')[0] : ''), y: d.equity || d.value }; }),
+                borderColor: cOk,
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', labels: { usePointStyle: true, pointStyle: 'line', padding: 16 } },
+              tooltip: { mode: 'index', intersect: false, callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmt(ctx.parsed.y, 2) + ' €'; } } }
+            },
+            scales: {
+              x: { type: 'time', time: { unit: 'month' }, grid: { display: false } },
+              y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v.toLocaleString('de-DE') + ' €'; } } }
+            }
+          }
+        });
+      });
+    }
+  }
+
+  function verdictColor(rating) {
+    if (rating === 'ROBUST') return 'var(--c-ok)';
+    if (rating === 'NOT_ROBUST') return 'var(--c-err)';
+    return 'var(--c-warn)';
+  }
+
+  /* Init */
+  populateSelects();
+
+  /* Handle URL preselection */
+  var qs = new URLSearchParams(window.location.search);
+  if (qs.get('a') && qs.get('b')) {
+    setTimeout(function() { if (!document.getElementById('cmp-run').disabled) window.runComparison(); }, 500);
+  }
+})();
+</script>
+<!--/BODY-->

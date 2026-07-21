@@ -1,0 +1,431 @@
+{
+  "id": 247,
+  "label": "#247",
+  "name": "IT: Loosened RSI Long",
+  "display_name": "IT: Loosened RSI Long",
+  "description": "Removes the restrictive bb_position upper-band gate from the long entry so that RSI(7) oversold readings alone can trigger trades.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "promising",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 0.0,
+  "iteration_count": 7,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-12 13:24:30",
+  "updated_at": "2026-07-12 13:59:01",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 3r/0g/0b enter, exit=timeout\", \"pnl\": 113.36, \"trades\": 68, \"score\": 0.0}, {\"iter\": 2, \"change\": \"change_pairs: 3r/0g/0b enter, exit=timeout\", \"pnl\": 113.36, \"trades\": 68, \"score\": 0.0}, {\"iter\": 3, \"change\": \"adjust_threshold: 3r/0g/0b enter, exit=timeout\", \"pnl\": 131.66, \"trades\": 83, \"score\": 0.0}, {\"iter\": 4, \"change\": \"add_gate: 3r/1g/0b enter, exit=timeout\", \"pnl\": 32.74, \"trades\": 70, \"score\": 0.0}, {\"iter\": 5, \"change\": \"adjust_threshold: 3r/1g/0b enter, exit=timeout\", \"pnl\": 105.21, \"trades\": 80, \"score\": 0.0}, {\"iter\": 6, \"change\": \"adjust_threshold: 3r/1g/0b enter, exit=timeout\", \"pnl\": 32.74, \"trades\": 70, \"score\": 0.0}, {\"iter\": 7, \"change\": \"add_boost: 3r/1g/2b enter, exit=timeout\", \"pnl\": 32.74, \"trades\": 70, \"score\": 0.0}], \"iterations\": 7, \"holdout\": {\"passed\": false, \"pnl\": -26.38, \"trades\": 157, \"pf\": 0.97, \"wr\": 44.6, \"monthly_pnls\": [[\"2026-01\", -14.39], [\"2026-02\", 9.35], [\"2026-03\", -59.19], [\"2026-04\", 33.19], [\"2026-05\", -21.73], [\"2026-06\", -8.58], [\"2026-07\", 34.97]], \"max_consec_loss_months\": 2, \"period\": \"2026-01-11 \\u2013 2026-07-10\", \"reason\": \"PF=0.97 < 1.0\"}, \"anti_overfit\": {\"block_validation\": \"2-of-3 time blocks positive\", \"economic_hurdle\": \"PF >= 1.3 after costs\", \"holdout_months\": 6}}",
+  "concept": {
+    "name": "IT: Loosened RSI Long",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "EURUSD",
+      "GBPUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "kb_60_generic_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 30
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "kb_60_generic_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 21
+                },
+                "op": ">",
+                "value": 75
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.1
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [],
+        "gates": [],
+        "min_score": 0,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 96
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.5
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "EURUSD",
+        "GBPUSD"
+      ],
+      "pair_overrides": {
+        "GBPUSD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.5,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.0
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Removes the restrictive bb_position upper-band gate from the long entry so that RSI(7) oversold readings alone can trigger trades."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "A",
+    "oos_score": 0.0,
+    "oos_pnl": 32.74,
+    "oos_trades": 70,
+    "oos_pass_rate": 1.0,
+    "iteration": 7,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 1,
+    "splits": [
+      {
+        "oos_range": "2026-01-15 → 2026-04-16",
+        "oos_pnl": 32.74,
+        "oos_trades": 70,
+        "oos_wr": 37.2,
+        "oos_pf": 1.07,
+        "oos_gp": 508.05,
+        "oos_gl": 475.31
+      }
+    ],
+    "asset_results": {
+      "EURUSD": {
+        "oos_pf": 1.0,
+        "oos_wr": 36.7,
+        "oos_pnl_total": 0.57,
+        "oos_trades": 30,
+        "oos_pass_rate": 1.0,
+        "wfo_splits": [
+          {
+            "split": 0,
+            "is_range": "2025-07-16 → 2026-01-15",
+            "oos_range": "2026-01-15 → 2026-04-16",
+            "best_sl_mult": 1.5,
+            "best_tp_val": 2.0,
+            "is_pnl": 11.53,
+            "is_trades": 62,
+            "oos_pnl": 0.57,
+            "oos_trades": 30,
+            "oos_wr": 36.7,
+            "oos_pf": 1.0,
+            "oos_profitable": true,
+            "oos_gp": 199.2,
+            "oos_gl": 198.63
+          }
+        ],
+        "tier": "A"
+      },
+      "GBPUSD": {
+        "oos_pf": 1.12,
+        "oos_wr": 37.5,
+        "oos_pnl_total": 32.17,
+        "oos_trades": 40,
+        "oos_pass_rate": 1.0,
+        "wfo_splits": [
+          {
+            "split": 0,
+            "is_range": "2025-07-16 → 2026-01-15",
+            "oos_range": "2026-01-15 → 2026-04-16",
+            "best_sl_mult": 1.0,
+            "best_tp_val": 2.0,
+            "is_pnl": 35.14,
+            "is_trades": 65,
+            "oos_pnl": 32.17,
+            "oos_trades": 40,
+            "oos_wr": 37.5,
+            "oos_pf": 1.12,
+            "oos_profitable": true,
+            "oos_gp": 308.85,
+            "oos_gl": 276.68
+          }
+        ],
+        "tier": "A"
+      }
+    },
+    "selected_assets": [
+      "EURUSD",
+      "GBPUSD"
+    ],
+    "dropped_assets": [],
+    "pair_overrides": {
+      "EURUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.5,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "GBPUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      }
+    },
+    "tier_v2": "C",
+    "tier_v2_gates": {
+      "g1_data": true,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": true,
+      "evaluated_at": "2026-07-16T18:15:24.072734+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "EURUSD",
+      "tier": "A",
+      "oos_pnl_total": 0.57,
+      "oos_pf": 1.0,
+      "oos_wr": 36.7,
+      "oos_trades": 30,
+      "oos_pass_rate": 1.0,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.5,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "GBPUSD",
+      "tier": "A",
+      "oos_pnl_total": 32.17,
+      "oos_pf": 1.12,
+      "oos_wr": 37.5,
+      "oos_trades": 40,
+      "oos_pass_rate": 1.0,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.0,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    }
+  ],
+  "selected_assets": [
+    "EURUSD",
+    "GBPUSD"
+  ],
+  "dropped_assets": [],
+  "splits": [
+    {
+      "oos_range": "2026-01-15 → 2026-04-16",
+      "oos_pnl": 32.74,
+      "oos_trades": 70,
+      "oos_wr": 37.2,
+      "oos_pf": 1.07,
+      "oos_gp": 508.05,
+      "oos_gl": 475.31
+    }
+  ],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 3r/0g/0b enter, exit=timeout",
+      "oos_pnl": 113.36,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": 247,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 68,
+      "children": [
+        {
+          "change": "Iteration 2: change_pairs: 3r/0g/0b enter, exit=timeout",
+          "oos_pnl": 113.36,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 68,
+          "children": [
+            {
+              "change": "Iteration 3: adjust_threshold: 3r/0g/0b enter, exit=timeout",
+              "oos_pnl": 131.66,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 83,
+              "children": [
+                {
+                  "change": "Iteration 4: add_gate: 3r/1g/0b enter, exit=timeout",
+                  "oos_pnl": 32.74,
+                  "oos_pf": 0,
+                  "tier": "C",
+                  "tested": true,
+                  "strategy_id": null,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 70,
+                  "children": [
+                    {
+                      "change": "Iteration 5: adjust_threshold: 3r/1g/0b enter, exit=timeout",
+                      "oos_pnl": 105.21,
+                      "oos_pf": 0,
+                      "tier": "C",
+                      "tested": true,
+                      "strategy_id": null,
+                      "is_new_root": false,
+                      "win_rate": null,
+                      "trades": 80,
+                      "children": [
+                        {
+                          "change": "Iteration 6: adjust_threshold: 3r/1g/0b enter, exit=timeout",
+                          "oos_pnl": 32.74,
+                          "oos_pf": 0,
+                          "tier": "C",
+                          "tested": true,
+                          "strategy_id": null,
+                          "is_new_root": false,
+                          "win_rate": null,
+                          "trades": 70,
+                          "children": [
+                            {
+                              "change": "Iteration 7: add_boost: 3r/1g/2b enter, exit=timeout",
+                              "oos_pnl": 32.74,
+                              "oos_pf": 0,
+                              "tier": "C",
+                              "tested": true,
+                              "strategy_id": null,
+                              "is_new_root": false,
+                              "win_rate": null,
+                              "trades": 70,
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      247
+    ],
+    "stats": {
+      "total_variants": 7,
+      "new_trees": 0,
+      "best_pnl": 113.36,
+      "base_pnl": 113.36,
+      "improvement": 0.0,
+      "runtime_seconds": 2242.0
+    }
+  },
+  "best_oos_pnl": 32.74,
+  "best_pf": 1.12,
+  "best_wr": null,
+  "best_tier": "A",
+  "best_oos_pass_rate": 1.0,
+  "oos_trades": 70,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 1,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

@@ -1,0 +1,534 @@
+<!--TITLE:Hermes Trading System — Gesamtbericht—Hermes-->
+<!--HEAD-->
+<style>
+  .rpt-breadcrumb { margin-bottom: var(--s-4); font-size: var(--text-sm); }
+  .rpt-breadcrumb a { color: var(--c-accent, #5b8def); text-decoration: none; }
+  .rpt-breadcrumb a:hover { text-decoration: underline; }
+  .rpt-breadcrumb span { color: var(--c-text-dim); margin: 0 var(--s-2); }
+
+  .rpt-hero {
+    background: linear-gradient(135deg, rgba(91,141,239,0.08), rgba(34,197,94,0.06));
+    border: 1px solid var(--c-border); border-radius: var(--r-xl);
+    padding: var(--s-6); margin-bottom: var(--s-6);
+  }
+  .rpt-hero-title { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--s-2); }
+  .rpt-hero-meta { display: flex; gap: var(--s-4); flex-wrap: wrap; font-size: var(--text-sm); color: var(--c-text-dim); }
+
+  .rpt-section { margin-bottom: var(--s-8); }
+  .rpt-section-title {
+    font-size: var(--text-lg); font-weight: 700; margin: var(--s-6) 0 var(--s-4);
+    display: flex; align-items: center; gap: var(--s-2);
+  }
+
+  .rpt-card {
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl);
+    padding: var(--s-5); margin-bottom: var(--s-4);
+  }
+  .rpt-card h3 { margin: 0 0 var(--s-3); font-size: var(--text-base); font-weight: 700; }
+
+  .rpt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); margin-bottom: var(--s-4); }
+  @media (max-width: 768px) { .rpt-grid { grid-template-columns: 1fr; } }
+
+  .rpt-tri { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--s-4); margin-bottom: var(--s-4); }
+  .rpt-tri .rpt-card { margin-bottom: 0; }
+  @media (max-width: 900px) { .rpt-tri { grid-template-columns: 1fr; } }
+
+  .rpt-table-wrap {
+    overflow-x: auto; border: 1px solid var(--c-border);
+    border-radius: var(--r-xl); background: var(--c-surface); margin-bottom: var(--s-4);
+  }
+  .rpt-table { width: 100%; border-collapse: collapse; }
+  .rpt-table th {
+    padding: var(--s-3) var(--s-4); text-align: left; font-size: var(--text-xs);
+    font-weight: 600; color: var(--c-text-dim); text-transform: uppercase;
+    letter-spacing: 0.05em; border-bottom: 1px solid var(--c-border);
+  }
+  .rpt-table td {
+    padding: var(--s-3) var(--s-4); font-size: var(--text-sm);
+    border-bottom: 1px solid var(--c-border); vertical-align: top;
+  }
+  .rpt-table tbody tr:last-child td { border-bottom: none; }
+
+  .rpt-insight {
+    background: rgba(91,141,239,0.06); border: 1px solid rgba(91,141,239,0.2);
+    border-radius: var(--r-lg); padding: var(--s-4) var(--s-5);
+    margin-bottom: var(--s-4); font-size: var(--text-sm); line-height: 1.7;
+  }
+  .rpt-insight strong { color: var(--c-accent, #5b8def); }
+
+  .rpt-badge {
+    display: inline-block; padding: 3px 12px; border-radius: var(--r-lg);
+    font-size: var(--text-xs); font-weight: 700; text-transform: uppercase;
+  }
+  .rpt-badge-fix { background: rgba(34,197,94,0.15); color: var(--c-ok); border: 1px solid rgba(34,197,94,0.3); }
+  .rpt-badge-new { background: rgba(91,141,239,0.15); color: var(--c-accent, #5b8def); border: 1px solid rgba(91,141,239,0.3); }
+  .rpt-badge-warn { background: rgba(245,158,11,0.15); color: var(--c-warn, #f59e0b); border: 1px solid rgba(245,158,11,0.3); }
+  .rpt-badge-err { background: rgba(239,68,68,0.15); color: var(--c-err); border: 1px solid rgba(239,68,68,0.3); }
+
+  .rpt-code {
+    background: rgba(0,0,0,0.2); border: 1px solid var(--c-border);
+    border-radius: var(--r-md); padding: var(--s-3) var(--s-4);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: var(--text-xs);
+    overflow-x: auto; white-space: pre; line-height: 1.6; margin-bottom: var(--s-4);
+    color: var(--c-text);
+  }
+
+  .rpt-flow {
+    display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+    margin-bottom: var(--s-4); font-size: var(--text-sm);
+  }
+  .rpt-flow-step {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-md); padding: var(--s-2) var(--s-3);
+    font-weight: 600; font-size: var(--text-xs);
+  }
+  .rpt-flow-arrow { color: var(--c-text-dim); }
+
+  .rpt-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); margin-bottom: var(--s-4); }
+  .rpt-comparison .rpt-card { margin-bottom: 0; }
+  @media (max-width: 768px) { .rpt-comparison { grid-template-columns: 1fr; } }
+
+  .rpt-finding {
+    display: flex; gap: var(--s-3); margin-bottom: var(--s-3); align-items: flex-start;
+  }
+  .rpt-finding-icon { font-size: var(--text-lg); flex-shrink: 0; }
+  .rpt-finding-text { font-size: var(--text-sm); line-height: 1.6; }
+
+  .rpt-arch-diagram {
+    background: rgba(0,0,0,0.15); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-5); margin-bottom: var(--s-4);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: var(--text-xs);
+    line-height: 1.8; overflow-x: auto; white-space: pre;
+  }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container">
+  <div class="rpt-breadcrumb">
+    <a href="/reports">← Reports</a>
+    <span>›</span>
+    <span>Hermes Trading System — Gesamtbericht</span>
+  </div>
+
+  <div class="rpt-hero">
+    <h1 class="rpt-hero-title">🏗️ Hermes Trading System — Gesamtbericht</h1>
+    <div class="rpt-hero-meta">
+      <span>📅 12. Juni 2026</span>
+      <span>🤖 2 Bots (Mean Reversion + Trend Following)</span>
+      <span>🔬 Backtest-Engine v3 (22 Module)</span>
+      <span>⚡ Optimization-Engine (in Arbeit)</span>
+    </div>
+  </div>
+
+  <!-- ═══════ 1. SYSTEMÜBERSICHT ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">🎯 1. Systemübersicht</div>
+
+    <div class="rpt-insight">
+      Das Hermes Trading System ist eine <strong>vollständige autonome Trading-Pipeline</strong>:
+      von der Datensammlung über Strategie-Design, Backtesting, Optimierung bis zum Live-Trading
+      und Dashboard. Zwei Bots auf demselben Server, isoliert via systemd Environment-Variablen.
+    </div>
+
+    <div class="rpt-arch-diagram">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     HERMES TRADING SYSTEM                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐              │
+│  │ cTrader  │───▶│  Data    │───▶│ Backtest │───▶│Dashboard │              │
+│  │   API    │    │ Pipeline │    │ Engine   │    │ (Web)    │              │
+│  └──────────┘    └──────────┘    └──────────┘    └──────────┘              │
+│       │               │               │               │                    │
+│       ▼               ▼               ▼               ▼                    │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐              │
+│  │ 27 FX    │    │ 3J H1    │    │ v3 (22   │    │ /backtest│              │
+│  │ Pairs    │    │ Bars     │    │ Module)  │    │ /reports │              │
+│  └──────────┘    └──────────┘    └──────────┘    └──────────┘              │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    LIVE TRADING                                      │  │
+│  │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐           │  │
+│  │  │  Bot #1      │    │  Bot #2      │    │  Shared      │           │  │
+│  │  │  Mean Rev.   │    │  Trend       │    │  Order Bridge│           │  │
+│  │  │  10 pairs    │    │  9 pairs     │    │  cTrader API │           │  │
+│  │  │  ROBUST ✅   │    │  DEAD ❌     │    │              │           │  │
+│  │  └──────────────┘    └──────────────┘    └──────────────┘           │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    OPTIMIZATION (in Arbeit)                          │  │
+│  │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐           │  │
+│  │  │ Grid Search  │───▶│ Walk-Forward │───▶│  Dashboard   │           │  │
+│  │  │ (parallel)   │    │ Validation   │    │  Heatmaps    │           │  │
+│  │  └──────────────┘    └──────────────┘    └──────────────┘           │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘</div>
+  </div>
+
+  <!-- ═══════ 2. BACKTEST-ENGINE v3 ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">🔬 2. Backtest-Engine v3 — Kern des Systems</div>
+
+    <div class="rpt-insight">
+      Die v3 Engine ist das Herzstück: <strong>22 Module</strong>, basierend auf Recherche zu
+      8 etablierten Plattformen (LEAN, NautilusTrader, Backtrader, Zipline, vectorbt, MetaTrader, TradingView).
+      Von v2 (9 Module) erweitert um Pluggable Cost Models, Bootstrap CI, SQN, Monte Carlo, SQLite, Event Bus.
+    </div>
+
+    <div class="rpt-tri">
+      <div class="rpt-card">
+        <h3>⚙️ Kern-Module</h3>
+        <div style="font-size:var(--text-sm);line-height:1.8">
+          <strong>config.py</strong> — Frozen Config (TOML-Loader)<br>
+          <strong>engine.py</strong> — Mark-to-Market Bar-Processing<br>
+          <strong>signals/</strong> — Registry + Provider Pattern<br>
+          <strong>costs.py</strong> — IFeeModel Interface (Pluggable)<br>
+          <strong>indicators.py</strong> — Shared RSI/BB/ATR/ADX<br>
+          <strong>position.py</strong> — __slots__ Tracking
+        </div>
+      </div>
+      <div class="rpt-card">
+        <h3>📊 Analyse-Module</h3>
+        <div style="font-size:var(--text-sm);line-height:1.8">
+          <strong>metrics.py</strong> — WR, PF, Sharpe, Sortino, Calmar, SQN<br>
+          <strong>monte_carlo.py</strong> — 1000 Simulations, DD-Verteilung<br>
+          <strong>walk_forward.py</strong> — Re-Optimization + Decay Detection<br>
+          <strong>filters/</strong> — Session, Day, Score Filter<br>
+          <strong>bus.py</strong> — Event Bus (Publish/Subscribe)
+        </div>
+      </div>
+      <div class="rpt-card">
+        <h3>💾 Daten-Module</h3>
+        <div style="font-size:var(--text-sm);line-height:1.8">
+          <strong>store.py</strong> — SQLite (runs, trades, equity, wf_splits)<br>
+          <strong>export.py</strong> — JSON für Dashboard<br>
+          <strong>report.py</strong> — Report Generation<br>
+          <strong>data.py</strong> — Bar Loading + Caching<br>
+          <strong>run.py</strong> — CLI Entry Point
+        </div>
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <h3>💰 Kostenmodell — Pepperstone Razor (Pflicht)</h3>
+      <div class="rpt-table-wrap">
+        <table class="rpt-table">
+          <thead><tr><th>Kostenart</th><th>Berechnung</th><th>v3 Verbesserung vs v2</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Spread</strong></td><td>Session-basiert (Asian/London/NY/Offhour)</td><td>+ Session-Overlap Averaging</td></tr>
+            <tr><td><strong>Commission</strong></td><td>$7/100k Round-Turn</td><td>Unverändert</td></tr>
+            <tr><td><strong>Slippage</strong></td><td>0.2p Major, 0.3p Cross × Session × ATR</td><td>+ Volume Impact</td></tr>
+            <tr><td><strong>Swap</strong></td><td>Pair-specific, Wed 3×</td><td>Nicht mehr hardcoded -0.1/0.05</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <h3>📈 Statistische Validierung (v3 neu)</h3>
+      <div class="rpt-grid">
+        <div>
+          <div class="rpt-code">Bootstrap CI (5000 Resamples):
+  WR:       63.2% [56.5%, 69.9%] ✅
+  PF:       2.17  [1.48, 3.24]   ✅
+  Expect:   €6.06 [€2.98, €9.09] ✅
+
+Monte Carlo (1000 Simulations):
+  P(Profit):    100%
+  MaxDD P95:    13.6%
+  Worst-case:   13.6% (statt 16.2% real)
+
+SQN: 3.88 (ROBUST — >3 = sehr gut)
+Permutation p-value: 0.0 (SIGNIFICANT)</div>
+        </div>
+        <div>
+          <div class="rpt-code">Walk-Forward (5 Splits, Re-Optimization):
+  Split 0: 19T | WR 84.2% | PF 11.90 | +301€ ✅
+  Split 1: 21T | WR 61.9% | PF  1.20 |  +31€ ✅
+  Split 2: 22T | WR 59.1% | PF  2.30 | +139€ ✅
+  Split 3: 17T | WR 41.2% | PF  0.75 |  -50€ ❌
+  Split 4: 22T | WR 54.5% | PF  3.48 | +250€ ✅
+
+Result: 4/5 profitable → PASS ✅
+Decay: Not significant ✅</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 3. BOT-ERGEBNISSE ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">📊 3. Bot-Ergebnisse (v3 Engine)</div>
+
+    <div class="rpt-comparison">
+      <div class="rpt-card">
+        <h3 style="color:var(--c-ok)">🤖 Bot #1 (Mean Reversion) — ROBUST ✅</h3>
+        <div class="rpt-table-wrap">
+          <table class="rpt-table">
+            <tbody>
+              <tr><td><strong>Trades</strong></td><td>193</td></tr>
+              <tr><td><strong>Win Rate</strong></td><td>63.2% [56.5%, 69.9%]</td></tr>
+              <tr><td><strong>Profit Factor</strong></td><td>2.17 [1.48, 3.24]</td></tr>
+              <tr><td><strong>PnL</strong></td><td>+1.170€ (+117%)</td></tr>
+              <tr><td><strong>MaxDD</strong></td><td>16.2% (MC DD95: 13.6%)</td></tr>
+              <tr><td><strong>Sharpe</strong></td><td>5.45</td></tr>
+              <tr><td><strong>SQN</strong></td><td>3.88</td></tr>
+              <tr><td><strong>Walk-Forward</strong></td><td>4/5 PASS</td></tr>
+              <tr><td><strong>Monte Carlo</strong></td><td>P(Profit) 100%</td></tr>
+              <tr><td><strong>Kosten</strong></td><td>218€ (18.7% of PnL)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">
+          Top: NZDUSD +274€ | GBPUSD +225€ | GBPCHF +179€ | AUDCAD +159€<br>
+          Loser: EURGBP -73€ (WR 29%)
+        </div>
+      </div>
+
+      <div class="rpt-card">
+        <h3 style="color:var(--c-err)">📈 Bot #2 (Trend Following) — NOT ROBUST ❌</h3>
+        <div class="rpt-table-wrap">
+          <table class="rpt-table">
+            <tbody>
+              <tr><td><strong>Trades</strong></td><td>109</td></tr>
+              <tr><td><strong>Win Rate</strong></td><td>30.3% [22%, 39%]</td></tr>
+              <tr><td><strong>Profit Factor</strong></td><td>0.34 [0.13, 0.65]</td></tr>
+              <tr><td><strong>PnL</strong></td><td>-1.006€ (-100%)</td></tr>
+              <tr><td><strong>MaxDD</strong></td><td>104% (Margin Call)</td></tr>
+              <tr><td><strong>SQN</strong></td><td>-3.47</td></tr>
+              <tr><td><strong>Walk-Forward</strong></td><td>1/5 + Decay Detected</td></tr>
+              <tr><td><strong>Monte Carlo</strong></td><td>P(Profit) 0%</td></tr>
+              <tr><td><strong>Kosten</strong></td><td>139€ (13.8% of PnL)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">
+          8/9 Pairs verlustbringend. GBPJPY allein -477€.<br>
+          Letzte 3 WF-Splits: 0 Trades — Strategie tot.<br>
+          <strong>Nächster Schritt:</strong> Optimization-Engine (läuft bereits)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 4. OPTIMIZATION-ENGINE ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">⚡ 4. Optimization-Engine (in Arbeit)</div>
+
+    <div class="rpt-insight">
+      Bot #2 ist tot — die EMA+ADX Trend-Following auf 1H produziert keine profitablen Signale mehr.
+      Die Optimization-Engine wird systematisch die besten Parameter finden — oder eine bessere Strategie.
+      <strong>3 Research-Worker laufen bereits parallel.</strong>
+    </div>
+
+    <div class="rpt-arch-diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│                 OPTIMIZATION-ENGINE (geplant)                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Parameter-Space Definition                                     │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ EMA fast: 3-20 (step 1)                                 │   │
+│  │ EMA slow: 10-50 (step 5)                                │   │
+│  │ ADX threshold: 15-30 (step 5)                           │   │
+│  │ SL: 20-100 pips (step 10)                               │   │
+│  │ TP: 20-100 pips (step 10)                               │   │
+│  │ → ~2.000 Kombinationen pro Pair                         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                          │                                      │
+│                          ▼                                      │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
+│  │  Grid Search │───▶│ Walk-Forward │───▶│  Scoring     │      │
+│  │  (v3 Engine) │    │  Validation  │    │  (balanced)  │      │
+│  │  parallel    │    │  5 Splits    │    │  WR≥50%      │      │
+│  │  multiprocessing │  PASS/WARN/FAIL │  R:R≥2       │      │
+│  └──────────────┘    └──────────────┘    │  Trades≥15   │      │
+│                                          │  PF>1.0      │      │
+│                                          │  DD<200      │      │
+│                                          └──────┬───────┘      │
+│                                                 │              │
+│                                                 ▼              │
+│                                          ┌──────────────┐      │
+│                                          │  Dashboard   │      │
+│                                          │  Heatmaps    │      │
+│                                          │  Top-Configs │      │
+│                                          │  Sensitivity │      │
+│                                          └──────────────┘      │
+└─────────────────────────────────────────────────────────────────┘</div>
+
+    <div class="rpt-tri">
+      <div class="rpt-card">
+        <h3>🔍 Research (läuft)</h3>
+        <div style="font-size:var(--text-sm);line-height:1.8">
+          <span class="rpt-badge rpt-badge-new">RUNNING</span><br><br>
+          <strong>Etablierte Optimierungssysteme</strong><br>
+          Backtrader, LEAN, Optuna, vectorbt Patterns<br><br>
+          <strong>Bot #2 Strategie-Analyse</strong><br>
+          Warum tot? Alternative Strategien? Parameter-Space?<br><br>
+          <strong>Dashboard Patterns</strong><br>
+          Heatmaps, Contour, Sensitivity Charts
+        </div>
+      </div>
+      <div class="rpt-card">
+        <h3>📐 Design (nach Research)</h3>
+        <div style="font-size:var(--text-sm);line-height:1.8">
+          <span class="rpt-badge">TODO</span><br><br>
+          Architektur-Dokument mit:<br>
+          • Parameter-Space Dataclass<br>
+          • Grid-Search Engine (v3-basiert)<br>
+          • Scoring Function<br>
+          • Walk-Forward Integration<br>
+          • SQLite Schema<br>
+          • Dashboard Schema
+        </div>
+      </div>
+      <div class="rpt-card">
+        <h3>🚀 Implementierung (nach Design)</h3>
+        <div style="font-size:var(--text-sm);line-height:1.8">
+          <span class="rpt-badge">TODO</span><br><br>
+          <strong>Core Engine</strong><br>
+          /root/fx-bot/src/optimizer/<br><br>
+          <strong>Dashboard</strong><br>
+          /optimization/ auf der Website<br><br>
+          <strong>Erster Lauf:</strong><br>
+          Bot #2 mit ~2.000 Kombinationen
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 5. DATEN-PIPELINE ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">💾 5. Daten-Pipeline</div>
+
+    <div class="rpt-flow">
+      <div class="rpt-flow-step">cTrader API</div>
+      <div class="rpt-flow-arrow">→</div>
+      <div class="rpt-flow-step">fetch_fx_1h.py</div>
+      <div class="rpt-flow-arrow">→</div>
+      <div class="rpt-flow-step">history_1h/*.json</div>
+      <div class="rpt-flow-arrow">→</div>
+      <div class="rpt-flow-step">v3 Engine</div>
+      <div class="rpt-flow-arrow">→</div>
+      <div class="rpt-flow-step">SQLite</div>
+      <div class="rpt-flow-arrow">→</div>
+      <div class="rpt-flow-step">JSON Export</div>
+      <div class="rpt-flow-arrow">→</div>
+      <div class="rpt-flow-step">Dashboard</div>
+    </div>
+
+    <div class="rpt-table-wrap">
+      <table class="rpt-table">
+        <thead><tr><th>Komponente</th><th>Pfad</th><th>Beschreibung</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Rohdaten</strong></td><td><code>/root/trading/data/history_1h/</code></td><td>27 Paare, ~17.800 Bars, 3J (Aug 2023→Jun 2026)</td></tr>
+          <tr><td><strong>v3 SQLite</strong></td><td><code>/root/fx-bot/data/backtest_v3/history.db</code></td><td>Runs, Trades, Equity, WF-Splits</td></tr>
+          <tr><td><strong>v3 Export</strong></td><td><code>/root/.hermes/site/api/backtest/*.json</code></td><td>Dashboard-JSON pro Run</td></tr>
+          <tr><td><strong>Optimierung</strong></td><td><code>/root/fx-bot/data/optimizer/</code></td><td>Grid-Results + WF-Results (geplant)</td></tr>
+          <tr><td><strong>Live Config</strong></td><td><code>/root/fx-bot/config/assets.toml</code></td><td>Bot #1 Parameter (10 Pairs)</td></tr>
+          <tr><td><strong>Trend Config</strong></td><td><code>/root/fx-bot/config/trend_assets.toml</code></td><td>Bot #2 Parameter (9 Pairs)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════ 6. DASHBOARD ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">🖥️ 6. Dashboard & Reports</div>
+
+    <div class="rpt-tri">
+      <div class="rpt-card">
+        <h3>📊 /backtest/</h3>
+        <p style="font-size:var(--text-sm);color:var(--c-text-dim);margin:0">
+          Interaktives Backtest-Dashboard. Alle Runs als Tabelle, Detailseite mit
+          Equity Curve, Drawdown, Monthly PnL, Per-Pair, Walk-Forward, Kosten.
+        </p>
+      </div>
+      <div class="rpt-card">
+        <h3>📋 /reports/</h3>
+        <p style="font-size:var(--text-sm);color:var(--c-text-dim);margin:0">
+          Technische Reports: Backtest-Engine v2→v3, Multi-Bot Koordination,
+          dieser Gesamtbericht. Nach Optimization: Grid-Search Report.
+        </p>
+      </div>
+      <div class="rpt-card">
+        <h3>⚡ /optimization/ (geplant)</h3>
+        <p style="font-size:var(--text-sm);color:var(--c-text-dim);margin:0">
+          Grid-Search Heatmaps, Parameter-Sensitivity, Top-Configs,
+          Walk-Forward Timeline, Config-Vergleich.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 7. INFRASTRUKTUR ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">🔧 7. Infrastruktur</div>
+
+    <div class="rpt-table-wrap">
+      <table class="rpt-table">
+        <thead><tr><th>Komponente</th><th>Technologie</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Server</strong></td><td>Linux (Hermes Agent)</td><td><span class="rpt-badge rpt-badge-fix">Aktiv</span></td></tr>
+          <tr><td><strong>Webserver</strong></td><td>Caddy (HTTPS, Basic Auth)</td><td><span class="rpt-badge rpt-badge-fix">Aktiv</span></td></tr>
+          <tr><td><strong>Site Builder</strong></td><td>Python build.py → _build/</td><td><span class="rpt-badge rpt-badge-fix">Aktiv</span></td></tr>
+          <tr><td><strong>Bot #1</strong></td><td>systemd (fx-bot + fx-executor)</td><td><span class="rpt-badge rpt-badge-fix">LIVE</span></td></tr>
+          <tr><td><strong>Bot #2</strong></td><td>systemd (fx-trend-v2 + executor)</td><td><span class="rpt-badge rpt-badge-err">DEAD</span></td></tr>
+          <tr><td><strong>Data Fetch</strong></td><td>cTrader API (period=9, H1)</td><td><span class="rpt-badge rpt-badge-fix">Aktiv</span></td></tr>
+          <tr><td><strong>ML Forecast</strong></td><td>Chronos-2 (autogluon/chronos-2)</td><td><span class="rpt-badge rpt-badge-fix">Aktiv</span></td></tr>
+          <tr><td><strong>Kanban</strong></td><td>Hermes Kanban (SQLite, 6 Worker)</td><td><span class="rpt-badge rpt-badge-fix">Aktiv</span></td></tr>
+          <tr><td><strong>Monitoring</strong></td><td>Cron Jobs (5m Intervall)</td><td><span class="rpt-badge rpt-badge-fix">Aktiv</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════ 8. NÄCHSTE SCHRITTE ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">📋 8. Nächste Schritte</div>
+
+    <div class="rpt-table-wrap">
+      <table class="rpt-table">
+        <thead><tr><th>#</th><th>Aufgabe</th><th>Status</th><th>Abhängigkeit</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Optimization-Engine Research</strong> (3 Tasks parallel)</td><td><span class="rpt-badge rpt-badge-new">RUNNING</span></td><td>—</td></tr>
+          <tr><td>2</td><td><strong>Optimization-Engine Design</strong> (Synthese)</td><td><span class="rpt-badge">TODO</span></td><td>Tasks 1</td></tr>
+          <tr><td>3</td><td><strong>Grid-Search Engine implementieren</strong></td><td><span class="rpt-badge">TODO</span></td><td>Task 2</td></tr>
+          <tr><td>4</td><td><strong>Bot #2 Grid-Search laufen lassen</strong></td><td><span class="rpt-badge">TODO</span></td><td>Task 3</td></tr>
+          <tr><td>5</td><td><strong>Optimization Dashboard bauen</strong></td><td><span class="rpt-badge">TODO</span></td><td>Task 2</td></tr>
+          <tr><td>6</td><td><strong>Bot #2 mit neuen Params deployen</strong></td><td><span class="rpt-badge">TODO</span></td><td>Task 4</td></tr>
+          <tr><td>7</td><td><strong>EURGBP aus Bot #1 entfernen?</strong></td><td><span class="rpt-badge">TODO</span></td><td>Diskussion</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════ 9. FAZIT ═══════ -->
+  <div class="rpt-section">
+    <div class="rpt-section-title">🎯 9. Fazit</div>
+
+    <div class="rpt-insight">
+      <strong>Das Hermes Trading System</strong> besteht aus drei Hauptkomponenten:<br><br>
+
+      <strong>1. Backtest-Engine v3</strong> — Fertig. 22 Module, basierend auf Recherche zu 8 etablierten
+      Plattformen. Pluggable Cost Models, Bootstrap CI, SQN, Monte Carlo, Walk-Forward mit Decay Detection,
+      SQLite-Datenlayer, interaktives Dashboard. Bot #1 validiert als ROBUST (SQN 3.88, Walk-Forward 4/5 PASS).<br><br>
+
+      <strong>2. Optimization-Engine</strong> — In Arbeit. 3 Research-Worker laufen parallel. Ziel:
+      systematische Parameter-Optimierung mit Grid Search + Walk-Forward + interaktiven Heatmaps.
+      Erster Einsatz: Bot #2 (Trend Following) retten oder neue Strategie finden.<br><br>
+
+      <strong>3. Live Trading</strong> — Bot #1 (Mean Reversion) läuft LIVE auf Pepperstone Razor.
+      Bot #2 (Trend) ist tot und wartet auf Optimization-Engine.<br><br>
+
+      <strong>Architektur-Prinzipien</strong> (aus Research abgeleitet):<br>
+      • Shared Code (Signal-Logik importiert, nicht kopiert)<br>
+      • Pluggable Models (IFeeModel Interface, wie LEAN)<br>
+      • Statistische Validierung (Bootstrap CI, SQN, Monte Carlo)<br>
+      • Persistente Daten (SQLite statt JSON-Chaos)<br>
+      • Interaktive Dashboards (Web-basiert, nicht PNG)
+    </div>
+  </div>
+</div>
+<!--/BODY-->

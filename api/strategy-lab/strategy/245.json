@@ -1,0 +1,213 @@
+{
+  "id": 245,
+  "label": "#245",
+  "name": "IT: KB_48_mean_reversion",
+  "display_name": "IT: KB_48_mean_reversion",
+  "description": "Williams %R unter -90 = extrem überverkauft, über -10 = extrem überkauft. In Range-bound Märkten kehren diese Extreme zum Mittelwert zurück.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": -94.9,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-12 12:58:33",
+  "updated_at": "2026-07-12 13:00:41",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 2r/0g/2b enter, exit=timeout\", \"pnl\": -617.58, \"trades\": 343, \"score\": -94.9}], \"iterations\": 1, \"holdout\": null, \"anti_overfit\": null}",
+  "concept": {
+    "name": "IT: KB_48_mean_reversion",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "kb_mean_reversion_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "pin_bar",
+                "op": "==",
+                "value": 1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "kb_mean_reversion_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "pin_bar",
+                "op": "==",
+                "value": -1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "support_resistance",
+                "params": {
+                  "lookback": 50,
+                  "threshold": 0.002
+                },
+                "op": "!=",
+                "value": 0
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "williams_r",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -80
+              }
+            ],
+            "points": 15
+          }
+        ],
+        "gates": [],
+        "min_score": 0,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 12
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.2
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY"
+      ]
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Williams %R unter -90 = extrem überverkauft, über -10 = extrem überkauft. In Range-bound Märkten kehren diese Extreme zum Mittelwert zurück."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -94.9,
+    "oos_pnl": -617.58,
+    "oos_trades": 343,
+    "oos_pass_rate": 0.449,
+    "iteration": 1,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {},
+    "selected_assets": [],
+    "dropped_assets": [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY"
+    ],
+    "pair_overrides": {},
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": true,
+      "evaluated_at": "2026-07-16T18:15:24.072665+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY"
+  ],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 2r/0g/2b enter, exit=timeout",
+      "oos_pnl": -617.58,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": 245,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 343,
+      "children": []
+    },
+    "best_path_ids": [
+      245
+    ],
+    "stats": {
+      "total_variants": 1,
+      "new_trees": 0,
+      "best_pnl": -617.58,
+      "base_pnl": -617.58,
+      "improvement": 0.0,
+      "runtime_seconds": 127.9
+    }
+  },
+  "best_oos_pnl": -617.58,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "C",
+  "best_oos_pass_rate": 0.449,
+  "oos_trades": 343,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 0,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

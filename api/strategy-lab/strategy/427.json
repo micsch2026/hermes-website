@@ -1,0 +1,184 @@
+{
+  "id": 427,
+  "label": "#427",
+  "name": "RCP-RECIPE: Stochastic_MR_v1 (GBPUSD)",
+  "display_name": "RCP-RECIPE: Stochastic_MR_v1 (GBPUSD)",
+  "description": "",
+  "strategy_type": "mean_reversion",
+  "timeframe": "1h",
+  "status": "archived",
+  "readiness": "unknown",
+  "rejection_reason": null,
+  "overall_score": 474.49,
+  "iteration_count": 1,
+  "source": "recipe_v1",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "recipe-archetype-6",
+  "created_at": "2026-07-17T08:53:43.997930+00:00",
+  "updated_at": "2026-07-17T08:53:43.997930+00:00",
+  "notes": null,
+  "concept": {
+    "name": "Stochastic_MR",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "GBPUSD"
+    ],
+    "tree": {
+      "name": "Stochastic Mean Reversion",
+      "archetype": "mean_reversion",
+      "description": "Stochastic oversold/overbought + BB confirmation + Session filter. Different assets from RSI-based MR.",
+      "timeframe": "1h",
+      "assets_candidate": [
+        "GBPUSD",
+        "AUDUSD",
+        "GBPJPY"
+      ],
+      "enter": {
+        "signals": [
+          {
+            "id": "stoch_mr_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "stoch_k",
+                "timeframe": "1h",
+                "params": {
+                  "k_period": 14,
+                  "smooth": 3
+                },
+                "op": "<",
+                "value": 25
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.15
+              }
+            ]
+          },
+          {
+            "id": "stoch_mr_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "stoch_k",
+                "timeframe": "1h",
+                "params": {
+                  "k_period": 14,
+                  "smooth": 3
+                },
+                "op": ">",
+                "value": 80
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.85
+              }
+            ]
+          }
+        ],
+        "gates": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 30
+              },
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": "<",
+                "value": 0.8
+              }
+            ]
+          }
+        ]
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "mult": 1.5,
+        "period": 14
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.5
+      },
+      "notes": "Archetype 6: Stochastic MR. ADX<30 gate = no trades in strong trends. ATR<80%ile = no trades in vol spikes. BB position = price must be at band edge."
+    }
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "oos_pnl": 474.49,
+    "oos_pf": 1.47,
+    "oos_wr": 44.8,
+    "oos_trades": 152,
+    "oos_pass_rate": 0.75,
+    "mode": "recipe_v1",
+    "tier_v2": "B",
+    "hold_out": {
+      "pnl": 69.43,
+      "trades": 28,
+      "pf": 1.32
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "v1: {\"stoch_oversold\": 25, \"sl_mult\": 1.5, \"tp_r\": 2.5}",
+      "oos_pnl": 474.49,
+      "oos_pf": 1.47,
+      "tier": "B",
+      "tested": true
+    }
+  },
+  "best_oos_pnl": 474.49,
+  "best_pf": 1.47,
+  "best_wr": 44.8,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.75,
+  "oos_trades": 152,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

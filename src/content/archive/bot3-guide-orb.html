@@ -1,0 +1,194 @@
+<!--TITLE:Bot #3 Guide — Opening Range Breakout — Hermes-->
+<!--HEAD-->
+<style>
+  .guide { max-width: 900px; margin: 0 auto; line-height: 1.8; }
+  .guide h2 { font-size: var(--text-lg); margin-top: var(--s-8); border-bottom: 1px solid var(--c-border); padding-bottom: var(--s-2); }
+  .guide h3 { font-size: var(--text-sm); margin-top: var(--s-4); }
+  .guide table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  .guide th { text-align: left; padding: var(--s-2) var(--s-3); background: var(--c-surface); font-weight: 600; border-bottom: 2px solid var(--c-border); }
+  .guide td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .guide code { background: var(--c-surface); padding: 2px 6px; border-radius: var(--r-sm); font-size: var(--text-xs); }
+  .guide pre { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); overflow-x: auto; font-size: var(--text-xs); }
+  .guide .warn { border-left: 3px solid var(--c-warn); padding: var(--s-3) var(--s-4); background: rgba(245,158,11,0.05); border-radius: 0 var(--r-md) var(--r-md) 0; margin: var(--s-3) 0; }
+  .guide .success { border-left: 3px solid #4caf50; padding: var(--s-3) var(--s-4); background: rgba(76,175,80,0.05); border-radius: 0 var(--r-md) var(--r-md) 0; margin: var(--s-3) 0; }
+  .guide .info { border-left: 3px solid #6495ed; padding: var(--s-3) var(--s-4); background: rgba(100,149,237,0.05); border-radius: 0 var(--r-md) var(--r-md) 0; margin: var(--s-3) 0; }
+  .guide .danger { border-left: 3px solid var(--c-err); padding: var(--s-3) var(--s-4); background: rgba(239,68,68,0.05); border-radius: 0 var(--r-md) var(--r-md) 0; margin: var(--s-3) 0; }
+  .guide .param-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s-4); margin: var(--s-4) 0; }
+  .guide .param-card { background: var(--c-surface); padding: var(--s-4); border-radius: var(--r-md); border: 1px solid var(--c-border); }
+  .guide .param-card .label { font-size: var(--text-xs); color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--s-1); }
+  .guide .param-card .value { font-size: var(--text-lg); font-weight: 700; }
+  .guide .param-card .sub { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: var(--s-1); }
+  .guide .flow { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin: var(--s-3) 0; font-size: var(--text-xs); }
+  .guide .flow-step { background: var(--c-surface); padding: var(--s-2) var(--s-3); border-radius: var(--r-md); border: 1px solid var(--c-border); }
+  .guide .flow-arrow { color: var(--c-text-dim); }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container guide">
+
+  <h1 style="display:flex;align-items:center;gap:var(--s-3)">
+    <i data-lucide="flask-conical" style="width:28px;height:28px;color:var(--c-accent)"></i>
+    Bot #3 — Opening Range Breakout Guide
+  </h1>
+
+  <div class="info">
+    <strong>Status:</strong> Research Phase — Walk-Forward Backtest FAIL. Strategie funktioniert noch nicht profitabel mit aktuellen Parametern (SL=0.5×ATR zu eng). Nächster Schritt: SL auf ≥1.0×ATR erweitern, dann Re-Test.
+    <br><a href="/bot3" style="color:var(--c-accent)">→ Zum Dashboard</a>
+  </div>
+
+  <hr>
+
+  <h2>📊 Überblick</h2>
+  <div class="param-grid">
+    <div class="param-card">
+      <div class="label">Strategie</div>
+      <div class="value">Opening Range Breakout</div>
+      <div class="sub">Session-Breakout bei US Open (15:30 CET)</div>
+    </div>
+    <div class="param-card">
+      <div class="label">Assets</div>
+      <div class="value">US500, UK100</div>
+      <div class="sub">Indizes — Spread-only, kein Commission</div>
+    </div>
+    <div class="param-card">
+      <div class="label">Timeframe</div>
+      <div class="value">M5 (Opening Range: 1H)</div>
+      <div class="sub">15:00–16:00 CET = Opening Range Bildung</div>
+    </div>
+    <div class="param-card">
+      <div class="label">Session</div>
+      <div class="value">15:30–21:00 CET</div>
+      <div class="sub">US Open → US Handelsschluss (Intraday)</div>
+    </div>
+    <div class="param-card">
+      <div class="label">R:R Ratio</div>
+      <div class="value">1:3</div>
+      <div class="sub">SL=0.5×ATR, TP=1.5×ATR</div>
+    </div>
+    <div class="param-card">
+      <div class="label">Risk/Trade</div>
+      <div class="value">2%</div>
+      <div class="sub">Max 1 Trade/Tag, Daily Limit 4%</div>
+    </div>
+  </div>
+
+  <h2>🎯 Kernkonzept</h2>
+  <p>Die <strong>Opening Range Breakout (ORB)</strong> Strategie nutzt die erhöhte Volatilität bei US-Markteröffnung (15:30 CET). Die Idee:</p>
+  <ol>
+    <li><strong>Opening Range bilden:</strong> 15:00–16:00 CET — das High und Low der ersten 30–60 Minuten definieren die Range</li>
+    <li><strong>Ausbruch handeln:</strong> Wenn der M5-Close über/unter die Range schließt, wird in Ausbruchsrichtung eingestiegen</li>
+    <li><strong>Risiko begrenzen:</strong> SL unter/über der Range (ATR-basiert), Time-Stop um 21:00 CET</li>
+  </ol>
+
+  <div class="flow">
+    <span class="flow-step">15:00 CET — OR High/Low markieren</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">16:00–20:00 — Auf Close über/unter OR warten</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">Entry + SL/TP setzen</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">TP/SL/Trailing/Time-Stop (21:00)</span>
+  </div>
+
+  <h2>⚙️ Parameter</h2>
+  <table>
+    <tr><th>Parameter</th><th>Wert</th><th>Beschreibung</th></tr>
+    <tr><td><code>opening_range_berlin_hour</code></td><td>15</td><td>Stunde der Opening Range (CET)</td></tr>
+    <tr><td><code>entry_start_berlin_hour</code></td><td>16</td><td>Ab wann Trades möglich (CET)</td></tr>
+    <tr><td><code>entry_end_berlin_hour</code></td><td>20</td><td>Letzter möglicher Entry (CET)</td></tr>
+    <tr><td><code>time_stop_berlin_hour</code></td><td>21</td><td>Alle Positionen schließen (CET)</td></tr>
+    <tr><td><code>sl_atr_mult</code></td><td>0.5</td><td>SL = 0.5×ATR(14) <span style="color:var(--c-err)">(→ zu eng!)</span></td></tr>
+    <tr><td><code>tp_atr_mult</code></td><td>1.5</td><td>TP = 1.5×ATR(14) → R:R 1:3</td></tr>
+    <tr><td><code>adx_max</code></td><td>35</td><td>Kein Trade bei ADX > 35 (Trend zu stark)</td></tr>
+    <tr><td><code>trailing_activate_r</code></td><td>1.0</td><td>Trailing Stop nach 1R Gewinn aktivieren</td></tr>
+    <tr><td><code>news_buffer_hours</code></td><td>2</td><td>Kein Trade ±2h bei FOMC/CPI/NFP</td></tr>
+  </table>
+
+  <h2>🛡️ Risiko-Regeln</h2>
+  <table>
+    <tr><th>Regel</th><th>Limit</th><th>Beschreibung</th></tr>
+    <tr><td>Risiko pro Trade</td><td>2%</td><td>Maximaler Verlust pro Position</td></tr>
+    <tr><td>Max Trades/Tag</td><td>1</td><td>Ein Signal pro Session</td></tr>
+    <tr><td>Daily Loss Limit</td><td>4%</td><td>Bot stoppt bei 4% Tagesverlust</td></tr>
+    <tr><td>Weekly DD Limit</td><td>8%</td><td>Bot stoppt bei 8% Wochenverlust</td></tr>
+    <tr><td>Spread-Filter</td><td>3× normal</td><td>Kein Trade wenn Spread > 3× Normalwert</td></tr>
+    <tr><td>News-Filter</td><td>±2h</td><td>FOMC, CPI, NFP — keine Trades im Fenster</td></tr>
+  </table>
+
+  <h2>💰 Kosten — Pepperstone Razor</h2>
+  <table>
+    <tr><th>Index</th><th>Spread</th><th>Commission</th><th>Min Lot</th><th>Kosten/Trade</th><th>Margin/0.1L</th></tr>
+    <tr><td><strong>US500</strong></td><td>0.4 pt</td><td>$0</td><td>0.1</td><td>$0.04</td><td>$30</td></tr>
+    <tr><td><strong>UK100</strong></td><td>1.0 pt</td><td>$0</td><td>0.1</td><td>$0.10</td><td>$44</td></tr>
+  </table>
+  <div class="info">
+    <strong>Hinweis:</strong> Bei 0.1 Lot und R:R 1:3 ist ein TP-Win ~$0.26–$1.12. Die Kosten ($0.04–$0.10) sind relativ hoch im Verhältnis zum Gewinn. Größere Lot-Size (0.5–1.0) würde den Kostenvorteil besser nutzen.
+  </div>
+
+  <h2>🧪 Backtest-Ergebnisse (WFO)</h2>
+  <div class="danger">
+    <strong>Verdict: FAIL</strong> — Beide Symbole (US500, UK100) haben alle 3 OOS-Splits nicht bestanden. Die Strategie hat keinen statistischen Edge mit aktuellen Parametern.
+  </div>
+
+  <h3>Walk-Forward Overview (IS=30d, OOS=10d, 3 Splits)</h3>
+  <table>
+    <tr><th>Symbol</th><th>OOS Trades</th><th>OOS PnL</th><th>OOS WR</th><th>OOS PF</th><th>Verdict</th></tr>
+    <tr><td><strong>US500</strong></td><td>28</td><td style="color:var(--c-err)">-$4.46</td><td>17.5%</td><td>0.38</td><td style="color:var(--c-err)">FAIL</td></tr>
+    <tr><td><strong>UK100</strong></td><td>29</td><td style="color:var(--c-err)">-$2.60</td><td>24.1%</td><td>0.71</td><td style="color:var(--c-err)">FAIL</td></tr>
+  </table>
+
+  <h3>Root Causes</h3>
+  <ol>
+    <li><strong>SL zu eng (0.5×ATR):</strong> ~70% der Trades enden per SL durch normalen M5-Noise, bevor der Breakout sich entwickeln kann</li>
+    <li><strong>Kosten-Drag:</strong> Bei 0.1 Lot sind die Renditen winzig ($0.26–$1.12), Kosten ($0.14–$0.16/Trade) fressen 15–25% eines TP-Gewinns</li>
+    <li><strong>WR unter Breakeven:</strong> Benötigte WR bei R:R 3:1 = ~27%, tatsächliche WR = 12.5–24%</li>
+    <li><strong>Trailing Stop ineffektiv:</strong> Aktiviert sich intrabar bei 1R, aber Close ist flach → SL auf Entry → nur Kosten</li>
+  </ol>
+
+  <h3>Empfehlungen</h3>
+  <table>
+    <tr><th>Änderung</th><th>Erwarteter Effekt</th></tr>
+    <tr><td>SL: 0.5×ATR → ≥1.0×ATR</td><td>Weniger Noise-Stops, höhere WR, aber weiteres Risiko pro Trade</td></tr>
+    <tr><td>TP: 1.5×ATR → 2.0–2.5×ATR</td><td>R:R ≥ 2:1 mit breiterem SL beibehalten</td></tr>
+    <tr><td>Lot Size: 0.1 → 0.5–1.0</td><td>Edge über Kostenschwelle heben</td></tr>
+    <tr><td>Volume-Filter auf Breakout-Bar</td><td>Low-Conviction Entries reduzieren</td></tr>
+    <tr><td>Time-Stop: 21:00 → 22:00 CET</td><td>Trades mehr Zeit zur Entwicklung geben</td></tr>
+  </table>
+
+  <h2>🏗️ Architektur</h2>
+  <pre>
+┌─────────────┐    ┌──────────────┐    ┌───────────────┐
+│ bars.db      │    │ engine.py    │    │ signals.json  │
+│ (M5/M15)    │───→│ (ORB Logic)  │───→│ (33 Signale)  │
+│ 61,776 bars │    │              │    │               │
+└─────────────┘    └──────────────┘    └───────┬───────┘
+                                               │
+                   ┌──────────────┐    ┌───────▼───────┐
+                   │ Website      │◄───│ build_bot3_   │
+                   │ /bot3        │    │ status.py     │
+                   └──────────────┘    └───────────────┘
+  </pre>
+
+  <h2>📁 Dateien</h2>
+  <table>
+    <tr><th>Datei</th><th>Pfad</th><th>Beschreibung</th></tr>
+    <tr><td>Strategie-Config</td><td><code>/root/bot3/config/strategy.toml</code></td><td>Alle Parameter (SL, TP, Session, Risk)</td></tr>
+    <tr><td>Engine</td><td><code>/root/bot3/src/engine.py</code></td><td>Signal-Erzeugung (ORB Logik)</td></tr>
+    <tr><td>Datenbank</td><td><code>/root/bot3/data/bars.db</code></td><td>61,776 M5/M15 Bars (US500 + UK100)</td></tr>
+    <tr><td>Signale</td><td><code>/root/bot3/data/signals.json</code></td><td>33 generierte Signale (Backtest)</td></tr>
+    <tr><td>WFO Results</td><td><code>/root/bot3/data/wfo_results.json</code></td><td>Walk-Forward Backtest Ergebnisse</td></tr>
+    <tr><td>Backtest Report</td><td><code>/root/bot3/data/backtest_report.md</code></td><td>Detaillierter Report mit Root-Cause-Analyse</td></tr>
+    <tr><td>API Builder</td><td><code>/root/.hermes/site/build_bot3_status.py</code></td><td>Generiert Dashboard JSONs</td></tr>
+  </table>
+
+  <h2>⚠️ Typische Fallen</h2>
+  <ol>
+    <li><strong>SL zu eng:</strong> Der häufigste Fehler bei ORB-Strategien. M5-Noise stoppt Trades bevor der Breakout sich entfaltet. Minimum 1.0×ATR.</li>
+    <li><strong>False Breakouts:</strong> Nicht jeder Ausbruch hält. Volume-Filter und ADX-Filter helfen, aber eliminieren das Problem nicht vollständig.</li>
+    <li><strong>Kosten bei kleinen Lots:</strong> Bei 0.1 Lot sind die absoluten Gewinne so klein, dass Broker-Kosten einen signifikanten Anteil ausmachen.</li>
+    <li><strong>News-Events:</strong> FOMC/CPI/NFP können die OR komplett sprengen. News-Filter ist Pflicht.</li>
+    <li><strong>Trailing Stop zu früh:</strong> Aktivierung bei 1R intrabar, aber Close flach → nur Kosten, kein Schutz.</li>
+  </ol>
+
+</div>
+<!--/BODY-->

@@ -1,0 +1,1819 @@
+<!--TITLE:Backtest Detail — Hermes-->
+<!--HEAD-->
+<style>
+  /* ── Backtest Detail v3 ─────────────────────────────────── */
+  .bt-container { max-width: 1200px; margin: 0 auto; padding: var(--s-6) var(--s-4); }
+
+  /* Header */
+  .bt-back {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    color: var(--c-text-dim); font-size: var(--text-sm); font-weight: 500;
+    text-decoration: none; margin-bottom: var(--s-4); transition: color 0.15s;
+  }
+  .bt-back:hover { color: var(--c-accent); }
+  .bt-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-bottom: var(--s-2); }
+  .bt-title { font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .bt-badge {
+    display: inline-flex; align-items: center; padding: 2px 10px;
+    border-radius: var(--r-md); font-size: var(--text-xs); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .bt-badge-pass, .bt-badge-ROBUST { background: rgba(34,197,94,0.15); color: var(--c-ok); }
+  .bt-badge-WARN, .bt-badge-CONDITIONAL { background: rgba(240,185,64,0.15); color: var(--c-warn); }
+  .bt-badge-fail, .bt-badge-NOT_ROBUST { background: rgba(239,68,68,0.15); color: var(--c-err); }
+  .bt-badge-portfolio { background: rgba(113,50,245,0.15); color: var(--c-accent); }
+  .bt-badge-single { background: rgba(210,153,34,0.15); color: var(--c-warn); }
+  .bt-badge-v3 { background: rgba(113,50,245,0.2); color: #a78bfa; font-size: 10px; padding: 1px 6px; }
+  .bt-meta { font-size: var(--text-sm); color: var(--c-text-dim); margin-bottom: var(--s-6); display: flex; gap: var(--s-4); flex-wrap: wrap; align-items: center; }
+  .bt-meta-item { display: flex; align-items: center; gap: var(--s-1); }
+
+  /* Verdict Card */
+  .verdict-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-5); margin-bottom: var(--s-6);
+  }
+  .verdict-card.ROBUST { border-color: rgba(34,197,94,0.3); }
+  .verdict-card.NOT_ROBUST { border-color: rgba(239,68,68,0.3); }
+  .verdict-card.CONDITIONAL { border-color: rgba(240,185,64,0.3); }
+  .verdict-header { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-4); }
+  .verdict-rating { font-size: var(--text-xl); font-weight: 700; }
+  .verdict-criteria { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-2); }
+  .verdict-item { display: flex; align-items: center; gap: var(--s-2); font-size: var(--text-sm); }
+  .verdict-check { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .verdict-check.ok { background: rgba(34,197,94,0.15); color: var(--c-ok); }
+  .verdict-check.fail { background: rgba(239,68,68,0.15); color: var(--c-err); }
+
+  /* KPI Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-6); }
+  .kpi-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4) var(--s-5);
+    transition: border-color 0.15s;
+  }
+  .kpi-card:hover { border-color: var(--c-border-2, var(--c-border)); }
+  .kpi-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-text-dim); font-weight: 500; margin-bottom: var(--s-2); }
+  .kpi-value { font-size: var(--text-xl); font-weight: 700; letter-spacing: -0.02em; }
+  .kpi-sub { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: var(--s-1); }
+  .kpi-ci { font-size: var(--text-xs); color: var(--c-text-2); margin-top: 2px; font-style: italic; }
+
+  /* Section */
+  .bt-section { margin-bottom: var(--s-6); }
+  .bt-section-title {
+    font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--c-text-dim); font-weight: 600; margin-bottom: var(--s-3);
+    display: flex; align-items: center; gap: var(--s-2); padding-bottom: var(--s-2);
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  /* Chart Card */
+  .chart-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-5); margin-bottom: var(--s-4);
+  }
+  .chart-card h3 {
+    margin: 0 0 var(--s-3); font-size: var(--text-xs);
+    color: var(--c-text-dim); text-transform: uppercase;
+    letter-spacing: 0.05em; font-weight: 500;
+  }
+  .chart-wrap { position: relative; width: 100%; }
+  .chart-wrap-tall { height: 300px; }
+  .chart-wrap-med { height: 250px; }
+  .chart-wrap-short { height: 200px; }
+  .chart-wrap-donut { height: 250px; display: flex; align-items: center; justify-content: center; }
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); }
+  @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } }
+
+  /* Tables */
+  .bt-table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+  table.bt-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  .bt-table th {
+    text-align: left; color: var(--c-text-dim); font-weight: 600;
+    padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border);
+    font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em;
+    position: sticky; top: 0; background: var(--c-surface); z-index: 1;
+    cursor: pointer; user-select: none;
+  }
+  .bt-table th:hover { color: var(--c-text); }
+  .bt-table th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+  .bt-table th.sorted .sort-arrow { opacity: 1; color: var(--c-accent); }
+  .bt-table td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border); vertical-align: middle; }
+  .bt-table tr:last-child td { border-bottom: none; }
+  .bt-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .bt-table .highlight-row td { background: rgba(113,50,245,0.08); }
+
+  /* Monthly Heatmap */
+  .heatmap { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .heatmap-cell {
+    width: 100px; padding: var(--s-3); border-radius: var(--r-md);
+    text-align: center; font-size: var(--text-xs); font-weight: 600;
+    border: 1px solid var(--c-border); transition: transform 0.1s;
+  }
+  .heatmap-cell:hover { transform: scale(1.05); }
+  .heatmap-month { display: block; color: var(--c-text-dim); margin-bottom: var(--s-1); font-weight: 500; }
+  .heatmap-value { display: block; font-size: var(--text-sm); font-weight: 700; }
+
+  /* Bot/Session Cards */
+  .bot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-3); }
+  .bot-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4);
+  }
+  .bot-card-name { font-size: var(--text-sm); font-weight: 600; margin-bottom: var(--s-3); color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bot-card-stat { display: flex; justify-content: space-between; font-size: var(--text-xs); padding: var(--s-1) 0; color: var(--c-text-dim); }
+  .bot-card-stat span:last-child { font-weight: 600; color: var(--c-text); }
+
+  /* Walk-Forward Timeline */
+  .wf-timeline { display: flex; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-4); }
+  .wf-split-card {
+    flex: 1; min-width: 160px; background: var(--c-surface);
+    border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    padding: var(--s-3); text-align: center;
+  }
+  .wf-split-card.profitable { border-color: rgba(34,197,94,0.3); }
+  .wf-split-card.unprofitable { border-color: rgba(239,68,68,0.3); }
+  .wf-split-label { font-size: var(--text-xs); color: var(--c-text-dim); margin-bottom: var(--s-1); }
+  .wf-split-pnl { font-size: var(--text-lg); font-weight: 700; }
+  .wf-split-meta { font-size: 10px; color: var(--c-text-dim); margin-top: var(--s-1); }
+
+  /* Config block */
+  .config-block {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4); position: relative;
+  }
+  .config-block pre {
+    margin: 0; font-size: var(--text-xs); font-family: var(--font-mono, monospace);
+    color: var(--c-text); white-space: pre-wrap; word-break: break-all;
+    max-height: 400px; overflow-y: auto;
+  }
+  .copy-btn {
+    position: absolute; top: var(--s-2); right: var(--s-2);
+    background: var(--c-accent); color: #fff; border: none;
+    padding: var(--s-1) var(--s-3); border-radius: var(--r-md);
+    cursor: pointer; font-size: var(--text-xs); font-weight: 600;
+    opacity: 0.8; transition: opacity 0.15s;
+  }
+  .copy-btn:hover { opacity: 1; }
+
+  /* Export */
+  .export-row { display: flex; gap: var(--s-3); margin-top: var(--s-6); flex-wrap: wrap; }
+  .btn-export {
+    background: var(--c-surface); color: var(--c-text); border: 1px solid var(--c-border);
+    padding: var(--s-2) var(--s-4); border-radius: var(--r-md);
+    cursor: pointer; font-size: var(--text-sm); font-weight: 600;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .btn-export:hover { border-color: var(--c-accent); background: var(--c-accent); color: #fff; }
+
+  /* Show more */
+  .show-more-btn {
+    display: block; width: 100%; text-align: center;
+    background: transparent; border: 1px dashed var(--c-border);
+    color: var(--c-text-dim); padding: var(--s-3); border-radius: var(--r-md);
+    cursor: pointer; font-size: var(--text-sm); font-weight: 500;
+    margin-top: var(--s-3); transition: border-color 0.15s, color 0.15s;
+  }
+  .show-more-btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+  /* Pair nav chips */
+  .pair-nav { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-bottom: var(--s-4); }
+  .pair-chip {
+    padding: 3px 12px; border-radius: var(--r-md); font-size: var(--text-xs); font-weight: 600;
+    cursor: pointer; border: 1px solid var(--c-border); background: transparent; color: var(--c-text-dim);
+    transition: all 0.15s;
+  }
+  .pair-chip:hover { border-color: var(--c-accent); color: var(--c-text); }
+  .pair-chip.active { background: rgba(113,50,245,0.15); border-color: var(--c-accent); color: var(--c-accent); }
+
+  /* Loading / Error */
+  .bt-loading { text-align: center; padding: var(--s-8); color: var(--c-text-dim); font-size: var(--text-sm); }
+  .bt-loading .spinner {
+    display: inline-block; width: 24px; height: 24px; border: 3px solid var(--c-border);
+    border-top-color: var(--c-accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-bottom: var(--s-3);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .bt-error { text-align: center; padding: var(--s-8); color: var(--c-err); font-size: var(--text-sm); }
+  .bt-nodata { text-align: center; padding: var(--s-4); color: var(--c-text-dim); font-size: var(--text-sm); font-style: italic; }
+
+  /* Color helpers */
+  .clr-ok { color: var(--c-ok); }
+  .clr-err { color: var(--c-err); }
+  .clr-warn { color: var(--c-warn); }
+  .clr-dim { color: var(--c-text-dim); }
+  .clr-accent { color: var(--c-accent); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+function safeFetch(path, opts) {
+  var url = window.location.origin + path + (path.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now();
+  opts = opts || {}; opts.cache = "no-store"; opts.credentials = "same-origin";
+  return fetch(url, opts);
+}
+</script>
+<!--/HEAD-->
+<!--BODY-->
+
+<div class="bt-container" id="bt-root">
+  <div class="bt-loading" id="bt-loading"><div class="spinner"></div><br>Lade Backtest-Daten...</div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  /* ════════════════════════════════════════════════════════════
+     HELPERS
+     ════════════════════════════════════════════════════════════ */
+
+  var qs = new URLSearchParams(window.location.search);
+  var btId = qs.get('id');
+  var compareId = qs.get('compare');
+
+  function $(sel, ctx) { return (ctx || document).querySelector(sel); }
+  function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
+
+  function fmt(n, dec) {
+    if (n == null || isNaN(n)) return '—';
+    return Number(n).toLocaleString('de-DE', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec != null ? dec : 2 });
+  }
+  function fmtPct(n) { return n != null ? fmt(n, 2) + ' %' : '—'; }
+  function fmtEur(n) { return n != null ? (n >= 0 ? '+' : '') + fmt(n, 2) + ' €' : '—'; }
+  function fmtDate(iso) { if (!iso) return '—'; var d = new Date(iso + (iso.endsWith('Z') || iso.includes('+') ? '' : 'Z')); return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+  function fmtDateTime(iso) { if (!iso) return '—'; var d = new Date(iso + (iso.endsWith('Z') || iso.includes('+') ? '' : 'Z')); return d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); }
+  function pnlClass(v) { return v > 0 ? 'clr-ok' : v < 0 ? 'clr-err' : 'clr-dim'; }
+  function pnlSign(v) { return v > 0 ? '+' : ''; }
+  function safe(v, fb) { return v != null ? v : (fb != null ? fb : '—'); }
+  function escHtml(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(s)); return d.innerHTML; }
+
+  /* Chart colors — match site dark theme */
+  var cOk = '#149e61'; var cErr = '#e85c5c'; var cAccent = '#7132f5';
+  var cWarn = '#f0b940'; var cSurface = '#161329'; var cBorder = '#2a2545';
+  var cPurple = '#a78bfa'; var cBlue = '#5b8def'; var cPink = '#f472b6';
+  var cTeal = '#2dd4bf';
+
+  function chartDefaults() {
+    if (Chart.defaults) {
+      Chart.defaults.color = '#7d7899';
+      Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+      Chart.defaults.font.family = 'inherit';
+      Chart.defaults.font.size = 11;
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     RENDER ORCHESTRATOR
+     ════════════════════════════════════════════════════════════ */
+
+  function render(bt, bt2) {
+    var root = $('#bt-root');
+    root.innerHTML = '';
+
+    /* Back link */
+    root.innerHTML += '<a href="/backtest/" class="bt-back">← Zurück zur Übersicht</a>';
+
+    /* Header */
+    var isV3 = bt.meta && bt.meta.engine_version && bt.meta.engine_version.startsWith('3');
+    var statusVal = getStatus(bt);
+    var statusBadge = '<span class="bt-badge bt-badge-' + statusVal + '">' + statusVal + '</span>';
+    var v3Badge = isV3 ? '<span class="bt-badge bt-badge-v3">v3</span>' : '';
+    var typeBadge = bt.type === 'portfolio'
+      ? '<span class="bt-badge bt-badge-portfolio">Portfolio</span>'
+      : bt.type ? '<span class="bt-badge bt-badge-single">' + bt.type + '</span>' : '';
+
+    root.innerHTML += '<div class="bt-header">' +
+      '<h1 class="bt-title">' + safe(bt.name, bt.id, 'Backtest') + '</h1>' +
+      statusBadge + typeBadge + v3Badge +
+      '</div>';
+
+    var strategy = bt.strategy || (bt.meta && bt.meta.bot_label) || '';
+    var genDate = bt.generated_at || (bt.meta && bt.meta.created_at) || '';
+    root.innerHTML += '<div class="bt-meta">' +
+      (strategy ? '<span class="bt-meta-item">📊 ' + escHtml(strategy) + '</span>' : '') +
+      (genDate ? '<span class="bt-meta-item">🕐 ' + fmtDateTime(genDate) + '</span>' : '') +
+      (bt.id ? '<span class="bt-meta-item clr-dim">' + bt.id + '</span>' : '') +
+      '</div>';
+
+    /* Verdict Card (v3) */
+    if (bt.verdict && bt.verdict.criteria) {
+      renderVerdictCard(root, bt.verdict);
+    } else if (bt.verdict && typeof bt.verdict === 'string') {
+      root.innerHTML += '<div class="verdict-card"><div class="verdict-header"><span class="verdict-rating">Verdict</span></div><div style="font-size:var(--text-sm);line-height:1.6">' + bt.verdict + '</div></div>';
+    }
+
+    /* KPI Cards */
+    renderKPIs(root, bt);
+
+    /* Equity Curve (with unrealized PnL band for v3) */
+    var eqData = bt.equity_curve;
+    if (eqData && eqData.points) eqData = eqData.points; // v3 format
+    if (eqData && eqData.length) {
+      renderEquityCurve(root, eqData, isV3);
+    }
+
+    /* Drawdown */
+    if (eqData && eqData.length) {
+      renderDrawdownCurve(root, eqData);
+    }
+
+    /* Statistical Validation (v3) */
+    var sv = bt.statistical_validation;
+    if (sv) {
+      renderStatValidation(root, sv);
+    } else if (bt.bootstrap) {
+      renderBootstrapLegacy(root, bt.bootstrap);
+    }
+
+    /* Walk-Forward */
+    var wf = bt.walk_forward;
+    if (wf && (wf.splits || (Array.isArray(wf) && wf.length))) {
+      renderWalkForward(root, bt);
+    }
+
+    /* Rolling Metrics (v3) */
+    if (bt.rolling_metrics) {
+      renderRollingMetrics(root, bt.rolling_metrics);
+    }
+
+    /* Degradation (v3) */
+    if (bt.degradation) {
+      renderDegradation(root, bt.degradation);
+    }
+
+    /* Monthly Heatmap */
+    var monthly = bt.monthly;
+    if (monthly && Object.keys(monthly).length) {
+      renderMonthlyHeatmap(root, monthly);
+    }
+
+    /* Per-Pair */
+    var perPair = bt.per_pair;
+    if (perPair && Object.keys(perPair).length) {
+      renderPerPair(root, perPair, eqData);
+    }
+
+    /* Score Distribution (v3) */
+    if (bt.score_distribution) {
+      renderScoreDistribution(root, bt.score_distribution);
+    }
+
+    /* Per-Bot */
+    if (bt.per_bot && Object.keys(bt.per_bot).length) {
+      renderPerBot(root, bt.per_bot);
+    }
+
+    /* Filter Variants */
+    if (bt.filter_variants && bt.filter_variants.length) {
+      renderFilterVariants(root, bt.filter_variants);
+    }
+
+    /* Trade List */
+    var trades = bt.trades || [];
+    if (trades.length) {
+      renderTrades(root, trades);
+    }
+
+    /* R-Multiple Distribution (v3) */
+    if (trades.length && trades.some(function(t){ return t.rr_ratio != null; })) {
+      renderRMultipleDist(root, trades);
+    }
+
+    /* Exit Reasons */
+    if (bt.exit_reasons && Object.keys(bt.exit_reasons).length) {
+      renderExitReasons(root, bt.exit_reasons);
+    }
+
+    /* Session Breakdown */
+    if (bt.session_breakdown && Object.keys(bt.session_breakdown).length) {
+      renderSessionBreakdown(root, bt.session_breakdown);
+    }
+
+    /* Cost Breakdown (enhanced for v3) */
+    var costs = bt.costs || bt.execution_costs;
+    if (costs && Object.keys(costs).length) {
+      renderCosts(root, costs);
+    }
+
+    /* Config */
+    if (bt.config && Object.keys(bt.config).length) {
+      renderConfig(root, bt.config);
+    }
+
+    /* Comparison */
+    if (bt2) {
+      renderComparison(root, bt, bt2);
+    }
+
+    /* Export */
+    renderExport(root, bt);
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function getStatus(bt) {
+    if (bt.verdict && bt.verdict.rating) return bt.verdict.rating;
+    return bt.status || 'UNKNOWN';
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     VERDICT CARD
+     ════════════════════════════════════════════════════════════ */
+
+  function renderVerdictCard(root, verdict) {
+    var rating = verdict.rating || 'UNKNOWN';
+    var criteria = verdict.criteria || {};
+    var labels = {
+      wf_passed: 'Walk-Forward bestanden',
+      bootstrap_pf_lower_above_1: 'Bootstrap PF CI > 1.0',
+      mc_dd95_below_30pct: 'MC 95% DD < 30%',
+      sqn_above_2: 'SQN > 2.0',
+      degradation_not_significant: 'Kein signifikanter Decay'
+    };
+
+    var html = '<div class="verdict-card ' + rating + '">';
+    html += '<div class="verdict-header">';
+    html += '<span class="verdict-rating" style="color:' + (rating === 'ROBUST' ? 'var(--c-ok)' : rating === 'NOT_ROBUST' ? 'var(--c-err)' : 'var(--c-warn)') + '">' + rating + '</span>';
+    html += '<span class="clr-dim" style="font-size:var(--text-sm)">' + Object.values(criteria).filter(Boolean).length + '/' + Object.keys(criteria).length + ' Kriterien erfüllt</span>';
+    html += '</div>';
+    html += '<div class="verdict-criteria">';
+    Object.keys(criteria).forEach(function(k) {
+      var passed = criteria[k];
+      html += '<div class="verdict-item">' +
+        '<span class="verdict-check ' + (passed ? 'ok' : 'fail') + '">' + (passed ? '✓' : '✗') + '</span>' +
+        '<span>' + (labels[k] || k) + '</span></div>';
+    });
+    html += '</div></div>';
+    root.innerHTML += html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     KPI CARDS
+     ════════════════════════════════════════════════════════════ */
+
+  function renderKPIs(root, bt) {
+    var s = bt.summary || {};
+    var r = bt.risk || {};
+    var ratios = bt.ratios || {};
+    var sv = bt.statistical_validation || {};
+    var boot = sv.bootstrap_ci || {};
+
+    var kpis = [
+      { label: 'Trades', value: safe(s.total_trades || s.trades, 0), sub: safe(s.wins, 0) + ' W / ' + safe(s.losses, 0) + ' L' },
+      { label: 'Win Rate', value: fmtPct(s.win_rate_pct || s.win_rate), ci: boot.win_rate ? 'CI: ' + fmt(boot.win_rate.ci_lower, 1) + '–' + fmt(boot.win_rate.ci_upper, 1) + '%' : null },
+      { label: 'Profit Factor', value: fmt(s.profit_factor || ratios.profit_factor, 2), ci: boot.profit_factor ? 'CI: ' + fmt(boot.profit_factor.ci_lower, 2) + '–' + fmt(boot.profit_factor.ci_upper, 2) : null },
+      { label: 'Total P&L', value: fmtEur(s.total_pnl_eur || s.total_pnl), cls: pnlClass(s.total_pnl_eur || s.total_pnl), sub: s.total_return_pct != null ? fmt(s.total_return_pct, 1) + '% Return' : null },
+      { label: 'Max Drawdown', value: fmtPct(s.max_dd_pct || r.max_drawdown_pct), cls: ((s.max_dd_pct || r.max_drawdown_pct || 0) > 10 ? 'clr-err' : '') },
+      { label: 'Sharpe', value: fmt(ratios.sharpe_ratio || s.sharpe, 2), ci: boot.sharpe ? 'CI: ' + fmt(boot.sharpe.ci_lower, 2) + '–' + fmt(boot.sharpe.ci_upper, 2) : null },
+    ];
+
+    /* v3-specific KPIs */
+    if (ratios.sortino_ratio || s.sortino) {
+      kpis.push({ label: 'Sortino', value: fmt(ratios.sortino_ratio || s.sortino, 2) });
+    }
+    if (ratios.sqn != null) {
+      var sqnClass = ratios.sqn >= 3 ? 'clr-ok' : ratios.sqn >= 2 ? '' : 'clr-warn';
+      kpis.push({ label: 'SQN', value: fmt(ratios.sqn, 2), cls: sqnClass, sub: ratios.sqn >= 3 ? 'Excellent' : ratios.sqn >= 2 ? 'Good' : 'Average' });
+    }
+    if (r.calmar_ratio || s.calmar) {
+      kpis.push({ label: 'Calmar', value: fmt(r.calmar_ratio || s.calmar, 2) });
+    }
+    if (ratios.expectancy || s.expectancy) {
+      kpis.push({ label: 'Expectancy', value: fmtEur(ratios.expectancy || s.expectancy), ci: boot.expectancy ? 'CI: ' + fmtEur(boot.expectancy.ci_lower) + ' – ' + fmtEur(boot.expectancy.ci_upper) : null });
+    }
+    if (ratios.kelly_fraction != null) {
+      kpis.push({ label: 'Kelly', value: fmtPct(ratios.kelly_fraction * 100), sub: 'Optimal Size' });
+    }
+    if (r.recovery_factor || s.recovery_factor) {
+      kpis.push({ label: 'Recovery', value: fmt(r.recovery_factor || s.recovery_factor, 2) });
+    }
+
+    var html = '<div class="kpi-grid">';
+    kpis.forEach(function(k) {
+      html += '<div class="kpi-card">' +
+        '<div class="kpi-label">' + k.label + '</div>' +
+        '<div class="kpi-value ' + (k.cls || '') + '">' + k.value + '</div>' +
+        (k.sub ? '<div class="kpi-sub">' + k.sub + '</div>' : '') +
+        (k.ci ? '<div class="kpi-ci">' + k.ci + '</div>' : '') +
+        '</div>';
+    });
+    html += '</div>';
+    root.innerHTML += html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     EQUITY CURVE
+     ════════════════════════════════════════════════════════════ */
+
+  function renderEquityCurve(root, data, isV3) {
+    var hasUnrealized = data.some(function(d) { return d.unrealized != null && d.unrealized !== 0; });
+
+    root.innerHTML += '<div class="bt-section"><div class="bt-section-title">📈 Equity Curve</div>' +
+      '<div class="chart-card"><div class="chart-wrap chart-wrap-tall"><canvas id="chart-equity"></canvas></div></div></div>';
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-equity');
+      if (!ctx) return;
+
+      var datasets = [{
+        label: 'Equity',
+        data: data.map(function(d) { return d.equity || d.value; }),
+        borderColor: cOk,
+        backgroundColor: 'rgba(20,158,97,0.1)',
+        fill: true,
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.3
+      }];
+
+      /* v3: Add realized equity line if unrealized data exists */
+      if (hasUnrealized) {
+        datasets.push({
+          label: 'Realized',
+          data: data.map(function(d) { return d.realized || d.equity || d.value; }),
+          borderColor: cBlue,
+          borderWidth: 1,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3
+        });
+      }
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(function(d) { return d.date || (d.ts ? new Date(d.ts * 1000).toISOString().split('T')[0] : ''); }),
+          datasets: datasets
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: hasUnrealized, position: 'top', labels: { usePointStyle: true, pointStyle: 'line' } },
+            tooltip: { mode: 'index', intersect: false,
+              callbacks: {
+                label: function(ctx) {
+                  var suffix = ctx.dataset.label === 'Realized' ? ' (realized)' : '';
+                  return ctx.dataset.label + ': ' + fmt(ctx.parsed.y, 2) + ' €' + suffix;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { type: 'time', time: { unit: 'month', tooltipFormat: 'dd.MM.yyyy' }, grid: { display: false } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: { callback: function(v) { return v.toLocaleString('de-DE') + ' €'; } }
+            }
+          },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     DRAWDOWN CURVE
+     ════════════════════════════════════════════════════════════ */
+
+  function renderDrawdownCurve(root, data) {
+    root.innerHTML += '<div class="bt-section"><div class="bt-section-title">📉 Drawdown</div>' +
+      '<div class="chart-card"><div class="chart-wrap chart-wrap-short"><canvas id="chart-drawdown"></canvas></div></div></div>';
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-drawdown');
+      if (!ctx) return;
+
+      var ddData = data.map(function(d) {
+        if (d.dd_pct != null) return -Math.abs(d.dd_pct);
+        if (d.drawdown_pct != null) return -Math.abs(d.drawdown_pct);
+        return 0;
+      });
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(function(d) { return d.date || (d.ts ? new Date(d.ts * 1000).toISOString().split('T')[0] : ''); }),
+          datasets: [{
+            label: 'Drawdown',
+            data: ddData,
+            borderColor: cErr,
+            backgroundColor: 'rgba(232,92,92,0.15)',
+            fill: true,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
+            callbacks: { label: function(ctx) { return 'DD: ' + fmt(Math.abs(ctx.parsed.y), 2) + ' %'; } }
+          }},
+          scales: {
+            x: { type: 'time', time: { unit: 'month', tooltipFormat: 'dd.MM.yyyy' }, grid: { display: false } },
+            y: { max: 0, grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: { callback: function(v) { return fmt(v, 1) + ' %'; } }
+            }
+          },
+          interaction: { mode: 'nearest', axis: 'x', intersect: false }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     STATISTICAL VALIDATION (v3)
+     ════════════════════════════════════════════════════════════ */
+
+  function renderStatValidation(root, sv) {
+    var html = '<div class="bt-section"><div class="bt-section-title">🔬 Statistische Validierung</div>';
+    html += '<div class="chart-grid">';
+
+    /* Bootstrap CI Chart */
+    if (sv.bootstrap_ci) {
+      html += '<div class="chart-card"><h3>Bootstrap Confidence Intervals (95%)</h3>' +
+        '<div class="chart-wrap chart-wrap-med"><canvas id="chart-bootstrap"></canvas></div></div>';
+    }
+
+    /* Monte Carlo DD Distribution */
+    if (sv.monte_carlo) {
+      html += '<div class="chart-card"><h3>Monte Carlo — Drawdown Verteilung</h3>' +
+        '<div class="chart-wrap chart-wrap-med"><canvas id="chart-mc"></canvas></div></div>';
+    }
+
+    html += '</div>';
+
+    /* Permutation Test Info */
+    if (sv.permutation_test) {
+      var pt = sv.permutation_test;
+      html += '<div class="chart-card" style="margin-top:var(--s-2)">' +
+        '<h3>Permutation Test</h3>' +
+        '<div style="display:flex;gap:var(--s-6);flex-wrap:wrap">' +
+        '<div><div class="kpi-label">p-Wert</div><div style="font-size:var(--text-lg);font-weight:700" class="' + (pt.significant ? 'clr-ok' : 'clr-err') + '">' + fmt(pt.p_value, 4) + '</div></div>' +
+        '<div><div class="kpi-label">Signifikant</div><div style="font-size:var(--text-lg);font-weight:700" class="' + (pt.significant ? 'clr-ok' : 'clr-err') + '">' + (pt.significant ? 'Ja ✓' : 'Nein ✗') + '</div></div>' +
+        '<div><div class="kpi-label">Permutationen</div><div style="font-size:var(--text-lg);font-weight:700">' + safe(pt.n_permutations, '—') + '</div></div>' +
+        '</div></div>';
+    }
+
+    /* MC Summary */
+    if (sv.monte_carlo) {
+      var mc = sv.monte_carlo;
+      html += '<div class="chart-card" style="margin-top:var(--s-2)">' +
+        '<h3>Monte Carlo Zusammenfassung (' + safe(mc.simulations, 1000) + ' Simulationen)</h3>' +
+        '<div style="display:flex;gap:var(--s-6);flex-wrap:wrap">';
+      if (mc.worst_case_dd_95 != null) {
+        html += '<div><div class="kpi-label">95% Worst-Case DD</div><div style="font-size:var(--text-lg);font-weight:700" class="clr-err">' + fmtPct(mc.worst_case_dd_95) + '</div></div>';
+      }
+      if (mc.probability_positive != null) {
+        html += '<div><div class="kpi-label">Prob. Positiv</div><div style="font-size:var(--text-lg);font-weight:700" class="clr-ok">' + fmt(mc.probability_positive * 100, 1) + '%</div></div>';
+      }
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+    root.innerHTML += html;
+
+    /* Render charts */
+    requestAnimationFrame(function() {
+      chartDefaults();
+
+      /* Bootstrap CI Error Bar Chart */
+      if (sv.bootstrap_ci) {
+        var bc = sv.bootstrap_ci;
+        var bCtx = document.getElementById('chart-bootstrap');
+        if (bCtx) {
+          var labels = []; var points = []; var lo = []; var hi = [];
+          var metricLabels = { profit_factor: 'Profit Factor', win_rate: 'Win Rate %', sharpe: 'Sharpe', expectancy: 'Expectancy €' };
+          Object.keys(bc).forEach(function(k) {
+            var m = bc[k];
+            if (m && m.point != null) {
+              labels.push(metricLabels[k] || k);
+              points.push(m.point);
+              lo.push(m.ci_lower != null ? m.ci_lower : m.point);
+              hi.push(m.ci_upper != null ? m.ci_upper : m.point);
+            }
+          });
+
+          if (labels.length) {
+            new Chart(bCtx, {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Point Estimate',
+                  data: points,
+                  backgroundColor: 'rgba(113,50,245,0.3)',
+                  borderColor: cAccent,
+                  borderWidth: 2,
+                  barPercentage: 0.5
+                }]
+              },
+              options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      afterLabel: function(ctx) {
+                        var i = ctx.dataIndex;
+                        return '95% CI: ' + fmt(lo[i], 3) + ' – ' + fmt(hi[i], 3);
+                      }
+                    }
+                  }
+                },
+                scales: {
+                  y: { grid: { color: 'rgba(255,255,255,0.04)' } },
+                  x: { grid: { display: false } }
+                }
+              }
+            });
+          }
+        }
+      }
+
+      /* Monte Carlo DD Distribution Histogram */
+      if (sv.monte_carlo && sv.monte_carlo.max_dd_distribution) {
+        var mdd = sv.monte_carlo.max_dd_distribution;
+        var mcCtx = document.getElementById('chart-mc');
+        if (mcCtx) {
+          var pLabels = ['P5', 'P25', 'P50 (Median)', 'P75', 'P95'];
+          var pKeys = ['p5', 'p25', 'p50', 'p75', 'p95'];
+          var pVals = pKeys.map(function(k) { return mdd[k] || 0; });
+          var pColors = pVals.map(function(v) { return v < 15 ? 'rgba(20,158,97,0.4)' : v < 25 ? 'rgba(240,185,64,0.4)' : 'rgba(232,92,92,0.4)'; });
+
+          new Chart(mcCtx, {
+            type: 'bar',
+            data: {
+              labels: pLabels,
+              datasets: [{
+                label: 'Max Drawdown %',
+                data: pVals,
+                backgroundColor: pColors,
+                borderWidth: 0,
+                barPercentage: 0.6
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: function(ctx) { return 'DD: ' + fmt(ctx.parsed.y, 1) + '%'; } } }
+              },
+              scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + '%'; } } },
+                x: { grid: { display: false } }
+              }
+            }
+          });
+        }
+      }
+    });
+  }
+
+  function renderBootstrapLegacy(root, boot) {
+    if (!boot) return;
+    var html = '<div class="bt-section"><div class="bt-section-title">🔬 Bootstrap Confidence Intervals</div>' +
+      '<div class="chart-card">';
+    if (boot.expectancy_ci && boot.expectancy_ci.length >= 2) {
+      html += '<div style="font-size:var(--text-sm);margin-bottom:var(--s-2)">Expectancy 95% CI: <strong>' + fmtEur(boot.expectancy_ci[0]) + '</strong> — <strong>' + fmtEur(boot.expectancy_ci[1]) + '</strong></div>';
+    }
+    if (boot.win_rate_ci && boot.win_rate_ci.length >= 2) {
+      html += '<div style="font-size:var(--text-sm)">Win Rate 95% CI: <strong>' + fmtPct(boot.win_rate_ci[0]) + '</strong> — <strong>' + fmtPct(boot.win_rate_ci[1]) + '</strong></div>';
+    }
+    html += '</div></div>';
+    root.innerHTML += html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     WALK-FORWARD
+     ════════════════════════════════════════════════════════════ */
+
+  function renderWalkForward(root, bt) {
+    var wf = bt.walk_forward;
+    var splits = wf.splits || wf;
+    if (!Array.isArray(splits) || !splits.length) return;
+
+    var isM = bt.is_metrics || null;
+    var oosM = bt.oos_metrics || null;
+    var passed = wf.passed;
+    var decayDetected = wf.decay_detected;
+
+    var html = '<div class="bt-section"><div class="bt-section-title">🔬 Walk-Forward' +
+      (passed != null ? ' <span class="bt-badge" style="margin-left:8px;background:' + (passed ? 'rgba(20,158,97,0.15);color:var(--c-ok)' : 'rgba(232,92,92,0.15);color:var(--c-err)') + '">' + (passed ? 'PASSED' : 'FAILED') + '</span>' : '') +
+      (decayDetected ? ' <span class="bt-badge" style="margin-left:4px;background:rgba(232,92,92,0.15);color:var(--c-err)">DECAY</span>' : '') +
+      '</div>';
+
+    /* IS vs OOS summary if both present */
+    if (isM && oosM) {
+      html += '<div class="kpi-grid" style="margin-bottom:var(--s-4);grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">' +
+        buildCompareCard('In-Sample', isM) +
+        buildCompareCard('Out-of-Sample', oosM) +
+        '</div>';
+    }
+
+    /* WF Summary Stats */
+    if (wf.n_splits) {
+      html += '<div style="display:flex;gap:var(--s-4);flex-wrap:wrap;margin-bottom:var(--s-4);font-size:var(--text-sm)">' +
+        '<span class="clr-dim">Splits: <strong class="clr-text">' + wf.n_splits + '</strong></span>' +
+        (wf.profitable_splits != null ? '<span class="clr-dim">Profitabel: <strong class="' + (wf.profitable_splits === wf.n_splits ? 'clr-ok' : 'clr-warn') + '">' + wf.profitable_splits + '/' + wf.n_splits + '</strong></span>' : '') +
+        (wf.decay_ratio != null ? '<span class="clr-dim">Decay Ratio: <strong class="' + (wf.decay_ratio < 0.8 ? 'clr-err' : 'clr-ok') + '">' + fmt(wf.decay_ratio, 2) + '</strong></span>' : '') +
+        '</div>';
+    }
+
+    /* WF Split Timeline Cards */
+    html += '<div class="wf-timeline">';
+    splits.forEach(function(split, i) {
+      var pnl = split.pnl || split.total_pnl || 0;
+      var prof = pnl >= 0;
+      html += '<div class="wf-split-card ' + (prof ? 'profitable' : 'unprofitable') + '">' +
+        '<div class="wf-split-label">Split ' + (split.split != null ? split.split : i) + '</div>' +
+        '<div class="wf-split-pnl ' + pnlClass(pnl) + '">' + fmtEur(pnl) + '</div>' +
+        '<div class="wf-split-meta">' + safe(split.trades, '—') + ' Trades · WR ' + fmtPct(split.win_rate) + '</div>' +
+        '<div class="wf-split-meta">PF ' + fmt(split.profit_factor, 2) + (split.sharpe != null ? ' · Sharpe ' + fmt(split.sharpe, 2) : '') + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+
+    /* WF Chart */
+    html += '<div class="chart-card"><div class="chart-wrap chart-wrap-med"><canvas id="chart-wf"></canvas></div></div>';
+
+    /* WF Table */
+    html += '<div class="chart-card"><div class="bt-table-wrap"><table class="bt-table"><thead><tr>' +
+      '<th>Split</th><th>Trades</th><th>Win Rate</th><th>P&L</th><th>Profit Factor</th>' +
+      (splits[0] && splits[0].sharpe != null ? '<th>Sharpe</th>' : '') +
+      (splits[0] && splits[0].max_dd_pct != null ? '<th>Max DD</th>' : '') +
+      '</tr></thead><tbody>';
+
+    splits.forEach(function(split) {
+      html += '<tr>' +
+        '<td>' + safe(split.split, '—') + '</td>' +
+        '<td>' + safe(split.trades, '—') + '</td>' +
+        '<td>' + fmtPct(split.win_rate) + '</td>' +
+        '<td class="' + pnlClass(split.pnl || split.total_pnl) + '">' + fmtEur(split.pnl || split.total_pnl) + '</td>' +
+        '<td>' + fmt(split.profit_factor, 2) + '</td>' +
+        (split.sharpe != null ? '<td>' + fmt(split.sharpe, 2) + '</td>' : '') +
+        (split.max_dd_pct != null ? '<td>' + fmtPct(split.max_dd_pct) + '</td>' : '') +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+
+    /* OOS Validation pairs */
+    if (bt.oos_validation && bt.oos_validation.length) {
+      html += '<div style="margin-top:var(--s-3);font-size:var(--text-xs);color:var(--c-text-dim)">' +
+        '<strong>OOS Validation Pairs:</strong> ' + bt.oos_validation.join(', ') + '</div>';
+    }
+
+    html += '</div>';
+    root.innerHTML += html;
+
+    /* Render WF Bar Chart */
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-wf');
+      if (!ctx) return;
+
+      var labels = splits.map(function(s, i) { return 'Split ' + (s.split != null ? s.split : i); });
+      var pnlData = splits.map(function(s) { return s.pnl || s.total_pnl || 0; });
+      var bgColors = pnlData.map(function(v) { return v >= 0 ? 'rgba(20,158,97,0.5)' : 'rgba(232,92,92,0.5)'; });
+      var borderColors = pnlData.map(function(v) { return v >= 0 ? cOk : cErr; });
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'P&L (€)',
+            data: pnlData,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1,
+            barPercentage: 0.6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return fmtEur(ctx.parsed.y); } } }
+          },
+          scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' €'; } } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    });
+  }
+
+  function buildCompareCard(label, m) {
+    return '<div class="kpi-card"><div class="kpi-label">' + label + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s-2);margin-top:var(--s-2)">' +
+      '<div><div class="kpi-sub">Trades</div><div style="font-weight:600">' + safe(m.trades, '—') + '</div></div>' +
+      '<div><div class="kpi-sub">Win Rate</div><div style="font-weight:600">' + fmtPct(m.win_rate) + '</div></div>' +
+      '<div><div class="kpi-sub">P&L</div><div style="font-weight:600" class="' + pnlClass(m.total_pnl) + '">' + fmtEur(m.total_pnl) + '</div></div>' +
+      '<div><div class="kpi-sub">Profit Factor</div><div style="font-weight:600">' + fmt(m.profit_factor, 2) + '</div></div>' +
+      '</div></div>';
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     ROLLING METRICS (v3)
+     ════════════════════════════════════════════════════════════ */
+
+  function renderRollingMetrics(root, rm) {
+    if (!rm) return;
+    var windowDays = rm.window_days || 30;
+
+    root.innerHTML += '<div class="bt-section"><div class="bt-section-title">📊 Rolling Metrics (' + windowDays + 'd Window)</div>' +
+      '<div class="chart-card"><div class="chart-wrap chart-wrap-med"><canvas id="chart-rolling"></canvas></div></div></div>';
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-rolling');
+      if (!ctx) return;
+
+      var datasets = [];
+      if (rm.sharpe && rm.sharpe.length) {
+        datasets.push({
+          label: 'Rolling Sharpe',
+          data: rm.sharpe.map(function(p) { return p.value || p; }),
+          borderColor: cAccent,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.3,
+          yAxisID: 'y'
+        });
+      }
+
+      var labels;
+      if (rm.sharpe && rm.sharpe.length && rm.sharpe[0].date) {
+        labels = rm.sharpe.map(function(p) { return p.date; });
+      } else {
+        labels = datasets[0] ? datasets[0].data.map(function(_, i) { return i; }) : [];
+      }
+
+      if (!datasets.length) return;
+
+      new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top', labels: { usePointStyle: true, pointStyle: 'line' } },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            x: { type: 'time', time: { unit: 'month' }, grid: { display: false } },
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, position: 'left' }
+          }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     DEGRADATION ANALYSIS (v3)
+     ════════════════════════════════════════════════════════════ */
+
+  function renderDegradation(root, deg) {
+    if (!deg || !deg.monthly_pf_trend || !deg.monthly_pf_trend.length) return;
+
+    var significant = deg.significant;
+    root.innerHTML += '<div class="bt-section"><div class="bt-section-title">📉 Degradation Analysis' +
+      (significant ? ' <span class="bt-badge" style="margin-left:8px;background:rgba(232,92,92,0.15);color:var(--c-err)">SIGNIFICANT</span>' : ' <span class="bt-badge" style="margin-left:8px;background:rgba(20,158,97,0.15);color:var(--c-ok)">OK</span>') +
+      '</div>' +
+      '<div class="chart-card"><div class="chart-wrap chart-wrap-med"><canvas id="chart-degradation"></canvas></div>' +
+      '<div style="margin-top:var(--s-3);font-size:var(--text-xs);color:var(--c-text-dim)">' +
+      'Slope: ' + fmt(deg.slope, 4) + ' · R²: ' + fmt(deg.r_squared, 3) +
+      (deg.decay_ratio != null ? ' · Decay Ratio: ' + fmt(deg.decay_ratio, 2) : '') +
+      '</div></div></div>';
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-degradation');
+      if (!ctx) return;
+
+      var trend = deg.monthly_pf_trend;
+      var labels = trend.map(function(_, i) { return 'Month ' + (i + 1); });
+
+      /* Calculate regression line */
+      var n = trend.length;
+      var xMean = (n - 1) / 2;
+      var yMean = trend.reduce(function(s, v) { return s + v; }, 0) / n;
+      var regLine = trend.map(function(_, i) { return deg.slope * i + (yMean - deg.slope * xMean); });
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Monthly PF',
+              data: trend,
+              borderColor: cAccent,
+              backgroundColor: 'rgba(113,50,245,0.1)',
+              fill: true,
+              borderWidth: 2,
+              pointRadius: 4,
+              pointBackgroundColor: cAccent,
+              tension: 0
+            },
+            {
+              label: 'Trend',
+              data: regLine,
+              borderColor: significant ? cErr : cOk,
+              borderWidth: 2,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top', labels: { usePointStyle: true, pointStyle: 'line' } },
+            tooltip: { mode: 'index', intersect: false,
+              callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmt(ctx.parsed.y, 2); } }
+            }
+          },
+          scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Profit Factor' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     MONTHLY HEATMAP
+     ════════════════════════════════════════════════════════════ */
+
+  function renderMonthlyHeatmap(root, monthly) {
+    var entries = Object.entries(monthly).sort(function(a, b) { return a[0].localeCompare(b[0]); });
+    if (!entries.length) return;
+
+    var maxAbs = 0;
+    entries.forEach(function(e) {
+      var v = typeof e[1] === 'object' ? (e[1].pnl || 0) : e[1];
+      maxAbs = Math.max(maxAbs, Math.abs(v));
+    });
+    if (maxAbs === 0) maxAbs = 1;
+
+    var html = '<div class="bt-section"><div class="bt-section-title">📅 Monthly P&L</div><div class="heatmap">';
+    entries.forEach(function(e) {
+      var month = e[0];
+      var val = typeof e[1] === 'object' ? (e[1].pnl || 0) : e[1];
+      var ratio = Math.abs(val) / maxAbs;
+      var alpha = 0.15 + ratio * 0.6;
+      var bg = val >= 0
+        ? 'rgba(20,158,97,' + alpha + ')'
+        : 'rgba(232,92,92,' + alpha + ')';
+      var extra = '';
+      if (typeof e[1] === 'object') {
+        var d = e[1];
+        if (d.count != null) extra += d.count + 'T ';
+        if (d.win_rate != null) extra += 'WR ' + fmt(d.win_rate, 0) + '%';
+      }
+      html += '<div class="heatmap-cell" style="background:' + bg + '">' +
+        '<span class="heatmap-month">' + month + '</span>' +
+        '<span class="heatmap-value ' + pnlClass(val) + '">' + fmtEur(val) + '</span>' +
+        (extra ? '<span class="heatmap-month">' + extra + '</span>' : '') +
+        '</div>';
+    });
+    html += '</div></div>';
+    root.innerHTML += html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     PER-PAIR
+     ════════════════════════════════════════════════════════════ */
+
+  function renderPerPair(root, perPair, eqData) {
+    var pairs = Object.entries(perPair).map(function(e) {
+      var p = e[1]; p._pair = e[0]; return p;
+    }).sort(function(a, b) { return (b.pnl || b.total_pnl || 0) - (a.pnl || a.total_pnl || 0); });
+
+    var html = '<div class="bt-section"><div class="bt-section-title">💱 Per-Pair Performance</div>';
+
+    /* Pair nav chips */
+    html += '<div class="pair-nav"><button class="pair-chip active" data-pair="all" onclick="filterPair(\'all\')">All</button>';
+    pairs.forEach(function(p) {
+      html += '<button class="pair-chip" data-pair="' + p._pair + '" onclick="filterPair(\'' + p._pair + '\')">' + p._pair + '</button>';
+    });
+    html += '</div>';
+
+    /* Per-Pair Bar Chart */
+    html += '<div class="chart-card"><div class="chart-wrap chart-wrap-med"><canvas id="chart-pairs"></canvas></div></div>';
+
+    /* Per-Pair Table */
+    html += '<div class="chart-card"><div class="bt-table-wrap"><table class="bt-table" id="tbl-pairs"><thead><tr>' +
+      '<th data-col="pair">Pair <span class="sort-arrow">↕</span></th>' +
+      '<th data-col="trades">Trades <span class="sort-arrow">↕</span></th>' +
+      '<th data-col="win_rate">Win Rate <span class="sort-arrow">↕</span></th>' +
+      '<th data-col="total_pnl">P&L <span class="sort-arrow">↕</span></th>' +
+      '<th data-col="profit_factor">PF <span class="sort-arrow">↕</span></th>';
+
+    /* v3: cost columns */
+    if (pairs[0] && pairs[0].avg_cost != null) {
+      html += '<th data-col="avg_cost">Avg Cost <span class="sort-arrow">↕</span></th>';
+    }
+
+    html += '</tr></thead><tbody>';
+
+    pairs.forEach(function(p) {
+      html += '<tr data-pair="' + p._pair + '">' +
+        '<td style="font-weight:600">' + p._pair + '</td>' +
+        '<td>' + safe(p.trades, '—') + '</td>' +
+        '<td>' + fmtPct(p.win_rate) + '</td>' +
+        '<td class="' + pnlClass(p.pnl || p.total_pnl) + '">' + fmtEur(p.pnl || p.total_pnl) + '</td>' +
+        '<td>' + fmt(p.profit_factor, 2) + '</td>';
+      if (p.avg_cost != null) {
+        html += '<td class="clr-dim">' + fmt(p.avg_cost, 2) + ' €</td>';
+      }
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div></div></div>';
+    root.innerHTML += html;
+
+    /* Render Per-Pair Bar Chart */
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-pairs');
+      if (!ctx) return;
+
+      var pairLabels = pairs.map(function(p) { return p._pair; });
+      var pairPnl = pairs.map(function(p) { return p.pnl || p.total_pnl || 0; });
+      var pairColors = pairPnl.map(function(v) { return v >= 0 ? 'rgba(20,158,97,0.5)' : 'rgba(232,92,92,0.5)'; });
+      var pairBorders = pairPnl.map(function(v) { return v >= 0 ? cOk : cErr; });
+
+      window._pairChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: pairLabels,
+          datasets: [{
+            label: 'P&L (€)',
+            data: pairPnl,
+            backgroundColor: pairColors,
+            borderColor: pairBorders,
+            borderWidth: 1,
+            barPercentage: 0.7
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return fmtEur(ctx.parsed.y); } } }
+          },
+          scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' €'; } } },
+            x: { grid: { display: false }, ticks: { maxRotation: 45 } }
+          }
+        }
+      });
+
+      /* Table sort */
+      var tbl = document.getElementById('tbl-pairs');
+      if (!tbl) return;
+      var headers = $$('th', tbl);
+      headers.forEach(function(th) {
+        th.addEventListener('click', function() {
+          var col = th.getAttribute('data-col');
+          if (!col) return;
+          var tbody = $('tbody', tbl);
+          var rows = $$('tr', tbody);
+          var idx = headers.indexOf(th);
+          var asc = !th.classList.contains('sorted-asc');
+          headers.forEach(function(h) { h.classList.remove('sorted', 'sorted-asc', 'sorted-desc'); });
+          th.classList.add('sorted', asc ? 'sorted-asc' : 'sorted-desc');
+          rows.sort(function(a, b) {
+            var va = a.children[idx].textContent.trim().replace(/[€%\s]/g, '').replace(',', '.');
+            var vb = b.children[idx].textContent.trim().replace(/[€%\s]/g, '').replace(',', '.');
+            var na = parseFloat(va), nb = parseFloat(vb);
+            if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
+            return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+          });
+          rows.forEach(function(r) { tbody.appendChild(r); });
+        });
+      });
+    });
+  }
+
+  /* Pair filter */
+  window.filterPair = function(pair) {
+    $$('.pair-chip').forEach(function(c) { c.classList.toggle('active', c.getAttribute('data-pair') === pair); });
+    $$('tr[data-pair]').forEach(function(r) {
+      r.style.display = (pair === 'all' || r.getAttribute('data-pair') === pair) ? '' : 'none';
+    });
+  };
+
+  /* ════════════════════════════════════════════════════════════
+     SCORE DISTRIBUTION (v3)
+     ════════════════════════════════════════════════════════════ */
+
+  function renderScoreDistribution(root, sd) {
+    var entries = Object.entries(sd).sort(function(a, b) { return Number(a[0]) - Number(b[0]); });
+    if (!entries.length) return;
+
+    root.innerHTML += '<div class="bt-section"><div class="bt-section-title">📊 Score Distribution</div>' +
+      '<div class="chart-card"><div class="chart-wrap chart-wrap-med"><canvas id="chart-scores"></canvas></div></div></div>';
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-scores');
+      if (!ctx) return;
+
+      var labels = entries.map(function(e) { return 'Score ' + e[0]; });
+      var countData = entries.map(function(e) { return e[1].count || 0; });
+      var pnlData = entries.map(function(e) { return e[1].pnl || 0; });
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Trades',
+              data: countData,
+              backgroundColor: 'rgba(113,50,245,0.3)',
+              borderColor: cAccent,
+              borderWidth: 1,
+              yAxisID: 'y'
+            },
+            {
+              label: 'P&L (€)',
+              data: pnlData,
+              type: 'line',
+              borderColor: cOk,
+              borderWidth: 2,
+              pointRadius: 4,
+              pointBackgroundColor: cOk,
+              yAxisID: 'y1',
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true, position: 'top', labels: { usePointStyle: true } },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, position: 'left', title: { display: true, text: 'Trades' } },
+            y1: { grid: { display: false }, position: 'right', title: { display: true, text: 'P&L €' }, ticks: { callback: function(v) { return v + '€'; } } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     PER-BOT
+     ════════════════════════════════════════════════════════════ */
+
+  function renderPerBot(root, perBot) {
+    var html = '<div class="bt-section"><div class="bt-section-title">🤖 Per-Bot Breakdown</div><div class="bot-grid">';
+    Object.entries(perBot).forEach(function(e) {
+      var bot = e[1];
+      html += '<div class="bot-card">' +
+        '<div class="bot-card-name">' + safe(bot.name || e[0], 'Bot') + '</div>' +
+        '<div class="bot-card-stat"><span>Trades</span><span>' + safe(bot.trades, '—') + '</span></div>' +
+        '<div class="bot-card-stat"><span>Win Rate</span><span>' + fmtPct(bot.win_rate || bot.win_rate_pct) + '</span></div>' +
+        '<div class="bot-card-stat"><span>Profit Factor</span><span>' + fmt(bot.profit_factor, 2) + '</span></div>' +
+        '<div class="bot-card-stat"><span>P&L</span><span class="' + pnlClass(bot.total_pnl || bot.total_pnl_eur) + '">' +
+          fmtEur(bot.total_pnl || bot.total_pnl_eur) + '</span></div>' +
+        '</div>';
+    });
+    html += '</div></div>';
+    root.innerHTML += html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     FILTER VARIANTS
+     ════════════════════════════════════════════════════════════ */
+
+  function renderFilterVariants(root, variants) {
+    var html = '<div class="bt-section"><div class="bt-section-title">🔧 Filter Variants</div>' +
+      '<div class="chart-card"><div class="bt-table-wrap"><table class="bt-table"><thead><tr>' +
+      '<th>Variant</th><th>Trades</th><th>Win Rate</th><th>P&L</th>';
+    var hasExtra = variants.some(function(v) { return v.timeouts != null || v.early_exits != null; });
+    if (hasExtra) { html += '<th>Timeouts</th><th>Early Exits</th>'; }
+    html += '</tr></thead><tbody>';
+
+    variants.forEach(function(v) {
+      var isBaseline = (v.name || '').toLowerCase() === 'baseline';
+      html += '<tr class="' + (isBaseline ? 'highlight-row' : '') + '">' +
+        '<td style="font-weight:' + (isBaseline ? '700' : '500') + '">' + safe(v.name, '—') + (isBaseline ? ' ★' : '') + '</td>' +
+        '<td>' + safe(v.trades, '—') + '</td>' +
+        '<td>' + fmtPct(v.win_rate) + '</td>' +
+        '<td class="' + pnlClass(v.total_pnl) + '">' + fmtEur(v.total_pnl) + '</td>';
+      if (hasExtra) {
+        html += '<td>' + (v.timeouts != null ? v.timeouts : '—') + '</td>' +
+                '<td>' + (v.early_exits != null ? v.early_exits : '—') + '</td>';
+      }
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div></div></div>';
+    root.innerHTML += html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     TRADE LIST
+     ════════════════════════════════════════════════════════════ */
+
+  function renderTrades(root, trades) {
+    var PAGE_SIZE = 100;
+    var html = '<div class="bt-section"><div class="bt-section-title">📋 Trade List (' + trades.length + ' trades)</div>' +
+      '<div class="chart-card"><div class="bt-table-wrap" id="trade-scroll"><table class="bt-table" id="tbl-trades"><thead><tr>' +
+      '<th>Symbol</th><th>Direction</th><th>Score</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Hold (h)</th><th>Cost</th>' +
+      '</tr></thead><tbody id="trades-body">';
+
+    html += renderTradeRows(trades.slice(0, PAGE_SIZE));
+    html += '</tbody></table>';
+
+    if (trades.length > PAGE_SIZE) {
+      html += '<button class="show-more-btn" id="btn-more-trades">Alle ' + trades.length + ' Trades anzeigen</button>';
+    }
+    html += '</div></div></div>';
+    root.innerHTML += html;
+
+    requestAnimationFrame(function() {
+      var btn = document.getElementById('btn-more-trades');
+      if (!btn) return;
+      var shown = PAGE_SIZE;
+      btn.addEventListener('click', function() {
+        var tbody = document.getElementById('trades-body');
+        var next = trades.slice(shown, shown + PAGE_SIZE);
+        tbody.innerHTML += renderTradeRows(next);
+        shown += next.length;
+        if (shown >= trades.length) btn.remove();
+        else btn.textContent = 'Alle ' + trades.length + ' Trades anzeigen (' + shown + '/' + trades.length + ')';
+      });
+    });
+  }
+
+  function renderTradeRows(trades) {
+    var html = '';
+    trades.forEach(function(t) {
+      var pnl = t.pnl_eur;
+      var dir = (t.direction || '').toLowerCase();
+      var dirBadge = dir === 'long'
+        ? '<span class="clr-ok">▲ Long</span>'
+        : dir === 'short'
+          ? '<span class="clr-err">▼ Short</span>'
+          : '<span class="clr-dim">' + safe(t.direction, '—') + '</span>';
+
+      var hit = (t.hit || t.exit_reason || '').toLowerCase();
+      var resultBadge;
+      if (hit === 'tp') resultBadge = '<span class="clr-ok">TP</span>';
+      else if (hit === 'sl') resultBadge = '<span class="clr-err">SL</span>';
+      else if (hit === 'timeout') resultBadge = '<span class="clr-warn">Timeout</span>';
+      else resultBadge = '<span class="clr-dim">' + safe(t.hit || t.exit_reason, '—') + '</span>';
+
+      var holdHours = t.hold_hours != null ? fmt(t.hold_hours, 1) : (t.duration_hours != null ? fmt(t.duration_hours, 1) : '—');
+      var cost = t.total_cost != null ? fmt(t.total_cost, 2) + ' €' : '—';
+
+      html += '<tr>' +
+        '<td style="font-weight:600">' + safe(t.symbol, '—') + '</td>' +
+        '<td>' + dirBadge + '</td>' +
+        '<td class="clr-dim">' + (t.score != null ? t.score : '—') + '</td>' +
+        '<td>' + fmt(t.entry_price, 5) + '</td>' +
+        '<td>' + fmt(t.exit_price, 5) + '</td>' +
+        '<td class="' + pnlClass(pnl) + '" style="font-weight:600">' + fmtEur(pnl) + '</td>' +
+        '<td>' + resultBadge + '</td>' +
+        '<td>' + holdHours + '</td>' +
+        '<td class="clr-dim">' + cost + '</td>' +
+        '</tr>';
+    });
+    return html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     R-MULTIPLE DISTRIBUTION (v3)
+     ════════════════════════════════════════════════════════════ */
+
+  function renderRMultipleDist(root, trades) {
+    var rrValues = trades.map(function(t) { return t.rr_ratio; }).filter(function(v) { return v != null; });
+    if (rrValues.length < 5) return;
+
+    /* Create histogram buckets */
+    var minR = Math.floor(Math.min.apply(null, rrValues));
+    var maxR = Math.ceil(Math.max.apply(null, rrValues));
+    var bucketSize = 0.5;
+    var buckets = {};
+    for (var b = minR; b <= maxR; b += bucketSize) {
+      buckets[b.toFixed(1)] = 0;
+    }
+    rrValues.forEach(function(v) {
+      var key = (Math.floor(v / bucketSize) * bucketSize).toFixed(1);
+      if (buckets[key] != null) buckets[key]++;
+      else buckets[key] = 1;
+    });
+
+    root.innerHTML += '<div class="bt-section"><div class="bt-section-title">📐 R-Multiple Distribution</div>' +
+      '<div class="chart-card"><div class="chart-wrap chart-wrap-med"><canvas id="chart-rmulti"></canvas></div></div></div>';
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-rmulti');
+      if (!ctx) return;
+
+      var labels = Object.keys(buckets).map(function(k) { return 'R ' + k; });
+      var data = Object.values(buckets);
+      var colors = Object.keys(buckets).map(function(k) { return parseFloat(k) >= 0 ? 'rgba(20,158,97,0.5)' : 'rgba(232,92,92,0.5)'; });
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, barPercentage: 0.9 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' Trades'; } } } },
+          scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.04)' }, title: { display: true, text: 'Trades' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     EXIT REASONS
+     ════════════════════════════════════════════════════════════ */
+
+  function renderExitReasons(root, reasons) {
+    var entries = Object.entries(reasons).sort(function(a, b) { return b[1] - a[1]; });
+    if (!entries.length) return;
+
+    var total = entries.reduce(function(s, e) { return s + e[1]; }, 0);
+    var colors = { 'tp': cOk, 'sl': cErr, 'timeout': cWarn };
+    var defaultColors = [cAccent, cPurple, cPink, cTeal, '#fb923c', '#38bdf8'];
+
+    var html = '<div class="bt-section"><div class="bt-section-title">🚪 Exit Reasons</div>' +
+      '<div class="chart-card"><div class="chart-wrap-donut"><canvas id="chart-exits"></canvas></div></div></div>';
+    root.innerHTML += html;
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-exits');
+      if (!ctx) return;
+
+      var bgColors = [];
+      var ci = 0;
+      entries.forEach(function(e) {
+        var k = e[0].toLowerCase();
+        if (colors[k]) bgColors.push(colors[k]);
+        else { bgColors.push(defaultColors[ci % defaultColors.length]); ci++; }
+      });
+
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: entries.map(function(e) { return e[0]; }),
+          datasets: [{
+            data: entries.map(function(e) { return e[1]; }),
+            backgroundColor: bgColors,
+            borderColor: cSurface,
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: { position: 'right', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle' } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  var v = ctx.parsed;
+                  var pct = (v / total * 100).toFixed(1);
+                  return ctx.label + ': ' + v.toLocaleString('de-DE') + ' (' + pct + '%)';
+                }
+              }
+            }
+          }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     SESSION BREAKDOWN
+     ════════════════════════════════════════════════════════════ */
+
+  function renderSessionBreakdown(root, sessions) {
+    var names = { london: 'London', ny: 'New York', asian: 'Asian', offhour: 'Off-Hour', offhours: 'Off-Hour' };
+    var icons = { london: '🇬🇧', ny: '🇺🇸', asian: '🇯🇵', offhour: '🌙', offhours: '🌙' };
+
+    var html = '<div class="bt-section"><div class="bt-section-title">🕐 Session Breakdown</div><div class="bot-grid">';
+    Object.entries(sessions).forEach(function(e) {
+      var key = e[0].toLowerCase();
+      var s = e[1];
+      var label = names[key] || e[0];
+      var icon = icons[key] || '📊';
+      html += '<div class="bot-card">' +
+        '<div class="bot-card-name">' + icon + ' ' + label + '</div>' +
+        '<div class="bot-card-stat"><span>Trades</span><span>' + safe(s.count || s.trades, '—') + '</span></div>' +
+        '<div class="bot-card-stat"><span>P&L</span><span class="' + pnlClass(s.pnl || s.total_pnl) + '">' +
+          fmtEur(s.pnl || s.total_pnl) + '</span></div>' +
+        (s.win_rate != null ? '<div class="bot-card-stat"><span>Win Rate</span><span>' + fmtPct(s.win_rate) + '</span></div>' : '') +
+        '</div>';
+    });
+    html += '</div></div>';
+    root.innerHTML += html;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     COST BREAKDOWN
+     ════════════════════════════════════════════════════════════ */
+
+  function renderCosts(root, costs) {
+    var totalCost = costs.total_costs || 0;
+    if (!totalCost) {
+      /* Calculate total from parts */
+      totalCost = (costs.total_spread || costs.spread_total || 0) +
+                  (costs.total_slippage || 0) +
+                  (costs.total_commission || 0) +
+                  (costs.total_swap || 0);
+    }
+    if (!totalCost && !Object.keys(costs).length) return;
+
+    var html = '<div class="bt-section"><div class="bt-section-title">💰 Kosten-Aufschlüsselung</div>';
+    html += '<div class="chart-grid">';
+
+    /* Donut Chart */
+    html += '<div class="chart-card"><h3>Kostenverteilung</h3><div class="chart-wrap-donut"><canvas id="chart-costs"></canvas></div></div>';
+
+    /* Cost Details */
+    html += '<div class="chart-card"><h3>Details</h3><div>';
+    var costItems = [
+      { label: 'Spread', val: costs.total_spread || costs.spread_total || 0 },
+      { label: 'Slippage', val: costs.total_slippage || 0 },
+      { label: 'Commission', val: costs.total_commission || 0 },
+      { label: 'Swap', val: costs.total_swap || 0 }
+    ];
+    costItems.forEach(function(c) {
+      if (c.val) {
+        html += '<div style="display:flex;justify-content:space-between;padding:var(--s-2) 0;border-bottom:1px solid var(--c-border);font-size:var(--text-sm)">' +
+          '<span class="clr-dim">' + c.label + '</span><span style="font-weight:600">' + fmt(c.val, 2) + ' €</span></div>';
+      }
+    });
+    if (totalCost) {
+      html += '<div style="display:flex;justify-content:space-between;padding:var(--s-3) 0;font-size:var(--text-sm);font-weight:700;border-top:2px solid var(--c-border)">' +
+        '<span>Total</span><span class="clr-err">' + fmt(totalCost, 2) + ' €</span></div>';
+    }
+    if (costs.costs_pct_of_pnl != null) {
+      html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">Kosten: ' + fmt(costs.costs_pct_of_pnl, 1) + '% des P&L</div>';
+    }
+    if (costs.cost_per_trade_avg != null) {
+      html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">Ø Kosten/Trade: ' + fmt(costs.cost_per_trade_avg, 2) + ' €</div>';
+    }
+    html += '</div></div>';
+
+    html += '</div></div>';
+    root.innerHTML += html;
+
+    requestAnimationFrame(function() {
+      chartDefaults();
+      var ctx = document.getElementById('chart-costs');
+      if (!ctx) return;
+
+      var costData = costItems.filter(function(c) { return c.val > 0; });
+      if (!costData.length) return;
+
+      var costColors = [cAccent, cWarn, cBlue, cPurple];
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: costData.map(function(c) { return c.label; }),
+          datasets: [{
+            data: costData.map(function(c) { return c.val; }),
+            backgroundColor: costColors.slice(0, costData.length),
+            borderColor: cSurface,
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '60%',
+          plugins: {
+            legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle' } },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + fmt(ctx.parsed, 2) + ' €'; } } }
+          }
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     CONFIG
+     ════════════════════════════════════════════════════════════ */
+
+  function renderConfig(root, config) {
+    var json = JSON.stringify(config, null, 2);
+    var html = '<div class="bt-section"><div class="bt-section-title">⚙️ Configuration</div>' +
+      '<div class="config-block">' +
+      '<button class="copy-btn" onclick="copyConfig(this)">Kopieren</button>' +
+      '<pre id="config-pre">' + syntaxHighlight(json) + '</pre>' +
+      '</div></div>';
+    root.innerHTML += html;
+  }
+
+  function syntaxHighlight(json) {
+    return json
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"([^"]+)"(?=\s*:)/g, '<span style="color:#7dd3fc">"$1"</span>')
+      .replace(/:\s*"([^"]*)"/g, ': <span style="color:#86efac">"$1"</span>')
+      .replace(/:\s*(true|false)/g, ': <span style="color:#fbbf24">$1</span>')
+      .replace(/:\s*(\d+\.?\d*)/g, ': <span style="color:#c084fc">$1</span>');
+  }
+
+  window.copyConfig = function(btn) {
+    var pre = document.getElementById('config-pre');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.textContent).then(function() {
+      btn.textContent = '✓ Kopiert!';
+      setTimeout(function() { btn.textContent = 'Kopieren'; }, 2000);
+    });
+  };
+
+  /* ════════════════════════════════════════════════════════════
+     COMPARISON
+     ════════════════════════════════════════════════════════════ */
+
+  function renderComparison(root, bt1, bt2) {
+    var s1 = bt1.summary || {}; var r1 = bt1.risk || {}; var ra1 = bt1.ratios || {};
+    var s2 = bt2.summary || {}; var r2 = bt2.risk || {}; var ra2 = bt2.ratios || {};
+
+    var metrics = [
+      { label: 'Trades', v1: s1.total_trades || s1.trades, v2: s2.total_trades || s2.trades, fmt: function(v) { return safe(v, '—'); } },
+      { label: 'Win Rate', v1: s1.win_rate_pct || s1.win_rate, v2: s2.win_rate_pct || s2.win_rate, fmt: fmtPct },
+      { label: 'Profit Factor', v1: s1.profit_factor || ra1.profit_factor, v2: s2.profit_factor || ra2.profit_factor, fmt: function(v) { return fmt(v, 2); } },
+      { label: 'Total P&L', v1: s1.total_pnl_eur || s1.total_pnl, v2: s2.total_pnl_eur || s2.total_pnl, fmt: fmtEur, colorize: true },
+      { label: 'Max Drawdown', v1: s1.max_dd_pct || r1.max_drawdown_pct, v2: s2.max_dd_pct || r2.max_drawdown_pct, fmt: fmtPct },
+      { label: 'Sharpe', v1: ra1.sharpe_ratio || s1.sharpe, v2: ra2.sharpe_ratio || s2.sharpe, fmt: function(v) { return fmt(v, 2); } },
+      { label: 'Sortino', v1: ra1.sortino_ratio || s1.sortino, v2: ra2.sortino_ratio || s2.sortino, fmt: function(v) { return fmt(v, 2); } },
+      { label: 'SQN', v1: ra1.sqn, v2: ra2.sqn, fmt: function(v) { return fmt(v, 2); } },
+      { label: 'Expectancy', v1: ra1.expectancy || s1.expectancy, v2: ra2.expectancy || s2.expectancy, fmt: fmtEur, colorize: true },
+      { label: 'Recovery Factor', v1: r1.recovery_factor || s1.recovery_factor, v2: r2.recovery_factor || s2.recovery_factor, fmt: function(v) { return fmt(v, 2); } }
+    ];
+
+    /* Equity overlay chart */
+    var eq1 = bt1.equity_curve; if (eq1 && eq1.points) eq1 = eq1.points;
+    var eq2 = bt2.equity_curve; if (eq2 && eq2.points) eq2 = eq2.points;
+
+    var html = '<div class="bt-section"><div class="bt-section-title">⚖️ Comparison: ' +
+      escHtml(bt1.name || bt1.id || 'A') + ' vs ' + escHtml(bt2.name || bt2.id || 'B') + '</div>';
+
+    /* Overlay equity chart */
+    if (eq1 && eq1.length && eq2 && eq2.length) {
+      html += '<div class="chart-card"><h3>Equity Overlay</h3><div class="chart-wrap chart-wrap-tall"><canvas id="chart-compare-eq"></canvas></div></div>';
+    }
+
+    /* Metric table */
+    html += '<div class="chart-card"><div class="bt-table-wrap"><table class="bt-table"><thead><tr>' +
+      '<th>Metric</th><th>' + escHtml(bt1.name || bt1.id || 'A') + '</th><th>' + escHtml(bt2.name || bt2.id || 'B') + '</th>' +
+      '<th>Δ</th></tr></thead><tbody>';
+
+    metrics.forEach(function(m) {
+      if (m.v1 == null && m.v2 == null) return;
+      var c1 = m.colorize ? pnlClass(m.v1) : '';
+      var c2 = m.colorize ? pnlClass(m.v2) : '';
+      var diff = (typeof m.v1 === 'number' && typeof m.v2 === 'number') ? m.v2 - m.v1 : null;
+      var diffStr = diff != null ? '<span class="' + pnlClass(diff) + '">' + (diff > 0 ? '+' : '') + m.fmt(diff) + '</span>' : '—';
+
+      html += '<tr>' +
+        '<td style="font-weight:500">' + m.label + '</td>' +
+        '<td class="' + c1 + '" style="font-weight:600">' + m.fmt(m.v1) + '</td>' +
+        '<td class="' + c2 + '" style="font-weight:600">' + m.fmt(m.v2) + '</td>' +
+        '<td>' + diffStr + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div></div></div>';
+    root.innerHTML += html;
+
+    /* Render equity overlay */
+    if (eq1 && eq1.length && eq2 && eq2.length) {
+      requestAnimationFrame(function() {
+        chartDefaults();
+        var ctx = document.getElementById('chart-compare-eq');
+        if (!ctx) return;
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            datasets: [
+              {
+                label: bt1.name || 'A',
+                data: eq1.map(function(d) { return { x: d.date || new Date(d.ts * 1000).toISOString().split('T')[0], y: d.equity || d.value }; }),
+                borderColor: cAccent,
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false
+              },
+              {
+                label: bt2.name || 'B',
+                data: eq2.map(function(d) { return { x: d.date || new Date(d.ts * 1000).toISOString().split('T')[0], y: d.equity || d.value }; }),
+                borderColor: cOk,
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', labels: { usePointStyle: true, pointStyle: 'line' } },
+              tooltip: { mode: 'index', intersect: false, callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmt(ctx.parsed.y, 2) + ' €'; } } }
+            },
+            scales: {
+              x: { type: 'time', time: { unit: 'month' }, grid: { display: false } },
+              y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: function(v) { return v + ' €'; } } }
+            }
+          }
+        });
+      });
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     EXPORT
+     ════════════════════════════════════════════════════════════ */
+
+  function renderExport(root, bt) {
+    root.innerHTML += '<div class="export-row">' +
+      '<button class="btn-export" id="btn-export-json">⬇ Download JSON</button>' +
+      '</div>';
+
+    requestAnimationFrame(function() {
+      var btn = document.getElementById('btn-export-json');
+      if (btn) {
+        btn.addEventListener('click', function() {
+          var blob = new Blob([JSON.stringify(bt, null, 2)], { type: 'application/json' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = (bt.id || 'backtest') + '_detail.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        });
+      }
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     INIT
+     ════════════════════════════════════════════════════════════ */
+
+  if (!btId) {
+    document.getElementById('bt-root').innerHTML = '<div class="bt-error">Keine Backtest-ID angegeben. (?id=... fehlt)</div>';
+    return;
+  }
+
+  var btData = null;
+  var btData2 = null;
+
+  safeFetch('/api/backtest/' + encodeURIComponent(btId) + '.json')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      btData = data;
+      if (compareId) {
+        return safeFetch('/api/backtest/' + encodeURIComponent(compareId) + '.json')
+          .then(function(r) { if (r.ok) return r.json(); return null; })
+          .then(function(d2) { btData2 = d2; });
+      }
+    })
+    .then(function() {
+      document.getElementById('bt-loading').remove();
+      render(btData, btData2);
+    })
+    .catch(function(err) {
+      document.getElementById('bt-loading').innerHTML =
+        '<div class="bt-error">Fehler beim Laden: ' + escHtml(err.message) + '</div>';
+    });
+
+})();
+</script>
+<!--/BODY-->

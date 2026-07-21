@@ -1,0 +1,477 @@
+{
+  "id": 74,
+  "label": "#005",
+  "name": "MR RSI+BB+KC+body · 11 Winner-Pairs",
+  "display_name": "MR RSI+BB+KC+body · 11 Winner-Pairs",
+  "description": "Mutation A: 12 Winner-Pairs only (removed JPY/CHF/USD-Majors).",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "invalidated",
+  "readiness": "unknown",
+  "rejection_reason": null,
+  "overall_score": 2322.9,
+  "iteration_count": 8,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "mr-fx",
+  "created_at": "2026-06-30 00:23:05",
+  "updated_at": "2026-06-30 01:10:48",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 8r/1g/3b enter, exit=timeout\", \"pnl\": 2971.53, \"trades\": 680, \"score\": 1256.6}, {\"iter\": 2, \"change\": \"change_pairs: 8r/1g/3b enter, exit=timeout\", \"pnl\": 2971.53, \"trades\": 680, \"score\": 1256.6}, {\"iter\": 3, \"change\": \"adjust_threshold: 8r/1g/3b enter, exit=timeout\", \"pnl\": 2133.6, \"trades\": 556, \"score\": 410.5}, {\"iter\": 4, \"change\": \"escape_adjust_threshold: 8r/1g/3b enter, exit=timeout\", \"pnl\": 1875.76, \"trades\": 1219, \"score\": 173.1}, {\"iter\": 5, \"change\": \"escape_add_gate: 8r/2g/3b enter, exit=timeout\", \"pnl\": 1179.35, \"trades\": 346, \"score\": 2322.9}, {\"iter\": 6, \"change\": \"adjust_threshold: 8r/2g/3b enter, exit=timeout\", \"pnl\": -288.51, \"trades\": 375, \"score\": -94.0}, {\"iter\": 7, \"change\": \"escape_adjust_min_score: 8r/2g/3b enter, exit=timeout\", \"pnl\": -258.8, \"trades\": 332, \"score\": -94.3}, {\"iter\": 8, \"change\": \"escape_add_boost: 8r/2g/4b enter, exit=timeout\", \"pnl\": -558.37, \"trades\": 338, \"score\": -93.5}], \"iterations\": 8, \"holdout\": {\"passed\": true, \"pnl\": 940.11, \"trades\": 71, \"pf\": 1.62, \"wr\": 52.1, \"monthly_pnls\": [[\"2025-12\", 30.56], [\"2026-01\", 106.26], [\"2026-02\", -31.02], [\"2026-03\", 633.92], [\"2026-04\", 202.7], [\"2026-05\", 137.97], [\"2026-06\", -140.28]], \"max_consec_loss_months\": 1, \"period\": \"2025-12-25 \\u2013 2026-06-23\", \"reason\": \"Passiert \\u2705\"}, \"anti_overfit\": {\"block_validation\": \"2-of-3 time blocks positive\", \"economic_hurdle\": \"PF >= 1.3 after costs\", \"holdout_months\": 6}}",
+  "concept": {
+    "name": "IT: Master_MR_v2_Pairs",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "AUDCAD",
+      "EURAUD",
+      "EURCAD",
+      "EURCHF",
+      "EURJPY",
+      "EURNZD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPNZD",
+      "NZDCAD",
+      "NZDUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "mr_oversold_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 25
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.15
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.2
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "long",
+            "base_score": 40
+          },
+          {
+            "id": "mr_overbought_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": ">",
+                "value": 75
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.85
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.8
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "short",
+            "base_score": 40
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -80
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "value": -1.0
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": "==",
+                "value": 1
+              }
+            ],
+            "points": 10
+          }
+        ],
+        "gates": [
+          {
+            "condition": "OR",
+            "rules": [
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": "<",
+                "value": 0.95
+              },
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 15
+              }
+            ]
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 30
+              }
+            ]
+          }
+        ],
+        "min_score": 40,
+        "merge_mode": "flat_and"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 72
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.5
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "AUDCAD",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURJPY",
+        "EURNZD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPNZD",
+        "NZDCAD",
+        "NZDUSD"
+      ],
+      "pair_overrides": {
+        "AUDCHF": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.2,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURAUD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.5,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURCHF": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.8,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.8
+          }
+        },
+        "EURNZD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.4,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.3
+          }
+        },
+        "GBPCAD": {
+          "sl": {
+            "mode": "atr",
+            "mult": 1.6,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Mutation A: 12 Winner-Pairs only (removed JPY/CHF/USD-Majors)."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -93.5,
+    "oos_pnl": -558.37,
+    "oos_trades": 338,
+    "oos_pass_rate": 0.435,
+    "iteration": 8,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {},
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": true,
+      "evaluated_at": "2026-07-16T18:15:24.028204+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 8r/1g/3b enter, exit=timeout",
+      "oos_pnl": 2971.53,
+      "oos_pf": 0,
+      "tier": "B",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 680,
+      "children": [
+        {
+          "change": "Iteration 2: change_pairs: 8r/1g/3b enter, exit=timeout",
+          "oos_pnl": 2971.53,
+          "oos_pf": 0,
+          "tier": "B",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 680,
+          "children": [
+            {
+              "change": "Iteration 3: adjust_threshold: 8r/1g/3b enter, exit=timeout",
+              "oos_pnl": 2133.6,
+              "oos_pf": 0,
+              "tier": "B",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 556,
+              "children": [
+                {
+                  "change": "Iteration 4: escape_adjust_threshold: 8r/1g/3b enter, exit=timeout",
+                  "oos_pnl": 1875.76,
+                  "oos_pf": 0,
+                  "tier": "B",
+                  "tested": true,
+                  "strategy_id": null,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 1219,
+                  "children": [
+                    {
+                      "change": "Iteration 5: escape_add_gate: 8r/2g/3b enter, exit=timeout",
+                      "oos_pnl": 1179.35,
+                      "oos_pf": 0,
+                      "tier": "B",
+                      "tested": true,
+                      "strategy_id": 74,
+                      "is_new_root": false,
+                      "win_rate": null,
+                      "trades": 346,
+                      "children": [
+                        {
+                          "change": "Iteration 6: adjust_threshold: 8r/2g/3b enter, exit=timeout",
+                          "oos_pnl": -288.51,
+                          "oos_pf": 0,
+                          "tier": "C",
+                          "tested": true,
+                          "strategy_id": null,
+                          "is_new_root": false,
+                          "win_rate": null,
+                          "trades": 375,
+                          "children": [
+                            {
+                              "change": "Iteration 7: escape_adjust_min_score: 8r/2g/3b enter, exit=timeout",
+                              "oos_pnl": -258.8,
+                              "oos_pf": 0,
+                              "tier": "C",
+                              "tested": true,
+                              "strategy_id": null,
+                              "is_new_root": false,
+                              "win_rate": null,
+                              "trades": 332,
+                              "children": [
+                                {
+                                  "change": "Iteration 8: escape_add_boost: 8r/2g/4b enter, exit=timeout",
+                                  "oos_pnl": -558.37,
+                                  "oos_pf": 0,
+                                  "tier": "C",
+                                  "tested": true,
+                                  "strategy_id": null,
+                                  "is_new_root": false,
+                                  "win_rate": null,
+                                  "trades": 338,
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      74
+    ],
+    "stats": {
+      "total_variants": 8,
+      "new_trees": 0,
+      "best_pnl": 1179.35,
+      "base_pnl": 2971.53,
+      "improvement": -1792.1800000000003,
+      "runtime_seconds": 2862.8
+    }
+  },
+  "best_oos_pnl": -558.37,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "C",
+  "best_oos_pass_rate": 0.435,
+  "oos_trades": 338,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 0,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

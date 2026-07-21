@@ -1,0 +1,273 @@
+{
+  "id": 260,
+  "label": "#260",
+  "name": "IT: BO_Base_Seed",
+  "display_name": "IT: BO_Base_Seed",
+  "description": "MINIMAL: BB squeeze + close beyond BB. No gates, no boosts, min_score=0.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": -69.4,
+  "iteration_count": 4,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-12 18:08:07",
+  "updated_at": "2026-07-12 18:33:38",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 4r/0g/0b enter, exit=timeout\", \"pnl\": -441.67, \"trades\": 401, \"score\": -72.9}, {\"iter\": 2, \"change\": \"change_pairs: 4r/0g/0b enter, exit=timeout\", \"pnl\": -441.67, \"trades\": 401, \"score\": -72.9}, {\"iter\": 3, \"change\": \"adjust_threshold: 4r/0g/0b enter, exit=timeout\", \"pnl\": -385.76, \"trades\": 341, \"score\": -71.7}, {\"iter\": 4, \"change\": \"add_gate: 4r/1g/0b enter, exit=timeout\", \"pnl\": -241.51, \"trades\": 263, \"score\": -69.4}], \"iterations\": 4, \"holdout\": null, \"anti_overfit\": null}",
+  "concept": {
+    "name": "IT: BO_Base_Seed",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "NAS100",
+      "US500",
+      "XAUUSD",
+      "GBPAUD",
+      "GER40"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "breakout_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "bb_squeeze",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0,
+                  "lookback": 120
+                },
+                "op": "==",
+                "value": true
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "op": ">",
+                "ref_indicator": "bb_upper",
+                "ref_params": {
+                  "period": 20,
+                  "mult": 2.5
+                }
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "breakout_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "bb_squeeze",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0,
+                  "lookback": 120
+                },
+                "op": "==",
+                "value": true
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "op": "<",
+                "ref_indicator": "bb_lower",
+                "ref_params": {
+                  "period": 20,
+                  "mult": 2.5
+                }
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [],
+        "gates": [
+          {
+            "id": "adx_low_block",
+            "indicator": "adx",
+            "timeframe": "1h",
+            "params": {
+              "period": 14
+            },
+            "op": "<",
+            "value": 15
+          }
+        ],
+        "min_score": 0,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 72
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 2.0
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.5
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "NAS100",
+        "US500",
+        "XAUUSD",
+        "GBPAUD",
+        "GER40"
+      ]
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "MINIMAL: BB squeeze + close beyond BB. No gates, no boosts, min_score=0."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -69.4,
+    "oos_pnl": -241.51,
+    "oos_trades": 263,
+    "oos_pass_rate": 0.194,
+    "iteration": 4,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {},
+    "selected_assets": [],
+    "dropped_assets": [
+      "NAS100",
+      "US500",
+      "XAUUSD",
+      "GBPAUD",
+      "UK100",
+      "GER40"
+    ],
+    "pair_overrides": {},
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": false,
+      "evaluated_at": "2026-07-16T18:15:24.074431+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [
+    "GBPAUD",
+    "GER40",
+    "NAS100",
+    "UK100",
+    "US500",
+    "XAUUSD"
+  ],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 4r/0g/0b enter, exit=timeout",
+      "oos_pnl": -441.67,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 401,
+      "children": [
+        {
+          "change": "Iteration 2: change_pairs: 4r/0g/0b enter, exit=timeout",
+          "oos_pnl": -441.67,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 401,
+          "children": [
+            {
+              "change": "Iteration 3: adjust_threshold: 4r/0g/0b enter, exit=timeout",
+              "oos_pnl": -385.76,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 341,
+              "children": [
+                {
+                  "change": "Iteration 4: add_gate: 4r/1g/0b enter, exit=timeout",
+                  "oos_pnl": -241.51,
+                  "oos_pf": 0,
+                  "tier": "C",
+                  "tested": true,
+                  "strategy_id": 260,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 263,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      260
+    ],
+    "stats": {
+      "total_variants": 4,
+      "new_trees": 0,
+      "best_pnl": -241.51,
+      "base_pnl": -441.67,
+      "improvement": 200.16000000000003,
+      "runtime_seconds": 1531.2
+    }
+  },
+  "best_oos_pnl": -241.51,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "C",
+  "best_oos_pass_rate": 0.194,
+  "oos_trades": 263,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 0,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

@@ -1,0 +1,171 @@
+{
+  "id": "bot1",
+  "name": "FX Mean Reversion Bot",
+  "title": "FX Mean Reversion Bot — Hermes",
+  "bot_id": "bot1",
+  "api_base": "/api/fx",
+  "dashboard_json": "/api/fx/dashboard.json",
+  "charts_path": "/api/fx/charts/",
+  "heatmap_path": "/api/fx/performance_heatmap.json",
+  "refresh_interval": 60000,
+  "features": {
+    "equity": true,
+    "signals": true,
+    "candlestick": true,
+    "heatmap": true,
+    "backtest": true
+  },
+  "reoptimize": {
+    "last_date": "2026-07-01",
+    "interval_months": 3,
+    "data_months": 6,
+    "timeframe": "1H",
+    "strategy": "lab_live (Recipe #025 — 1)",
+    "source": "Recipe Lab — Combo #3d2fb598",
+    "pairs": [
+      "AUDCAD",
+      "AUDUSD",
+      "EURAUD",
+      "EURCAD",
+      "EURJPY",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPNZD",
+      "NZDCAD"
+    ],
+    "config_path": "config/assets.toml",
+    "tree_file": "config/lab025_tree.json",
+    "pair_filter": "WFO OOS: 9 assets selected (PF≥3.0, PnL>0, Tier A)",
+    "wfo": {
+      "is_months": 6,
+      "oos_months": 3,
+      "oos_pnl": 4916.18,
+      "oos_pf": 204.94,
+      "oos_wr": 42.2,
+      "oos_trades": 629,
+      "oos_pass_rate": 0.596,
+      "tier": "A",
+      "mc_pass": true,
+      "slip_pass": true
+    },
+    "params": {
+      "rsi_period": 7,
+      "rsi_oversold": 35,
+      "rsi_overbought": 65,
+      "sl_mult": 1.2,
+      "tp_r": 2.5
+    },
+    "script": "python3 scripts/promote_to_bot.py --label '#025'",
+    "steps": [
+      "Recipe Lab generiert Kombinationen",
+      "WFO filtert auf 9 profitable Assets",
+      "Top Combo #3d2fb598: PF=204.9, PnL=+4,916€, Tier A",
+      "promote_to_bot.py generiert tree JSON + assets TOML",
+      "Bot neu starten: systemctl restart fx-bot.service"
+    ]
+  },
+  "strategy_tags": [
+    {
+      "label": "Strategy",
+      "value": "#025 — Recipe: MR_RSI_BB_Sweep_v1"
+    },
+    {
+      "label": "Timeframe",
+      "value": "1H"
+    },
+    {
+      "label": "Pairs",
+      "value": "9 FX Pairs (WFO-filtered)",
+      "id": "fx-pairs-count"
+    },
+    {
+      "label": "Type",
+      "value": "Mean Reversion (Recipe Lab, ATR-SL/TP)"
+    },
+    {
+      "label": "WFO Result",
+      "value": "PF 204.9 · +4,916€ · 629 Trades · Tier A"
+    }
+  ],
+  "config_chips": [
+    "#025 — Recipe: MR_RSI_BB_Sweep_v1 (Combo #3d2fb598)",
+    "WFO: IS=6M / OOS=3M · PnL +4,916€ · PF 204.9 · WR 42% · 629 Trades · Tier A",
+    "RSI(7) < 35/65 + BB(20,2.0) + KC(14,2.0)",
+    "SL: 1.2× ATR(14) · TP: 2.5R · Risk: 2% · Timeout: 72h",
+    "Gate: ATR-Percentile < 95% oder ADX < 35",
+    "Boosts: Williams %R < -80, VWAP, London Session",
+    "9 FX Pairs: AUDCAD, AUDUSD, EURAUD, EURCAD, EURJPY, GBPAUD, GBPCAD, GBPNZD, NZDCAD",
+    "1H Timeframe · Bidirectional (Long + Short)",
+    "Monte Carlo: ✅ · Slippage: ✅ · Engine: lab_live"
+  ],
+  "position_columns": [
+    {
+      "key": "symbol",
+      "label": "Symbol",
+      "field": "symbol",
+      "fmt": "bold"
+    },
+    {
+      "key": "volume",
+      "label": "Anzahl",
+      "field": "volume",
+      "fmt": "lots"
+    },
+    {
+      "key": "direction",
+      "label": "Richtung",
+      "field": "side",
+      "fmt": "direction"
+    },
+    {
+      "key": "entry",
+      "label": "Einstiegskurs",
+      "field": "entry",
+      "fmt": "price"
+    },
+    {
+      "key": "score",
+      "label": "Score",
+      "field": "score",
+      "fmt": "score"
+    },
+    {
+      "key": "tp",
+      "label": "TP",
+      "field": "tp",
+      "fmt": "price"
+    },
+    {
+      "key": "sl",
+      "label": "SL",
+      "field": "sl",
+      "fmt": "price"
+    },
+    {
+      "key": "opened",
+      "label": "Eröffnet (UTC+0)",
+      "field": "timestamp",
+      "fmt": "datetime"
+    },
+    {
+      "key": "pnl",
+      "label": "Netto €",
+      "field": "pnl",
+      "fmt": "pnl"
+    }
+  ],
+  "chart_labels": [
+    {
+      "field": "sl_eur",
+      "prefix": "SL ",
+      "suffix": " €",
+      "color": "rgba(239,68,68,0.6)"
+    },
+    {
+      "field": "tp_eur",
+      "prefix": "TP ",
+      "suffix": " €",
+      "color": "rgba(34,197,94,0.6)"
+    }
+  ]
+}

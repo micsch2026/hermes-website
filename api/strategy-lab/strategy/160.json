@@ -1,0 +1,1307 @@
+{
+  "id": 160,
+  "label": "#160",
+  "name": "RCP: mean_reversion_broad",
+  "display_name": "RCP: mean_reversion_broad",
+  "description": "Loaded from /root/strategy-lab/data/seeds/mean_reversion_broad.json",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "invalidated",
+  "readiness": "unknown",
+  "rejection_reason": null,
+  "overall_score": 4050.8,
+  "iteration_count": 3,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "mr-fx",
+  "created_at": "2026-07-05 08:55:32",
+  "updated_at": "2026-07-05 10:01:47",
+  "notes": "{\"history\": [{\"iter\": 0, \"change\": \"baseline\", \"pnl\": 2742.94, \"trades\": 623, \"score\": 898.8}, {\"iter\": 1, \"change\": \"recipe:MR_Tighten_RSI_and_TP_v1_1_20260705_085645\", \"pnl\": -84.19, \"trades\": 117, \"score\": -95.3}, {\"iter\": 2, \"change\": \"recipe:MR_Tighten_RSI_Raise_TP_v1_2_20260705_091206\", \"pnl\": -96.0, \"trades\": 115, \"score\": -80.4}, {\"iter\": 3, \"change\": \"recipe:MR_TightenRSI_WidenSL_v1_3_20260705_093547\", \"pnl\": 2885.43, \"trades\": 640, \"score\": 4050.8}, {\"iter\": 4, \"change\": \"recipe:MR_Tighten_RSI_Thresholds_v1_4_20260705_095524 (rejected)\", \"pnl\": 2331.24, \"trades\": 445, \"score\": 858.4}], \"iterations\": 4, \"mode\": \"recipe\"}",
+  "concept": {
+    "name": "RCP: mean_reversion_broad",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "AUDCAD",
+      "AUDCHF",
+      "AUDJPY",
+      "AUDNZD",
+      "CADCHF",
+      "CADJPY",
+      "CHFJPY",
+      "EURAUD",
+      "EURCAD",
+      "EURCHF",
+      "EURGBP",
+      "EURJPY",
+      "EURNZD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPCHF",
+      "GBPJPY",
+      "GBPNZD",
+      "NZDCAD",
+      "NZDCHF",
+      "NZDJPY"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "mr_oversold_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 30
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.15
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.2
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "long",
+            "base_score": 40
+          },
+          {
+            "id": "mr_overbought_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": ">",
+                "value": 75
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.85
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.8
+              },
+              {
+                "indicator": "body_ratio",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.3
+              }
+            ],
+            "direction": "short",
+            "base_score": 40
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -80
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "value": -1.0
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": "==",
+                "value": 1
+              }
+            ],
+            "points": 10
+          }
+        ],
+        "gates": [
+          {
+            "condition": "OR",
+            "rules": [
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": "<",
+                "value": 0.95
+              },
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 35
+              }
+            ]
+          }
+        ],
+        "min_score": 40,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 72
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 2.0
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.5
+      },
+      "risk_pct": 3.0,
+      "pairs": [
+        "AUDCAD",
+        "AUDCHF",
+        "AUDJPY",
+        "AUDNZD",
+        "CADCHF",
+        "CADJPY",
+        "CHFJPY",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURGBP",
+        "EURJPY",
+        "EURNZD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPCHF",
+        "GBPJPY",
+        "GBPNZD",
+        "NZDCAD",
+        "NZDCHF",
+        "NZDJPY"
+      ],
+      "pair_overrides": {
+        "AUDCAD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.9
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.9
+          }
+        },
+        "EURAUD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.6
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURJPY": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.9
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.7
+          }
+        },
+        "EURNZD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.4
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        },
+        "GBPAUD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.5
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.5
+          }
+        },
+        "GBPNZD": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.5
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        },
+        "EURCHF": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.3
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        }
+      }
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 3.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Loaded from /root/strategy-lab/data/seeds/mean_reversion_broad.json"
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "A",
+    "oos_score": 4050.8,
+    "oos_pnl": 2885.43,
+    "oos_trades": 640,
+    "oos_pass_rate": 0.672,
+    "iteration": 3,
+    "selected_assets": [
+      "AUDCAD",
+      "AUDJPY",
+      "CHFJPY",
+      "EURAUD",
+      "EURCAD",
+      "EURJPY",
+      "EURNZD",
+      "GBPAUD",
+      "GBPCAD",
+      "GBPNZD",
+      "NZDCAD"
+    ],
+    "dropped_assets": [
+      "AUDCHF",
+      "AUDNZD",
+      "CADCHF",
+      "CADJPY",
+      "EURCHF",
+      "EURGBP",
+      "GBPCHF",
+      "GBPJPY",
+      "NZDCHF",
+      "NZDJPY"
+    ],
+    "pair_overrides": {
+      "AUDCAD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 2.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "AUDJPY": {
+        "sl": {
+          "mode": "atr",
+          "mult": 2.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.5
+        }
+      },
+      "CHFJPY": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.4,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "EURAUD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.4,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "EURCAD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.4,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.5
+        }
+      },
+      "EURJPY": {
+        "sl": {
+          "mode": "atr",
+          "mult": 2.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "EURNZD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.4,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.0
+        }
+      },
+      "GBPAUD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 2.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "GBPCAD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 2.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "GBPNZD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.4,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      },
+      "NZDCAD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.4,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.0
+        }
+      }
+    },
+    "asset_results": {
+      "AUDCAD": {
+        "oos_pf": 2.85,
+        "oos_wr": 61.209090909090904,
+        "oos_pnl_total": 842.74,
+        "oos_trades": 43,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "AUDCHF": {
+        "oos_pf": 0.92,
+        "oos_wr": 51.190909090909095,
+        "oos_pnl_total": -91.2,
+        "oos_trades": 79,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "AUDJPY": {
+        "oos_pf": 1.08,
+        "oos_wr": 51.044444444444444,
+        "oos_pnl_total": 61.26,
+        "oos_trades": 65,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "AUDNZD": {
+        "oos_pf": 0.7,
+        "oos_wr": 37.23636363636364,
+        "oos_pnl_total": -149.03,
+        "oos_trades": 55,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "CADCHF": {
+        "oos_pf": 0.71,
+        "oos_wr": 35.60909090909091,
+        "oos_pnl_total": -251.86,
+        "oos_trades": 59,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "CADJPY": {
+        "oos_pf": 0.67,
+        "oos_wr": 36.06363636363636,
+        "oos_pnl_total": -258.71,
+        "oos_trades": 83,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "CHFJPY": {
+        "oos_pf": 1.21,
+        "oos_wr": 43.554545454545455,
+        "oos_pnl_total": 101.46,
+        "oos_trades": 70,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "EURAUD": {
+        "oos_pf": 1.5,
+        "oos_wr": 53.58181818181818,
+        "oos_pnl_total": 233.45,
+        "oos_trades": 63,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "EURCAD": {
+        "oos_pf": 1.06,
+        "oos_wr": 53.42727272727273,
+        "oos_pnl_total": 23.13,
+        "oos_trades": 52,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "EURCHF": {
+        "oos_pf": 0.86,
+        "oos_wr": 41.22727272727273,
+        "oos_pnl_total": -112.77,
+        "oos_trades": 55,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "EURGBP": {
+        "oos_pf": 0.51,
+        "oos_wr": 42.95454545454545,
+        "oos_pnl_total": -251.82,
+        "oos_trades": 42,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "EURJPY": {
+        "oos_pf": 1.51,
+        "oos_wr": 51.54545454545455,
+        "oos_pnl_total": 293.08,
+        "oos_trades": 70,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "EURNZD": {
+        "oos_pf": 1.03,
+        "oos_wr": 46.77272727272727,
+        "oos_pnl_total": 11.67,
+        "oos_trades": 54,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "GBPAUD": {
+        "oos_pf": 1.62,
+        "oos_wr": 58.15454545454545,
+        "oos_pnl_total": 287.8,
+        "oos_trades": 68,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "GBPCAD": {
+        "oos_pf": 1.54,
+        "oos_wr": 53.82727272727273,
+        "oos_pnl_total": 190.18,
+        "oos_trades": 46,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "GBPCHF": {
+        "oos_pf": 0.62,
+        "oos_wr": 43.990909090909085,
+        "oos_pnl_total": -328.63,
+        "oos_trades": 70,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "GBPJPY": {
+        "oos_pf": 0.0,
+        "oos_wr": 0.0,
+        "oos_pnl_total": -78.94,
+        "oos_trades": 29,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "GBPNZD": {
+        "oos_pf": 1.46,
+        "oos_wr": 59.45454545454545,
+        "oos_pnl_total": 159.2,
+        "oos_trades": 54,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "NZDCAD": {
+        "oos_pf": 2.22,
+        "oos_wr": 60.3909090909091,
+        "oos_pnl_total": 681.46,
+        "oos_trades": 55,
+        "oos_pass_rate": 0.672,
+        "tier": "A"
+      },
+      "NZDCHF": {
+        "oos_pf": 0.85,
+        "oos_wr": 52.57272727272727,
+        "oos_pnl_total": -127.12,
+        "oos_trades": 67,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      },
+      "NZDJPY": {
+        "oos_pf": 0.81,
+        "oos_wr": 39.90909090909091,
+        "oos_pnl_total": -127.23,
+        "oos_trades": 64,
+        "oos_pass_rate": 0.672,
+        "tier": "C"
+      }
+    },
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": true,
+      "evaluated_at": "2026-07-16T18:15:24.051100+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "AUDCAD",
+      "tier": "A",
+      "oos_pnl_total": 842.74,
+      "oos_pf": 2.85,
+      "oos_wr": 61.209090909090904,
+      "oos_trades": 43,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 2.0,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "AUDCHF",
+      "tier": "C",
+      "oos_pnl_total": -91.2,
+      "oos_pf": 0.92,
+      "oos_wr": 51.190909090909095,
+      "oos_trades": 79,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "AUDJPY",
+      "tier": "A",
+      "oos_pnl_total": 61.26,
+      "oos_pf": 1.08,
+      "oos_wr": 51.044444444444444,
+      "oos_trades": 65,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 2.0,
+      "tp_override": 1.5,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "AUDNZD",
+      "tier": "C",
+      "oos_pnl_total": -149.03,
+      "oos_pf": 0.7,
+      "oos_wr": 37.23636363636364,
+      "oos_trades": 55,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "CADCHF",
+      "tier": "C",
+      "oos_pnl_total": -251.86,
+      "oos_pf": 0.71,
+      "oos_wr": 35.60909090909091,
+      "oos_trades": 59,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "CADJPY",
+      "tier": "C",
+      "oos_pnl_total": -258.71,
+      "oos_pf": 0.67,
+      "oos_wr": 36.06363636363636,
+      "oos_trades": 83,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "CHFJPY",
+      "tier": "A",
+      "oos_pnl_total": 101.46,
+      "oos_pf": 1.21,
+      "oos_wr": 43.554545454545455,
+      "oos_trades": 70,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.4,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "EURAUD",
+      "tier": "A",
+      "oos_pnl_total": 233.45,
+      "oos_pf": 1.5,
+      "oos_wr": 53.58181818181818,
+      "oos_trades": 63,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.4,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "EURCAD",
+      "tier": "A",
+      "oos_pnl_total": 23.13,
+      "oos_pf": 1.06,
+      "oos_wr": 53.42727272727273,
+      "oos_trades": 52,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.4,
+      "tp_override": 1.5,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "EURCHF",
+      "tier": "C",
+      "oos_pnl_total": -112.77,
+      "oos_pf": 0.86,
+      "oos_wr": 41.22727272727273,
+      "oos_trades": 55,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "EURGBP",
+      "tier": "C",
+      "oos_pnl_total": -251.82,
+      "oos_pf": 0.51,
+      "oos_wr": 42.95454545454545,
+      "oos_trades": 42,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "EURJPY",
+      "tier": "A",
+      "oos_pnl_total": 293.08,
+      "oos_pf": 1.51,
+      "oos_wr": 51.54545454545455,
+      "oos_trades": 70,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 2.0,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "EURNZD",
+      "tier": "A",
+      "oos_pnl_total": 11.67,
+      "oos_pf": 1.03,
+      "oos_wr": 46.77272727272727,
+      "oos_trades": 54,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.4,
+      "tp_override": 1.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "GBPAUD",
+      "tier": "A",
+      "oos_pnl_total": 287.8,
+      "oos_pf": 1.62,
+      "oos_wr": 58.15454545454545,
+      "oos_trades": 68,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 2.0,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "GBPCAD",
+      "tier": "A",
+      "oos_pnl_total": 190.18,
+      "oos_pf": 1.54,
+      "oos_wr": 53.82727272727273,
+      "oos_trades": 46,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 2.0,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "GBPCHF",
+      "tier": "C",
+      "oos_pnl_total": -328.63,
+      "oos_pf": 0.62,
+      "oos_wr": 43.990909090909085,
+      "oos_trades": 70,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "GBPJPY",
+      "tier": "C",
+      "oos_pnl_total": -78.94,
+      "oos_pf": 0.0,
+      "oos_wr": 0.0,
+      "oos_trades": 29,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "GBPNZD",
+      "tier": "A",
+      "oos_pnl_total": 159.2,
+      "oos_pf": 1.46,
+      "oos_wr": 59.45454545454545,
+      "oos_trades": 54,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.4,
+      "tp_override": 2.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "NZDCAD",
+      "tier": "A",
+      "oos_pnl_total": 681.46,
+      "oos_pf": 2.22,
+      "oos_wr": 60.3909090909091,
+      "oos_trades": 55,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.4,
+      "tp_override": 1.0,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "NZDCHF",
+      "tier": "C",
+      "oos_pnl_total": -127.12,
+      "oos_pf": 0.85,
+      "oos_wr": 52.57272727272727,
+      "oos_trades": 67,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    },
+    {
+      "symbol": "NZDJPY",
+      "tier": "C",
+      "oos_pnl_total": -127.23,
+      "oos_pf": 0.81,
+      "oos_wr": 39.90909090909091,
+      "oos_trades": 64,
+      "oos_pass_rate": 0.672,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": false,
+      "sl_override": null,
+      "tp_override": null,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    }
+  ],
+  "selected_assets": [
+    "AUDCAD",
+    "AUDJPY",
+    "CHFJPY",
+    "EURAUD",
+    "EURCAD",
+    "EURJPY",
+    "EURNZD",
+    "GBPAUD",
+    "GBPCAD",
+    "GBPNZD",
+    "NZDCAD"
+  ],
+  "dropped_assets": [
+    "AUDCHF",
+    "AUDNZD",
+    "CADCHF",
+    "CADJPY",
+    "EURCHF",
+    "EURGBP",
+    "GBPCHF",
+    "GBPJPY",
+    "NZDCHF",
+    "NZDJPY"
+  ],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 0: baseline",
+      "oos_pnl": 2742.94,
+      "oos_pf": 0,
+      "tier": "B",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 623,
+      "children": [
+        {
+          "change": "Iteration 1: recipe:MR_Tighten_RSI_and_TP_v1_1_20260705_085645",
+          "oos_pnl": -84.19,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": null,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 117,
+          "children": [
+            {
+              "change": "Iteration 2: recipe:MR_Tighten_RSI_Raise_TP_v1_2_20260705_091206",
+              "oos_pnl": -96.0,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 115,
+              "children": [
+                {
+                  "change": "Iteration 3: recipe:MR_TightenRSI_WidenSL_v1_3_20260705_093547",
+                  "oos_pnl": 2885.43,
+                  "oos_pf": 0,
+                  "tier": "B",
+                  "tested": true,
+                  "strategy_id": 160,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 640,
+                  "children": [
+                    {
+                      "change": "Iteration 4: recipe:MR_Tighten_RSI_Thresholds_v1_4_20260705_095524 (rejected)",
+                      "oos_pnl": 2331.24,
+                      "oos_pf": 0,
+                      "tier": "B",
+                      "tested": true,
+                      "strategy_id": null,
+                      "is_new_root": false,
+                      "win_rate": null,
+                      "trades": 445,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      160
+    ],
+    "stats": {
+      "total_variants": 5,
+      "new_trees": 0,
+      "best_pnl": 2885.43,
+      "base_pnl": 2742.94,
+      "improvement": 142.48999999999978,
+      "runtime_seconds": 3975.3
+    }
+  },
+  "best_oos_pnl": 2885.43,
+  "best_pf": 2.85,
+  "best_wr": null,
+  "best_tier": "A",
+  "best_oos_pass_rate": 0.672,
+  "oos_trades": 640,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

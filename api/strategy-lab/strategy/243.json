@@ -1,0 +1,254 @@
+{
+  "id": 243,
+  "label": "#243",
+  "name": "IT: KB_61_mean_reversion",
+  "display_name": "IT: KB_61_mean_reversion",
+  "description": "Price am unteren Bollinger Band + MACD Drehung = Mean Reversion zur BB-Mitte. 5M Timeframe = weniger Noise als 1M.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": -99.4,
+  "iteration_count": 4,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-12 12:27:46",
+  "updated_at": "2026-07-12 12:44:31",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 2r/0g/2b enter, exit=timeout\", \"pnl\": -207.15, \"trades\": 838, \"score\": -100.5}, {\"iter\": 2, \"change\": \"adjust_threshold: 2r/0g/2b enter, exit=timeout\", \"pnl\": -333.42, \"trades\": 555, \"score\": -99.4}, {\"iter\": 3, \"change\": \"sl_tp_change: 2r/0g/2b enter, exit=timeout\", \"pnl\": -292.11, \"trades\": 555, \"score\": -99.4}, {\"iter\": 4, \"change\": \"add_gate: 2r/1g/2b enter, exit=timeout\", \"pnl\": -221.3, \"trades\": 395, \"score\": -99.4}], \"iterations\": 4, \"holdout\": null, \"anti_overfit\": null}",
+  "concept": {
+    "name": "IT: KB_61_mean_reversion",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "EURUSD",
+      "GBPUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "kb_mean_reversion_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "bb_position",
+                "params": {
+                  "period": 20,
+                  "std": 2.0
+                },
+                "op": "<",
+                "value": 0.1,
+                "timeframe": "m5"
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "kb_mean_reversion_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "bb_position",
+                "params": {
+                  "period": 20,
+                  "std": 2.0
+                },
+                "op": ">",
+                "value": 0.9,
+                "timeframe": "m5"
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "bb_position",
+                "params": {
+                  "period": 20,
+                  "std": 2.0
+                },
+                "op": "<",
+                "value": 0.2
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "macd_histogram",
+                "params": {},
+                "op": ">",
+                "value": 0
+              }
+            ],
+            "points": 15
+          }
+        ],
+        "gates": [],
+        "min_score": 0,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 2
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.7
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "EURUSD",
+        "GBPUSD"
+      ]
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Price am unteren Bollinger Band + MACD Drehung = Mean Reversion zur BB-Mitte. 5M Timeframe = weniger Noise als 1M."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -99.4,
+    "oos_pnl": -221.3,
+    "oos_trades": 395,
+    "oos_pass_rate": 0.494,
+    "iteration": 4,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {},
+    "selected_assets": [],
+    "dropped_assets": [
+      "EURUSD",
+      "GBPUSD"
+    ],
+    "pair_overrides": {},
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": true,
+      "evaluated_at": "2026-07-16T18:15:24.072605+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [
+    "EURUSD",
+    "GBPUSD"
+  ],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 2r/0g/2b enter, exit=timeout",
+      "oos_pnl": -207.15,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 838,
+      "children": [
+        {
+          "change": "Iteration 2: adjust_threshold: 2r/0g/2b enter, exit=timeout",
+          "oos_pnl": -333.42,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": 243,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 555,
+          "children": [
+            {
+              "change": "Iteration 3: sl_tp_change: 2r/0g/2b enter, exit=timeout",
+              "oos_pnl": -292.11,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 555,
+              "children": [
+                {
+                  "change": "Iteration 4: add_gate: 2r/1g/2b enter, exit=timeout",
+                  "oos_pnl": -221.3,
+                  "oos_pf": 0,
+                  "tier": "C",
+                  "tested": true,
+                  "strategy_id": null,
+                  "is_new_root": false,
+                  "win_rate": null,
+                  "trades": 395,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      243
+    ],
+    "stats": {
+      "total_variants": 4,
+      "new_trees": 0,
+      "best_pnl": -333.42,
+      "base_pnl": -207.15,
+      "improvement": -126.27000000000001,
+      "runtime_seconds": 1005.1
+    }
+  },
+  "best_oos_pnl": -221.3,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "C",
+  "best_oos_pass_rate": 0.494,
+  "oos_trades": 395,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 0,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

@@ -1,0 +1,197 @@
+{
+  "id": 419,
+  "label": "#419",
+  "name": "RCP-RECIPE: BB_Squeeze_Breakout_v3 (XAUUSD)",
+  "display_name": "RCP-RECIPE: BB_Squeeze_Breakout_v3 (XAUUSD)",
+  "description": "",
+  "strategy_type": "volatility_breakout",
+  "timeframe": "1h",
+  "status": "archived",
+  "readiness": "unknown",
+  "rejection_reason": null,
+  "overall_score": 279.8,
+  "iteration_count": 1,
+  "source": "recipe_v3",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "recipe-archetype-v3",
+  "created_at": "2026-07-17T06:06:40.789993+00:00",
+  "updated_at": "2026-07-17T06:06:40.789993+00:00",
+  "notes": null,
+  "concept": {
+    "name": "RCP-RECIPE: BB_Squeeze_Breakout_v3 (XAUUSD)",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "XAUUSD"
+    ],
+    "tree": {
+      "name": "BB Squeeze Breakout",
+      "archetype": "volatility_breakout",
+      "description": "BB Squeeze + Expansion + ATR. Breakout aus niedriger Volatilität.",
+      "timeframe": "1h",
+      "assets_candidate": [
+        "XAUUSD",
+        "XAGUSD",
+        "NAS100",
+        "US30",
+        "DE40"
+      ],
+      "enter": {
+        "signals": [
+          {
+            "id": "squeeze_breakout_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "bb_squeeze",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0,
+                  "lookback": 120
+                },
+                "op": "==",
+                "value": true
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "op": ">",
+                "value_ref": {
+                  "indicator": "donchian_upper",
+                  "timeframe": "1h",
+                  "params": {
+                    "period": 20
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "squeeze_breakout_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "bb_squeeze",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0,
+                  "lookback": 120
+                },
+                "op": "==",
+                "value": true
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "op": "<",
+                "value_ref": {
+                  "indicator": "donchian_lower",
+                  "timeframe": "1h",
+                  "params": {
+                    "period": 20
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 24
+      },
+      "sl": {
+        "mode": "atr",
+        "mult": 2.0,
+        "period": 14
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 3.5
+      },
+      "notes": "Archetype 2: Volatility Breakout. FIXED: bb_squeeze params period/mult/lookback (not bb_period/bb_mult)."
+    }
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "oos_pnl": 1630.06,
+    "oos_score": 279.8,
+    "oos_pf": 1.14,
+    "oos_wr": 22.3,
+    "oos_trades": 886,
+    "oos_pass_rate": 0.467,
+    "mode": "recipe_v3",
+    "recipe_combo_id": 11630,
+    "tier_v2": "A",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "36M"
+      },
+      "g2_splits": {
+        "pass": true,
+        "value": "15 splits"
+      },
+      "g3_ho": {
+        "pass": true,
+        "value": "28 trades"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "1.14"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "47%"
+      }
+    },
+    "hold_out": {
+      "pnl": 55.46,
+      "trades": 28,
+      "pf": 1.23
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "v3 recipe: {\"lookback\": 60, \"sl_mult\": 2.0, \"tp_r\": 3.5}",
+      "oos_pnl": 1630.06,
+      "oos_pf": 1.14,
+      "tier": "A",
+      "tested": true,
+      "children": []
+    },
+    "best_path_ids": [],
+    "stats": {
+      "total_variants": 1,
+      "new_trees": 0,
+      "best_pnl": 1630.06
+    }
+  },
+  "best_oos_pnl": 1630.06,
+  "best_pf": 1.14,
+  "best_wr": 22.3,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.467,
+  "oos_trades": 886,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

@@ -1,0 +1,187 @@
+<!--TITLE:{{BOT_NAME}} — Hermes-->
+<!--HEAD-->
+<link rel="stylesheet" href="/assets/bot-base.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/assets/bot-dashboard.js"></script>
+<!--/HEAD-->
+<!--BODY-->
+
+<!-- 1. STATUS ROW -->
+<div class="bot-refresh-bar" id="{{BOT_ID}}-refresh-bar">
+  <div>
+    <span class="bot-status-dot" id="{{BOT_ID}}-dot"></span>
+    <span id="{{BOT_ID}}-status">Loading...</span>
+    <span class="bot-badge" id="{{BOT_ID}}-mode-badge" style="margin-left:8px"></span>
+  </div>
+  <span id="{{BOT_ID}}-last-update" style="color:var(--c-text-dim);font-size:var(--text-xs)">—</span>
+</div>
+
+<!-- 1b. HEALTH BANNER -->
+<div class="bot-health-banner" id="{{BOT_ID}}-health-banner">
+  <span class="bot-health-icon">⚠️</span>
+  <span class="bot-health-text" id="{{BOT_ID}}-health-text"></span>
+  <span class="bot-health-time" id="{{BOT_ID}}-health-time"></span>
+</div>
+
+<!-- 2. STRATEGY INFO -->
+<div class="bot-strategy-info" id="{{BOT_ID}}-strategy-info">
+  <div class="bot-strategy-tag">
+    <span class="label">Strategy</span>
+    <span class="value" id="{{BOT_ID}}-strategy-name">{{STRATEGY}}</span>
+  </div>
+  <div class="bot-strategy-tag">
+    <span class="label">Timeframe</span>
+    <span class="value">{{TIMEFRAME}}</span>
+  </div>
+  <div class="bot-strategy-tag">
+    <span class="label">Pairs</span>
+    <span class="value" id="{{BOT_ID}}-pairs-count">{{PAIRS_LABEL}}</span>
+  </div>
+  <div class="bot-strategy-tag">
+    <span class="label">Type</span>
+    <span class="value">{{STRATEGY_TYPE}}</span>
+  </div>
+</div>
+
+<!-- 3. KPI CARDS -->
+<div class="bot-grid" id="{{BOT_ID}}-status-row">
+  <div class="bot-card">
+    <div class="bot-card-title">Balance</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-balance">—</div>
+    <div class="bot-card-sub" id="{{BOT_ID}}-equity-sub">—</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Open Positions</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-positions-count">—</div>
+    <div class="bot-card-sub" id="{{BOT_ID}}-positions-sub">—</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Daily P&L</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-daily-pnl">—</div>
+    <div class="bot-card-sub" id="{{BOT_ID}}-trades-today">—</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Total P&L</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-total-pnl">—</div>
+    <div class="bot-card-sub" id="{{BOT_ID}}-winrate-sub">—</div>
+  </div>
+</div>
+
+<!-- 4. PERFORMANCE -->
+<p class="bot-section-title">📊 Performance</p>
+<div class="bot-grid" id="{{BOT_ID}}-perf-grid">
+  <div class="bot-card">
+    <div class="bot-card-title">Win Rate</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-winrate">—</div>
+    <div class="bot-card-sub" id="{{BOT_ID}}-winrate-detail">—</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Profit Factor</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-profit-factor">—</div>
+    <div class="bot-card-sub">Target: &gt; 1.5</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Expectancy</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-expectancy">—</div>
+    <div class="bot-card-sub">Per trade</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Max Drawdown</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-max-dd">—</div>
+    <div class="bot-card-sub">Limit: 10%</div>
+  </div>
+  <div class="bot-card">
+    <div class="bot-card-title">Margin Used</div>
+    <div class="bot-card-value" id="{{BOT_ID}}-margin-util">—</div>
+    <div class="bot-card-sub">of available</div>
+  </div>
+</div>
+
+<!-- 5. EQUITY CURVE -->
+<p class="bot-section-title">📈 Equity Curve</p>
+<div class="bot-card">
+  <div class="bot-chart-container"><canvas id="{{BOT_ID}}-equity-chart"></canvas></div>
+  <div class="bot-chart-summary" id="{{BOT_ID}}-equity-summary"></div>
+</div>
+
+<!-- 6. OPEN POSITIONS -->
+<p class="bot-section-title">🔵 Open Positions</p>
+<div class="bot-card bot-table-wrap">
+  <table class="bot-table">
+    <thead><tr>
+      <th>Pair</th><th>Direction</th><th>Score</th><th>Entry</th><th>SL</th><th>TP</th><th>Margin</th><th>Volume</th><th>P&L</th><th>Duration</th>
+    </tr></thead>
+    <tbody id="{{BOT_ID}}-positions-body"><tr><td colspan="10" class="bot-no-data">Loading...</td></tr></tbody>
+  </table>
+</div>
+
+<!-- 7. TRADE HISTORY -->
+<p class="bot-section-title">📋 Trade History</p>
+<div class="bot-card bot-table-wrap">
+  <table class="bot-table">
+    <thead><tr><th>Time</th><th>Pair</th><th>Direction</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Duration</th></tr></thead>
+    <tbody id="{{BOT_ID}}-history-body"><tr><td colspan="7" class="bot-no-data">No trades yet</td></tr></tbody>
+  </table>
+</div>
+
+<!-- 8. SIGNAL OVERVIEW + CHART (conditional: signalGrid + candlestick) -->
+<p class="bot-section-title">🔍 Signals &amp; Charts</p>
+<div class="bot-signal-grid" id="{{BOT_ID}}-signal-grid">
+  <div class="bot-no-data">Loading signals...</div>
+</div>
+
+<!-- Candlestick Chart Panel (hidden until pair clicked) -->
+<div class="bot-chart-panel" id="{{BOT_ID}}-chart-panel">
+  <div class="bot-chart-header">
+    <span class="bot-chart-pair-name" id="{{BOT_ID}}-chart-pair-name">—</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="bot-range-nav">
+        <span class="bot-range-chip bot-range-active" data-days="0" onclick="BotDashboard.setRange(0)">All</span>
+        <span class="bot-range-chip" data-days="90" onclick="BotDashboard.setRange(90)">3M</span>
+        <span class="bot-range-chip" data-days="30" onclick="BotDashboard.setRange(30)">1M</span>
+        <span class="bot-range-chip" data-days="14" onclick="BotDashboard.setRange(14)">2W</span>
+        <span class="bot-range-chip" data-days="7" onclick="BotDashboard.setRange(7)">1W</span>
+      </div>
+      <button class="bot-chart-close" onclick="BotDashboard.hideChart()">✕ Close</button>
+    </div>
+  </div>
+  <div class="bot-pair-nav" id="{{BOT_ID}}-pair-nav"></div>
+  <div class="bot-chart-config" id="{{BOT_ID}}-chart-config"></div>
+  <div class="bot-chart-wrap" id="{{BOT_ID}}-chart-wrap"></div>
+  <div class="bot-chart-rsi-label" id="{{BOT_ID}}-rsi-label" style="display:none">{{SUB_CHART_LABEL}}</div>
+  <div class="bot-chart-wrap" id="{{BOT_ID}}-rsi-wrap"></div>
+</div>
+
+<!-- 9. PERFORMANCE HEATMAP (conditional: heatmap) -->
+<p class="bot-section-title">🗺️ Pair Performance Heatmap</p>
+<div class="bot-card">
+  <div class="bot-heatmap-grid" id="{{BOT_ID}}-heatmap-grid">
+    <div class="bot-no-data">Loading heatmap...</div>
+  </div>
+</div>
+
+<script>
+BotDashboard.init({
+  botId: '{{BOT_ID}}',
+  apiPath: '{{API_PATH}}',
+  botName: '{{BOT_NAME}}',
+  refreshInterval: {{REFRESH_INTERVAL}},
+  features: {
+    healthBanner: {{FEATURE_HEALTH_BANNER}},
+    strategyInfo: true,
+    candlestick: {{FEATURE_CANDLESTICK}},
+    heatmap: {{FEATURE_HEATMAP}},
+    signalGrid: {{FEATURE_SIGNAL_GRID}},
+    pairParams: {{FEATURE_PAIR_PARAMS}},
+  },
+  indicators: {
+    type: '{{INDICATOR_TYPE}}',
+    label: '{{INDICATOR_LABEL}}',
+    chart_height: {{CHART_HEIGHT}},
+    sub_chart: { type: '{{SUB_CHART_TYPE}}', label: '{{SUB_CHART_LABEL}}' }
+  }
+});
+</script>
+<!--/BODY-->

@@ -1,0 +1,169 @@
+<!--TITLE:Projekte — Hermes-->
+<!--HEAD-->
+<style>
+  .project-card {
+    padding: var(--s-5) var(--s-6);
+    border-left: 3px solid var(--c-border);
+  }
+  .project-card[data-status="active"]  { border-left-color: var(--c-ok); }
+  .project-card[data-status="planning"] { border-left-color: var(--c-warn); }
+  .project-card[data-status="paused"]  { border-left-color: var(--c-text-dim); }
+  .project-card[data-status="done"]    { border-left-color: #5b8def; }
+
+  .project-top {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin-bottom: var(--s-3);
+  }
+  .project-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .project-icon.active  { background: var(--c-ok-bg);  color: var(--c-ok); }
+  .project-icon.planning { background: var(--c-warn-bg); color: var(--c-warn); }
+  .project-icon.paused  { background: var(--c-surface-2); color: var(--c-text-dim); }
+  .project-icon.done    { background: rgba(91,141,239,0.12); color: #5b8def; }
+
+  .project-name {
+    font-size: var(--text-md);
+    font-weight: 600;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+  }
+  .project-desc {
+    color: var(--c-text-2);
+    font-size: var(--text-base);
+    line-height: 1.75;
+    margin-bottom: var(--s-4);
+  }
+  .project-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+    flex-wrap: wrap;
+  }
+  .project-meta {
+    display: flex;
+    gap: var(--s-4);
+    font-size: var(--text-xs);
+    color: var(--c-text-dim);
+  }
+  .project-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .project-tags {
+    display: flex;
+    gap: var(--s-2);
+    flex-wrap: wrap;
+  }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+
+    <div class="container">
+      <div class="page">
+        <div class="page-header">
+          <div class="section-icon">
+            <i data-lucide="folder-kanban" class="icon-lg"></i>
+            <h1 class="page-title">Projekte</h1>
+          </div>
+          <p class="page-subtitle" id="subtitle">Lade...</p>
+        </div>
+
+        <div class="section-label">
+          <i data-lucide="layers" class="icon-sm"></i>
+          Aktive & geplante Projekte
+        </div>
+
+        <section aria-label="Projektliste">
+          <div class="list" id="projects-list"></div>
+        </section>
+
+      </div>
+    </div>
+
+  <footer class="footer">Hermes · hermes.nexusfortis.org</footer>
+
+<!--DATA:/api/content/projects.json-->
+<script>
+(function(){
+  var STATUS_MAP = {
+    active:   { cls: 'badge-ok',     icon: 'circle-check',  label: 'Aktiv' },
+    planning: { cls: 'badge-warn',   icon: 'clock',         label: 'Geplant' },
+    paused:   { cls: 'badge-muted',  icon: 'pause',         label: 'Pausiert' },
+    done:     { cls: 'badge-ok',     icon: 'check-circle-2', label: 'Fertig' }
+  };
+
+  var TAG_COLORS = {
+    devops:        'tag-blue',
+    infrastructure:'tag-purple',
+    frontend:      'tag-blue',
+    website:       'tag-green',
+    trading:       'tag-amber',
+    api:           'tag-purple',
+    migration:     'tag-red'
+  };
+
+  var d = window.__DATA__ || { projects: [] };
+  var active = d.projects.filter(function(p){ return p.status === 'active'; }).length;
+  document.getElementById('subtitle').textContent = d.projects.length + ' Projekte · ' + active + ' aktiv' +
+    (d.updated ? ' · Stand: ' + new Date(d.updated).toLocaleDateString('de-DE') : '');
+
+  var list = document.getElementById('projects-list');
+  if (!d.projects.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i data-lucide="folder-open" style="width:32px;height:32px"></i></div><div class="empty-state-text">Keine Projekte vorhanden.</div></div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    return;
+  }
+
+  d.projects.forEach(function(p){
+    var s = STATUS_MAP[p.status] || STATUS_MAP.planning;
+    var article = document.createElement('article');
+    article.className = 'card project-card';
+    article.setAttribute('data-status', p.status);
+
+    var tagsHtml = '';
+    if (p.tags && p.tags.length) {
+      tagsHtml = '<div class="project-tags">' + p.tags.map(function(t){
+        var tc = TAG_COLORS[t] || 'tag-muted';
+        return '<span class="tag ' + tc + '">' + t + '</span>';
+      }).join('') + '</div>';
+    }
+
+    article.innerHTML =
+      '<div class="project-top">' +
+        '<div class="project-icon ' + p.status + '">' +
+          '<i data-lucide="' + s.icon + '" style="width:18px;height:18px"></i>' +
+        '</div>' +
+        '<h2 class="project-name">' + p.name + '</h2>' +
+        '<span class="badge ' + s.cls + '">' +
+          '<i data-lucide="' + s.icon + '" style="width:12px;height:12px"></i>' +
+          s.label +
+        '</span>' +
+      '</div>' +
+      '<p class="project-desc">' + p.description + '</p>' +
+      '<div class="project-footer">' +
+        '<div class="project-meta">' +
+          '<span><i data-lucide="calendar" style="width:12px;height:12px"></i> ' + p.started + '</span>' +
+          '<span><i data-lucide="refresh-cw" style="width:12px;height:12px"></i> ' + p.updated + '</span>' +
+        '</div>' +
+        tagsHtml +
+      '</div>';
+    list.appendChild(article);
+  });
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+<!--/BODY-->

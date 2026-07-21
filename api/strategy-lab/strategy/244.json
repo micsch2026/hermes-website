@@ -1,0 +1,242 @@
+{
+  "id": 244,
+  "label": "#244",
+  "name": "IT: KB_14_mean_reversion",
+  "display_name": "IT: KB_14_mean_reversion",
+  "description": "VWAP (Volume Weighted Average Price) ist der Referenzpreis institutioneller Trader. Price kehrt zum VWAP zurück weil Institutionen dort ihre Orders platzieren.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "rejected",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": -86.4,
+  "iteration_count": 3,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-12 12:44:53",
+  "updated_at": "2026-07-12 12:58:11",
+  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 2r/1g/1b enter, exit=timeout\", \"pnl\": -59.97, \"trades\": 366, \"score\": -86.9}, {\"iter\": 2, \"change\": \"adjust_threshold: 2r/1g/1b enter, exit=timeout\", \"pnl\": -74.83, \"trades\": 349, \"score\": -86.4}, {\"iter\": 3, \"change\": \"adjust_threshold: 2r/1g/1b enter, exit=timeout\", \"pnl\": -90.98, \"trades\": 341, \"score\": -86.4}], \"iterations\": 3, \"holdout\": null, \"anti_overfit\": null}",
+  "concept": {
+    "name": "IT: KB_14_mean_reversion",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "NAS100",
+      "US500",
+      "AAPL",
+      "MSFT",
+      "TSLA"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "kb_mean_reversion_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "params": {},
+                "op": "<",
+                "value": -2,
+                "timeframe": "m15"
+              }
+            ],
+            "direction": "long",
+            "base_score": 45
+          },
+          {
+            "id": "kb_mean_reversion_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "params": {},
+                "op": ">",
+                "value": 2,
+                "timeframe": "m15"
+              }
+            ],
+            "direction": "short",
+            "base_score": 45
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "vwap",
+                "params": {},
+                "op": "<",
+                "value": -1
+              }
+            ],
+            "points": 15
+          }
+        ],
+        "gates": [
+          {
+            "indicator": "adx",
+            "params": {
+              "period": 14
+            },
+            "op": ">",
+            "value": 25,
+            "timeframe": "m15"
+          }
+        ],
+        "min_score": 0,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 8
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.5
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "NAS100",
+        "US500",
+        "AAPL",
+        "MSFT",
+        "TSLA"
+      ]
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "VWAP (Volume Weighted Average Price) ist der Referenzpreis institutioneller Trader. Price kehrt zum VWAP zurück weil Institutionen dort ihre Orders platzieren."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "C",
+    "oos_score": -86.4,
+    "oos_pnl": -90.98,
+    "oos_trades": 341,
+    "oos_pass_rate": 0.364,
+    "iteration": 3,
+    "decay_detected": false,
+    "degradation": 0,
+    "n_splits": 0,
+    "splits": [],
+    "asset_results": {},
+    "selected_assets": [],
+    "dropped_assets": [
+      "NAS100",
+      "US500",
+      "AAPL",
+      "MSFT",
+      "TSLA"
+    ],
+    "pair_overrides": {},
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": false,
+      "evaluated_at": "2026-07-16T18:15:24.072635+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [
+    "AAPL",
+    "MSFT",
+    "NAS100",
+    "TSLA",
+    "US500"
+  ],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "tree": {
+      "change": "Iteration 1: initial: 2r/1g/1b enter, exit=timeout",
+      "oos_pnl": -59.97,
+      "oos_pf": 0,
+      "tier": "C",
+      "tested": true,
+      "strategy_id": null,
+      "is_new_root": false,
+      "win_rate": null,
+      "trades": 366,
+      "children": [
+        {
+          "change": "Iteration 2: adjust_threshold: 2r/1g/1b enter, exit=timeout",
+          "oos_pnl": -74.83,
+          "oos_pf": 0,
+          "tier": "C",
+          "tested": true,
+          "strategy_id": 244,
+          "is_new_root": false,
+          "win_rate": null,
+          "trades": 349,
+          "children": [
+            {
+              "change": "Iteration 3: adjust_threshold: 2r/1g/1b enter, exit=timeout",
+              "oos_pnl": -90.98,
+              "oos_pf": 0,
+              "tier": "C",
+              "tested": true,
+              "strategy_id": null,
+              "is_new_root": false,
+              "win_rate": null,
+              "trades": 341,
+              "children": []
+            }
+          ]
+        }
+      ]
+    },
+    "best_path_ids": [
+      244
+    ],
+    "stats": {
+      "total_variants": 3,
+      "new_trees": 0,
+      "best_pnl": -74.83,
+      "base_pnl": -59.97,
+      "improvement": -14.86,
+      "runtime_seconds": 798.3
+    }
+  },
+  "best_oos_pnl": -90.98,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "C",
+  "best_oos_pass_rate": 0.364,
+  "oos_trades": 341,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": 0,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

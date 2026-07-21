@@ -1,0 +1,476 @@
+<!--TITLE:Backtest Dashboard — Hermes-->
+<!--HEAD-->
+<style>
+  /* ── Backtest Index v3 ──────────────────────────────────── */
+  .bt-header { margin-bottom: var(--s-6); }
+  .bt-header h1 { margin: 0 0 var(--s-1); font-size: var(--text-2xl); font-weight: 700; }
+  .bt-header p { color: var(--c-text-dim); font-size: var(--text-sm); margin: 0; }
+  .bt-header-links { display: flex; gap: var(--s-3); margin-top: var(--s-3); flex-wrap: wrap; }
+  .bt-header-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; background: rgba(113,50,245,0.12); border: 1px solid rgba(113,50,245,0.3);
+    border-radius: var(--r-lg); font-size: var(--text-sm); font-weight: 600;
+    color: var(--c-accent); text-decoration: none; transition: background 0.15s;
+  }
+  .bt-header-link:hover { background: rgba(113,50,245,0.2); text-decoration: none; }
+
+  /* Stats row */
+  .bt-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-6); }
+  .bt-stat {
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    padding: var(--s-4); text-align: center;
+  }
+  .bt-stat-value { font-size: var(--text-2xl); font-weight: 700; }
+  .bt-stat-label { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: var(--s-1); text-transform: uppercase; letter-spacing: 0.05em; }
+  .bt-stat-total .bt-stat-value { color: var(--c-accent); }
+  .bt-stat-pass .bt-stat-value { color: var(--c-ok); }
+  .bt-stat-warn .bt-stat-value { color: var(--c-warn); }
+  .bt-stat-fail .bt-stat-value { color: var(--c-err); }
+
+  /* Filter bar */
+  .bt-filters {
+    display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
+    margin-bottom: var(--s-5); padding: var(--s-3) var(--s-4);
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+  }
+  .bt-chip-group { display: flex; gap: var(--s-1); }
+  .bt-chip {
+    padding: 4px 14px; border-radius: var(--r-md); font-size: var(--text-xs); font-weight: 600;
+    cursor: pointer; border: 1px solid var(--c-border); background: transparent; color: var(--c-text-dim);
+    transition: all 0.15s;
+  }
+  .bt-chip:hover { border-color: var(--c-accent); color: var(--c-text); }
+  .bt-chip.active { background: rgba(113,50,245,0.15); border-color: var(--c-accent); color: var(--c-accent); }
+  .bt-chip.active[data-status="PASS"], .bt-chip.active[data-status="ROBUST"] { background: rgba(20,158,97,0.12); border-color: var(--c-ok); color: var(--c-ok); }
+  .bt-chip.active[data-status="WARN"], .bt-chip.active[data-status="CONDITIONAL"] { background: rgba(240,185,64,0.12); border-color: var(--c-warn); color: var(--c-warn); }
+  .bt-chip.active[data-status="FAIL"], .bt-chip.active[data-status="NOT_ROBUST"] { background: rgba(232,92,92,0.12); border-color: var(--c-err); color: var(--c-err); }
+
+  .bt-select {
+    padding: 6px 12px; border-radius: var(--r-md); font-size: var(--text-xs);
+    background: var(--c-surface); color: var(--c-text); border: 1px solid var(--c-border);
+    cursor: pointer;
+  }
+  .bt-select:focus { outline: none; border-color: var(--c-accent); }
+
+  .bt-search {
+    flex: 1; min-width: 180px; padding: 6px 12px; border-radius: var(--r-md); font-size: var(--text-xs);
+    background: var(--c-surface); color: var(--c-text); border: 1px solid var(--c-border);
+  }
+  .bt-search::placeholder { color: var(--c-text-dim); }
+  .bt-search:focus { outline: none; border-color: var(--c-accent); }
+
+  /* Table */
+  .bt-table-wrap {
+    overflow-x: auto; border: 1px solid var(--c-border); border-radius: var(--r-xl);
+    background: var(--c-surface);
+  }
+  .bt-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  .bt-table th {
+    padding: var(--s-3) var(--s-4); text-align: left; font-size: var(--text-xs);
+    font-weight: 600; color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--c-border); cursor: pointer; user-select: none;
+    position: relative;
+  }
+  .bt-table th:hover { color: var(--c-text); }
+  .bt-table th .sort-arrow { font-size: 10px; margin-left: 4px; opacity: 0.4; }
+  .bt-table th.sorted .sort-arrow { opacity: 1; color: var(--c-accent); }
+  .bt-table td {
+    padding: var(--s-3) var(--s-4); font-size: var(--text-sm); border-bottom: 1px solid var(--c-border);
+  }
+  .bt-table tbody tr { cursor: pointer; transition: background 0.1s; }
+  .bt-table tbody tr:hover { background: rgba(113,50,245,0.06); }
+  .bt-table tbody tr:last-child td { border-bottom: none; }
+
+  /* Status badge */
+  .bt-badge {
+    display: inline-block; padding: 2px 10px; border-radius: var(--r-lg);
+    font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .bt-badge-ROBUST, .bt-badge-PASS { background: rgba(20,158,97,0.12); color: var(--c-ok); }
+  .bt-badge-CONDITIONAL, .bt-badge-WARN { background: rgba(240,185,64,0.12); color: var(--c-warn); }
+  .bt-badge-NOT_ROBUST, .bt-badge-FAIL { background: rgba(232,92,92,0.12); color: var(--c-err); }
+  .bt-badge-v3 { background: rgba(113,50,245,0.15); color: #a78bfa; font-size: 10px; padding: 1px 5px; margin-left: 4px; }
+
+  /* Value coloring */
+  .val-pos { color: var(--c-ok); }
+  .val-neg { color: var(--c-err); }
+  .val-neutral { color: var(--c-text-dim); }
+
+  /* Compare button */
+  .bt-compare-bar {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: var(--c-surface); border-top: 2px solid var(--c-accent);
+    padding: var(--s-3) var(--s-5); box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  }
+  .bt-compare-bar.visible { display: flex; }
+  .bt-compare-text { font-size: var(--text-sm); font-weight: 600; }
+  .bt-compare-btn {
+    background: var(--c-accent); color: #fff; border: none; padding: 8px 20px;
+    border-radius: var(--r-md); cursor: pointer; font-size: var(--text-sm); font-weight: 600;
+  }
+  .bt-compare-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .bt-compare-clear { background: none; border: 1px solid var(--c-border); color: var(--c-text-dim); padding: 8px 16px; border-radius: var(--r-md); cursor: pointer; font-size: var(--text-sm); }
+
+  /* Checkbox for compare */
+  .cmp-check { width: 16px; height: 16px; cursor: pointer; accent-color: var(--c-accent); }
+
+  /* Empty state */
+  .bt-empty { text-align: center; padding: var(--s-8); color: var(--c-text-dim); }
+  .bt-empty svg { margin-bottom: var(--s-3); opacity: 0.4; }
+
+  /* Loading */
+  .bt-loading { text-align: center; padding: var(--s-8); color: var(--c-text-dim); }
+  .bt-loading .spinner {
+    display: inline-block; width: 24px; height: 24px; border: 3px solid var(--c-border);
+    border-top-color: var(--c-accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-bottom: var(--s-3);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .bt-stats { grid-template-columns: repeat(2, 1fr); }
+    .bt-filters { flex-direction: column; align-items: stretch; }
+    .bt-search { min-width: 100%; }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+function safeFetch(path, opts) {
+  var url = window.location.origin + path + (path.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now();
+  opts = opts || {}; opts.cache = "no-store"; opts.credentials = "same-origin";
+  return fetch(url, opts);
+}
+</script>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container">
+  <div class="bt-header">
+    <h1><i data-lucide="bar-chart-3" style="width:24px;height:24px;vertical-align:middle;margin-right:8px"></i>Backtest Dashboard</h1>
+    <p>Übersicht aller Backtest-Läufe mit Performance-Metriken, statistischer Validierung und Walk-Forward Status</p>
+    <div class="bt-header-links">
+      <a href="/backtest/compare" class="bt-header-link">⚖️ Runs vergleichen</a>
+      <a href="/reports/backtest-engine-v2-2026-06-12" class="bt-header-link" style="background:rgba(91,141,239,0.12);border-color:rgba(91,141,239,0.3);color:#5b8def">🔬 Synthese-Report</a>
+    </div>
+  </div>
+
+  <div class="bt-stats" id="bt-stats">
+    <div class="bt-stat bt-stat-total">
+      <div class="bt-stat-value" id="stat-total">—</div>
+      <div class="bt-stat-label">Gesamt</div>
+    </div>
+    <div class="bt-stat bt-stat-pass">
+      <div class="bt-stat-value" id="stat-pass">—</div>
+      <div class="bt-stat-label">ROBUST</div>
+    </div>
+    <div class="bt-stat bt-stat-warn">
+      <div class="bt-stat-value" id="stat-warn">—</div>
+      <div class="bt-stat-label">CONDITIONAL</div>
+    </div>
+    <div class="bt-stat bt-stat-fail">
+      <div class="bt-stat-value" id="stat-fail">—</div>
+      <div class="bt-stat-label">NOT ROBUST</div>
+    </div>
+  </div>
+
+  <div class="bt-filters">
+    <div class="bt-chip-group" id="status-chips">
+      <button class="bt-chip active" data-status="ALL" onclick="setStatusFilter('ALL')">All</button>
+      <button class="bt-chip" data-status="ROBUST" onclick="setStatusFilter('ROBUST')">ROBUST</button>
+      <button class="bt-chip" data-status="CONDITIONAL" onclick="setStatusFilter('CONDITIONAL')">CONDITIONAL</button>
+      <button class="bt-chip" data-status="NOT_ROBUST" onclick="setStatusFilter('NOT_ROBUST')">NOT ROBUST</button>
+    </div>
+    <select class="bt-select" id="type-filter" onchange="applyFilters()">
+      <option value="ALL">Alle Typen</option>
+      <option value="portfolio">Portfolio</option>
+      <option value="realistic">Realistic</option>
+      <option value="variant">Variant</option>
+      <option value="bot2_portfolio">Bot2 Portfolio</option>
+      <option value="backtest_v2">Backtest v2</option>
+      <option value="backtest_v3">Backtest v3</option>
+      <option value="deep_filter">Deep Filter</option>
+      <option value="cot">COT</option>
+    </select>
+    <select class="bt-select" id="engine-filter" onchange="applyFilters()">
+      <option value="ALL">Alle Engines</option>
+      <option value="v3">nur v3</option>
+      <option value="v2">nur v2</option>
+    </select>
+    <input type="text" class="bt-search" id="search-input" placeholder="Suche nach Name, Strategie…" oninput="applyFilters()">
+  </div>
+
+  <div class="bt-table-wrap">
+    <table class="bt-table" id="bt-table">
+      <thead>
+        <tr>
+          <th style="width:30px"><input type="checkbox" class="cmp-check" id="cmp-select-all" title="Alle auswählen" onchange="toggleSelectAll(this)"></th>
+          <th data-sort="status" onclick="sortBy('status')">Status <span class="sort-arrow">▲</span></th>
+          <th data-sort="name" onclick="sortBy('name')">Name <span class="sort-arrow">▲</span></th>
+          <th data-sort="strategy" onclick="sortBy('strategy')">Strategie <span class="sort-arrow">▲</span></th>
+          <th data-sort="generated_at" onclick="sortBy('generated_at')" class="sorted">Datum <span class="sort-arrow">▼</span></th>
+          <th data-sort="total_trades" onclick="sortBy('total_trades')">Trades <span class="sort-arrow">▲</span></th>
+          <th data-sort="win_rate_pct" onclick="sortBy('win_rate_pct')">WR% <span class="sort-arrow">▲</span></th>
+          <th data-sort="profit_factor" onclick="sortBy('profit_factor')">PF <span class="sort-arrow">▲</span></th>
+          <th data-sort="total_pnl_eur" onclick="sortBy('total_pnl_eur')">PnL € <span class="sort-arrow">▲</span></th>
+          <th data-sort="max_dd_pct" onclick="sortBy('max_dd_pct')">DD% <span class="sort-arrow">▲</span></th>
+          <th data-sort="sharpe" onclick="sortBy('sharpe')">Sharpe <span class="sort-arrow">▲</span></th>
+          <th data-sort="sqn" onclick="sortBy('sqn')">SQN <span class="sort-arrow">▲</span></th>
+        </tr>
+      </thead>
+      <tbody id="bt-tbody">
+        <tr><td colspan="12" class="bt-loading"><div class="spinner"></div><br>Lade Backtest-Daten…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bt-empty" id="bt-empty" style="display:none">
+    <i data-lucide="inbox" style="width:40px;height:40px;display:block;margin:0 auto var(--s-3);opacity:0.4"></i>
+    Keine Backtests gefunden
+  </div>
+</div>
+
+<!-- Compare bar -->
+<div class="bt-compare-bar" id="compare-bar" style="display:none">
+  <span class="bt-compare-text" id="compare-text">0 ausgewählt</span>
+  <div style="display:flex;gap:var(--s-2)">
+    <button class="bt-compare-clear" onclick="clearCompare()">Abbrechen</button>
+    <button class="bt-compare-btn" id="compare-go" disabled onclick="goCompare()">Vergleichen →</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var DATA = [];
+  var currentSort = { key: 'generated_at', dir: 'desc' };
+  var currentStatus = 'ALL';
+  var selectedIds = new Set();
+
+  function formatTime(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso + (iso.endsWith('Z') || iso.includes('+') ? '' : 'Z')).toLocaleString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return iso; }
+  }
+
+  function formatNum(v, dec) {
+    if (v == null || isNaN(v)) return '—';
+    return Number(v).toLocaleString('de-DE', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+  }
+
+  function pnlClass(v) {
+    if (v == null) return 'val-neutral';
+    return v > 0 ? 'val-pos' : v < 0 ? 'val-neg' : 'val-neutral';
+  }
+
+  function escHtml(s) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
+  }
+
+  function getStatus(bt) {
+    if (bt.verdict && bt.verdict.rating) return bt.verdict.rating;
+    return bt.status || 'UNKNOWN';
+  }
+
+  function isV3(bt) {
+    return bt.meta && bt.meta.engine_version && bt.meta.engine_version.startsWith('3');
+  }
+
+  function setStatusFilter(status) {
+    currentStatus = status;
+    var chips = document.querySelectorAll('#status-chips .bt-chip');
+    chips.forEach(function(c) {
+      c.classList.toggle('active', c.getAttribute('data-status') === status);
+    });
+    applyFilters();
+  }
+
+  function getFiltered() {
+    var search = (document.getElementById('search-input').value || '').toLowerCase().trim();
+    var typeFilter = document.getElementById('type-filter').value;
+    var engineFilter = document.getElementById('engine-filter').value;
+
+    return DATA.filter(function(bt) {
+      var status = getStatus(bt);
+      if (currentStatus !== 'ALL') {
+        /* Support both old (PASS/WARN/FAIL) and new (ROBUST/CONDITIONAL/NOT_ROBUST) */
+        if (currentStatus === 'ROBUST' && status !== 'ROBUST' && status !== 'PASS') return false;
+        if (currentStatus === 'CONDITIONAL' && status !== 'CONDITIONAL' && status !== 'WARN') return false;
+        if (currentStatus === 'NOT_ROBUST' && status !== 'NOT_ROBUST' && status !== 'FAIL') return false;
+      }
+      if (typeFilter !== 'ALL' && bt.type !== typeFilter) return false;
+      if (engineFilter === 'v3' && !isV3(bt)) return false;
+      if (engineFilter === 'v2' && isV3(bt)) return false;
+      if (search) {
+        var haystack = ((bt.name || '') + ' ' + (bt.strategy || '') + ' ' + (bt.id || '')).toLowerCase();
+        if (haystack.indexOf(search) < 0) return false;
+      }
+      return true;
+    });
+  }
+
+  function sortData(arr) {
+    var k = currentSort.key;
+    var d = currentSort.dir === 'asc' ? 1 : -1;
+    return arr.slice().sort(function(a, b) {
+      var va, vb;
+      if (k === 'status') { va = getStatus(a); vb = getStatus(b); }
+      else if (k === 'name' || k === 'strategy' || k === 'generated_at' || k === 'type' || k === 'id') {
+        va = (k === 'generated_at' ? (a.generated_at || (a.meta && a.meta.created_at) || '') : a[k]) || '';
+        vb = (k === 'generated_at' ? (b.generated_at || (b.meta && b.meta.created_at) || '') : b[k]) || '';
+      } else {
+        va = (a.summary && a.summary[k] != null) ? a.summary[k] : (a.ratios && a.ratios[k] != null) ? a.ratios[k] : -Infinity;
+        vb = (b.summary && b.summary[k] != null) ? b.summary[k] : (b.ratios && b.ratios[k] != null) ? b.ratios[k] : -Infinity;
+      }
+      if (typeof va === 'string') return va.localeCompare(vb) * d;
+      return ((va || 0) - (vb || 0)) * d;
+    });
+  }
+
+  window.sortBy = function(key) {
+    if (currentSort.key === key) {
+      currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      currentSort.key = key;
+      currentSort.dir = key === 'generated_at' ? 'desc' : 'asc';
+    }
+    document.querySelectorAll('.bt-table th').forEach(function(th) {
+      var arrow = th.querySelector('.sort-arrow');
+      if (!arrow) return;
+      if (th.getAttribute('data-sort') === currentSort.key) {
+        th.classList.add('sorted');
+        arrow.textContent = currentSort.dir === 'asc' ? '▲' : '▼';
+      } else {
+        th.classList.remove('sorted');
+        arrow.textContent = '▲';
+      }
+    });
+    renderTable();
+  };
+
+  window.setStatusFilter = setStatusFilter;
+  window.applyFilters = function() { renderTable(); };
+
+  /* Compare selection */
+  window.toggleSelectAll = function(el) {
+    var filtered = sortData(getFiltered());
+    if (el.checked) {
+      filtered.forEach(function(bt) { selectedIds.add(bt.id); });
+    } else {
+      selectedIds.clear();
+    }
+    renderTable();
+    updateCompareBar();
+  };
+
+  window.toggleSelect = function(id, el) {
+    if (el.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    updateCompareBar();
+  };
+
+  function updateCompareBar() {
+    var bar = document.getElementById('compare-bar');
+    var text = document.getElementById('compare-text');
+    var btn = document.getElementById('compare-go');
+    if (selectedIds.size > 0) {
+      bar.style.display = 'flex';
+      text.textContent = selectedIds.size + ' ausgewählt';
+      btn.disabled = selectedIds.size !== 2;
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
+  window.clearCompare = function() {
+    selectedIds.clear();
+    document.getElementById('cmp-select-all').checked = false;
+    updateCompareBar();
+    renderTable();
+  };
+
+  window.goCompare = function() {
+    var ids = Array.from(selectedIds);
+    if (ids.length === 2) {
+      window.location = '/backtest/compare?a=' + encodeURIComponent(ids[0]) + '&b=' + encodeURIComponent(ids[1]);
+    }
+  };
+
+  function renderTable() {
+    var filtered = sortData(getFiltered());
+    var tbody = document.getElementById('bt-tbody');
+    var empty = document.getElementById('bt-empty');
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    var html = '';
+    filtered.forEach(function(bt) {
+      var s = bt.summary || {};
+      var r = bt.ratios || {};
+      var status = getStatus(bt);
+      var v3 = isV3(bt);
+      var genDate = bt.generated_at || (bt.meta && bt.meta.created_at) || '';
+      var sqn = r.sqn != null ? formatNum(r.sqn, 2) : '—';
+      var checked = selectedIds.has(bt.id) ? ' checked' : '';
+
+      html += '<tr>';
+      html += '<td><input type="checkbox" class="cmp-check" onclick="event.stopPropagation();toggleSelect(\'' + bt.id + '\',this)"' + checked + '></td>';
+      html += '<td><span class="bt-badge bt-badge-' + status + '">' + status + '</span>' + (v3 ? '<span class="bt-badge bt-badge-v3">v3</span>' : '') + '</td>';
+      html += '<td style="font-weight:600" onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + escHtml(bt.name || bt.id) + '</td>';
+      html += '<td style="color:var(--c-text-dim);max-width:260px;overflow:hidden;text-overflow:ellipsis" onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + escHtml(bt.strategy || '—') + '</td>';
+      html += '<td onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + formatTime(genDate) + '</td>';
+      html += '<td onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + formatNum(s.total_trades || s.trades, 0) + '</td>';
+      html += '<td onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + ((s.win_rate_pct || s.win_rate) != null ? formatNum(s.win_rate_pct || s.win_rate, 1) + '%' : '—') + '</td>';
+      html += '<td onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + ((s.profit_factor || r.profit_factor) != null ? formatNum(s.profit_factor || r.profit_factor, 2) : '—') + '</td>';
+      html += '<td class="' + pnlClass(s.total_pnl_eur || s.total_pnl) + '" onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + ((s.total_pnl_eur || s.total_pnl) != null ? ((s.total_pnl_eur || s.total_pnl) >= 0 ? '+' : '') + formatNum(s.total_pnl_eur || s.total_pnl, 2) + ' €' : '—') + '</td>';
+      html += '<td onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + (s.max_dd_pct != null ? formatNum(s.max_dd_pct, 2) + '%' : '—') + '</td>';
+      html += '<td onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + ((r.sharpe_ratio || s.sharpe) != null ? formatNum(r.sharpe_ratio || s.sharpe, 2) : '—') + '</td>';
+      html += '<td onclick="window.location=\'/backtest/view?id=' + bt.id + '\'">' + sqn + '</td>';
+      html += '</tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  function updateStats() {
+    var total = DATA.length;
+    var robust = 0, conditional = 0, notRobust = 0;
+    DATA.forEach(function(bt) {
+      var s = getStatus(bt);
+      if (s === 'ROBUST' || s === 'PASS') robust++;
+      else if (s === 'CONDITIONAL' || s === 'WARN') conditional++;
+      else if (s === 'NOT_ROBUST' || s === 'FAIL') notRobust++;
+    });
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-pass').textContent = robust;
+    document.getElementById('stat-warn').textContent = conditional;
+    document.getElementById('stat-fail').textContent = notRobust;
+  }
+
+  function init() {
+    safeFetch('/api/backtest/index.json')
+      .then(function(r) { return r.json(); })
+      .then(function(json) {
+        DATA = json.backtests || [];
+        updateStats();
+        renderTable();
+        if (window.lucide) lucide.createIcons();
+      })
+      .catch(function(err) {
+        document.getElementById('bt-tbody').innerHTML =
+          '<tr><td colspan="12" class="bt-empty">Fehler beim Laden der Daten: ' + escHtml(err.message) + '</td></tr>';
+      });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+<!--/BODY-->

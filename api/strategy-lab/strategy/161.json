@@ -1,0 +1,545 @@
+{
+  "id": 161,
+  "label": "#161",
+  "name": "RCP-CLUSTER: mean_reversion_forex (20260705_100121)",
+  "display_name": "RCP-CLUSTER: mean_reversion_forex (20260705_100121)",
+  "description": "Portfolio from recipe_llm_cluster (mean_reversion_forex) — 1 cluster/tf combos, 2 assets",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "invalidated",
+  "readiness": "unknown",
+  "rejection_reason": null,
+  "overall_score": 53.4,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": "mr-fx",
+  "created_at": "2026-07-05 10:05:51",
+  "updated_at": "2026-07-05 10:05:51",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"mean_reversion_forex\"], \"clusters\": [\"forex_eur\"], \"total_assets\": 2, \"total_pnl\": 283.18}",
+  "concept": {
+    "name": "RCP-CLUSTER: mean_reversion_forex",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "EURAUD",
+      "EURCHF"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "mr_forex_oversold_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 22
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.12
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": "<",
+                "value": 0.18
+              }
+            ],
+            "direction": "long",
+            "base_score": 40
+          },
+          {
+            "id": "mr_forex_overbought_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": ">",
+                "value": 76
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.88
+              },
+              {
+                "indicator": "kc_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "mult": 2.0
+                },
+                "op": ">",
+                "value": 0.82
+              }
+            ],
+            "direction": "short",
+            "base_score": 40
+          }
+        ],
+        "boosts": [
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -85
+              }
+            ],
+            "points": 15
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "cci",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -100
+              }
+            ],
+            "points": 10
+          },
+          {
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": "==",
+                "value": 1
+              }
+            ],
+            "points": 10
+          }
+        ],
+        "gates": [
+          {
+            "condition": "OR",
+            "rules": [
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": "<",
+                "value": 0.9
+              },
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 30
+              }
+            ]
+          }
+        ],
+        "min_score": 40,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.2
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.3
+      },
+      "risk_pct": 2.5,
+      "pairs": [
+        "EURAUD",
+        "EURCHF"
+      ],
+      "timeframe": "1h"
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "m15"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.5,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Portfolio from recipe_llm_cluster (mean_reversion_forex) — 1 cluster/tf combos, 2 assets"
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "A",
+    "oos_pnl": 283.18,
+    "oos_score": 53.4,
+    "clusters": [
+      {
+        "cluster": "forex_eur",
+        "timeframe": "1h",
+        "approach": "mean_reversion_forex",
+        "approach_summary": [
+          {
+            "approach": "mean_reversion_forex",
+            "score": 53.4,
+            "pnl": 283.18,
+            "recipe_used": true
+          }
+        ],
+        "best_tree": {
+          "enter": {
+            "signals": [
+              {
+                "id": "mr_forex_oversold_long",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 7
+                    },
+                    "op": "<",
+                    "value": 22
+                  },
+                  {
+                    "indicator": "bb_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "mult": 2.0
+                    },
+                    "op": "<",
+                    "value": 0.12
+                  },
+                  {
+                    "indicator": "kc_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14,
+                      "mult": 2.0
+                    },
+                    "op": "<",
+                    "value": 0.18
+                  }
+                ],
+                "direction": "long",
+                "base_score": 40
+              },
+              {
+                "id": "mr_forex_overbought_short",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 7
+                    },
+                    "op": ">",
+                    "value": 76
+                  },
+                  {
+                    "indicator": "bb_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "mult": 2.0
+                    },
+                    "op": ">",
+                    "value": 0.88
+                  },
+                  {
+                    "indicator": "kc_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14,
+                      "mult": 2.0
+                    },
+                    "op": ">",
+                    "value": 0.82
+                  }
+                ],
+                "direction": "short",
+                "base_score": 40
+              }
+            ],
+            "boosts": [
+              {
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "williams_r",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": -85
+                  }
+                ],
+                "points": 15
+              },
+              {
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "cci",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": -100
+                  }
+                ],
+                "points": 10
+              },
+              {
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "session_london",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "==",
+                    "value": 1
+                  }
+                ],
+                "points": 10
+              }
+            ],
+            "gates": [
+              {
+                "condition": "OR",
+                "rules": [
+                  {
+                    "indicator": "atr_percentile",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14,
+                      "lookback": 100
+                    },
+                    "op": "<",
+                    "value": 0.9
+                  },
+                  {
+                    "indicator": "adx",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 30
+                  }
+                ]
+              }
+            ],
+            "min_score": 40,
+            "merge_mode": "highest_score"
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 48
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.2
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.3
+          },
+          "risk_pct": 2.5,
+          "pairs": [
+            "EURAUD",
+            "EURCAD",
+            "EURCHF",
+            "EURGBP",
+            "EURJPY",
+            "EURNZD",
+            "EURUSD"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 283.18,
+        "best_score": 53.4,
+        "selected_assets": [
+          "EURAUD",
+          "EURCHF"
+        ],
+        "dropped_assets": [
+          "EURCAD",
+          "EURGBP",
+          "EURJPY",
+          "EURNZD",
+          "EURUSD"
+        ],
+        "pair_overrides": {
+          "EURAUD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.6,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 1.7
+            }
+          },
+          "EURCHF": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.2,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 1.3
+            }
+          }
+        },
+        "recipe_used": true,
+        "trades": 194,
+        "pass_rate": 0.591
+      }
+    ],
+    "all_assets": [
+      "EURAUD",
+      "EURCHF"
+    ],
+    "pair_overrides": {
+      "EURAUD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.6,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.7
+        }
+      },
+      "EURCHF": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.2,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.3
+        }
+      }
+    },
+    "approaches_used": [
+      "mean_reversion_forex"
+    ],
+    "mode": "recipe_llm_cluster",
+    "tier_v2": "rejected",
+    "tier_v2_gates": {
+      "g1_data": true,
+      "g2_splits": false,
+      "g3_ho": false,
+      "g4_pf": false,
+      "g5_pass": false,
+      "evaluated_at": "2026-07-16T18:15:24.051251+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "EURAUD",
+      "cluster": "forex_eur",
+      "timeframe": "1h",
+      "approach": "mean_reversion_forex",
+      "tier": null,
+      "oos_pnl_total": 283.18,
+      "oos_pf": null,
+      "oos_wr": null,
+      "oos_trades": 194,
+      "oos_score": 53.4,
+      "is_selected": true
+    },
+    {
+      "symbol": "EURCHF",
+      "cluster": "forex_eur",
+      "timeframe": "1h",
+      "approach": "mean_reversion_forex",
+      "tier": null,
+      "oos_pnl_total": 283.18,
+      "oos_pf": null,
+      "oos_wr": null,
+      "oos_trades": 194,
+      "oos_score": 53.4,
+      "is_selected": true
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": null,
+  "best_oos_pnl": 283.18,
+  "best_pf": null,
+  "best_wr": null,
+  "best_tier": "A",
+  "best_oos_pass_rate": null,
+  "oos_trades": 0,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

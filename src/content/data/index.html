@@ -1,0 +1,641 @@
+<!--TITLE:Data Pipeline — Hermes-->
+<!--HEAD-->
+<style>
+  /* ── Data Pipeline Dashboard v2 ────────────────────────────── */
+  .dp-hero {
+    background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(91,141,239,0.06));
+    border: 1px solid var(--c-border); border-radius: var(--r-xl);
+    padding: var(--s-6); margin-bottom: var(--s-6);
+  }
+  .dp-hero h1 { margin: 0 0 var(--s-1); font-size: var(--text-2xl); font-weight: 700; }
+  .dp-hero p { color: var(--c-text-dim); font-size: var(--text-sm); margin: 0; }
+  .dp-hero-meta { display: flex; gap: var(--s-4); margin-top: var(--s-3); flex-wrap: wrap; align-items: center; }
+  .dp-hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 14px; border-radius: var(--r-lg); font-size: var(--text-xs); font-weight: 600;
+  }
+  .dp-hero-badge.ok { background: rgba(20,158,97,0.12); border: 1px solid rgba(20,158,97,0.3); color: var(--c-ok); }
+  .dp-hero-badge.warn { background: rgba(240,185,64,0.12); border: 1px solid rgba(240,185,64,0.3); color: var(--c-warn); }
+  .dp-hero-badge.stale { background: rgba(232,92,92,0.12); border: 1px solid rgba(232,92,92,0.3); color: var(--c-err); }
+  .dp-hero-ts { font-size: var(--text-xs); color: var(--c-text-muted); }
+
+  /* Stats grid */
+  .dp-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: var(--s-4); margin-bottom: var(--s-6);
+  }
+  .dp-stat {
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    padding: var(--s-4); text-align: center;
+  }
+  .dp-stat-value { font-size: var(--text-2xl); font-weight: 700; }
+  .dp-stat-label { font-size: var(--text-xs); color: var(--c-text-dim); margin-top: var(--s-1); text-transform: uppercase; letter-spacing: 0.05em; }
+  .dp-stat-ok .dp-stat-value { color: var(--c-ok); }
+  .dp-stat-warn .dp-stat-value { color: var(--c-warn); }
+  .dp-stat-stale .dp-stat-value { color: var(--c-err); }
+  .dp-stat-accent .dp-stat-value { color: var(--c-accent); }
+
+  /* Health bar */
+  .dp-health-bar {
+    height: 8px; border-radius: var(--r-sm); background: var(--c-border);
+    margin-top: var(--s-3); overflow: hidden; display: flex;
+  }
+  .dp-health-bar .segment { height: 100%; transition: width 0.3s; }
+  .dp-health-bar .seg-ok { background: var(--c-ok); }
+  .dp-health-bar .seg-warn { background: var(--c-warn); }
+  .dp-health-bar .seg-stale { background: var(--c-err); }
+  .dp-health-bar .seg-error { background: #666; }
+
+  /* Filter bar */
+  .dp-filters {
+    display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
+    margin-bottom: var(--s-5); padding: var(--s-3) var(--s-4);
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+  }
+  .dp-chip {
+    padding: 4px 14px; border-radius: var(--r-md); font-size: var(--text-xs); font-weight: 600;
+    cursor: pointer; border: 1px solid var(--c-border); background: transparent; color: var(--c-text-dim);
+    transition: all 0.15s;
+  }
+  .dp-chip:hover { border-color: var(--c-accent); color: var(--c-text); }
+  .dp-chip.active { background: rgba(113,50,245,0.15); border-color: var(--c-accent); color: var(--c-accent); }
+  .dp-chip.active[data-st="OK"] { background: rgba(20,158,97,0.12); border-color: var(--c-ok); color: var(--c-ok); }
+  .dp-chip.active[data-st="WARN"] { background: rgba(240,185,64,0.12); border-color: var(--c-warn); color: var(--c-warn); }
+  .dp-chip.active[data-st="STALE"] { background: rgba(232,92,92,0.12); border-color: var(--c-err); color: var(--c-err); }
+  .dp-search {
+    flex: 1; min-width: 160px; padding: 6px 12px; border-radius: var(--r-md); font-size: var(--text-xs);
+    background: var(--c-surface); color: var(--c-text); border: 1px solid var(--c-border);
+  }
+  .dp-search::placeholder { color: var(--c-text-dim); }
+  .dp-search:focus { outline: none; border-color: var(--c-accent); }
+
+  /* Two-column layout */
+  .dp-grid { display: grid; grid-template-columns: 1fr 360px; gap: var(--s-5); margin-bottom: var(--s-6); }
+  @media (max-width: 900px) { .dp-grid { grid-template-columns: 1fr; } }
+
+  /* Asset table */
+  .dp-table-wrap {
+    overflow-x: auto; border: 1px solid var(--c-border); border-radius: var(--r-xl);
+    background: var(--c-surface);
+  }
+  .dp-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  .dp-table th {
+    padding: var(--s-3) var(--s-3); text-align: left; font-size: var(--text-xs);
+    font-weight: 600; color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--c-border); cursor: pointer; user-select: none;
+    position: sticky; top: 0; background: var(--c-surface); z-index: 1;
+  }
+  .dp-table th:hover { color: var(--c-text); }
+  .dp-table th .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.4; }
+  .dp-table th.sorted .sort-arrow { opacity: 1; color: var(--c-accent); }
+  .dp-table td {
+    padding: var(--s-2) var(--s-3); font-size: var(--text-xs); border-bottom: 1px solid var(--c-border);
+  }
+  .dp-table tbody tr { transition: background 0.1s; }
+  .dp-table tbody tr:hover { background: rgba(113,50,245,0.04); }
+  .dp-table tbody tr.dp-row-main { cursor: pointer; }
+  .dp-table tbody tr.dp-row-main.expanded { background: rgba(113,50,245,0.06); }
+
+  /* Status badges in table */
+  .dp-badge {
+    display: inline-block; padding: 2px 8px; border-radius: var(--r-sm);
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .dp-badge.OK { background: rgba(20,158,97,0.15); color: var(--c-ok); }
+  .dp-badge.WARN { background: rgba(240,185,64,0.15); color: var(--c-warn); }
+  .dp-badge.STALE { background: rgba(232,92,92,0.15); color: var(--c-err); }
+  .dp-badge.MISSING { background: rgba(128,128,128,0.15); color: var(--c-text-muted); }
+  .dp-badge.ERROR { background: rgba(232,92,92,0.2); color: var(--c-err); }
+
+  /* Age coloring */
+  .age-fresh { color: var(--c-ok); }
+  .age-warn { color: var(--c-warn); }
+  .age-stale { color: var(--c-err); }
+
+  /* Quality score bar */
+  .dp-qs-bar {
+    display: inline-flex; align-items: center; gap: 6px; min-width: 80px;
+  }
+  .dp-qs-track {
+    width: 50px; height: 6px; border-radius: 3px; background: var(--c-border);
+    position: relative; overflow: hidden;
+  }
+  .dp-qs-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; }
+  .dp-qs-fill.good { background: var(--c-ok); }
+  .dp-qs-fill.mid { background: var(--c-warn); }
+  .dp-qs-fill.bad { background: var(--c-err); }
+  .dp-qs-val { font-weight: 700; font-size: 10px; min-width: 22px; }
+  .dp-qs-val.good { color: var(--c-ok); }
+  .dp-qs-val.mid { color: var(--c-warn); }
+  .dp-qs-val.bad { color: var(--c-err); }
+
+  /* Gap detail row */
+  .dp-gap-row { display: none; }
+  .dp-gap-row.visible { display: table-row; }
+  .dp-gap-row td {
+    padding: 0 !important; border-bottom: 1px solid var(--c-border) !important;
+  }
+  .dp-gap-detail {
+    padding: var(--s-3) var(--s-4); background: rgba(232,92,92,0.03);
+    border-left: 3px solid var(--c-err);
+  }
+  .dp-gap-detail h4 { margin: 0 0 var(--s-2); font-size: var(--text-xs); color: var(--c-err); font-weight: 600; }
+  .dp-gap-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: var(--s-1) 0; font-size: 10px; font-family: monospace;
+  }
+  .dp-gap-item:not(:last-child) { border-bottom: 1px solid rgba(232,92,92,0.1); }
+  .dp-gap-range { color: var(--c-err); font-weight: 600; }
+  .dp-gap-hours {
+    padding: 1px 6px; border-radius: var(--r-sm); font-size: 9px; font-weight: 700;
+    background: rgba(232,92,92,0.12); color: var(--c-err);
+  }
+  .dp-gap-tf-label {
+    font-size: 9px; color: var(--c-text-muted); text-transform: uppercase; font-weight: 600;
+    margin-top: var(--s-2); margin-bottom: var(--s-1);
+  }
+  .dp-gap-tf-label:first-child { margin-top: 0; }
+
+  /* Sidebar cards */
+  .dp-sidebar { display: flex; flex-direction: column; gap: var(--s-4); }
+  .dp-card {
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    padding: var(--s-4);
+  }
+  .dp-card h3 { font-size: var(--text-sm); font-weight: 600; margin: 0 0 var(--s-3); }
+  .dp-card-row { display: flex; justify-content: space-between; align-items: center; padding: var(--s-2) 0; border-bottom: 1px solid var(--c-border); font-size: var(--text-xs); }
+  .dp-card-row:last-child { border-bottom: none; }
+  .dp-card-label { color: var(--c-text-dim); }
+  .dp-card-value { font-weight: 600; }
+
+  /* Event log */
+  .dp-events { max-height: 280px; overflow-y: auto; }
+  .dp-event {
+    padding: var(--s-2) 0; border-bottom: 1px solid var(--c-border);
+    font-size: var(--text-xs); font-family: monospace;
+  }
+  .dp-event:last-child { border-bottom: none; }
+  .dp-event-time { color: var(--c-text-muted); margin-right: var(--s-2); }
+  .dp-event-type { font-weight: 600; }
+  .dp-event-type.fetch_ok { color: var(--c-ok); }
+  .dp-event-type.disconnect { color: var(--c-warn); }
+  .dp-event-type.error { color: var(--c-err); }
+
+  /* Update History Timeline */
+  .dp-timeline {
+    position: relative; padding-left: 20px;
+    max-height: 300px; overflow-y: auto;
+  }
+  .dp-timeline::before {
+    content: ''; position: absolute; left: 6px; top: 0; bottom: 0;
+    width: 2px; background: var(--c-border);
+  }
+  .dp-tl-item {
+    position: relative; padding: var(--s-2) 0 var(--s-2) var(--s-4);
+    font-size: var(--text-xs);
+  }
+  .dp-tl-dot {
+    position: absolute; left: -17px; top: 8px; width: 10px; height: 10px;
+    border-radius: 50%; border: 2px solid var(--c-surface); z-index: 1;
+  }
+  .dp-tl-dot.ok { background: var(--c-ok); box-shadow: 0 0 4px var(--c-ok); }
+  .dp-tl-dot.warn { background: var(--c-warn); }
+  .dp-tl-dot.err { background: var(--c-err); }
+  .dp-tl-dot.info { background: var(--c-text-muted); }
+  .dp-tl-time { color: var(--c-text-muted); font-family: monospace; font-size: 10px; }
+  .dp-tl-text { margin-top: 2px; color: var(--c-text-dim); }
+  .dp-tl-text .sym { color: var(--c-text); font-weight: 600; }
+
+  /* Fetch success rate gauge */
+  .dp-gauge {
+    display: flex; align-items: center; gap: var(--s-3); margin: var(--s-2) 0;
+  }
+  .dp-gauge-ring {
+    width: 48px; height: 48px; position: relative;
+  }
+  .dp-gauge-ring svg { width: 48px; height: 48px; transform: rotate(-90deg); }
+  .dp-gauge-ring circle {
+    fill: none; stroke-width: 4; cx: 24; cy: 24; r: 20;
+  }
+  .dp-gauge-bg { stroke: var(--c-border); }
+  .dp-gauge-fill { stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .dp-gauge-label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 11px; font-weight: 700;
+  }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container">
+  <!-- Hero -->
+  <div class="dp-hero" id="dp-hero">
+    <h1>💾 Data Pipeline</h1>
+    <p>Marktdaten-Qualität, Fetch-Status, Gap-Detection — Multi-Timeframe Übersicht</p>
+    <div class="dp-hero-meta">
+      <span class="dp-hero-badge ok" id="dp-health-badge">Loading...</span>
+      <span class="dp-hero-ts" id="dp-ts"></span>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="dp-stats" id="dp-stats"></div>
+
+  <!-- Health Bar -->
+  <div style="margin-bottom:var(--s-6)">
+    <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:var(--s-1)">
+      <span>Data Health</span><span id="dp-health-pct"></span>
+    </div>
+    <div class="dp-health-bar" id="dp-health-bar"></div>
+    <div style="display:flex;gap:var(--s-4);margin-top:var(--s-2);font-size:10px;color:var(--c-text-muted)">
+      <span>● <span style="color:var(--c-ok)">OK</span></span>
+      <span>● <span style="color:var(--c-warn)">Stale-Warning</span></span>
+      <span>● <span style="color:var(--c-err)">Stale</span></span>
+      <span>● <span style="color:#666">Missing</span></span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="dp-filters">
+    <div style="display:flex;gap:var(--s-1)" id="dp-status-chips">
+      <button class="dp-chip active" data-st="ALL" onclick="dpFilterStatus('ALL')">Alle</button>
+      <button class="dp-chip" data-st="OK" onclick="dpFilterStatus('OK')">OK</button>
+      <button class="dp-chip" data-st="WARN" onclick="dpFilterStatus('WARN')">Warn</button>
+      <button class="dp-chip" data-st="STALE" onclick="dpFilterStatus('STALE')">Stale</button>
+      <button class="dp-chip" data-st="MISSING" onclick="dpFilterStatus('MISSING')">Missing</button>
+    </div>
+    <div style="display:flex;gap:var(--s-1)" id="dp-type-chips">
+      <button class="dp-chip active" data-tp="ALL" onclick="dpFilterType('ALL')">Alle Typen</button>
+      <button class="dp-chip" data-tp="FX" onclick="dpFilterType('FX')">FX</button>
+      <button class="dp-chip" data-tp="Stock" onclick="dpFilterType('Stock')">Stocks</button>
+      <button class="dp-chip" data-tp="Index" onclick="dpFilterType('Index')">Indices</button>
+      <button class="dp-chip" data-tp="Commodity" onclick="dpFilterType('Commodity')">Commodities</button>
+    </div>
+    <input class="dp-search" type="text" placeholder="Symbol suchen..." oninput="dpSearch(this.value)" id="dp-search-input">
+  </div>
+
+  <!-- Main grid: table + sidebar -->
+  <div class="dp-grid">
+    <!-- Asset Table -->
+    <div>
+      <div class="dp-table-wrap" style="max-height:600px;overflow-y:auto">
+        <table class="dp-table">
+          <thead id="dp-thead">
+            <tr>
+              <th onclick="dpSort('symbol')">Symbol <span class="sort-arrow">▲</span></th>
+              <th onclick="dpSort('type')">Typ <span class="sort-arrow">▲</span></th>
+              <th onclick="dpSort('status')">Status <span class="sort-arrow">▲</span></th>
+              <th onclick="dpSort('quality')">Score <span class="sort-arrow">▲</span></th>
+            </tr>
+          </thead>
+          <tbody id="dp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="dp-sidebar">
+      <!-- Fetch Status Card -->
+      <div class="dp-card">
+        <h3>🔄 Fetch Status</h3>
+        <div id="dp-fetch-info"></div>
+      </div>
+
+      <!-- Active Pairs Card -->
+      <div class="dp-card">
+        <h3>🤖 FX Bot Active Pairs</h3>
+        <div id="dp-active-pairs"></div>
+      </div>
+
+      <!-- Update History Timeline -->
+      <div class="dp-card">
+        <h3>📅 Update History</h3>
+        <div class="dp-timeline" id="dp-timeline"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const API = window.location.origin + '/api/data/pipeline_status.json';
+  let DATA = null;
+  let sortCol = 'quality';
+  let sortAsc = false;
+  let filterStatus = 'ALL';
+  let filterType = 'ALL';
+  let searchQuery = '';
+  let expandedRows = new Set();
+
+  // Expose filter functions globally
+  window.dpFilterStatus = function(st) {
+    filterStatus = st;
+    document.querySelectorAll('#dp-status-chips .dp-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.st === st);
+    });
+    renderTable();
+  };
+  window.dpFilterType = function(tp) {
+    filterType = tp;
+    document.querySelectorAll('#dp-type-chips .dp-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.tp === tp);
+    });
+    renderTable();
+  };
+  window.dpSearch = function(q) {
+    searchQuery = q.toUpperCase();
+    renderTable();
+  };
+  window.dpSort = function(col) {
+    if (sortCol === col) sortAsc = !sortAsc;
+    else { sortCol = col; sortAsc = col === 'symbol' || col === 'type'; }
+    renderTable();
+  };
+  window.dpToggleGaps = function(sym) {
+    if (expandedRows.has(sym)) expandedRows.delete(sym);
+    else expandedRows.add(sym);
+    const mainRow = document.querySelector('tr[data-sym="' + CSS.escape(sym) + '"]');
+    const gapRow = document.getElementById('gap-' + CSS.escape(sym));
+    if (mainRow) mainRow.classList.toggle('expanded');
+    if (gapRow) gapRow.classList.toggle('visible');
+  };
+
+  function ageClass(hours) {
+    if (hours === null || hours === undefined) return 'age-stale';
+    if (hours < 3) return 'age-fresh';
+    if (hours < 24) return 'age-warn';
+    return 'age-stale';
+  }
+
+  function formatAge(hours) {
+    if (hours === null || hours === undefined) return '—';
+    if (hours < 1) return Math.round(hours * 60) + 'm';
+    if (hours < 48) return hours.toFixed(1) + 'h';
+    return (hours / 24).toFixed(1) + 'd';
+  }
+
+  function qsClass(score) {
+    if (score >= 70) return 'good';
+    if (score >= 40) return 'mid';
+    return 'bad';
+  }
+
+  function sortVal(asset, col) {
+    if (col === 'symbol') return asset.symbol;
+    if (col === 'type') return asset.type;
+    if (col === 'status') return ['OK','WARN','STALE','MISSING','ERROR'].indexOf(asset.status);
+    if (col === 'quality') return asset.quality_score || 0;
+    // Dynamic TF columns: tf_bars, tf_age, tf_status, tf_gaps
+    const tfs = (DATA.summary && DATA.summary.tf_order) || ['1h','4h','1d'];
+    for (const tf of tfs) {
+      const tfData = asset[tf] || {};
+      if (col === tf + '_bars') return tfData.bars || 0;
+      if (col === tf + '_age') return tfData.age_hours || 9999;
+      if (col === tf + '_status') return ['OK','WARN','STALE','MISSING','ERROR'].indexOf(tfData.status||'MISSING');
+      if (col === tf + '_gaps') return tfData.gaps || 0;
+    }
+    return 0;
+  }
+
+  function buildGapDetail(sym) {
+    const asset = DATA.assets.find(a => a.symbol === sym);
+    if (!asset) return '';
+    const tfs = (DATA.summary && DATA.summary.tf_order) || ['1h','4h','1d'];
+    let html = '<div class="dp-gap-detail">';
+    let hasGaps = false;
+    for (const tf of tfs) {
+      const tfData = asset[tf] || {};
+      const ranges = tfData.gap_ranges || [];
+      if (ranges.length > 0) {
+        hasGaps = true;
+        html += '<div class="dp-gap-tf-label">' + tf.toUpperCase() + ' — ' + ranges.length + ' Lücke' + (ranges.length > 1 ? 'n' : '') + '</div>';
+        for (const g of ranges) {
+          html += '<div class="dp-gap-item">';
+          html += '<span class="dp-gap-range">▼ ' + g.from + ' → ' + g.to + '</span>';
+          html += '<span class="dp-gap-hours">' + g.hours + 'h</span>';
+          html += '</div>';
+        }
+      }
+    }
+    if (!hasGaps) html += '<div style="font-size:10px;color:var(--c-text-dim)">Keine Lücken erkannt</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderTable() {
+    if (!DATA) return;
+    const tbody = document.getElementById('dp-tbody');
+    let assets = DATA.assets.slice();
+
+    // Filter
+    if (filterStatus !== 'ALL') {
+      assets = assets.filter(a => {
+        if (filterStatus === 'MISSING') return a.status === 'MISSING';
+        return a.status === filterStatus;
+      });
+    }
+    if (filterType !== 'ALL') {
+      if (filterType === 'FX') {
+        assets = assets.filter(a => a.type.startsWith('FX'));
+      } else {
+        assets = assets.filter(a => a.type === filterType);
+      }
+    }
+    if (searchQuery) {
+      assets = assets.filter(a => a.symbol.includes(searchQuery));
+    }
+
+    // Sort
+    assets.sort((a, b) => {
+      let va = sortVal(a, sortCol);
+      let vb = sortVal(b, sortCol);
+      if (typeof va === 'string') {
+        return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+      }
+      return sortAsc ? va - vb : vb - va;
+    });
+
+    let html = '';
+    const tfs = (DATA.summary && DATA.summary.tf_order) || ['1h','4h','1d'];
+    for (const a of assets) {
+      const qs = a.quality_score || 0;
+      const qc = qsClass(qs);
+
+      // Total gaps across all TFs
+      let totalGaps = 0;
+      for (const tf of tfs) totalGaps += (a[tf] || {}).gaps || 0;
+
+      // Main row
+      html += '<tr class="dp-row-main' + (expandedRows.has(a.symbol) ? ' expanded' : '') + '" data-sym="' + a.symbol + '" onclick="dpToggleGaps(\'' + a.symbol.replace(/'/g, "\\'") + '\')">';
+      html += '<td><strong>' + a.symbol + '</strong></td>';
+      html += '<td style="color:var(--c-text-dim)">' + a.type + '</td>';
+      html += '<td><span class="dp-badge ' + a.status + '">' + a.status + '</span></td>';
+      html += '<td><div class="dp-qs-bar"><div class="dp-qs-track"><div class="dp-qs-fill ' + qc + '" style="width:' + qs + '%"></div></div><span class="dp-qs-val ' + qc + '">' + qs + '</span></div></td>';
+
+      // Dynamic TF columns: show bars (from first TF), age, then status badges for all TFs
+      const firstTf = a[tfs[0]] || {};
+      html += '<td>' + (firstTf.bars || '—') + '</td>';
+      html += '<td class="' + ageClass(firstTf.age_hours) + '">' + formatAge(firstTf.age_hours) + '</td>';
+      for (const tf of tfs) {
+        const tfData = a[tf] || {};
+        html += '<td><span class="dp-badge ' + (tfData.status||'MISSING') + '">' + (tfData.status||'—') + '</span></td>';
+      }
+      if (totalGaps > 0) {
+        html += '<td style="color:var(--c-warn);cursor:pointer">' + totalGaps + ' ⚠</td>';
+      } else {
+        html += '<td style="color:var(--c-ok)">0</td>';
+      }
+      html += '</tr>';
+
+      // Gap detail row (hidden by default)
+      html += '<tr class="dp-gap-row' + (expandedRows.has(a.symbol) ? ' visible' : '') + '" id="gap-' + a.symbol.replace(/'/g, "\\'") + '">';
+      html += '<td colspan="10">' + buildGapDetail(a.symbol) + '</td>';
+      html += '</tr>';
+    }
+    tbody.innerHTML = html;
+  }
+
+  function renderStats() {
+    const s = DATA.summary;
+    const stats = document.getElementById('dp-stats');
+    stats.innerHTML = [
+      {v: s.unique_symbols, l: 'Assets', cls: 'dp-stat-accent'},
+      {v: s.total_bars.toLocaleString(), l: 'Total Bars', cls: 'dp-stat-accent'},
+      {v: s.ok, l: 'OK', cls: 'dp-stat-ok'},
+      {v: s.stale, l: 'Stale', cls: 'dp-stat-stale'},
+      {v: (s.avg_quality || 0) + '%', l: 'Avg Quality', cls: (s.avg_quality >= 70 ? 'dp-stat-ok' : s.avg_quality >= 40 ? 'dp-stat-warn' : 'dp-stat-stale')},
+      {v: s.fx_active_pairs, l: 'Active FX Pairs', cls: 'dp-stat-accent'},
+    ].map(d => '<div class="dp-stat ' + d.cls + '"><div class="dp-stat-value">' + d.v + '</div><div class="dp-stat-label">' + d.l + '</div></div>').join('');
+
+    // Health badge
+    const badge = document.getElementById('dp-health-badge');
+    const pct = s.health_pct;
+    badge.textContent = pct + '% Healthy';
+    badge.className = 'dp-hero-badge ' + (pct > 80 ? 'ok' : pct > 50 ? 'warn' : 'stale');
+
+    // Timestamp
+    document.getElementById('dp-ts').textContent = 'Generated: ' + s.generated_at;
+
+    // Health bar
+    const total = s.ok + s.warn + s.stale + s.error;
+    const bar = document.getElementById('dp-health-bar');
+    bar.innerHTML =
+      '<div class="segment seg-ok" style="width:' + (s.ok/total*100) + '%"></div>' +
+      '<div class="segment seg-warn" style="width:' + (s.warn/total*100) + '%"></div>' +
+      '<div class="segment seg-stale" style="width:' + (s.stale/total*100) + '%"></div>' +
+      (s.error > 0 ? '<div class="segment seg-error" style="width:' + (s.error/total*100) + '%"></div>' : '');
+
+    // TF breakdown (dynamic from tf_order)
+    const tf = s.timeframes;
+    const tfOrder = s.tf_order || Object.keys(tf);
+    const tfParts = tfOrder.map(k => k.toUpperCase() + ': ' + (tf[k] || {}).count);
+    document.getElementById('dp-health-pct').textContent =
+      pct + '% healthy | ' + tfParts.join(' | ');
+  }
+
+  function renderFetchStatus() {
+    const f = DATA.fetch_status;
+    const sr = f.success_rate || 0;
+    const circumference = 2 * Math.PI * 20;
+    const offset = circumference - (sr / 100) * circumference;
+    const srColor = sr >= 95 ? 'var(--c-ok)' : sr >= 80 ? 'var(--c-warn)' : 'var(--c-err)';
+
+    const el = document.getElementById('dp-fetch-info');
+    el.innerHTML =
+      '<div class="dp-gauge">' +
+        '<div class="dp-gauge-ring">' +
+          '<svg viewBox="0 0 48 48"><circle class="dp-gauge-bg" r="20" cx="24" cy="24"/>' +
+          '<circle class="dp-gauge-fill" r="20" cx="24" cy="24" style="stroke:' + srColor + ';stroke-dasharray:' + circumference + ';stroke-dashoffset:' + offset + '"/></svg>' +
+          '<span class="dp-gauge-label" style="color:' + srColor + '">' + sr + '%</span>' +
+        '</div>' +
+        '<div><div style="font-size:var(--text-xs);font-weight:600">Erfolgsrate</div>' +
+        '<div style="font-size:10px;color:var(--c-text-dim)">' + f.recent_ok_count + '/' + (f.recent_ok_count + f.recent_error_count) + ' Fetches</div></div>' +
+      '</div>' +
+      '<div class="dp-card-row"><span class="dp-card-label">Last Success</span><span class="dp-card-value" style="color:var(--c-ok)">' + (f.last_success || '—') + '</span></div>' +
+      '<div class="dp-card-row"><span class="dp-card-label">Last Error</span><span class="dp-card-value" style="color:var(--c-err)">' + (f.last_error || '—') + '</span></div>' +
+      '<div class="dp-card-row"><span class="dp-card-label">Errors</span><span class="dp-card-value" style="color:' + (f.recent_error_count > 0 ? 'var(--c-err)' : 'var(--c-ok)') + '">' + f.recent_error_count + '</span></div>' +
+      '<div class="dp-card-row"><span class="dp-card-label">Timer</span><span class="dp-card-value" style="color:var(--c-ok)">● Active (hourly)</span></div>';
+  }
+
+  function renderActivePairs() {
+    const pairs = DATA.active_pairs || [];
+    const el = document.getElementById('dp-active-pairs');
+    if (pairs.length === 0) {
+      el.innerHTML = '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">No active pairs</div>';
+      return;
+    }
+    let html = '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+    for (const p of pairs) {
+      html += '<span style="display:inline-block;padding:2px 8px;border-radius:var(--r-sm);font-size:10px;font-weight:600;background:rgba(20,158,97,0.1);color:var(--c-ok);border:1px solid rgba(20,158,97,0.2)">' + p + '</span>';
+    }
+    html += '</div>';
+    html += '<div style="font-size:10px;color:var(--c-text-muted);margin-top:var(--s-2)">' + pairs.length + ' pairs active in FX Bot</div>';
+    el.innerHTML = html;
+  }
+
+  function renderTimeline() {
+    const events = DATA.recent_events || [];
+    const el = document.getElementById('dp-timeline');
+    if (events.length === 0) {
+      el.innerHTML = '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">No events</div>';
+      return;
+    }
+
+    // Group events by time for a cleaner timeline
+    let html = '';
+    const shown = events.slice(-15).reverse();
+    for (const e of shown) {
+      const dotClass = e.type === 'fetch_ok' ? 'ok' : e.type === 'disconnect' ? 'warn' : e.type === 'error' ? 'err' : 'info';
+      const typeLabel = e.type === 'fetch_ok' ? 'FETCH' : e.type === 'disconnect' ? 'DISCONNECT' : e.type === 'error' ? 'ERROR' : e.type.toUpperCase();
+      const typeColor = e.type === 'fetch_ok' ? 'var(--c-ok)' : e.type === 'disconnect' ? 'var(--c-warn)' : e.type === 'error' ? 'var(--c-err)' : 'var(--c-text-muted)';
+
+      html += '<div class="dp-tl-item">';
+      html += '<div class="dp-tl-dot ' + dotClass + '"></div>';
+      html += '<div class="dp-tl-time">' + (e.time || '') + '</div>';
+      html += '<div class="dp-tl-text">';
+      html += '<span style="color:' + typeColor + ';font-weight:600;font-size:10px">' + typeLabel + '</span>';
+      if (e.symbol) html += ' <span class="sym">' + e.symbol + '</span>';
+      html += '</div>';
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  /** Build dynamic table headers from tf_order. */
+  function buildTableHeaders() {
+    const tfs = (DATA.summary && DATA.summary.tf_order) || ['1h','4h','1d'];
+    const thead = document.getElementById('dp-thead');
+    if (!thead) return;
+    let h = '<tr>';
+    h += '<th onclick="dpSort(\'symbol\')">Symbol <span class="sort-arrow">▲</span></th>';
+    h += '<th onclick="dpSort(\'type\')">Typ <span class="sort-arrow">▲</span></th>';
+    h += '<th onclick="dpSort(\'status\')">Status <span class="sort-arrow">▲</span></th>';
+    h += '<th onclick="dpSort(\'quality\')">Score <span class="sort-arrow">▲</span></th>';
+    h += '<th onclick="dpSort(\'' + tfs[0] + '_bars\')">' + tfs[0].toUpperCase() + ' Bars <span class="sort-arrow">▲</span></th>';
+    h += '<th onclick="dpSort(\'' + tfs[0] + '_age\')">Letzter Bar <span class="sort-arrow">▲</span></th>';
+    for (const tf of tfs) {
+      h += '<th onclick="dpSort(\'' + tf + '_status\')">' + tf.toUpperCase() + ' <span class="sort-arrow">▲</span></th>';
+    }
+    h += '<th onclick="dpSort(\'' + tfs[0] + '_gaps\')">Gaps <span class="sort-arrow">▲</span></th>';
+    h += '</tr>';
+    thead.innerHTML = h;
+  }
+
+  // Load data
+  fetch(API)
+    .then(r => r.json())
+    .then(data => {
+      DATA = data;
+      buildTableHeaders();
+      renderStats();
+      renderTable();
+      renderFetchStatus();
+      renderActivePairs();
+      renderTimeline();
+    })
+    .catch(err => {
+      document.getElementById('dp-hero').innerHTML =
+        '<h1>💾 Data Pipeline</h1><p style="color:var(--c-err)">Error loading data: ' + err.message + '</p>';
+    });
+})();
+</script>
+<!--/BODY-->
