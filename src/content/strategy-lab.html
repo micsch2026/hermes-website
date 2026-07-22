@@ -200,8 +200,8 @@ function renderTable() {
   // Filter
   data = data.filter(row => {
     if (currentFilter === 'recipe' && !row.is_recipe && currentTab === 'deploy') return false;
-    if (currentFilter === 'tier-a' && row.tier !== 'A') return false;
-    if (currentFilter === 'ho-passed' && row.ho_status !== 'passed') return false;
+    if (currentFilter === 'tier-a' && row.tier !== 'A' && currentTab === 'deploy') return false;
+    if (currentFilter === 'ho-passed' && row.ho_status !== 'passed' && currentTab === 'deploy') return false;
     if (currentFilter === 'fire' && !row.fire_test && currentTab === 'deploy') return false;
     if (searchTerm) {
       const hay = JSON.stringify(row).toLowerCase();
@@ -279,6 +279,12 @@ const archiveCols = [
 
 const shadowCols = [
   {key:'id', label:'ID', render: r => `<strong>#${r.id}</strong>`},
+  {key:'shadow_flag', label:'Flag', render: r => {
+    if (r.shadow_flag === 'deploy_ready') return '<span class="gate gate-pass">🚀</span>';
+    if (r.shadow_flag === 'busted') return '<span class="gate gate-fail">💀</span>';
+    return '';
+  }},
+  {key:'name', label:'Strategie', render: r => `<span style="font-size:0.75rem">${(r.name||'').slice(0,40)}</span>`},
   {key:'days_active', label:'Tage', num: true, render: r => {
     if (!r.days_active || r.days_active === 0) return '—';
     const d = Math.floor(r.days_active);
@@ -401,6 +407,7 @@ function showDetail(row) {
     else if (row.ho_status === 'warning') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ⚠️ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades — negativ bei ausreichender Sample-Size</div>`;
     else html += `<div style="margin-top:0.25rem;color:var(--dim)"><strong>Hold-Out:</strong> ➖ ${row.ho_trades||0} Trades — zu wenige für Aussage</div>`;
   }
+  }
 
   // Shadow tab: open positions + closed trade list
   if (currentTab === 'shadow') {
@@ -439,7 +446,7 @@ document.querySelectorAll('.sl4-tab').forEach(tab => {
     document.querySelectorAll('.sl4-tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentTab = tab.dataset.tab;
-    sortCol = 'score'; sortDir = 'desc';
+    sortCol = currentTab === 'shadow' ? 'net_pnl' : 'score'; sortDir = 'desc';
     renderTable();
   });
 });
