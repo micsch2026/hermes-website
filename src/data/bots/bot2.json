@@ -1,151 +1,89 @@
 {
   "id": "bot2",
-  "name": "Bot #2 — Lab #194 Metals Trend-Pullback",
-  "title": "Bot #2 (Metals Trend-Pullback H1) — Hermes",
+  "name": "Bot #2 — Lab #274 RSI35 MR (6 FX Crosses)",
+  "title": "Bot #2 (Lab #274 RSI35 Mean Reversion) — Hermes",
   "bot_id": "bot2",
-  "api_base": "/api/trend",
-  "dashboard_json": "/api/trend/dashboard.json",
-  "charts_path": "/api/trend/charts/",
-  "heatmap_path": "/api/trend/performance_heatmap.json",
-  "refresh_interval": 300000,
+  "api_base": "/api/bot2",
+  "dashboard_json": "/api/bot2/dashboard.json",
+  "charts_path": "/api/bot2/charts/",
+  "heatmap_path": "/api/bot2/performance_heatmap.json",
+  "refresh_interval": 60000,
   "features": {
     "equity": true,
     "signals": true,
     "candlestick": true,
     "heatmap": true,
-    "backtest": false
+    "backtest": true
   },
   "reoptimize": {
-    "last_date": "2026-07-11",
+    "last_date": "2026-07-16",
     "interval_months": 3,
     "data_months": 24,
-    "timeframe": "H1",
-    "strategy": "metals_trend_pullback",
+    "timeframe": "1H",
+    "strategy": "lab_live",
     "pairs": [
-      "XAUUSD",
-      "XAGUSD"
+      "AUDCAD",
+      "EURAUD",
+      "EURJPY",
+      "GBPAUD",
+      "GBPNZD",
+      "NZDCAD"
     ],
-    "config_path": "config/bot2_lab194.toml",
-    "steps": [
-      "# Re-run WFO via Strategy Lab: cd /root/strategy-lab && python3 run_continuous.py --mode recipe_llm_cluster",
-      "# Check hold-out results in catalog.db",
-      "# Re-deploy if improved: update bot2_lab194.toml and restart"
-    ]
+    "config_path": "config/bot2_lab274.toml",
+    "method": "strategy_lab_v2"
   },
   "strategy_tags": [
     {
-      "label": "Strategy",
-      "value": "Lab #194 Metals Trend-Pullback H1"
-    },
-    {
-      "label": "Logic",
-      "value": "EMA(50)>EMA(200) + BB Lower Touch + RSI(7)<30 (Long, mirror Short)"
+      "label": "Strategie",
+      "value": "Lab #274 RSI35 Mean Reversion"
     },
     {
       "label": "Timeframe",
-      "value": "H1"
+      "value": "1H"
     },
     {
-      "label": "Pairs",
-      "value": "XAUUSD, XAGUSD",
-      "id": "trend-pairs-count"
+      "label": "Portfolio",
+      "value": "6 FX Crosses: AUDCAD, EURAUD, EURJPY, GBPAUD, GBPNZD, NZDCAD",
+      "id": "bot2-asset"
     },
     {
-      "label": "Type",
-      "value": "Trend-Pullback (Mean Reversion im Trend)"
+      "label": "Typ",
+      "value": "RSI(7)<35 + BB_position<0.15 + KC_position<0.2 + body_ratio>0.3"
     },
     {
-      "label": "Risk",
-      "value": "2% per Trade, ATR-based SL/TP"
+      "label": "SL/TP",
+      "value": "ATR×1.5 SL · R×2.5 TP · Exit: 72h Timeout"
     },
     {
-      "label": "WFO Hold-Out",
-      "value": "+10,213€ | PF 1.74 | 342 Trades | Tier B"
+      "label": "OOS Performance",
+      "value": "+5.102€ | PF 1.87 | 487 Trades | Tier A"
+    },
+    {
+      "label": "Quelle",
+      "value": "Strategy Lab #274 — RCP-CLUSTER bot1c"
+    },
+    {
+      "label": "Deploy",
+      "value": "16. Juli 2026",
+      "id": "bot2-deploy-date"
+    },
+    {
+      "label": "Status",
+      "value": "Demo (47444750)",
+      "id": "bot2-status"
     }
   ],
   "config_chips": [
-    "EMA(50) + EMA(200) Trend-Filter · Pullback Entry bei BB Lower + RSI(7)<30",
-    "H1 Timeframe",
-    "2 Metals (XAUUSD, XAGUSD)",
-    "ATR(14)×1.5 SL · ATR(14)×2.0 TP",
-    "Max Hold: 24h",
-    "WFO 11-Splits · Hold-Out bestätigt",
-    "Deployed: 2026-07-11"
+    "Portfolio: 6 FX Crosses · Max 2 Positionen · 2% Risk/Trade",
+    "RSI(7)<35 + BB<0.15 + KC<0.2 Mean Reversion",
+    "Exit: Timeout 72h · ATR×1.5 SL · R×2.5 TP"
   ],
   "position_columns": [
-    {
-      "key": "symbol",
-      "label": "Symbol",
-      "field": "symbol",
-      "fmt": "bold"
-    },
-    {
-      "key": "volume",
-      "label": "Anzahl",
-      "field": "volume",
-      "fmt": "lots"
-    },
-    {
-      "key": "direction",
-      "label": "Richtung",
-      "field": "side",
-      "fmt": "direction"
-    },
-    {
-      "key": "entry",
-      "label": "Einstieg",
-      "field": "entry_price",
-      "fmt": "price"
-    },
-    {
-      "key": "score",
-      "label": "Score",
-      "field": "score",
-      "fmt": "score"
-    },
-    {
-      "key": "sl",
-      "label": "SL",
-      "field": "sl_price",
-      "fmt": "price"
-    },
-    {
-      "key": "tp",
-      "label": "TP",
-      "field": "tp_price",
-      "fmt": "price"
-    },
-    {
-      "key": "margin",
-      "label": "Margin",
-      "field": "margin_eur",
-      "fmt": "margin"
-    },
-    {
-      "key": "opened",
-      "label": "Eröffnet",
-      "field": "opened_at",
-      "fmt": "duration"
-    },
-    {
-      "key": "pnl",
-      "label": "Netto €",
-      "field": "pnl",
-      "fmt": "pnl"
-    }
-  ],
-  "chart_labels": [
-    {
-      "field": "sl_price",
-      "prefix": "SL ",
-      "suffix": "",
-      "color": "rgba(239,68,68,0.6)"
-    },
-    {
-      "field": "tp_price",
-      "prefix": "TP ",
-      "suffix": "",
-      "color": "rgba(34,197,94,0.6)"
-    }
+    {"label": "Symbol", "key": "symbol"},
+    {"label": "Dir", "key": "direction"},
+    {"label": "Entry", "key": "entry_price"},
+    {"label": "SL (ATR×1.5)", "key": "sl_price"},
+    {"label": "TP (R×2.5)", "key": "tp_price"},
+    {"label": "Opened", "key": "opened_at"}
   ]
 }
