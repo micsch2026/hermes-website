@@ -383,7 +383,7 @@ function renderPositions(d) {
     html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
     for (var c = 0; c < cols.length; c++) {
       var col = cols[c];
-      var val = _resolveField(p, col.field);
+      var val = _resolveField(p, col.field || col.key);
       html += '<td>' + _fmtCell(val, col.fmt, p) + '</td>';
     }
     html += '</tr>';
@@ -760,9 +760,9 @@ function _renderCandlestick(d) {
   }
   // BB overlay
   if (d.bb_upper) {
-    var bbUp = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, priceLineVisible: false });
-    var bbLo = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, priceLineVisible: false });
-    var bbMid = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, lineStyle: 2, priceLineVisible: false });
+    var bbUp = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
+    var bbLo = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
+    var bbMid = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, lineStyle: 2, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
     bbUp.setData(d.bb_upper.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
     bbLo.setData(d.bb_lower.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
     bbMid.setData(d.bb_middle.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
@@ -770,8 +770,8 @@ function _renderCandlestick(d) {
 
   // EMA overlay
   if (d.ema_fast) {
-    var emaF = _candleChart.addLineSeries({ color: 'rgba(240,185,64,0.4)', lineWidth: 1, priceLineVisible: false });
-    var emaS = _candleChart.addLineSeries({ color: 'rgba(100,149,237,0.4)', lineWidth: 1, priceLineVisible: false });
+    var emaF = _candleChart.addLineSeries({ color: 'rgba(240,185,64,0.4)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
+    var emaS = _candleChart.addLineSeries({ color: 'rgba(100,149,237,0.4)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
     emaF.setData(d.ema_fast.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
     emaS.setData(d.ema_slow.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
   }
@@ -790,7 +790,7 @@ function _renderCandlestick(d) {
 
   // Open position overlay (entry/SL/TP lines)
   if (d.open_positions && d.open_positions.length > 0) {
-    _renderOpenPositions(_candleChart, d.open_positions, bars);
+    _renderOpenPositions(_candleChart, d.open_positions, bars, _visibleStart);
   }
 
   _candleChart.timeScale().fitContent();
@@ -811,7 +811,7 @@ function _renderCandlestick(d) {
       grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
       timeScale: { visible: false },
     });
-    var rsiSeries = _rsiChart.addLineSeries({ color: '#a78bfa', lineWidth: 1.5, priceLineVisible: false });
+    var rsiSeries = _rsiChart.addLineSeries({ color: '#a78bfa', lineWidth: 1.5, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
     var rsiData = d.rsi.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; });
     rsiSeries.setData(rsiData);
 
@@ -872,8 +872,7 @@ function _renderTradeLines(chart, candleSeries, tradeLines, bars, alpha, visible
         lineStyle: isTimeout ? 2 : 0, // dashed for timeout
         priceLineVisible: false,
         lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      });
+        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
       lineSeries.setData([
         { time: entryTime, value: tl.entry_price || tl.price || tl.entry },
         { time: exitTime, value: tl.exit_price || tl.price || tl.entry }
@@ -899,15 +898,13 @@ function _renderTradeLines(chart, candleSeries, tradeLines, bars, alpha, visible
     if (tl.sl) {
       var slLine = chart.addLineSeries({
         color: lineAlpha + (0.15 * _a) + ')', lineWidth: 1, lineStyle: 2,
-        priceLineVisible: false, lastValueVisible: false,
-      });
+        priceLineVisible: false, lastValueVisible: false, autoscaleInfoProvider: function() { return null; } });
       slLine.setData([{ time: entryTime, value: tl.sl }, { time: exitTime || entryTime + 3600, value: tl.sl }]);
     }
     if (tl.tp) {
       var tpLine = chart.addLineSeries({
         color: 'rgba(34,197,94,' + (0.15 * _a) + ')', lineWidth: 1, lineStyle: 2,
-        priceLineVisible: false, lastValueVisible: false,
-      });
+        priceLineVisible: false, lastValueVisible: false, autoscaleInfoProvider: function() { return null; } });
       tpLine.setData([{ time: entryTime, value: tl.tp }, { time: exitTime || entryTime + 3600, value: tl.tp }]);
     }
   }
@@ -924,14 +921,14 @@ function _fmtEur(val) {
 }
 
 /** Render open position entry/SL/TP as horizontal lines on the chart */
-function _renderOpenPositions(chart, positions, bars) {
+function _renderOpenPositions(chart, positions, bars, visibleStart) {
   if (!bars || bars.length === 0) return;
   var lastBarTime = bars[bars.length - 1].time;
   var chartLabels = (C && C.chart_labels) ? C.chart_labels : [];
 
   for (var i = 0; i < positions.length; i++) {
     var p = positions[i];
-    var entryTime = findNearestBarTime(bars, p.timestamp) || bars[Math.max(0, bars.length - 50)].time;
+    var entryTime = findNearestBarTime(bars, p.entry_time || p.timestamp) || bars[Math.max(0, bars.length - 50)].time;
     // Skip trades outside visible range
     if (visibleStart && entryTime < visibleStart) continue;
     var isShort = (p.side === 'sell' || p.side === 'short');
@@ -946,11 +943,10 @@ function _renderOpenPositions(chart, positions, bars) {
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: false,
-      crosshairMarkerVisible: false,
-    });
+      crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
     entryLine.setData([
-      { time: lineStart, value: p.entry },
-      { time: lastBarTime, value: p.entry }
+      { time: lineStart, value: p.entry_price || p.price || p.entry },
+      { time: lastBarTime, value: p.entry_price || p.price || p.entry }
     ]);
 
     // SL line — red dashed
@@ -961,8 +957,7 @@ function _renderOpenPositions(chart, positions, bars) {
         lineStyle: 2,
         priceLineVisible: false,
         lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      });
+        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
       slLine.setData([
         { time: lineStart, value: p.sl },
         { time: lastBarTime, value: p.sl }
@@ -977,8 +972,7 @@ function _renderOpenPositions(chart, positions, bars) {
         lineStyle: 2,
         priceLineVisible: false,
         lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      });
+        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
       tpLine.setData([
         { time: lineStart, value: p.tp },
         { time: lastBarTime, value: p.tp }
@@ -1037,8 +1031,7 @@ function _renderLiveTrades(chart, candleSeries, liveTrades, bars, visibleStart) 
       lineWidth: 3,
       priceLineVisible: false,
       lastValueVisible: false,
-      crosshairMarkerVisible: false,
-    });
+      crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
     entryLine.setData([
       { time: entryTime, value: entryPrice },
       { time: exitTime, value: entryPrice }
@@ -1052,8 +1045,7 @@ function _renderLiveTrades(chart, candleSeries, liveTrades, bars, visibleStart) 
         lineStyle: 2,
         priceLineVisible: false,
         lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      });
+        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
       slLine.setData([
         { time: entryTime, value: sl },
         { time: exitTime, value: sl }
@@ -1068,8 +1060,7 @@ function _renderLiveTrades(chart, candleSeries, liveTrades, bars, visibleStart) 
         lineStyle: 2,
         priceLineVisible: false,
         lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      });
+        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
       tpLine.setData([
         { time: entryTime, value: tp },
         { time: exitTime, value: tp }
@@ -1084,8 +1075,7 @@ function _renderLiveTrades(chart, candleSeries, liveTrades, bars, visibleStart) 
         lineWidth: 4,
         priceLineVisible: false,
         lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      });
+        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
       exitMarker.setData([
         { time: Math.max(entryTime, exitTime - 3600), value: exitPrice },
         { time: exitTime, value: exitPrice }
