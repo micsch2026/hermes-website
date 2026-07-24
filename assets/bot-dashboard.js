@@ -199,7 +199,7 @@ var BotDashboard = (function() {
       _el('equity-sub').textContent = eq != null ? 'Equity: \u20ac' + eq.toFixed(2) : '\u2014';
     }
 
-    var pos = d.positions || [];
+    var pos = (d.positions && d.positions.open) ? d.positions.open : (Array.isArray(d.positions) ? d.positions : []);
     var posCountEl = _el('positions-count');
     if (posCountEl) {
       posCountEl.textContent = pos.length;
@@ -345,7 +345,7 @@ var BotDashboard = (function() {
   function renderPositions(d) {
     var tbody = _el('positions-body');
     if (!tbody) return;
-    var pos = d.positions || [];
+    var pos = (d.positions && d.positions.open) ? d.positions.open : (Array.isArray(d.positions) ? d.positions : []);
     if (pos.length === 0) {
       tbody.innerHTML = '<tr><td colspan="10" class="bot-no-data">No open positions</td></tr>';
       return;
