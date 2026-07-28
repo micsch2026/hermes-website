@@ -446,7 +446,7 @@ function _fmtCell(val, fmt, row) {
 /** Legacy hardcoded positions renderer (fallback when no column config) */
 function _renderPositionsLegacy(tbody, pos) {
   if (pos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" class="bot-no-data">No open positions</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="bot-no-data">No open positions</td></tr>';
     return;
   }
   var html = '';
@@ -458,7 +458,9 @@ function _renderPositionsLegacy(tbody, pos) {
       : '<span class="bot-badge bot-badge-buy">LONG</span>';
     var upnl = p.unrealized_pnl != null ? p.unrealized_pnl : (p.pnl || 0);
     var sym = p.symbol || p.pair || '—';
+    var stratId = p.strategy_id || '—';
     html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
+    html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + stratId + '</td>';
     html += '<td><b>' + sym + '</b></td>';
     html += '<td>' + dirBadge + '</td>';
     var sc = p.score != null ? p.score : '—';
