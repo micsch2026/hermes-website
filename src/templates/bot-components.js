@@ -891,6 +891,13 @@ function _renderTradeLines(chart, candleSeries, tradeLines, bars, alpha, visible
         pnl: pnl,
         pnlEur: tl.pnl_eur || pnl,
         symbol: tl.symbol || '',
+        sl: tl.sl,
+        tp: tl.tp,
+        score: tl.score,
+        rsi: tl.rsi,
+        strategy: tl.strategy || tl.strategy_id || '',
+        holdBars: tl.hold_bars,
+        closeReason: tl.result || tl.close_reason || '',
         isProfit: isProfit,
         isTimeout: isTimeout,
       });
@@ -1134,16 +1141,24 @@ function _subscribeLiveTooltip(chart, container) {
       var durMs = (nearest.exitTime - nearest.entryTime) * 1000; 
       var durH = Math.round(durMs / 3600000); 
       var durStr = durH >= 24 ? Math.round(durH / 24) + "d " + (durH % 24) + "h" : durH + "h"; 
-      var html = "<div style=\"font-weight:700;margin-bottom:6px;font-size:13px\">" + icon + " " + dir + " " + nearest.symbol + "</div>"; 
-      html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Entry</span><span>" + (nearest.entryPrice||0).toFixed(5) + "</span></div>"; 
-      if (nearest.exitPrice && nearest.exitPrice !== nearest.entryPrice) 
-        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Exit</span><span>" + (nearest.exitPrice||0).toFixed(5) + "</span></div>"; 
-      if (nearest.sl) 
-        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#ef4444\">SL</span><span>" + nearest.sl.toFixed(5) + "</span></div>"; 
-      if (nearest.tp) 
-        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#22c55e\">TP</span><span>" + nearest.tp.toFixed(5) + "</span></div>"; 
-      html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Dauer</span><span>" + durStr + "</span></div>"; 
-      html += "<div style=\"border-top:1px solid rgba(255,255,255,0.1);margin-top:6px;padding-top:6px;color:" + pnlColor + ";font-weight:700;font-size:15px;text-align:right\">" + pnlSign + nearest.pnlEur.toFixed(2) + " \u20ac</div>"; 
+      var html = "<div style=\"font-weight:700;margin-bottom:6px;font-size:13px\">" + icon + " " + dir + " " + nearest.symbol + "</div>";
+      if (nearest.strategy)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Strategy</span><span>" + nearest.strategy + "</span></div>";
+      html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Entry</span><span>" + (nearest.entryPrice||0).toFixed(5) + "</span></div>";
+      if (nearest.exitPrice && nearest.exitPrice !== nearest.entryPrice)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Exit</span><span>" + (nearest.exitPrice||0).toFixed(5) + "</span></div>";
+      if (nearest.sl)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#ef4444\">SL</span><span>" + nearest.sl.toFixed(5) + "</span></div>";
+      if (nearest.tp)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#22c55e\">TP</span><span>" + nearest.tp.toFixed(5) + "</span></div>";
+      if (nearest.score != null)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Score</span><span>" + nearest.score + "</span></div>";
+      if (nearest.rsi != null)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">RSI</span><span>" + (typeof nearest.rsi === 'number' ? nearest.rsi.toFixed(1) : nearest.rsi) + "</span></div>";
+      html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Dauer</span><span>" + durStr + (nearest.holdBars ? " (" + nearest.holdBars + " bars)" : "") + "</span></div>";
+      if (nearest.closeReason)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Grund</span><span>" + nearest.closeReason + "</span></div>";
+      html += "<div style=\"border-top:1px solid rgba(255,255,255,0.1);margin-top:6px;padding-top:6px;color:" + pnlColor + ";font-weight:700;font-size:15px;text-align:right\">" + pnlSign + nearest.pnlEur.toFixed(2) + " \u20ac</div>";
       tooltipEl.innerHTML = html; 
       tooltipEl.style.display = "block"; 
       var rect = container.getBoundingClientRect(); 
