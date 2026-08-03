@@ -1,0 +1,1172 @@
+{
+  "id": 481,
+  "label": "#481",
+  "name": "RCP-CLUSTER: 13_cci_reversal (20260730_234955)",
+  "display_name": "RCP-CLUSTER: 13_cci_reversal (20260730_234955)",
+  "description": "Portfolio from recipe_llm_cluster (13_cci_reversal) — 1 cluster/tf combos, 1 assets",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "promising",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 29.0,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-07-30 23:57:22",
+  "updated_at": "2026-07-30 23:57:22",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"13_cci_reversal\"], \"clusters\": [\"fx_mr_majors\"], \"total_assets\": 1, \"total_pnl\": 247.25}",
+  "concept": {
+    "name": "RCP-CLUSTER: 13_cci_reversal",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "GBPUSD"
+    ],
+    "tree": {
+      "name": "CCI Reversal",
+      "archetype": "cci_reversal",
+      "description": "CCI extremes + Williams %R confirmation. Unbounded oscillator catches statistical extremes.",
+      "timeframe": "1h",
+      "assets_candidate": [
+        "XAUUSD",
+        "EURUSD",
+        "GBPUSD"
+      ],
+      "enter": {
+        "signals": [
+          {
+            "id": "cci_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "cci",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": "<",
+                "value": -150
+              },
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": -80
+              }
+            ]
+          },
+          {
+            "id": "cci_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "cci",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": ">",
+                "value": 150
+              },
+              {
+                "indicator": "williams_r",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": -20
+              }
+            ]
+          }
+        ],
+        "gates": [
+          {
+            "condition": "OR",
+            "rules": [
+              {
+                "indicator": "atr_percentile",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14,
+                  "lookback": 100
+                },
+                "op": ">",
+                "value": 0.2
+              }
+            ]
+          }
+        ],
+        "boosts": []
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "mult": 1.5,
+        "period": 14
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.5
+      },
+      "notes": "Archetype 13: CCI Reversal. CCI<-150 = statistical extreme. Williams %R confirms oversold. ATR>20%ile = enough volatility.",
+      "pairs": [
+        "GBPUSD"
+      ]
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Portfolio from recipe_llm_cluster (13_cci_reversal) — 1 cluster/tf combos, 1 assets"
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "C",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "27M"
+      },
+      "g2_splits": {
+        "pass": true,
+        "value": "12 splits"
+      },
+      "g3_ho": {
+        "pass": true,
+        "value": "1 trades"
+      },
+      "g4_pf": {
+        "pass": false,
+        "value": "1.06"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "57%"
+      }
+    },
+    "fire_test": null,
+    "oos_pnl": 247.25,
+    "oos_score": 29.0,
+    "oos_pf": 1.06,
+    "oos_wr": 38.0,
+    "oos_trades": 542,
+    "oos_pass_rate": 0.571,
+    "tier_reason": "Bedingt geeignet; PF 1.06 < Ziel 1.5; WR 38% < Ziel 50%; Assets profitabel: 57%",
+    "clusters": [
+      {
+        "cluster": "fx_mr_majors",
+        "timeframe": "1h",
+        "approach": "13_cci_reversal",
+        "approach_summary": [
+          {
+            "approach": "06_stochastic_mr",
+            "score": 6.6,
+            "pnl": 95.69,
+            "recipe_used": false,
+            "trades": 471,
+            "wr": 38.4,
+            "pf": 1.03,
+            "pass_rate": 0.429,
+            "tier": "B"
+          },
+          {
+            "approach": "bot1a_core_rsi7",
+            "score": -92.4,
+            "pnl": -141.09,
+            "recipe_used": false,
+            "trades": 384,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0.424,
+            "tier": "C"
+          },
+          {
+            "approach": "fix7_lowvol_mr",
+            "score": 14.6,
+            "pnl": 97.81,
+            "recipe_used": false,
+            "trades": 313,
+            "wr": 42.5,
+            "pf": 1.05,
+            "pass_rate": 0.429,
+            "tier": "B"
+          },
+          {
+            "approach": "13_cci_reversal",
+            "score": 29.0,
+            "pnl": 247.25,
+            "recipe_used": false,
+            "trades": 542,
+            "wr": 38.0,
+            "pf": 1.06,
+            "pass_rate": 0.571,
+            "tier": "B"
+          }
+        ],
+        "best_tree": {
+          "name": "CCI Reversal",
+          "archetype": "cci_reversal",
+          "description": "CCI extremes + Williams %R confirmation. Unbounded oscillator catches statistical extremes.",
+          "timeframe": "1h",
+          "assets_candidate": [
+            "XAUUSD",
+            "EURUSD",
+            "GBPUSD"
+          ],
+          "enter": {
+            "signals": [
+              {
+                "id": "cci_long",
+                "condition": "AND",
+                "direction": "long",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "cci",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20
+                    },
+                    "op": "<",
+                    "value": -150
+                  },
+                  {
+                    "indicator": "williams_r",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": -80
+                  }
+                ]
+              },
+              {
+                "id": "cci_short",
+                "condition": "AND",
+                "direction": "short",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "cci",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20
+                    },
+                    "op": ">",
+                    "value": 150
+                  },
+                  {
+                    "indicator": "williams_r",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": -20
+                  }
+                ]
+              }
+            ],
+            "gates": [
+              {
+                "condition": "OR",
+                "rules": [
+                  {
+                    "indicator": "atr_percentile",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14,
+                      "lookback": 100
+                    },
+                    "op": ">",
+                    "value": 0.2
+                  }
+                ]
+              }
+            ],
+            "boosts": []
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 48
+          },
+          "sl": {
+            "mode": "atr",
+            "mult": 1.5,
+            "period": 14
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.5
+          },
+          "notes": "Archetype 13: CCI Reversal. CCI<-150 = statistical extreme. Williams %R confirms oversold. ATR>20%ile = enough volatility.",
+          "pairs": [
+            "EURUSD",
+            "GBPUSD",
+            "AUDUSD",
+            "USDCHF"
+          ]
+        },
+        "best_pnl": 247.25,
+        "best_score": 29.0,
+        "selected_assets": [
+          "GBPUSD"
+        ],
+        "dropped_assets": [
+          "EURUSD",
+          "AUDUSD",
+          "USDCHF"
+        ],
+        "pair_overrides": {
+          "GBPUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.0,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 3.2
+            }
+          }
+        },
+        "recipe_used": false,
+        "trades": 542,
+        "pass_rate": 0.571,
+        "tier": "B",
+        "pf": 1.06,
+        "wr": 38.0,
+        "per_asset": {
+          "EURUSD": {
+            "oos_pnl": -157.11,
+            "oos_trades": 575,
+            "oos_pass_rate": 0.286,
+            "oos_score": 35.9,
+            "oos_wr": 34.6,
+            "oos_pf": 0.96,
+            "best_sl_mult": 1.0,
+            "best_tp_val": 1.8,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-04-18 → 2024-10-17",
+                "oos_range": "2024-10-17 → 2025-01-17",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 68.97,
+                "is_trades": 102,
+                "oos_pnl": 5.01,
+                "oos_trades": 49,
+                "oos_wr": 36.7,
+                "oos_pf": 1.02,
+                "oos_profitable": true,
+                "oos_gp": 326.88,
+                "oos_gl": 321.87
+              },
+              {
+                "split": 1,
+                "is_range": "2024-07-18 → 2025-01-17",
+                "oos_range": "2025-01-17 → 2025-04-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 54.48,
+                "is_trades": 195,
+                "oos_pnl": -101.75,
+                "oos_trades": 99,
+                "oos_wr": 34.3,
+                "oos_pf": 0.85,
+                "oos_profitable": false,
+                "oos_gp": 557.87,
+                "oos_gl": 659.62
+              },
+              {
+                "split": 2,
+                "is_range": "2024-10-17 → 2025-04-18",
+                "oos_range": "2025-04-18 → 2025-07-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 56.89,
+                "is_trades": 192,
+                "oos_pnl": -19.22,
+                "oos_trades": 90,
+                "oos_wr": 36.7,
+                "oos_pf": 0.96,
+                "oos_profitable": false,
+                "oos_gp": 525.01,
+                "oos_gl": 544.23
+              },
+              {
+                "split": 3,
+                "is_range": "2025-01-17 → 2025-07-18",
+                "oos_range": "2025-07-18 → 2025-10-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 2.5,
+                "is_pnl": -1.51,
+                "is_trades": 180,
+                "oos_pnl": -11.48,
+                "oos_trades": 111,
+                "oos_wr": 30.6,
+                "oos_pf": 0.99,
+                "oos_profitable": false,
+                "oos_gp": 844.83,
+                "oos_gl": 856.31
+              },
+              {
+                "split": 4,
+                "is_range": "2025-04-18 → 2025-10-18",
+                "oos_range": "2025-10-18 → 2026-01-17",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 2.5,
+                "is_pnl": 7.37,
+                "is_trades": 194,
+                "oos_pnl": -18.39,
+                "oos_trades": 80,
+                "oos_wr": 33.8,
+                "oos_pf": 0.97,
+                "oos_profitable": false,
+                "oos_gp": 529.17,
+                "oos_gl": 547.56
+              },
+              {
+                "split": 5,
+                "is_range": "2025-07-18 → 2026-01-17",
+                "oos_range": "2026-01-17 → 2026-04-18",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 1.8,
+                "is_pnl": 53.69,
+                "is_trades": 163,
+                "oos_pnl": -87.21,
+                "oos_trades": 84,
+                "oos_wr": 33.3,
+                "oos_pf": 0.81,
+                "oos_profitable": false,
+                "oos_gp": 362.07,
+                "oos_gl": 449.28
+              },
+              {
+                "split": 6,
+                "is_range": "2025-10-18 → 2026-04-18",
+                "oos_range": "2026-04-18 → 2026-07-19",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 2.5,
+                "is_pnl": -9.63,
+                "is_trades": 137,
+                "oos_pnl": 75.93,
+                "oos_trades": 62,
+                "oos_wr": 37.1,
+                "oos_pf": 1.25,
+                "oos_profitable": true,
+                "oos_gp": 374.97,
+                "oos_gl": 299.04
+              }
+            ],
+            "selected": false
+          },
+          "GBPUSD": {
+            "oos_pnl": 247.25,
+            "oos_trades": 542,
+            "oos_pass_rate": 0.571,
+            "oos_score": 14.5,
+            "oos_wr": 38.0,
+            "oos_pf": 1.06,
+            "best_sl_mult": 1.0,
+            "best_tp_val": 3.2,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-04-18 → 2024-10-17",
+                "oos_range": "2024-10-17 → 2025-01-17",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 191.76,
+                "is_trades": 183,
+                "oos_pnl": -68.23,
+                "oos_trades": 94,
+                "oos_wr": 30.9,
+                "oos_pf": 0.91,
+                "oos_profitable": false,
+                "oos_gp": 702.24,
+                "oos_gl": 770.47
+              },
+              {
+                "split": 1,
+                "is_range": "2024-07-18 → 2025-01-17",
+                "oos_range": "2025-01-17 → 2025-04-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 2.5,
+                "is_pnl": 93.78,
+                "is_trades": 203,
+                "oos_pnl": 4.52,
+                "oos_trades": 100,
+                "oos_wr": 33.0,
+                "oos_pf": 1.01,
+                "oos_profitable": true,
+                "oos_gp": 854.27,
+                "oos_gl": 849.75
+              },
+              {
+                "split": 2,
+                "is_range": "2024-10-17 → 2025-04-18",
+                "oos_range": "2025-04-18 → 2025-07-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 2.5,
+                "is_pnl": 52.87,
+                "is_trades": 201,
+                "oos_pnl": 327.39,
+                "oos_trades": 89,
+                "oos_wr": 40.4,
+                "oos_pf": 1.43,
+                "oos_profitable": true,
+                "oos_gp": 1095.08,
+                "oos_gl": 767.69
+              },
+              {
+                "split": 3,
+                "is_range": "2025-01-17 → 2025-07-18",
+                "oos_range": "2025-07-18 → 2025-10-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 322.47,
+                "is_trades": 193,
+                "oos_pnl": -200.22,
+                "oos_trades": 108,
+                "oos_wr": 32.4,
+                "oos_pf": 0.76,
+                "oos_profitable": false,
+                "oos_gp": 651.66,
+                "oos_gl": 851.88
+              },
+              {
+                "split": 4,
+                "is_range": "2025-04-18 → 2025-10-18",
+                "oos_range": "2025-10-18 → 2026-01-17",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 225.09,
+                "is_trades": 103,
+                "oos_pnl": 37.23,
+                "oos_trades": 42,
+                "oos_wr": 42.9,
+                "oos_pf": 1.13,
+                "oos_profitable": true,
+                "oos_gp": 315.61,
+                "oos_gl": 278.38
+              },
+              {
+                "split": 5,
+                "is_range": "2025-07-18 → 2026-01-17",
+                "oos_range": "2026-01-17 → 2026-04-18",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 39.28,
+                "is_trades": 101,
+                "oos_pnl": -6.5,
+                "oos_trades": 48,
+                "oos_wr": 37.5,
+                "oos_pf": 0.98,
+                "oos_profitable": false,
+                "oos_gp": 333.66,
+                "oos_gl": 340.16
+              },
+              {
+                "split": 6,
+                "is_range": "2025-10-18 → 2026-04-18",
+                "oos_range": "2026-04-18 → 2026-07-19",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 68.12,
+                "is_trades": 109,
+                "oos_pnl": 153.06,
+                "oos_trades": 61,
+                "oos_wr": 49.2,
+                "oos_pf": 1.48,
+                "oos_profitable": true,
+                "oos_gp": 469.47,
+                "oos_gl": 316.41
+              }
+            ],
+            "selected": true
+          },
+          "AUDUSD": {
+            "oos_pnl": -31.06,
+            "oos_trades": 512,
+            "oos_pass_rate": 0.429,
+            "oos_score": 2.4,
+            "oos_wr": 36.2,
+            "oos_pf": 0.99,
+            "best_sl_mult": 1.0,
+            "best_tp_val": 1.8,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-04-18 → 2024-10-17",
+                "oos_range": "2024-10-17 → 2025-01-17",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 82.38,
+                "is_trades": 170,
+                "oos_pnl": 24.13,
+                "oos_trades": 77,
+                "oos_wr": 40.3,
+                "oos_pf": 1.05,
+                "oos_profitable": true,
+                "oos_gp": 529.28,
+                "oos_gl": 505.15
+              },
+              {
+                "split": 1,
+                "is_range": "2024-07-18 → 2025-01-17",
+                "oos_range": "2025-01-17 → 2025-04-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 76.73,
+                "is_trades": 166,
+                "oos_pnl": -39.5,
+                "oos_trades": 90,
+                "oos_wr": 37.8,
+                "oos_pf": 0.94,
+                "oos_profitable": false,
+                "oos_gp": 627.99,
+                "oos_gl": 667.49
+              },
+              {
+                "split": 2,
+                "is_range": "2024-10-17 → 2025-04-18",
+                "oos_range": "2025-04-18 → 2025-07-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": -15.37,
+                "is_trades": 167,
+                "oos_pnl": 53.44,
+                "oos_trades": 102,
+                "oos_wr": 40.2,
+                "oos_pf": 1.08,
+                "oos_profitable": true,
+                "oos_gp": 744.65,
+                "oos_gl": 691.21
+              },
+              {
+                "split": 3,
+                "is_range": "2025-01-17 → 2025-07-18",
+                "oos_range": "2025-07-18 → 2025-10-18",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 2.5,
+                "is_pnl": 19.08,
+                "is_trades": 105,
+                "oos_pnl": -12.66,
+                "oos_trades": 51,
+                "oos_wr": 37.3,
+                "oos_pf": 0.96,
+                "oos_profitable": false,
+                "oos_gp": 286.86,
+                "oos_gl": 299.52
+              },
+              {
+                "split": 4,
+                "is_range": "2025-04-18 → 2025-10-18",
+                "oos_range": "2025-10-18 → 2026-01-17",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 164.92,
+                "is_trades": 176,
+                "oos_pnl": 100.72,
+                "oos_trades": 75,
+                "oos_wr": 30.7,
+                "oos_pf": 1.17,
+                "oos_profitable": true,
+                "oos_gp": 690.28,
+                "oos_gl": 589.56
+              },
+              {
+                "split": 5,
+                "is_range": "2025-07-18 → 2026-01-17",
+                "oos_range": "2026-01-17 → 2026-04-18",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 105.48,
+                "is_trades": 92,
+                "oos_pnl": -127.71,
+                "oos_trades": 52,
+                "oos_wr": 26.9,
+                "oos_pf": 0.56,
+                "oos_profitable": false,
+                "oos_gp": 161.8,
+                "oos_gl": 289.51
+              },
+              {
+                "split": 6,
+                "is_range": "2025-10-18 → 2026-04-18",
+                "oos_range": "2026-04-18 → 2026-07-19",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 65.68,
+                "is_trades": 115,
+                "oos_pnl": -29.48,
+                "oos_trades": 65,
+                "oos_wr": 40.0,
+                "oos_pf": 0.92,
+                "oos_profitable": false,
+                "oos_gp": 341.23,
+                "oos_gl": 370.71
+              }
+            ],
+            "selected": false
+          },
+          "USDCHF": {
+            "oos_pnl": -1268.93,
+            "oos_trades": 862,
+            "oos_pass_rate": 0.0,
+            "oos_score": 109.8,
+            "oos_wr": 30.8,
+            "oos_pf": 0.78,
+            "best_sl_mult": 1.0,
+            "best_tp_val": 3.2,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2023-01-10 → 2023-07-12",
+                "oos_range": "2023-07-12 → 2023-10-11",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 2.5,
+                "is_pnl": 340.4,
+                "is_trades": 101,
+                "oos_pnl": -80.55,
+                "oos_trades": 51,
+                "oos_wr": 35.3,
+                "oos_pf": 0.8,
+                "oos_profitable": false,
+                "oos_gp": 326.3,
+                "oos_gl": 406.85
+              },
+              {
+                "split": 1,
+                "is_range": "2023-04-11 → 2023-10-11",
+                "oos_range": "2023-10-11 → 2024-01-10",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 424.13,
+                "is_trades": 186,
+                "oos_pnl": -143.08,
+                "oos_trades": 82,
+                "oos_wr": 28.0,
+                "oos_pf": 0.83,
+                "oos_profitable": false,
+                "oos_gp": 680.76,
+                "oos_gl": 823.84
+              },
+              {
+                "split": 2,
+                "is_range": "2023-07-12 → 2024-01-10",
+                "oos_range": "2024-01-10 → 2024-04-11",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": 32.63,
+                "is_trades": 183,
+                "oos_pnl": -36.12,
+                "oos_trades": 95,
+                "oos_wr": 37.9,
+                "oos_pf": 0.95,
+                "oos_profitable": false,
+                "oos_gp": 745.0,
+                "oos_gl": 781.12
+              },
+              {
+                "split": 3,
+                "is_range": "2023-10-11 → 2024-04-11",
+                "oos_range": "2024-04-11 → 2024-07-11",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 1.8,
+                "is_pnl": 56.58,
+                "is_trades": 145,
+                "oos_pnl": -77.43,
+                "oos_trades": 69,
+                "oos_wr": 33.3,
+                "oos_pf": 0.84,
+                "oos_profitable": false,
+                "oos_gp": 414.36,
+                "oos_gl": 491.79
+              },
+              {
+                "split": 4,
+                "is_range": "2024-01-10 → 2024-07-11",
+                "oos_range": "2024-07-11 → 2024-10-10",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 314.85,
+                "is_trades": 98,
+                "oos_pnl": -278.09,
+                "oos_trades": 57,
+                "oos_wr": 22.8,
+                "oos_pf": 0.47,
+                "oos_profitable": false,
+                "oos_gp": 246.82,
+                "oos_gl": 524.91
+              },
+              {
+                "split": 5,
+                "is_range": "2024-04-11 → 2024-10-10",
+                "oos_range": "2024-10-10 → 2025-01-10",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 3.2,
+                "is_pnl": -10.41,
+                "is_trades": 105,
+                "oos_pnl": -27.88,
+                "oos_trades": 50,
+                "oos_wr": 38.0,
+                "oos_pf": 0.92,
+                "oos_profitable": false,
+                "oos_gp": 302.2,
+                "oos_gl": 330.08
+              },
+              {
+                "split": 6,
+                "is_range": "2024-07-11 → 2025-01-10",
+                "oos_range": "2025-01-10 → 2025-04-11",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 3.2,
+                "is_pnl": -241.92,
+                "is_trades": 131,
+                "oos_pnl": -113.83,
+                "oos_trades": 72,
+                "oos_wr": 26.4,
+                "oos_pf": 0.75,
+                "oos_profitable": false,
+                "oos_gp": 336.42,
+                "oos_gl": 450.25
+              },
+              {
+                "split": 7,
+                "is_range": "2024-10-10 → 2025-04-11",
+                "oos_range": "2025-04-11 → 2025-07-11",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 33.93,
+                "is_trades": 179,
+                "oos_pnl": -112.18,
+                "oos_trades": 74,
+                "oos_wr": 25.7,
+                "oos_pf": 0.74,
+                "oos_profitable": false,
+                "oos_gp": 312.68,
+                "oos_gl": 424.86
+              },
+              {
+                "split": 8,
+                "is_range": "2025-01-10 → 2025-07-11",
+                "oos_range": "2025-07-11 → 2025-10-10",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 2.5,
+                "is_pnl": 44.39,
+                "is_trades": 135,
+                "oos_pnl": -82.1,
+                "oos_trades": 72,
+                "oos_wr": 30.6,
+                "oos_pf": 0.77,
+                "oos_profitable": false,
+                "oos_gp": 269.57,
+                "oos_gl": 351.67
+              },
+              {
+                "split": 9,
+                "is_range": "2025-04-11 → 2025-10-10",
+                "oos_range": "2025-10-10 → 2026-01-10",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 2.5,
+                "is_pnl": 80.52,
+                "is_trades": 104,
+                "oos_pnl": -165.63,
+                "oos_trades": 55,
+                "oos_wr": 32.7,
+                "oos_pf": 0.57,
+                "oos_profitable": false,
+                "oos_gp": 215.58,
+                "oos_gl": 381.21
+              },
+              {
+                "split": 10,
+                "is_range": "2025-07-11 → 2026-01-10",
+                "oos_range": "2026-01-10 → 2026-04-11",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.8,
+                "is_pnl": -52.03,
+                "is_trades": 200,
+                "oos_pnl": -130.83,
+                "oos_trades": 101,
+                "oos_wr": 30.7,
+                "oos_pf": 0.72,
+                "oos_profitable": false,
+                "oos_gp": 341.03,
+                "oos_gl": 471.86
+              },
+              {
+                "split": 11,
+                "is_range": "2025-10-10 → 2026-04-11",
+                "oos_range": "2026-04-11 → 2026-07-11",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 2.5,
+                "is_pnl": -62.88,
+                "is_trades": 198,
+                "oos_pnl": -21.21,
+                "oos_trades": 84,
+                "oos_wr": 28.6,
+                "oos_pf": 0.92,
+                "oos_profitable": false,
+                "oos_gp": 234.92,
+                "oos_gl": 256.13
+              }
+            ],
+            "selected": false
+          }
+        },
+        "updated_at": "2026-07-30T23:52:28.160381+00:00"
+      }
+    ],
+    "all_assets": [
+      "GBPUSD"
+    ],
+    "pair_overrides": {
+      "GBPUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 3.2
+        }
+      }
+    },
+    "approaches_used": [
+      "13_cci_reversal"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": 13.36,
+      "trades": 1,
+      "pf": 0,
+      "per_cluster": [
+        {
+          "approach": "13_cci_reversal",
+          "pnl": 13.36,
+          "trades": 1,
+          "pf": 999.99
+        }
+      ]
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "EURUSD",
+      "cluster": "fx_mr_majors",
+      "timeframe": "1h",
+      "approach": "13_cci_reversal",
+      "tier": "B",
+      "oos_pnl_total": -157.11,
+      "oos_pf": 0.96,
+      "oos_wr": 34.6,
+      "oos_trades": 575,
+      "oos_pass_rate": 0.286,
+      "oos_score": 35.9,
+      "is_selected": false,
+      "sl_override": 1.0,
+      "tp_override": 1.8
+    },
+    {
+      "symbol": "GBPUSD",
+      "cluster": "fx_mr_majors",
+      "timeframe": "1h",
+      "approach": "13_cci_reversal",
+      "tier": "B",
+      "oos_pnl_total": 247.25,
+      "oos_pf": 1.06,
+      "oos_wr": 38.0,
+      "oos_trades": 542,
+      "oos_pass_rate": 0.571,
+      "oos_score": 14.5,
+      "is_selected": true,
+      "sl_override": 1.0,
+      "tp_override": 3.2
+    },
+    {
+      "symbol": "AUDUSD",
+      "cluster": "fx_mr_majors",
+      "timeframe": "1h",
+      "approach": "13_cci_reversal",
+      "tier": "B",
+      "oos_pnl_total": -31.06,
+      "oos_pf": 0.99,
+      "oos_wr": 36.2,
+      "oos_trades": 512,
+      "oos_pass_rate": 0.429,
+      "oos_score": 2.4,
+      "is_selected": false,
+      "sl_override": 1.0,
+      "tp_override": 1.8
+    },
+    {
+      "symbol": "USDCHF",
+      "cluster": "fx_mr_majors",
+      "timeframe": "1h",
+      "approach": "13_cci_reversal",
+      "tier": "B",
+      "oos_pnl_total": -1268.93,
+      "oos_pf": 0.78,
+      "oos_wr": 30.8,
+      "oos_trades": 862,
+      "oos_pass_rate": 0.0,
+      "oos_score": 109.8,
+      "is_selected": false,
+      "sl_override": 1.0,
+      "tp_override": 3.2
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "name": "CCI Reversal",
+    "archetype": "cci_reversal",
+    "description": "CCI extremes + Williams %R confirmation. Unbounded oscillator catches statistical extremes.",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "XAUUSD",
+      "EURUSD",
+      "GBPUSD"
+    ],
+    "enter": {
+      "signals": [
+        {
+          "id": "cci_long",
+          "condition": "AND",
+          "direction": "long",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "cci",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": "<",
+              "value": -150
+            },
+            {
+              "indicator": "williams_r",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": -80
+            }
+          ]
+        },
+        {
+          "id": "cci_short",
+          "condition": "AND",
+          "direction": "short",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "cci",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": ">",
+              "value": 150
+            },
+            {
+              "indicator": "williams_r",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": -20
+            }
+          ]
+        }
+      ],
+      "gates": [
+        {
+          "condition": "OR",
+          "rules": [
+            {
+              "indicator": "atr_percentile",
+              "timeframe": "1h",
+              "params": {
+                "period": 14,
+                "lookback": 100
+              },
+              "op": ">",
+              "value": 0.2
+            }
+          ]
+        }
+      ],
+      "boosts": []
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 48
+    },
+    "sl": {
+      "mode": "atr",
+      "mult": 1.5,
+      "period": 14
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 2.5
+    },
+    "notes": "Archetype 13: CCI Reversal. CCI<-150 = statistical extreme. Williams %R confirms oversold. ATR>20%ile = enough volatility.",
+    "pairs": [
+      "GBPUSD"
+    ]
+  },
+  "best_oos_pnl": 247.25,
+  "best_pf": 1.06,
+  "best_wr": 38.0,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.571,
+  "oos_trades": 542,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}
