@@ -75,6 +75,27 @@
 .sl4-summary .stat { text-align: center; }
 .sl4-summary .stat-value { font-size: 1.4rem; font-weight: 700; }
 .sl4-summary .stat-label { font-size: 0.75rem; color: var(--dim); }
+/* R&D Live */
+.rd-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 0.6rem; padding: 0.9rem 1rem; margin-bottom: 0.9rem; }
+.rd-card h3 { margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.rd-worker { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.rd-worker .rd-status { font-weight: 700; font-size: 0.95rem; }
+.rd-worker .rd-msg { color: var(--sl-blue); font-size: 0.85rem; }
+.rd-worker .rd-meta { color: var(--dim); font-size: 0.75rem; }
+.rd-pill { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; margin-right: 0.3rem; }
+.rd-pill.ok { background: rgba(34,197,94,0.15); color: #22c55e; }
+.rd-pill.warn { background: rgba(234,179,8,0.15); color: #eab308; }
+.rd-pill.bad { background: rgba(239,68,68,0.15); color: #ef4444; }
+.rd-pill.dim { background: rgba(107,114,128,0.12); color: #9ca3af; }
+.rd-cluster-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.rd-cluster-chip { font-size: 0.72rem; padding: 0.25rem 0.6rem; border-radius: 0.4rem; border: 1px solid var(--c-border); background: var(--c-surface); }
+.rd-cluster-chip.done { border-color: rgba(34,197,94,0.4); color: #22c55e; }
+.rd-cluster-chip.cool { border-color: rgba(234,179,8,0.4); color: #eab308; }
+.rd-cluster-chip.open { color: var(--dim); }
+.rd-timeline { display: flex; flex-direction: column; gap: 0.35rem; }
+.rd-tl-row { display: flex; gap: 0.6rem; align-items: baseline; font-size: 0.8rem; }
+.rd-tl-cluster { font-weight: 600; min-width: 130px; }
+.rd-tl-result { color: var(--dim); }
 </style>
 
 <div class="sl4-wrap">
@@ -86,6 +107,7 @@
   <div class="sl4-summary" id="sl4-summary"></div>
   <div class="sl4-tabs">
     <button class="sl4-tab active" data-tab="deploy">🚀 Strategien <span class="badge" id="badge-deploy">0</span></button>
+    <button class="sl4-tab" data-tab="rdlive">🔬 R&D Live <span class="badge" id="badge-rdlive">0</span></button>
     <button class="sl4-tab" data-tab="shadow">👻 Shadow <span class="badge" id="badge-shadow">0</span></button>
   </div>
   <div class="sl4-toolbar" id="sl4-toolbar">
@@ -107,6 +129,7 @@
 let catalogData = null;
 let shadowData = null;
 let pipelineStatus = null;
+let rdData = null;
 let currentTab = 'deploy';
 let currentFilter = 'all';
 let sortCol = 'score';
@@ -126,6 +149,11 @@ async function loadData() {
     const pr = await fetch('/api/strategy-lab/pipeline_status.json?_=' + Date.now());
     pipelineStatus = await pr.json();
   } catch(e) { pipelineStatus = null; }
+  // Load R&D Live data
+  try {
+    const rr = await fetch('/api/strategy-lab/rd_live.json?_=' + Date.now());
+    rdData = await rr.json();
+  } catch(e) { rdData = null; }
   render();
 }
 
@@ -165,6 +193,9 @@ function render() {
     <div class="stat"><div class="stat-value" style="color:var(--green)">${s.deploy_candidates}</div><div class="stat-label">Deploy-Kandidaten</div></div>
   `;
   document.getElementById('badge-deploy').textContent = s.deploy_candidates;
+  if (rdData && rdData.today) {
+    document.getElementById('badge-rdlive').textContent = rdData.today.length;
+  }
   if (shadowData) {
     document.getElementById('badge-shadow').textContent = shadowData.total_trades || 0;
     // Update summary with shadow stats
@@ -184,6 +215,7 @@ function render() {
 }
 
 function renderTable() {
+  if (currentTab === 'rdlive') { renderRdLive(); return; }
   let data = [];
   let columns = [];
   if (currentTab === 'deploy') { data = catalogData.deploy; columns = deployCols; }
@@ -430,6 +462,80 @@ function showDetail(row) {
 
   m.innerHTML = html;
   document.getElementById('sl4-modal-overlay').classList.add('show');
+}
+
+function renderRdLive() {
+  const el = document.getElementById('sl4-content');
+  if (!rdData) { el.innerHTML = '<div class="rd-card">R&D-Daten laden…</div>'; return; }
+  const w = rdData.worker || {};
+  const today = rdData.today || [];
+  const cl = rdData.clusters || {total:0, done:[], cooldown:[], open:[]};
+  const cycles = rdData.recent_cycles || [];
+  const bl = rdData.blacklist || [];
+  let html = '';
+
+  // 1) Worker-Status
+  const wState = {designing:'🟡 Designing', recipe_running:'🟢 Recipe läuft', idle:'⚪ Idle'}[w.status] || (w.status || '?');
+  const wUpd = w.updated_at ? new Date(w.updated_at).toLocaleTimeString('de-DE') : '—';
+  html += `<div class="rd-card"><h3>🟢 Worker-Status</h3><div class="rd-worker">
+    <span class="rd-status">${wState}</span>
+    <span class="rd-msg">${esc(w.message || 'keine Aktivität')}</span>
+    <span class="rd-meta">${w.elapsed_s != null ? w.elapsed_s + 's · ' : ''}${wUpd}</span>
+  </div></div>`;
+
+  // 2) Heutige Produktion
+  html += `<div class="rd-card"><h3>📅 Heutige Produktion (${today.length})</h3>`;
+  if (today.length === 0) { html += '<div style="color:var(--dim);font-size:0.8rem">Heute noch keine neuen Strategien.</div>'; }
+  else {
+    html += '<table class="sl4-table"><thead><tr><th>#</th><th>Strategie</th><th>Status</th><th class="num">PF</th><th class="num">Trades</th><th>Tier</th></tr></thead><tbody>';
+    for (const s of today) {
+      const stCls = {validated:'rd-pill ok', candidate:'rd-pill warn', rejected:'rd-pill bad'}[s.status] || 'rd-pill dim';
+      const tierCls = {A:'rd-pill ok', B:'rd-pill warn', C:'rd-pill bad'}[s.tier] || 'rd-pill dim';
+      html += `<tr><td>#${s.id}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.name)}">${esc(s.name)}</td>
+        <td><span class="${stCls}">${s.status}</span></td>
+        <td class="num">${s.pf != null ? s.pf : '—'}</td>
+        <td class="num">${s.trades != null ? s.trades : '—'}</td>
+        <td>${s.tier ? `<span class="${tierCls}">${s.tier}</span>` : '—'}</td></tr>`;
+    }
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  // 3) Cluster-Fortschritt
+  const openList = cl.open || [];
+  html += `<div class="rd-card"><h3>🗂️ Cluster-Fortschritt (${cl.total})</h3><div class="rd-cluster-grid">`;
+  for (const c of cl.done) html += `<span class="rd-cluster-chip done" title="Strategie gespeichert">✅ ${c}</span>`;
+  for (const c of (cl.cooldown||[])) html += `<span class="rd-cluster-chip cool" title="Cooldown bis ${c.saved_ts||'?'} (→ #${c.strategy_id||'?'})">⏳ ${c.name}</span>`;
+  for (const c of openList) html += `<span class="rd-cluster-chip open">${c}</span>`;
+  if (cl.done.length + cl.cooldown.length + openList.length === 0) html += '<span style="color:var(--dim);font-size:0.8rem">keine Cluster-Daten</span>';
+  html += '</div></div>';
+
+  // 4) Letzte Zyklen
+  html += `<div class="rd-card"><h3>🕐 Letzte Zyklen</h3><div class="rd-timeline">`;
+  if (cycles.length === 0) { html += '<span style="color:var(--dim);font-size:0.8rem">keine Zyklen erfasst</span>'; }
+  for (const cy of cycles) {
+    const resCls = cy.result && cy.result.includes('Strategie') ? 'rd-pill ok'
+      : (cy.result && cy.result.includes('Duplicate') ? 'rd-pill warn' : 'rd-pill bad');
+    html += `<div class="rd-tl-row"><span class="rd-tl-cluster">${esc(cy.cluster||'?')}</span>
+      <span class="rd-tl-result">${cy.approach ? esc(cy.approach) + ' · ' : ''}${cy.result ? `<span class="${resCls}">${esc(cy.result)}</span>` : '<span class="rd-pill dim">läuft…</span>'}</span></div>`;
+  }
+  html += '</div></div>';
+
+  // 5) Approach-Blacklist
+  html += `<div class="rd-card"><h3>🚫 Approach-Blacklist (${bl.length})</h3>`;
+  if (bl.length === 0) { html += '<div style="color:var(--dim);font-size:0.8rem">Keine blacklisteten Approaches.</div>'; }
+  else {
+    html += '<table class="sl4-table"><thead><tr><th>Approach</th><th class="num">Count</th><th>Grund</th><th>Zuletzt</th></tr></thead><tbody>';
+    for (const b of bl) {
+      const when = b.last_rejected ? new Date(b.last_rejected).toLocaleDateString('de-DE') + ' ' + new Date(b.last_rejected).toLocaleTimeString('de-DE') : '—';
+      html += `<tr><td>${esc(b.approach)}</td><td class="num">${b.count != null ? b.count : '—'}</td>
+        <td>${b.reason ? esc(b.reason) : '3× Rejection'}</td><td style="color:var(--dim)">${when}</td></tr>`;
+    }
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  el.innerHTML = html;
 }
 
 // Tab switching
