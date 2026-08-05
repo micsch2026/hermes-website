@@ -86,9 +86,7 @@
   <div class="sl4-summary" id="sl4-summary"></div>
   <div class="sl4-tabs">
     <button class="sl4-tab active" data-tab="deploy">🚀 Strategien <span class="badge" id="badge-deploy">0</span></button>
-    <button class="sl4-tab" data-tab="pipeline">🔬 Exploration <span class="badge" id="badge-pipeline">0</span></button>
     <button class="sl4-tab" data-tab="shadow">👻 Shadow <span class="badge" id="badge-shadow">0</span></button>
-    <button class="sl4-tab" data-tab="archive">📦 Archiv <span class="badge" id="badge-archive">0</span></button>
   </div>
   <div class="sl4-toolbar" id="sl4-toolbar">
     <input class="sl4-search" id="sl4-search" placeholder="Suche nach Name, Asset, Typ..." type="text">
@@ -165,11 +163,8 @@ function render() {
   const s = catalogData.summary;
   document.getElementById('sl4-summary').innerHTML = `
     <div class="stat"><div class="stat-value" style="color:var(--green)">${s.deploy_candidates}</div><div class="stat-label">Deploy-Kandidaten</div></div>
-    <div class="stat"><div class="stat-value" style="color:var(--blue)">${s.pipeline_recipes}</div><div class="stat-label">Pipeline Recipes</div></div>
-    <div class="stat"><div class="stat-value" style="color:var(--dim)">${s.archive_strategies}</div><div class="stat-label">Archiv</div></div>
   `;
   document.getElementById('badge-deploy').textContent = s.deploy_candidates;
-  document.getElementById('badge-pipeline').textContent = s.pipeline_recipes;
   if (shadowData) {
     document.getElementById('badge-shadow').textContent = shadowData.total_trades || 0;
     // Update summary with shadow stats
@@ -185,7 +180,6 @@ function render() {
       <div class="stat"><div class="stat-value" style="color:var(--yellow)">${openPos}</div><div class="stat-label">Offen</div></div>
     `;
   }
-  document.getElementById('badge-archive').textContent = s.archive_strategies;
   renderTable();
 }
 
@@ -193,9 +187,7 @@ function renderTable() {
   let data = [];
   let columns = [];
   if (currentTab === 'deploy') { data = catalogData.deploy; columns = deployCols; }
-  else if (currentTab === 'pipeline') { data = catalogData.pipeline; columns = pipelineCols; }
-  else if (currentTab === 'shadow') { data = (shadowData && shadowData.strategies) ? shadowData.strategies : []; columns = shadowCols; }
-  else { data = catalogData.archive.top_archive; columns = archiveCols; }
+  else { data = (shadowData && shadowData.strategies) ? shadowData.strategies : []; columns = shadowCols; }
 
   // Filter
   data = data.filter(row => {
