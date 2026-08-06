@@ -331,8 +331,9 @@ const shadowCols = [
     if (r.oos_trades_week != null) return `<span style="color:var(--dim)">${r.oos_trades_week}</span>`;
     return '—';
   }},
-  {key:'shadow_avg_trade', label:'€/Tr', num: true, render: r => {
-    if (r.shadow_avg_trade != null) return `<span class="${r.shadow_avg_trade>=0?'pos':'neg'}">${r.shadow_avg_trade>=0?'+':''}${r.shadow_avg_trade}€</span>`;
+  {key:'shadow_avg_trade', label:'Ø €/Tr', num: true, render: r => {
+    // USER (06.08.): durchschnittlicher BETRAG (Mean der Absolutwerte), immer positiv
+    if (r.shadow_avg_trade != null) return `${r.shadow_avg_trade}€`;
     if (r.oos_avg_trade != null) return `<span style="color:var(--dim)">${r.oos_avg_trade}€</span>`;
     return '—';
   }},
@@ -342,7 +343,7 @@ const shadowCols = [
   }},
   {key:'win_rate', label:'WR', num: true, render: r => r.trades > 0 ? r.win_rate.toFixed(0)+'%' : '—'},
   {key:'oos_pf', label:'OOS PF', num: true, render: r => `<span style="color:var(--dim)">${r.oos_pf.toFixed(2)}</span>`},
-  {key:'oos_avg_trade', label:'OOS €/Tr', num: true, render: r => r.oos_avg_trade != null ? `<span style="color:var(--dim)">${r.oos_avg_trade}€</span>` : '—'},
+  {key:'oos_avg_trade', label:'OOS Ø €/Tr', num: true, render: r => r.oos_avg_trade != null ? `<span style="color:var(--dim)">${r.oos_avg_trade}€</span>` : '—'},
   {key:'gap_pct', label:'Gap', num: true, render: r => {
     if (r.gap_pct == null) return '—';
     const cls = r.gap_pct > 0 ? 'pos' : 'neg';
@@ -378,7 +379,7 @@ function showDetail(row) {
       ['Live Trades', row.trades],
       ['Win Rate', row.trades > 0 ? row.win_rate.toFixed(0) + '%' : '—'],
       ['Trades/Woche', row.shadow_trades_week != null ? row.shadow_trades_week : '—'],
-      ['€/Trade', row.shadow_avg_trade != null ? (row.shadow_avg_trade>=0?'+':'') + row.shadow_avg_trade + '€' : '—'],
+      ['Ø Betrag/Trade', row.shadow_avg_trade != null ? row.shadow_avg_trade + '€' : '—'],
       ['€/Woche', row.pnl_per_week != null ? (row.pnl_per_week>=0?'+':'') + row.pnl_per_week + '€' : '—'],
       ['Gap zu OOS', gapTxt],
       ['Max. Verlustserie', row.max_consec_loss > 3 ? '⚠️ ' + row.max_consec_loss : row.max_consec_loss],
