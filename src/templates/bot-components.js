@@ -203,11 +203,13 @@ function renderStatus(d) {
     if (healthText) healthText.textContent = st.message || '🔒 Market closed — sync paused';
     if (healthTime) healthTime.textContent = '';
     bannerVisible = true;
-  } else if (st.health_age_seconds != null && st.health_age_seconds > 300) {
-    banner.className = 'bot-health-banner visible warn';
-    if (healthText) healthText.textContent = 'Data may be stale — last sync ' + Math.round(st.health_age_seconds / 60) + ' min ago';
-    bannerVisible = true;
   }
+  // (kein separates "Data may be stale"-Banner: FIX 2026-08-21)
+  // Die Früschheits-Bewertung gehört dem Status-Builder (is_healthy, max_age 20min):
+  // bei zu altem last_success setzt der Builder active=false → der "Bot inactive"-
+  // Branch oben (Zeile 191) zeigt den Grund ehrenhaft an. Eine zweite, eigene
+  // health_age-Schwelle hier führte nur zu einer irreitenden Dauerwarnung auf
+  // 15-min-Zyklus-Bots (Standort: align sync ~3min, Executor-Heartbeat ~15min).
   if (!bannerVisible) banner.className = 'bot-health-banner';
 }
 
