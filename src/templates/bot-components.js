@@ -516,6 +516,8 @@ function renderHistory(d) {
     html += '<td>' + dirBadge + '</td>';
     html += '<td>' + fmtPrice(t.entry_price || t.open_price || t.entry, sym) + '</td>';
     html += '<td>' + fmtPrice(t.close_price || t.exit_price || t.current_price, sym) + '</td>';
+    var histMargin = t.margin_eur;
+    html += '<td style="font-size:var(--text-xs)">' + (histMargin != null ? '€' + Number(histMargin).toFixed(2) : '—') + '</td>';
     html += '<td class="' + pnlClass(pnl) + '"><b>' + fmtPnl(pnl) + '</b></td>';
     html += '<td style="font-size:var(--text-xs)">' + dur + '</td>';
     html += '<td>' + fmtCloseReason(t.status, t.close_reason) + '</td>';
