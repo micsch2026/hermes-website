@@ -325,15 +325,6 @@ const shadowCols = [
     return `<span class="${cls}" style="font-weight:600">${r.equity.toFixed(0)}€</span> <span style="font-size:0.7rem;color:var(--dim)">${pct>=0?'+':''}${pct.toFixed(1)}%</span>`;
   }},
   {key:'net_pnl', label:'PnL', num: true, render: r => r.net_pnl !== 0 ? `<span class="${r.net_pnl>=0?'pos':'neg'}" style="font-weight:600">${r.net_pnl>=0?'+':''}${r.net_pnl.toFixed(2)}€</span>` : '—'},
-  {key:'margin_eur', label:'Margin', num: true, render: r => {
-    // Ø verwendete Margin über ALLE Trades + Auslastung in EINER Spalte
-    // (2026-08-24, User-Direktive)
-    const avgM = r.avg_margin_eur;
-    const avgU = r.avg_margin_utilization_pct;
-    if (avgM == null) return '—';
-    const cls = avgU >= 50 ? 'neg' : (avgU >= 20 ? '' : 'pos');
-    return `<span style="font-weight:600">${avgM.toFixed(0)}€</span> <span class="${cls}" style="font-size:0.7rem">${avgU.toFixed(1)}%</span>`;
-  }},
   {key:'trades', label:'Live Tr', num: true, render: r => r.trades > 0 ? r.trades : '—'},
   {key:'shadow_trades_week', label:'Tr/Wk', num: true, render: r => {
     if (r.shadow_trades_week != null) return `<span style="color:var(--blue)">${r.shadow_trades_week}</span>`;
@@ -462,12 +453,11 @@ function showDetail(row) {
     const rts = row.recent_trades || [];
     if (rts.length > 0) {
       html += `<h3 style="margin-top:1.2rem">📜 Shadow-Trades (${rts.length})</h3>`;
-      html += '<table class="sl4-table"><thead><tr><th>Exit (Berlin)</th><th>Symbol</th><th>Dir</th><th class="num">Entry</th><th class="num">Exit</th><th>Grund</th><th class="num">Dauer</th><th class="num">Margin</th><th class="num">PnL</th></tr></thead><tbody>';
+      html += '<table class="sl4-table"><thead><tr><th>Exit (Berlin)</th><th>Symbol</th><th>Dir</th><th class="num">Entry</th><th class="num">Exit</th><th>Grund</th><th class="num">Dauer</th><th class="num">PnL</th></tr></thead><tbody>';
       for (const t of rts) {
         const reason = ({sl_hit:'🛑 SL', tp_hit:'🎯 TP', timeout:'⏱ Timeout'})[t.exit_reason] || t.exit_reason;
         const cls = t.net_pnl >= 0 ? 'pos' : 'neg';
-        const tMargin = t.margin_eur != null ? t.margin_eur.toFixed(0) + '€' : '—';
-        html += `<tr><td>${fmtDT(t.exit_ts)}</td><td>${t.symbol}</td><td>${t.direction==='long'?'🟢 L':'🔴 S'}</td><td class="num">${t.entry}</td><td class="num">${t.exit}</td><td>${reason}</td><td class="num">${t.hold_hours}h</td><td class="num" style="font-size:0.75rem">${tMargin}</td><td class="num ${cls}" style="font-weight:600">${t.net_pnl>=0?'+':''}${t.net_pnl}€</td></tr>`;
+        html += `<tr><td>${fmtDT(t.exit_ts)}</td><td>${t.symbol}</td><td>${t.direction==='long'?'🟢 L':'🔴 S'}</td><td class="num">${t.entry}</td><td class="num">${t.exit}</td><td>${reason}</td><td class="num">${t.hold_hours}h</td><td class="num ${cls}" style="font-weight:600">${t.net_pnl>=0?'+':''}${t.net_pnl}€</td></tr>`;
       }
       html += '</tbody></table>';
     } else {
