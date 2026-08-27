@@ -1,0 +1,268 @@
+#!/usr/bin/env python3
+"""
+Portfolio / Pipeline-Aggregator für die "Gesamtübersicht" (v1).
+
+Konsolidiert die volle Pipeline Lab -> Shadow -> Demo-Bot -> Live aus vorhandenen Quellen:
+  - catalog.json            (Strategy-Lab: Backtest-Kennzahlen pro validierter Strategie)
+  - shadow_portfolio.json   (sie generierte Seite: Shadow + Deployed-Mirror je Strategie)
+  - deploy_registry.json    (zentrale Lab->Shadow->Bot-Registry: Bot-Mapping + Konten)
+  - botN_trades.jsonl       (echte Bot-Trades, für Registry-vs-Real Divergenz-Check)
+
+Schreibt: /root/.hermes/site/api/strategy-lab/portfolio.json und api/portfolio.json (identisch).
+
+Der "Live-Reife-Score" (0-100) ist ADVISORY (Vorschlag), kein automatisches Deploy-Urteil.
+Es wird NIEMALS etwas deployed — nur vorgeschlagen.
+"""
+import json, os, sys
+from collections import defaultdict
+from datetime import datetime, timezone
+
+SITE_API = "/root/.hermes/site/api"
+
+def norm(x):
+    return str(x or "").strip().lstrip("#")
+
+def load(p, default=None):
+    try:
+        with open(p) as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"  [warn] {p}: {e}", file=sys.stderr)
+        return default
+
+def load_bot_trades():
+    out = {}
+    for n in range(1, 6):
+        p = f"/root/fx-bot/data/bot{n}_trades.jsonl"
+        rows = []
+        try:
+            with open(p) as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        try:
+                            rows.append(json.loads(line))
+                        except Exception:
+                            pass
+        except FileNotFoundError:
+            pass
+        ctr = defaultdict(int)
+        for r in rows:
+            ctr[norm(r.get("strategy_id"))] += 1
+        open_n = sum(1 for r in rows if str(r.get("status")) == "open")
+        last_sid = norm(rows[-1].get("strategy_id")) if rows else None
+        out[f"bot{n}"] = {
+            "count": len(rows),
+            "strategy_ids": dict(ctr),
+            "last_strategy": last_sid,
+            "open": open_n,
+        }
+    return out
+
+def compute_ready(lab, shadow, deployed, is_deployed, parity):
+    """Advisory Live-Reife-Score 0-100 mit klar deklarierten Checks."""
+    score = 0
+    checks = []
+    # 1. Lab-Backtest-Qualität
+    lab_score = lab.get("score") if lab else None
+    if lab_score is not None and lab_score >= 50:
+        score += 20
+        checks.append({"ok": True, "label": "Lab-Score ≥ 50"})
+    else:
+        checks.append({"ok": False, "label": f"Lab-Score {'%s' % lab_score if lab_score is not None else 'n.a.'} < 50"})
+    # 2. Shadow-Live (Forward-Test)
+    tr = (shadow.get("trades") or 0) if shadow else 0
+    eq = (shadow.get("equity") or 1000) if shadow else 1000
+    if tr >= 5 and eq > 1000:
+        score += 30
+        checks.append({"ok": True, "label": f"Shadow ≥5 Trades & positiv ({eq:.0f}€)"})
+    else:
+        checks.append({"ok": False, "label": f"Shadow {'%d' % tr}-T, Equity {eq:.0f}€ (nicht reif)"})
+    # 3. Demo-Bot deployed + Registry-Parität
+    if parity and is_deployed:
+        score += 30
+        checks.append({"ok": True, "label": "Demo-Bot & Registry-abgeglichen"})
+        if deployed and deployed.get("trades", 0) >= 3:
+            score += 10
+            checks.append({"ok": True, "label": "Bot ≥3 Trades"})
+        else:
+            checks.append({"ok": False, "label": "Bot <3 Trades"})
+    else:
+        checks.append({"ok": False, "label": "Kein abgeglichener Demo-Bot"})
+    # 4. Win-Rate
+    wr = shadow.get("wr") if shadow else None
+    if wr is not None and wr >= 50:
+        score += 10
+        checks.append({"ok": True, "label": "WR ≥ 50%"})
+    else:
+        checks.append({"ok": False, "label": f"WR {'%s' % wr} < 50%"})
+    # 5. Gap (Shadow besser als OOS-Referenz)
+    gap = shadow.get("gap_pct") if shadow else None
+    if gap is not None and gap >= 0:
+        score += 10
+        checks.append({"ok": True, "label": "Gap ≥ 0"})
+    else:
+        checks.append({"ok": False, "label": f"Gap {'%s' % gap} < 0"})
+    return {"score": min(100, score), "checks": checks, "is_ready": score >= 80}
+
+def main():
+    catalog = load(f"{SITE_API}/strategy-lab/catalog.json") or {}
+    shadow_pf = load(f"{SITE_API}/strategy-lab/shadow_portfolio.json") or {}
+    deploy_reg = load("/root/fx-bot/config/deploy_registry.json") or {}
+    selected = load("/root/fx-bot/data/shadow/selected_ids.json") or []
+
+    deploy_list = catalog.get("deploy", [])
+    catalog_deploy_by_id = {norm(s.get("id")): s for s in deploy_list}
+
+    # Bot-Mapping aus Registry
+    bots = deploy_reg.get("bots", {})                 # {botN: {...}}
+    shadow_mapping = deploy_reg.get("shadow_mapping", {})   # {"194": {bot:"bot4"...}}
+    strat_to_bot = {norm(sid): m.get("bot") for sid, m in shadow_mapping.items()}
+
+    # Shadow-Portfolio: pure Einträge + Mirrors
+    shadow_by_id = {}
+    mirrors_by_sid = defaultdict(list)
+    for s in shadow_pf.get("strategies", []):
+        raw = s.get("id")
+        if raw is None:
+            continue
+        key = str(raw)
+        if "@" in key:
+            base, _, bot = key.partition("@")
+            mirrors_by_sid[norm(base)].append({**s, "_bot": bot})
+        else:
+            shadow_by_id[norm(key)] = s
+    for v in mirrors_by_sid.values():
+        v.sort(key=lambda m: m.get("_bot") or "")
+
+    # Echte Bot-Trades
+    bot_trades = load_bot_trades()
+
+    # Union der Strategie-IDs
+    all_ids = set(shadow_by_id) | set(mirrors_by_sid) | {norm(x) for x in selected} | set(catalog_deploy_by_id)
+
+    strategies = []
+    for sid in sorted(all_ids, key=lambda x: (len(x), x)):
+        ns = norm(sid)
+        shadow_entry = shadow_by_id.get(ns) or {}
+        mirror_list = mirrors_by_sid.get(ns, [])
+        lab_row = catalog_deploy_by_id.get(ns)
+        assigned_bot = strat_to_bot.get(ns)
+        is_deployed = bool(mirror_list)
+        is_selected = ns in {norm(x) for x in selected}
+
+        # Divergenz-Check: letzter Trade des zugewiesenen Bots
+        live_strat = None
+        divergence = False
+        if assigned_bot and bot_trades.get(assigned_bot):
+            bt = bot_trades[assigned_bot]
+            live_strat = bt["last_strategy"]
+            if live_strat:
+                divergence = (live_strat != ns)
+
+        # Lab-Metrik
+        lab = None
+        if lab_row:
+            lab = {
+                "pf": lab_row.get("pf"),
+                "trades": lab_row.get("trades"),
+                "pnl_month": lab_row.get("pnl_per_month"),
+                "tier": lab_row.get("tier"),
+                "score": lab_row.get("score"),
+                "pass_rate": lab_row.get("pass_rate"),
+                "fire_test": lab_row.get("fire_test"),
+                "gates": lab_row.get("gates"),
+                "timeframe": lab_row.get("timeframe"),
+                "assets": lab_row.get("assets") or [],
+            }
+        else:
+            # Fallback: aus Shadow (oo_*)
+            lab = {
+                "pf": shadow_entry.get("oos_pf"),
+                "trades": shadow_entry.get("oos_trades"),
+                "pnl_month": shadow_entry.get("pnl_per_month"),
+                "tier": None, "score": None, "pass_rate": None,
+                "fire_test": None, "gates": None,
+                "timeframe": shadow_entry.get("timeframe"),
+                "assets": shadow_entry.get("symbols") or [],
+            }
+
+        shadow_metric = {
+            "equity": shadow_entry.get("equity"),
+            "pnl": shadow_entry.get("net_pnl"),
+            "trades": shadow_entry.get("trades"),
+            "wr": shadow_entry.get("win_rate"),
+            "pnl_per_week": shadow_entry.get("pnl_per_week"),
+            "days": shadow_entry.get("days_active"),
+            "symbols": shadow_entry.get("symbols") or (lab.get("assets") if lab else []),
+            "gap_pct": shadow_entry.get("gap_pct"),
+        }
+
+        deployed_metric = None
+        if mirror_list:
+            m = mirror_list[0]
+            deployed_metric = {
+                "equity": m.get("equity"),
+                "pnl": m.get("net_pnl"),
+                "trades": m.get("trades"),
+                "wr": m.get("win_rate"),
+                "btn_per_week": m.get("pnl_per_week"),
+                "days": m.get("days_active"),
+                "bot": m.get("_bot"),
+            }
+
+        flags = {
+            "has_shadow": bool(shadow_entry or mirror_list),
+            "has_demo_bot": bool(mirror_list),
+            "parity": is_deployed and assigned_bot and not divergence,
+            "selected_shadow": is_selected,
+        }
+
+        ready = compute_ready(lab, shadow_metric, deployed_metric, is_deployed, flags["parity"])
+
+        # Assets/Strategie-Namen
+        name = lab_row.get("name") if lab_row else f"#{ns}"
+        assets = (lab.get("assets") if lab else []) or (shadow_metric.get("symbols") or [])
+
+        strategies.append({
+            "id": ns,
+            "name": name,
+            "assets": assets,
+            "timeframe": (lab or {}).get("timeframe"),
+            "selected_shadow": is_selected,
+            "lab": lab,
+            "shadow": shadow_metric,
+            "bot": {
+                "assigned": assigned_bot,
+                "deployed": is_deployed,
+                "mirror": deployed_metric,
+                "live_strategy": live_strat,
+                "divergence": divergence,
+            },
+            "flags": flags,
+            "ready": ready,
+        })
+
+    # Sort: deployed first, dann score
+    strategies.sort(key=lambda x: (0 if x["flags"]["has_demo_bot"] else 1, -x["ready"]["score"]))
+
+    payload = {
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_by": "portfolio_builder v1 (advisory pipeline uebersicht)",
+        "_note": "Advisory -- nur Vorschlaege, kein automatisches Deploy.",
+        "bots": {name: {"account_id": b.get("account_id"), "demo": b.get("demo", True)} for name, b in bots.items()},
+        "strategy_count": len(strategies),
+        "strategies": strategies,
+    }
+
+    outs = [f"{SITE_API}/strategy-lab/portfolio.json", f"{SITE_API}/portfolio.json"]
+    for out in outs:
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        with open(out, "w") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
+    print(f"Fertig: {len(strategies)} Strategien -> {outs[0]}")
+    print(f"  Demo-Bot belegt: {sum(1 for s in strategies if s['flags']['has_demo_bot'])}")
+    print(f"  Divergenzen (Registry vs. real): {sum(1 for s in strategies if s['bot'].get('divergence'))}")
+
+if __name__ == "__main__":
+    main()

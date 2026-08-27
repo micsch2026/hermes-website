@@ -1,0 +1,298 @@
+<!--TITLE:Portfolio-Übersicht — Hermes-->
+<!--HEAD-->
+<style>
+  .pf-body { max-width: 1200px; }
+  .pf-header h1 { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--s-1); }
+  .pf-header p { color: var(--c-text-muted); font-size: var(--text-sm); margin: 0 0 var(--s-5); }
+
+  /* Summary strip */
+  .pf-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-6); }
+  .pf-stat { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-4) var(--s-5); text-align: center; }
+  .pf-stat .pf-stat-value { font-size: var(--text-2xl); font-weight: 700; }
+  .pf-stat .pf-stat-label { font-size: var(--text-xs); color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .pf-stat.warn .pf-stat-value { color: var(--c-warn); }
+  .pf-stat.danger .pf-stat-value { color: var(--c-danger); }
+  .pf-stat.ok .pf-stat-value { color: var(--c-success); }
+
+  /* Toolbar */
+  .pf-toolbar { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-bottom: var(--s-5); align-items: center; }
+  .pf-filters { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .pf-filter-btn { padding: var(--s-2) var(--s-3); border: 1px solid var(--c-border); border-radius: var(--r-lg); background: transparent; color: var(--c-text-muted); font-size: var(--text-sm); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .pf-filter-btn:hover { border-color: var(--c-accent); color: var(--c-text); }
+  .pf-filter-btn.active { background: var(--c-accent); border-color: var(--c-accent); color: #fff; }
+  .pf-filter-btn .pf-count { margin-left: 4px; opacity: 0.7; font-size: var(--text-xs); }
+
+  /* Pipeline stage legend */
+  .pf-legend { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-5); font-size: var(--text-xs); color: var(--c-text-muted); align-items: center; }
+  .pf-stage-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: var(--r-lg); border: 1px solid var(--c-border); background: var(--c-surface); }
+  .pf-stage-chip.on { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.3); color: var(--c-success); font-weight: 600; }
+  .pf-arrow { color: var(--c-text-muted); }
+
+  .pf-legend-note { font-size: var(--text-xs); color: var(--c-text-muted); }
+
+  /* Cards */
+  .pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--s-4); }
+  .pf-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-5); display: flex; flex-direction: column; position: relative; }
+  .pf-card.pf-ready { border-left: 4px solid var(--c-success); }
+  .pf-card.pf-bot { border-left: 4px solid var(--c-accent); }
+  .pf-card.pf-warn { border-left: 4px solid var(--c-warn); }
+
+  .pf-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-2); margin-bottom: var(--s-3); }
+  .pf-card-id { font-weight: 800; font-size: var(--text-lg); }
+  .pf-card-name { font-size: var(--text-sm); color: var(--c-text-muted); line-height: 1.3; margin-top: 2px; }
+  .pf-ready-badge { font-size: var(--text-xs); font-weight: 700; padding: 3px 10px; border-radius: var(--r-lg); white-space: nowrap; flex-shrink: 0; }
+  /* readiness color tiers */
+  .pf-r100 { background: rgba(34,197,94,.18); color: #22c55e; }
+  .pf-r80  { background: rgba(34,197,94,.12); color: var(--c-success); }
+  .pf-r60  { background: rgba(250,204,21,.15); color: var(--c-warn); }
+  .pf-r40  { background: rgba(250,204,21,.10); color: var(--c-warn); }
+  .pf-r20  { background: rgba(107,114,128,.15); color: var(--c-text-muted); }
+  .pf-r0   { background: rgba(107,114,128,.10); color: var(--c-text-muted); }
+
+  .pf-assets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--s-3); }
+  .pf-asset-chip { font-size: var(--text-xs); padding: 1px 8px; border-radius: var(--r-lg); background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-muted); }
+
+  /* Pipeline stepper inside card */
+  .pf-stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-bottom: var(--s-3); border: 1px solid var(--c-border); border-radius: var(--r-lg); overflow: hidden; }
+  .pf-step { text-align: center; padding: var(--s-2) 2px; font-size: 10px; background: rgba(107,114,128,.06); color: var(--c-text-muted); }
+  .pf-step .pf-step-icon { font-size: 14px; margin-bottom: 2px; }
+  .pf-step .pf-step-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .pf-step.on { background: rgba(34,197,94,.13); color: var(--c-success); }
+  .pf-step.not .pf-step-icon { opacity: .35; }
+  .pf-step.bot { background: rgba(100,149,237,.15); color: #6495ed; }
+  .pf-step.live { background: rgba(34,197,94,.18); color: #22c55e; }
+  .pf-step.div { background: rgba(239,68,68,.15); color: var(--c-danger); }
+
+  /* Metric rows */
+  .pf-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2) var(--s-4); font-size: var(--text-xs); color: var(--c-text-muted); margin-bottom: var(--s-3); }
+  .pf-metrics .pf-m-val { color: var(--c-text); font-weight: 600; float: right; }
+  .pf-metrics .pf-m-pos { color: var(--c-success); }
+  .pf-metrics .pf-m-neg { color: var(--c-danger); }
+
+  /* Divergence banner */
+  .pf-divergence { background: rgba(239,68,68,.10); border: 1px solid rgba(239,68,68,.35); color: var(--c-danger); border-radius: var(--r-lg); padding: var(--s-2) var(--s-3); font-size: var(--text-xs); margin-bottom: var(--s-3); }
+
+  /* Checks (Live-Reife) */
+  .pf-checks { border-top: 1px solid var(--c-border); padding-top: var(--s-3); }
+  .pf-checks-title { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--c-text-muted); margin-bottom: var(--s-2); }
+  .pf-check { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); padding: 1px 0; }
+  .pf-check .pf-check-icon { font-size: 12px; }
+  .pf-check.ok { color: var(--c-text); }
+  .pf-check.no { color: var(--c-text-muted); }
+
+  .pf-empty { text-align: center; padding: var(--s-10); color: var(--c-text-muted); grid-column: 1 / -1; }
+  .pf-loading { text-align: center; padding: var(--s-10); color: var(--c-text-muted); }
+  .pf-updated { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: var(--s-5); }
+</style>
+<!--/HEAD-->
+
+<!--BODY-->
+<div class="container pf-body">
+  <div class="pf-header">
+    <h1>Portfolio-Übersicht — Pipeline Lab → Shadow → Demo-Bot → Live</h1>
+    <p>Aggregierte Gesamtübersicht aller Strategien über die volle Pipeline. Der Live-Reife-Score ist <strong>advisory</strong> (Vorschlag), kein automatisches Deploy.</p>
+  </div>
+
+  <div class="pf-summary" id="pf-summary"></div>
+
+  <div class="pf-toolbar">
+    <div class="pf-filters" id="pf-filters"></div>
+  </div>
+
+  <div class="pf-legend">
+    <span class="pf-stage-chip on">❌→ Lab </span><span class="pf-arrow">→</span>
+    <span class="pf-stage-chip on">👻 Shadow</span><span class="pf-arrow">→</span>
+    <span class="pf-stage-chip" id="pf-leg-demo">🤖 Demo-Bot</span><span class="pf-arrow">→</span>
+    <span class="pf-stage-chip" id="pf-leg-live">💶 Live</span>
+    <span class="pf-legend-note"> ·  Score = Live-Reife-Vorschlag (0–100)</span>
+  </div>
+
+  <div class="pf-grid" id="pf-grid"><div class="pf-loading">Lade Portfolio-Daten…</div></div>
+
+  <div class="pf-updated" id="pf-updated"></div>
+</div>
+
+<script>
+(function(){
+  var state = { data:null, filter:'all' };
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtNum(v,dec){ if(v==null || isNaN(v)) return '—'; dec=dec||0; var s=Number(v).toFixed(dec); var neg=s.charAt(0)==='-'; return (neg?'-':'')+(neg?s.slice(1):s).replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  function fmtEuro(v){ if(v==null || isNaN(v)) return '—'; var s=Number(v).toFixed(2); return (v>0?'+':'') + s.replace('.',','); }
+  function fmtPct(v){ if(v==null || isNaN(v)) return '—'; return Number(v).toFixed(1) + '%'; }
+
+  function safeFetch(path){
+    var url = new URL(path, window.location.origin);
+    return fetch(url.href);
+  }
+
+  function stageClass(s){
+    // determines dominant border style
+    if(s.ready && s.ready.is_ready) return 'pf-ready';
+    if(s.flags.has_demo_bot) return 'pf-bot';
+    return 'pf-warn';
+  }
+  function readyClass(sc){
+    if(sc>=100) return 'pf-r100';
+    if(sc>=80) return 'pf-r80';
+    if(sc>=60) return 'pf-r60';
+    if(sc>=40) return 'pf-r40';
+    if(sc>=20) return 'pf-r20';
+    return 'pf-r0';
+  }
+
+  function buildStepper(s){
+    // 4 stages: Lab, Shadow, Demo-Bot, Live
+    var lab = s.lab && (s.lab.trades>0 || (s.lab.pf!=null));
+    var sh = s.shadow && s.shadow.trades>0;
+    var dep = s.flags.has_demo_bot;
+    var div = s.bot && s.bot.divergence;
+    var live = s.ready && s.ready.is_ready;
+
+    var labCls = lab?'on':'not';
+    var shCls = sh?'on':'not';
+    var depCls = dep?(div?'div':'bot'):'not';
+    var liveCls = live?'live':'not';
+
+    return '<div class="pf-stepper">'
+      + '<div class="pf-step '+labCls+'"><div class="pf-step-icon">🧪</div><div class="pf-step-label">Lab</div></div>'
+      + '<div class="pf-step '+shCls+'"><div class="pf-step-icon">👻</div><div class="pf-step-label">Shadow</div></div>'
+      + '<div class="pf-step '+depCls+'"><div class="pf-step-icon">🤖</div><div class="pf-step-label">'+(div?'⚠ Divergenz':'Demo')+'</div></div>'
+      + '<div class="pf-step '+liveCls+'"><div class="pf-step-icon">💶</div><div class="pf-step-label">Live-Bereit</div></div>'
+      + '</div>';
+  }
+
+  function metric(label, val, cls){
+    var c = cls||''; var v = val==null?'—':val;
+    return '<div><span>'+esc(label)+'</span><span class="pf-m-val '+c+'">'+v+'</span></div>';
+  }
+
+  function buildChecks(s){
+    var checks = (s.ready && s.ready.checks)||[];
+    if(!checks.length) return '';
+    var html = '<div class="pf-checks"><div class="pf-checks-title">Live-Reife-Checks</div>';
+    checks.forEach(function(c){
+      html += '<div class="pf-check '+(c.ok?'ok':'no')+'"><span class="pf-check-icon">'+(c.ok?'✅':'❌')+'</span><span>'+esc(c.label)+'</span></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function buildCard(s){
+    var sc = (s.ready&&s.ready.score)||0;
+    var sh = s.shadow||{};
+    var lab = s.lab||{};
+    var bot = s.bot||{};
+    var assets = (s.assets||[]).map(function(a){return '<span class="pf-asset-chip">'+esc(a)+'</span>';}).join('');
+
+    var html = '<div class="pf-card '+stageClass(s)+'">';
+    html += '<div class="pf-card-top">'
+      + '<div>'
+      + '<div class="pf-card-id">#'+esc(s.id)+'</div>'
+      + '<div class="pf-card-name">'+esc(s.name||'')+'</div>'
+      + '</div>'
+      + '<div class="pf-ready-badge '+readyClass(sc)+'">Score '+sc+'/100</div>'
+      + '</div>';
+
+    html += '<div class="pf-assets">'+assets+'</div>';
+
+    html += buildStepper(s);
+
+    if(bot && bot.divergence && bot.assigned){
+      html += '<div class="pf-divergence">⚠ Registry sagt <strong>'+esc(bot.assigned)+'</strong> = #'+esc(s.id)+', aber dieser Bot tradete zuletzt #'+esc(bot.live_strategy||'?')+'. Bitte Config-Drift prüfen.</div>';
+    }
+
+    var m = '';
+    m += metric('Lab PF', lab.pf);
+    m += metric('€/Monat (Lab)', lab.pnl_month!=null?fmtEuro(lab.pnl_month):'—');
+    m += metric('Shadow Trades', sh.trades);
+    m += metric('Shadow Equity', sh.equity!=null?fmtEuro(sh.equity)+'€':'—', sh.equity>1000?'pf-m-pos':(sh.equity!=null&&sh.equity<1000?'pf-m-neg':''));
+    m += metric('WR', fmtPct(sh.wr));
+    m += metric('€/Woche', sh.pnl_per_week!=null?fmtEuro(sh.pnl_per_week)+'€':'—', sh.pnl_per_week>0?'pf-m-pos':(sh.pnl_per_week<0?'pf-m-neg':''));
+    m += metric('Bot (Demo)', bot.assigned?esc(bot.assigned):'—', bot.assigned?'pf-m-pos':'');
+    if(bot.mirror){
+      m += metric('Bot Equity', bot.mirror.equity!=null?fmtEuro(bot.mirror.equity)+'€':'—', bot.mirror.equity>1000?'pf-m-pos':'');
+      m += metric('Bot Trades', bot.mirror.trades);
+    }
+    html += '<div class="pf-metrics">'+m+'</div>';
+
+    html += buildChecks(s);
+    html += '</div>';
+    return html;
+  }
+
+  function matches(s){
+    switch(state.filter){
+      case 'all': return true;
+      case 'bot': return s.flags.has_demo_bot;
+      case 'ready': return s.ready && s.ready.is_ready;
+      case 'divergence': return s.bot && s.bot.divergence;
+      case 'nobot': return !s.flags.has_demo_bot && s.flags.has_shadow;
+      default: return true;
+    }
+  }
+
+  function render(){
+    var d = state.data; if(!d) return;
+    var list = d.strategies||[];
+
+    // summary
+    var nBot = list.filter(s=>s.flags.has_demo_bot).length;
+    var nReady = list.filter(s=>s.ready&&s.ready.is_ready).length;
+    var nDiv = list.filter(s=>s.bot&&s.bot.divergence).length;
+    var nSh = list.filter(s=>s.flags.has_shadow).length;
+    var summary = ''
+      + '<div class="pf-stat"><div class="pf-stat-value">'+list.length+'</div><div class="pf-stat-label">Strategien</div></div>'
+      + '<div class="pf-stat"><div class="pf-stat-value">'+nSh+'</div><div class="pf-stat-label">Mit Shadow</div></div>'
+      + '<div class="pf-stat '+(nBot?'ok':'')+'"><div class="pf-stat-value">'+nBot+'</div><div class="pf-stat-label">Demo-Bots</div></div>'
+      + '<div class="pf-stat '+(nReady?'ok':'')+'"><div class="pf-stat-value">'+nReady+'</div><div class="pf-stat-label">Live-reif</div></div>'
+      + '<div class="pf-stat '+(nDiv?'danger':'')+'"><div class="pf-stat-value">'+nDiv+'</div><div class="pf-stat-label">Divergenzen</div></div>';
+    document.getElementById('pf-summary').innerHTML = summary;
+
+    // filters
+    var filters = [['all','Alle',list.length],['ready','💶 Live-reif',nReady],['bot','🤖 Mit Demo-Bot',nBot],['nobot','👻 Nur Shadow',list.filter(s=>!s.flags.has_demo_bot&&s.flags.has_shadow).length],['divergence','⚠ Divergenzen',nDiv]];
+    var fhtml = '<div class="pf-filters">';
+    filters.forEach(function(f){
+      fhtml += '<button class="pf-filter-btn'+(state.filter===f[0]?' active':'')+'" data-f="'+f[0]+'">'+f[1]+' <span class="pf-count">'+f[2]+'</span></button>';
+    });
+    fhtml += '</div>';
+    document.getElementById('pf-filters').innerHTML = fhtml;
+
+    // legend toggle
+    document.getElementById('pf-leg-demo').className = 'pf-stage-chip'+(nBot?' on':'');
+    document.getElementById('pf-leg-live').className = 'pf-stage-chip'+(nReady?' on':'');
+
+    // update timestamp
+    var up = d.updated_at;
+    if(up){
+      try{
+        var ts = /^\d{4}-\d{2}-\d{2}T/.test(up)? new Date(up): new Date(up+'Z');
+        document.getElementById('pf-updated').textContent = 'Datenstand: '+ts.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'})+' · von portfolio_builder generiert';
+      }catch(e){}
+    }
+
+    var filtered = list.filter(matches);
+    var grid = document.getElementById('pf-grid');
+    if(!filtered.length){
+      grid.innerHTML = '<div class="pf-empty">Keine Strategien für diesen Filter.</div>';
+    } else {
+      grid.innerHTML = filtered.map(buildCard).join('');
+    }
+  }
+
+  function bindFilters(){
+    document.getElementById('pf-filters').addEventListener('click', function(e){
+      var btn = e.target.closest('.pf-filter-btn');
+      if(!btn) return;
+      state.filter = btn.getAttribute('data-f');
+      render();
+    });
+  }
+
+  safeFetch('/api/portfolio.json')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ state.data=d; render(); bindFilters(); })
+    .catch(function(e){ document.getElementById('pf-grid').innerHTML='<div class="pf-empty">⚠ Portfolio-Daten konnten nicht geladen werden (CORS/Basic-Auth?). '+esc(e.message)+'</div>'; });
+})();
+</script>
+<!--/BODY-->
