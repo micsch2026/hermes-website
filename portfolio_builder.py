@@ -138,6 +138,124 @@ def compute_ready(lab, shadow, deployed, is_deployed, parity):
         checks.append({"ok": False, "label": f"Gap {'%s' % gap} < 0"})
     return {"score": min(100, score), "checks": checks, "is_ready": score >= 80}
 
+def compute_bot_rec(shadow, lab, is_deployed):
+    """🚀 Bot-Eignung (0-100) — bewertet eine Shadow-Strategie rein anhand ihrer
+    Forward-Test-Qualität, UNABHÄNGIG davon ob schon ein Bot existiert.
+    So kann man reine Shadow-Kandidaten sinnvoll für den nächsten Bot-Slot vergleichen.
+    Vergleichbar mit compute_ready, aber ohne 'Bot existiert'-Punkte."""
+    score = 0
+    checks = []
+    if not shadow or shadow.get("trades") is None:
+        return {"score": 0, "level": "niedrig", "checks": [{"ok": False, "label": "Noch keine Shadow-Trades"}], "hint": "Erst Handel im Shadow abwarten."}
+    tr = shadow.get("trades") or 0
+    eq = shadow.get("equity") or 1000
+    wr = shadow.get("wr")
+    wpw = shadow.get("pnl_per_week")
+    gap = shadow.get("gap_pct")
+    oos_pf = shadow.get("oos_pf")
+    # 1. Shadow-Trades + Profitabilität (Forward-Test)
+    if tr >= 5 and eq > 1000:
+        score += 35
+        checks.append({"ok": True, "label": f"≥5 Shadow-Trades & positiv ({eq:.0f}€)"})
+    elif tr >= 1:
+        checks.append({"ok": False, "label": f"Nur {tr} Trades / Equity {eq:.0f}€"})
+    else:
+        checks.append({"ok": False, "label": "Keine Shadow-Trades"})
+    # 2. Win-Rate
+    if wr is not None and wr >= 50:
+        score += 25
+        checks.append({"ok": True, "label": f"WR ≥ 50% ({wr:.0f}%)"})
+    else:
+        checks.append({"ok": False, "label": f"WR {'%s' % wr if wr is not None else 'n.a.'} < 50%"})
+    # 3. €/Woche (Frequency × Größe)
+    if wpw is not None and wpw >= 10:
+        score += 20
+        checks.append({"ok": True, "label": f"€/Woche ≥ 10 ({wpw:.0f}€)"})
+    elif wpw is not None and wpw > 0:
+        score += 10
+        checks.append({"ok": True, "label": f"€/Woche positiv ({wpw:.0f}€)"})
+    else:
+        checks.append({"ok": False, "label": f"€/Woche {'%s' % wpw if wpw is not None else 'n.a.'} nicht positiv"})
+    # 4. Lab-Backtest (OOS PF)
+    if oos_pf is not None and oos_pf >= 1.2:
+        score += 10
+        checks.append({"ok": True, "label": f"OOS PF ≥ 1.2 ({oos_pf:.2f})"})
+    else:
+        checks.append({"ok": False, "label": f"OOS PF {'%s' % oos_pf if oos_pf is not None else 'n.a.'}"})
+    # 5. Gap (Shadow hält OOS-Versprechen)
+    if gap is not None and gap >= 0:
+        score += 10
+        checks.append({"ok": True, "label": "Gap ≥ 0 (kein Abfall)"})
+    else:
+        checks.append({"ok": False, "label": f"Gap {'%s' % gap if gap is not None else 'n.a.'}"})
+
+    score = min(100, score)
+    level = "hoch" if score >= 70 else ("mittel" if score >= 45 else "niedrig")
+    hint = ""
+    if is_deployed:
+        hint = "Läuft bereits auf einem Demo-Bot."
+    elif level == "hoch":
+        hint = "Starker Kandidat für einen freien Bot-Slot."
+    elif level == "mittel":
+        hint = "Solide — mehr Shadow-Trades abwarten."
+    else:
+        hint = "Noch nicht reif — erst Shadow weiterlaufen lassen."
+    return {"score": score, "level": level, "checks": checks, "hint": hint, "already_deployed": is_deployed}
+
+def compute_live_rec(shadow, deployed, mirror, is_deployed, parity):
+    """💳 Live-Bereitschaft (0-100) — bewertet NUR bereits deployed Demo-Bots auf ihre
+    Eignung für Echtgeld. Strenger als bot_rec: braucht längeren Demo-Test-Record,
+    Parität (Shadow ↔ Bot) und keine Konsistenz-Lücken. Kein einzelner Faktor reicht."""
+    if not is_deployed:
+        return {"score": 0, "level": "kein Bot", "checks": [{"ok": False, "label": "Kein Demo-Bot deployed"}], "hint": "Erst auf Demo testen."}
+    score = 0
+    checks = []
+    # 1. Registry-Parität (Bot tradet wirklich das erlaubte Programm)
+    if parity:
+        score += 20
+        checks.append({"ok": True, "label": "Demo ↔ Registry abgeglichen (kein Drift)"})
+    else:
+        checks.append({"ok": False, "label": "Config-Drift: Bot ≠ Registry!"})
+        return {"score": 0, "level": "hochrisiko", "checks": checks, "hint": "Bot weicht von Registry ab — erst Drift beheben, NICHT auf Echtgeld."}
+    # 2. Demo-Test-Record (Trades + Equity)
+    m = mirror or {}
+    m_tr = m.get("trades") or 0
+    m_eq = m.get("equity") or 0
+    if m_tr >= 5 and m_eq > 1000:
+        score += 30
+        checks.append({"ok": True, "label": f"Demo ≥5 Trades & positiv ({m_eq:.0f}€)"})
+    else:
+        checks.append({"ok": False, "label": f"Demo nur {m_tr} Trades / {m_eq:.0f}€"})
+    # 3. Shadow-Stabilität (Forward, unterlegt)
+    s_tr = (shadow.get("trades") or 0) if shadow else 0
+    s_eq = (shadow.get("equity") or 1000) if shadow else 1000
+    if s_tr >= 10 and s_eq > 1000:
+        score += 25
+        checks.append({"ok": True, "label": f"Shadow ≥10 Trades & stabil ({s_eq:.0f}€)"})
+    else:
+        checks.append({"ok": False, "label": f"Shadow {s_tr} Trades / {s_eq:.0f}€"})
+    # 4. Win-Rate
+    wr = mirror.get("wr") if mirror else None
+    if wr is not None and wr >= 50:
+        score += 15
+        checks.append({"ok": True, "label": f"WR ≥ 50% ({wr:.0f}%)"})
+    else:
+        checks.append({"ok": False, "label": f"WR {'%s' % wr if wr is not None else 'n.a.'}"})
+    # 5. Lab-Backtest + Gap (hold Versprechen)
+    oos_pf = shadow.get("oos_pf") if shadow else None
+    gap = shadow.get("gap_pct") if shadow else None
+    if oos_pf is not None and oos_pf >= 1.2:
+        score += 10
+        checks.append({"ok": True, "label": f"OOS PF ≥ 1.2 ({oos_pf:.2f})"})
+    else:
+        checks.append({"ok": False, "label": f"OOS PF {'%s' % oos_pf if oos_pf is not None else 'n.a.'}"})
+    score = min(100, score)
+    level = "bereit" if score >= 80 else ("nah_ran" if score >= 60 else "abwarten")
+    hint = ("Starker Kandidat für Echtgeld." if level == "bereit"
+            else ("Fast bereit — noch etwas Demo-Track aufbauen." if level == "nah_ran"
+            else "Noch nicht: mehr Demo- oder Shadow-Konsistenz abwarten."))
+    return {"score": score, "level": level, "checks": checks, "hint": hint}
+
 def main():
     catalog = load(f"{SITE_API}/strategy-lab/catalog.json") or {}
     shadow_pf = load(f"{SITE_API}/strategy-lab/shadow_portfolio.json") or {}
@@ -231,6 +349,7 @@ def main():
             "days": shadow_entry.get("days_active"),
             "symbols": shadow_entry.get("symbols") or (lab.get("assets") if lab else []),
             "gap_pct": shadow_entry.get("gap_pct"),
+            "oos_pf": shadow_entry.get("oos_pf"),
         }
 
         deployed_metric = None
@@ -241,7 +360,7 @@ def main():
                 "pnl": m.get("net_pnl"),
                 "trades": m.get("trades"),
                 "wr": m.get("win_rate"),
-                "btn_per_week": m.get("pnl_per_week"),
+                "pnl_per_week": m.get("pnl_per_week"),
                 "days": m.get("days_active"),
                 "bot": m.get("_bot"),
             }
@@ -254,6 +373,10 @@ def main():
         }
 
         ready = compute_ready(lab, shadow_metric, deployed_metric, is_deployed, flags["parity"])
+        # 🚀 Bot-Eignung (individuell, unabhängig von bereits existierendem Bot)
+        bot_rec = compute_bot_rec(shadow_metric, lab, is_deployed)
+        # 💳 Live-Bereitschaft (nur für deployed Demo-Bots: Echtgeld-Eignung)
+        live_rec = compute_live_rec(shadow_metric, deployed_metric, deployed_metric, is_deployed, flags["parity"])
 
         # Assets/Strategie-Namen
         name = lab_row.get("name") if lab_row else f"#{ns}"
@@ -282,6 +405,8 @@ def main():
             },
             "flags": flags,
             "ready": ready,
+            "bot_rec": bot_rec,
+            "live_rec": live_rec,
             "desc": desc,
         })
 
