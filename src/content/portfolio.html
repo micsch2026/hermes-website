@@ -80,6 +80,16 @@
   .pf-check.ok { color: var(--c-text); }
   .pf-check.no { color: var(--c-text-muted); }
 
+  /* Description block (plakativ) */
+  .pf-desc { border-top: 1px solid var(--c-border); padding-top: var(--s-3); margin-bottom: var(--s-4); }
+  .pf-desc-tag { display: inline-block; font-size: var(--text-xs); font-weight: 700; padding: 2px 10px; border-radius: var(--r-lg); background: rgba(100,149,237,.14); color: #6495ed; margin-bottom: var(--s-2); }
+  .pf-desc-row { display: flex; gap: 8px; font-size: var(--text-xs); line-height: 1.45; padding: 3px 0; }
+  .pf-desc-label { flex-shrink: 0; font-weight: 700; min-width: 34px; }
+  .pf-desc-row.unclear { color: var(--c-text-muted); font-style: italic; }
+  .pf-desc .pf-desc-was { color: var(--c-text); }
+  .pf-desc .pf-desc-gut { color: var(--c-success); }
+  .pf-desc .pf-desc-nicht { color: var(--c-warn); }
+
   .pf-empty { text-align: center; padding: var(--s-10); color: var(--c-text-muted); grid-column: 1 / -1; }
   .pf-loading { text-align: center; padding: var(--s-10); color: var(--c-text-muted); }
   .pf-updated { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: var(--s-5); }
@@ -167,6 +177,19 @@
     return '<div><span>'+esc(label)+'</span><span class="pf-m-val '+c+'">'+v+'</span></div>';
   }
 
+  function buildDesc(s){
+    var d = s.desc || {};
+    if(!d.was && !d.gut && !d.nicht){
+      return '<div class="pf-desc"><div class="pf-desc-row unclear">Keine Beschreibung hinterlegt — siehe Strategy Lab Detail.</div></div>';
+    }
+    var tag = d.tag ? '<span class="pf-desc-tag">'+esc(d.tag)+'</span>' : '';
+    var rows = '';
+    if(d.was)  rows += '<div class="pf-desc-row pf-desc-was"><span class="pf-desc-label">Was</span><span>'+esc(d.was)+'</span></div>';
+    if(d.gut)  rows += '<div class="pf-desc-row pf-desc-gut"><span class="pf-desc-label">Gut</span><span>'+esc(d.gut)+'</span></div>';
+    if(d.nicht)rows += '<div class="pf-desc-row pf-desc-nicht"><span class="pf-desc-label">Nicht</span><span>'+esc(d.nicht)+'</span></div>';
+    return '<div class="pf-desc">'+tag+rows+'</div>';
+  }
+
   function buildChecks(s){
     var checks = (s.ready && s.ready.checks)||[];
     if(!checks.length) return '';
@@ -197,6 +220,8 @@
     html += '<div class="pf-assets">'+assets+'</div>';
 
     html += buildStepper(s);
+
+    html += buildDesc(s);
 
     if(bot && bot.divergence && bot.assigned){
       html += '<div class="pf-divergence">⚠ Registry sagt <strong>'+esc(bot.assigned)+'</strong> = #'+esc(s.id)+', aber dieser Bot tradete zuletzt #'+esc(bot.live_strategy||'?')+'. Bitte Config-Drift prüfen.</div>';

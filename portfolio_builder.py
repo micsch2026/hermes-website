@@ -30,6 +30,24 @@ def load(p, default=None):
         print(f"  [warn] {p}: {e}", file=sys.stderr)
         return default
 
+DESCRIPTIONS = load(f"{os.path.dirname(os.path.abspath(__file__))}/portfolio_descriptions.json", {}) or {}
+
+def describe(sid, lab_name):
+    """Liefert plakative Beschreibung (was/gut/nicht + tag) für eine Strategie.
+    Prio: (1) Override nach ID, (2) erster Approach-Match im lowercased Namen."""
+    name_l = (lab_name or "").lower()
+    overrides = DESCRIPTIONS.get("overrides", {}) or {}
+    if str(sid) in overrides:
+        o = overrides[str(sid)]
+        return {"tag": o.get("tag") or "Individuell",
+                "was": o.get("was", ""), "gut": o.get("gut", ""), "nicht": o.get("nicht", "")}
+    for a in DESCRIPTIONS.get("approaches", []) or []:
+        for kw in a.get("match", []) or []:
+            if kw in name_l or kw in sid:
+                return {"tag": a.get("tag"), "was": a.get("was", ""),
+                        "gut": a.get("gut", ""), "nicht": a.get("nicht", "")}
+    return {"tag": "Unklar", "was": "", "gut": "", "nicht": ""}
+
 def load_bot_trades():
     out = {}
     for n in range(1, 6):
@@ -224,6 +242,9 @@ def main():
         name = lab_row.get("name") if lab_row else f"#{ns}"
         assets = (lab.get("assets") if lab else []) or (shadow_metric.get("symbols") or [])
 
+        # Plakative Beschreibung
+        desc = describe(ns, name)
+
         strategies.append({
             "id": ns,
             "name": name,
@@ -241,6 +262,7 @@ def main():
             },
             "flags": flags,
             "ready": ready,
+            "desc": desc,
         })
 
     # Sort: deployed first, dann score
