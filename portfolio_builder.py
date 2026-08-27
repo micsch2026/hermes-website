@@ -16,6 +16,7 @@ Es wird NIEMALS etwas deployed — nur vorgeschlagen.
 import json, os, sys
 from collections import defaultdict
 from datetime import datetime, timezone
+import sqlite3
 
 SITE_API = "/root/.hermes/site/api"
 
@@ -33,20 +34,22 @@ def load(p, default=None):
 DESCRIPTIONS = load(f"{os.path.dirname(os.path.abspath(__file__))}/portfolio_descriptions.json", {}) or {}
 
 def describe(sid, lab_name):
-    """Liefert plakative Beschreibung (was/gut/nicht + tag) für eine Strategie.
+    """Liefert plakative Beschreibung (was/gut/nicht + tag + ausmacht/ergaenzt) für eine Strategie.
     Prio: (1) Override nach ID, (2) erster Approach-Match im lowercased Namen."""
     name_l = (lab_name or "").lower()
     overrides = DESCRIPTIONS.get("overrides", {}) or {}
     if str(sid) in overrides:
         o = overrides[str(sid)]
         return {"tag": o.get("tag") or "Individuell",
-                "was": o.get("was", ""), "gut": o.get("gut", ""), "nicht": o.get("nicht", "")}
+                "was": o.get("was", ""), "gut": o.get("gut", ""), "nicht": o.get("nicht", ""),
+                "ausmacht": o.get("ausmacht", ""), "ergaenzt": o.get("ergaenzt", "")}
     for a in DESCRIPTIONS.get("approaches", []) or []:
         for kw in a.get("match", []) or []:
             if kw in name_l or kw in sid:
                 return {"tag": a.get("tag"), "was": a.get("was", ""),
-                        "gut": a.get("gut", ""), "nicht": a.get("nicht", "")}
-    return {"tag": "Unklar", "was": "", "gut": "", "nicht": ""}
+                        "gut": a.get("gut", ""), "nicht": a.get("nicht", ""),
+                        "ausmacht": a.get("ausmacht", ""), "ergaenzt": a.get("ergaenzt", "")}
+    return {"tag": "Unklar", "was": "", "gut": "", "nicht": "", "ausmacht": "", "ergaenzt": ""}
 
 def load_bot_trades():
     out = {}
@@ -76,6 +79,18 @@ def load_bot_trades():
             "open": open_n,
         }
     return out
+
+def load_catalog_names():
+    """Holt den echten Strategie-Namen (Recipe) aus catalog.db — Quelle der Wahrheit."""
+    names = {}
+    try:
+        conn = sqlite3.connect("/root/strategy-lab/catalog.db")
+        for row in conn.execute("SELECT id, name FROM strategies"):
+            names[str(row[0])] = row[1]
+        conn.close()
+    except Exception as e:
+        print(f"  [warn] catalog.db Namen: {e}", file=sys.stderr)
+    return names
 
 def compute_ready(lab, shadow, deployed, is_deployed, parity):
     """Advisory Live-Reife-Score 0-100 mit klar deklarierten Checks."""
@@ -155,6 +170,8 @@ def main():
 
     # Echte Bot-Trades
     bot_trades = load_bot_trades()
+    # Echte Strategie-Namen (Recipe) aus catalog.db
+    cat_names = load_catalog_names()
 
     # Union der Strategie-IDs
     all_ids = set(shadow_by_id) | set(mirrors_by_sid) | {norm(x) for x in selected} | set(catalog_deploy_by_id)
@@ -241,6 +258,9 @@ def main():
         # Assets/Strategie-Namen
         name = lab_row.get("name") if lab_row else f"#{ns}"
         assets = (lab.get("assets") if lab else []) or (shadow_metric.get("symbols") or [])
+        # Fallback auf echten Recipe-Namen aus catalog.db (wenn nur #id da)
+        if name == f"#{ns}" and cat_names.get(ns):
+            name = cat_names[ns]
 
         # Plakative Beschreibung
         desc = describe(ns, name)

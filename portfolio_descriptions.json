@@ -1,80 +1,170 @@
 {
-  "_comment": "Beschreibungs-Karte für die Portfolio-Übersicht. Mapping: Ansatz-Schlüssel (gedacht als Substring gegen lowercased Recipe-/Strategie-Namen) → plakative Beschreibung. 'was' = was die Strategie tut, 'gut' = wann sie gut funktioniert, 'nicht' = wann sie nicht funktioniert. Reihenfolge der approaches = Priorität (erster Match gewinnt).",
+  "_comment": "Beschreibungs-Karte der Portfolio-Übersicht in Alltagssprache. Keys einheitlich: was / gut / nicht. Overrides nach Strategie-ID gewinnen immer, sonst erster Approach-Match auf den Recipe-Namen.",
   "overrides": {
     "194": {
-      "was": "Metals Trend-Pullback (H1): RSI7-Pullback ans BB-Rand innerhalb eines EMA50>EMA200-Trends. Long/Short nur in Trendrichtung.",
-      "gut": "Metall hat einen etablierten EMA-Trend (EMA50>EMA200) und gerät in einen RSI7-Pullback ans Bollinger-Rand — safe Einstieg in Trend.",
-      "nicht": "Seitwärts-/Range-Phase (EMA50≈EMA200, ADX schwach): gibt wenige Signale, und Pullbacks ohne Trendrichtung können weiter laufen."
+      "tag": "Gold & Silber im Trend",
+      "was": "Handelt Metalle (Gold, Silber) nur mit dem etablierten Trend: erst wenn eine klare Richtung steht und der Kurs kurz zurückzieht, steigt er wieder ein. Er schwimmt nie gegen den Strom.",
+      "gut": "Solange Gold/Silber eine erkennbare Richtung haben und zwischendurch kleine Rückzieher machen – da nutzt er den Rückzug für einen sauberen Einstieg.",
+      "nicht": "Wenn die Metalle seitwärts ohne Linie pendeln: die Einstiege sitzen in keiner klaren Richtung, er kann sich totlaufen und Verluste sammeln.",
+      "ausmacht": "Geduldig und trendtreu: wenige, dafür grössere Trades an Gold und Silber.",
+      "ergaenzt": "Passt gut zu Seitwärts-Strategien, weil er nur bei klarer Richtung der Metalle arbeitet."
     },
     "525": {
-      "was": "VWAP-Divergenz auf Metallen (XAUUSD+XAGUSD): Einstieg wenn Preis signifikant über/unter VWAP divergiert und in die VWAP-Mitte zurückkehrt.",
-      "gut": "Range-/Seitwärts-Goldphasen ohne klaren Trend — Preis wird vom VWAP wie bei einer Feder angezogen.",
-      "nicht": "Starke Trend-/News-Ausbrüche: Preis hängt über/unter VWAP weit länger fest als der Reversion verlangt."
+      "tag": "Metalle gegen die Uebertreibung",
+      "was": "Handelt Gold/Silber auf Rückkehr zum Durchschnittsniveau: Entfernt sich der Kurs zu weit vom Normalpreis, wettet er darauf, dass er zurückkehrt.",
+      "gut": "Solange Gold/Silber eher seitwärts schwankt – der Kurs wird wie von einem Gummiband wieder zum Niveau zurückgezogen.",
+      "nicht": "Bei einer echten Trendwelle bleibt der Kurs lange weit weg vom Band und die Rückkehr-Wette läuft in die falsche Richtung.",
+      "ausmacht": "Denk gegen den Trend: wird aktiv, wenn andere zu weit gelaufen sind, und nimmt die Gegenbewegung.",
+      "ergaenzt": "Ergänzt Trend-Jäger, weil er genau dann einsteigt, wenn diese überdrehen."
+    },
+    "443": {
+      "tag": "Gold nach Ereignis-Sprung",
+      "was": "Spielt Gold-Momente, in denen Nachrichten/Volatilität explodieren, und reitet auf dem Momentum, das die Vol-Spitze auslöst.",
+      "gut": "Rund um marktbewegende Ereignisse, wo Gold plötzlich einen starken Volatilitäts-Sprung zeigt.",
+      "nicht": "Ruhige Phasen ohne Ereignis – ohne den Auslöser fehlt der Antrieb und die Strategie schläft.",
+      "ausmacht": "Ereignis-getrieben: wenige, grosse Sprünge rund um marktbewegende Momente.",
+      "ergaenzt": "Handelt in den ruhigen Phasen der anderen Strategien – guter Ausgleich."
     }
   },
   "approaches": [
     {
-      "match": ["kimi3_vwap", "vwap_divergence"],
-      "tag": "VWAP-Divergenz (Metall)",
-      "was": "Einstieg wenn der Preis signifikant vom VWAP abweicht und zur VWAP-Mitte zurückkehrt, mit Bestätigung auf dem Underlying.",
-      "gut": "Seitwärts-Range-Gold ohne Trend — Preis wird vom VWAP wie ein Magnet angezogen.",
-      "nicht": "Starke Trend-/Momentum-Phasen: Kurs hängt bewusst über/unter VWAP, Reversion fällt ins laufende Messer."
+      "match": [
+        "trend_pullback",
+        "trend_following",
+        "momentum",
+        "adx"
+      ],
+      "tag": "Mit dem Trend schwimmen",
+      "was": "Geht mit einem etablierten Trend rein und reitet die Bewegung, bis die Kraft nachlässt. Sie läuft nie gegen den Strom.",
+      "gut": "Klare, anhaltende Bewegungen (z.B. EURUSD, GBPUSD, Indizes) – lange Gewinn-Strecken mit dem Trend.",
+      "nicht": "Seitwärts-Märkte: der Kurs irrt hin und her und er sammelt viele kleine Verluste ohne klare Linie.",
+      "ausmacht": "Trendtreu: wenige Einstiege, dafür lange Gewinn-Strecken mit dem Trend.",
+      "ergaenzt": "Kontrastiert gut mit Rücklauf-Strategien, weil er dort arbeitet, wo der Kurs folgt."
     },
     {
-      "match": ["zscore", "z-score", "zscore_v2"],
-      "tag": "Z-Score Mean Reversion",
-      "was": "Statistische Mean Reversion: Einstieg bei Z-Score<-2/+2 (2 Std-Abweichungen) mit Bollinger-Bestätigung. Reine Mathematik, keine Indikator-Übergänge.",
-      "gut": "Seitwärts-/Range-Markets ohne klaren Trend (ADX<30) — der Preis kehrt zur Statistik-Mitte zurück.",
-      "nicht": "Starke Trend-/Momentum-Tage: Extremwerte können lange extrem bleiben, die Reversion fällt ins laufende Messer."
+      "match": [
+        "volume_reversal",
+        "vol_reversal",
+        "mfi",
+        "vol_rev"
+      ],
+      "tag": "Gegen die schweren Läufe",
+      "was": "Erwartet das Übertreiben mit starkem Handelsvolumen und geht eine Gegenbewegung ein, wenn der Preis nach dem Volumen-Plak wieder dreht.",
+      "gut": "Wenn plötzlich hohes Volumen in einen Übertreibungs-Höhepunkt endet und der Kurs schnell zurückdreht.",
+      "nicht": "Langsame, ruhige Trends ohne Übertreibung – dann gibt es keinen klaren Trigger und es wird abgewartet.",
+      "ausmacht": "Ausgleichs-Typ: tritt bei überheizten Volumen ein.",
+      "ergaenzt": "Ergänzt Trend-Strategien, fängt die Volumen-Spritzen ab."
     },
     {
-      "match": ["stochastic", "stoch_mr", "06_stochastic"],
-      "tag": "Stochastic Mean Reversion",
-      "was": "Mean Reversion via Stochastic overbought/oversold + Bollinger-Lage + Session-Filter (ADX<30, ATR<80%ile).",
-      "gut": "Begrenzte Range-Märkte, feste Tradingsessions, wenn Preis am BB-Ende und Stochastic extrem ist.",
-      "nicht": "Starke Trend- oder Volatilitätsspitzen (ADX steigt bzw. ATR >80%): beide Gates blockieren den Trade absichtlich."
+      "match": [
+        "zscore",
+        "z-score"
+      ],
+      "tag": "Zurueck zum Normalmass",
+      "was": "Prüft, ob der Kurs weit über oder unter dem statistischen Normalmass liegt, und handelt die Rückkehr zur Mitte.",
+      "gut": "Ruhige Seitwärts-Märkte, in denen der Preis zum Mittelwert zurückfindet.",
+      "nicht": "Scharfe Trendwellen: das Extrem hält lange an und die Rückkehr läuft ins Messer.",
+      "ausmacht": "Mittelwert-Typ: arbeitet auf die Rückkehr zur Mitte.",
+      "ergaenzt": "Ergänzt Trend-Jäger, weil er da arbeitet, wo Trend-Strategien scheitern."
     },
     {
-      "match": ["divergence", "rsi_divergence", "kb8_rsi"],
-      "tag": "Divergenz-Reversal (RSI/MACD)",
-      "was": "Trendwenden fangen: RSI-Divergenz an Bollinger-Extremen + MACD-Histogramm-Bestätigung (Triple-Konfirmation).",
-      "gut": "Gespannte Märkte kurz vor einer Trend-Wende — Top/Bottom-Divergenzen mit mehrfacher Bestätigung.",
-      "nicht": "Starke Fortsatz-Trends: die Divergenz kommt oft früh und markiert das falsche Ende eines noch laufenden Runs."
+      "match": [
+        "stochastic",
+        "stoch",
+        "mr"
+      ],
+      "tag": "Pendel zur Mitte",
+      "was": "Spielt auf die Normalisierung: wirkt ein Kurs überreagiert, wird darauf gesetzt, dass er zur Mitte zurückkehrt.",
+      "gut": "Pendelnde Kurse, die zu den Rändern laufen und wieder zur Mitte kommen.",
+      "nicht": "Kräftige Trend- oder hohe Volatilitäts-Tage: da läuft die Gegenbewegung ins Messer.",
+      "ausmacht": "Pendel-Charakter: viele kleinere Treffer auf die Mitte.",
+      "ergaenzt": "Harmoniert mit Trend-Läufen, füllt die ruhigen Range-Phasen."
     },
     {
-      "match": ["london_spike", "london", "spike_fade"],
-      "tag": "London Breakout / Spike-Fade",
-      "was": "London-Session-Breakout aus der Asian-Range mit VWAP-Bestätigung, bzw. Fade von Ausreissern zurück in die Range.",
-      "gut": "Volatile Übergänge Asian→London, wo der Preis die Asian-Range mit Richtung und Volumen verlässt.",
-      "nicht": "Range-Days ohne Ausbruch-Spathos; ohne VWAP-Bestätigung fällt der Preis in den Keil zurück."
+      "match": [
+        "ichimoku",
+        "209_ichimoku"
+      ],
+      "tag": "Wolke als Fahrbahn",
+      "was": "Nutzt das farbige Wolken-System auf Gold: eindeutig über der Wolke long, unter der Wolke short.",
+      "gut": "Klare Trend-Tage, wo der Kurs die Wolke deutlich verlässt.",
+      "nicht": "In der Zappel-Zone innerhalb der Wolke, wo der Kurs zwischen den Linien pendelt – schwache Signale.",
+      "ausmacht": "Trend-Charakter an der Wolke, fokussiert auf Gold.",
+      "ergaenzt": "Ergänzt Seitwärts-Strategien, deckt die klaren Trendphasen an Gold ab."
     },
     {
-      "match": ["ichimoku", "209_ichimoku"],
-      "tag": "Ichimoku (Gold)",
-      "was": "Ichimoku-Wolke auf Gold: Kumo-Ausbruch + Tenkan-Kijun-Crossing + RSI/MACD-Bestätigung für den Trend-Einstieg.",
-      "gut": "Klare Trendphasen über/unter der Wolke, wo Kumo färbig stützt oder resistiert.",
-      "nicht": "Range-/Konsolidierung im Kumo-Geflecht (Preis pendelt zwischen Tenkan/Kijun) — schwache Signale, viele Seitwärts-Neit."
+      "match": [
+        "session_pivot",
+        "session",
+        "pivot"
+      ],
+      "tag": "Am Start der Sitzung",
+      "was": "Nutzt die Markteröffnung/Tageswende als Auslöser: entsteht dabei ein Pivot, wird in dessen Richtung gehandelt.",
+      "gut": "Am turbulenten Handelsstart, wo der Preis eine klare Richtung aus der Pivot-Zone nimmt.",
+      "nicht": "Wenn die Eröffnung ohne klare Richtung bleibt und der Preis in der Pivot-Zone hängen bleibt.",
+      "ausmacht": "Eröffnungs-Jäger: aktiv im Handelsstart, sonst still.",
+      "ergaenzt": "Passt zu Strategien, die später am Tag arbeiten."
     },
     {
-      "match": ["mean_reversion", "rev125", "mr_forex", "bb_kc", "bot1_rsi"],
-      "tag": "Mean Reversion (Forex / RSI+BB+KC)",
-      "was": "Klassisches MR-Erbe (Bot1): RSI/Bollinger am Extreme mit ADX<30-Gate — Preis kehrt zur Mitte zurück.",
-      "gut": "Seitwärts-Range-Pairs (EURCHF, EURCAD, Crosses) — clean Reversion zur Kursmitte.",
-      "nicht": "Trend-/News-Ausbrüche oder steigender ADX: MR fängt fallende/steigende Messer."
+      "match": [
+        "divergence",
+        "rsi_divergence",
+        "kb8_rsi"
+      ],
+      "tag": "Wendepunkt-Jäger",
+      "was": "Kauft/verkauft kurz vor einem möglichen Wendepunkt: Preis läuft noch, aber die unterliegende Kraft schwächt sich ab.",
+      "gut": "An gespannten Kursen, in denen ein Trend ausläuft und sich dreht.",
+      "nicht": "Frische, starke Trends, die einfach weiterlaufen: die Warnung kommt zu früh und er steht gegen einen laufenden Run.",
+      "ausmacht": "Antizipiert Wendepunkte: steigt frueh vor der Trendwende ein.",
+      "ergaenzt": "Ergaenzt trendfolgende Strategien, weil die Wende frueher erkannt wird."
     },
     {
-      "match": ["trend_following", "trend_follow", "momentum", "adx"],
-      "tag": "Trend-Folge / Momentum",
-      "was": "Einstieg mit dem etablierten Trend (ADX>25 bzw. Momentum), Trailing-Exit.",
-      "gut": "Klare, persistent-folgende Märkte (EURUSD, GBPUSD, Indizes) — lange Gewinn-Strecken innerhalb des Trends.",
-      "nicht": "Range-Märkte: Whipsaw zwischen ver- und eintauchen, viele kleine Verluste ohne Trend-Einkommen."
+      "match": [
+        "rsi25",
+        "rsi35",
+        "rsi",
+        "bb_kc",
+        "bot1_rsi",
+        "rev125",
+        "mean_reversion"
+      ],
+      "tag": "Gegen den Ueberschuss",
+      "was": "Handelt auf Überhitzung: Wirkt ein Kurs mit RSI/Bollinger überdreht, setzt er auf die Rückkehr zur Mitte (mit Schutz vor dem Gegen-Trend).",
+      "gut": "Seitwärts schwankende Kurse, die zu den Rändern pendeln und zurückkommen.",
+      "nicht": "Bei kräftigen Ausbrüchen, wo die Rückkehr in die falsche Richtung läuft.",
+      "ausmacht": "Contrarian-Typ: handelt die Übertreibung gegen die momentane Bewegung.",
+      "ergaenzt": "Gegenstueck zu Trend-Strategien, gleicht das Risiko aus."
     },
     {
-      "match": ["breakout", "squeeze", "bollinger", "bb"],
-      "tag": "Volatilitäts-Breakout (BB-Squeeze)",
-      "was": "Bollinger-Squeeze (Kompression) → Einstieg in Richtung der Auflösung.",
-      "gut": "Ende einer gedehnten Range, dann explosive Auflösung → schnelles Ride-Momentum.",
-      "nicht": "Falsche Ausbrüche: der Squeeze löst häufig konsolidierter ohne klaren Trend — das Signal triggert die Trap."
+      "match": [
+        "squeeze",
+        "orb",
+        "breakout",
+        "bb_squeeze",
+        "london_spike",
+        "london",
+        "spike"
+      ],
+      "tag": "Ausbruch nach der Ruhe",
+      "was": "Wartet, bis der Kurs eine ruhige Kompression mit klarer Richtung durchbricht, und schwimmt mit dem Ausbruch.",
+      "gut": "Wenn die Spannung nach langer Ruhe in einen klaren Zug Richtung einer Seite entlädt.",
+      "nicht": "Fake-Ausbrüche: die Kompression löst scheinbar, aber der Preis kehrt sofort in die Falle zurück.",
+      "ausmacht": "Breakout-Typ: still in der Ruhe, impulsiv im Ausbruch.",
+      "ergaenzt": "Ergänzt Konsolidierer, die nach dem Ausbruch zu früh handeln."
+    },
+    {
+      "match": [
+        "sr_bounce",
+        "pa",
+        "support",
+        "resistance"
+      ],
+      "tag": "Abprall an der Grenze",
+      "was": "Handelt klassische Unterstützungs- und Widerstandslinien: stößt der Preis an eine bekannte Grenze, wird auf den Abprall gesetzt.",
+      "gut": "Wenn die alte Linie hält und den Kurs zurück in den bekannten Rahmen wirft.",
+      "nicht": "Wenn der Preis die Linie durchbricht (Breakout) – dann wird die Linie zur Beschleunigung gegen den Trade.",
+      "ausmacht": "Grenz-Typ: arbeitet an klaren Unterstützungs- und Widerstandslinien.",
+      "ergaenzt": "Wie dazu gemacht, mit Breakout-Strategien zu harmonieren."
     }
   ]
 }
