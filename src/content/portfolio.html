@@ -178,6 +178,15 @@
     if(sh.days!=null) info+='<div class="pf-desc-row"><span class="pf-desc-label">Aktiv</span><span>'+sh.days.toFixed(0)+' Tage</span></div>';
     if(bot.mirror) info+='<div class="pf-desc-row"><span class="pf-desc-label">Bot-EQ</span><span>'+fmtEuro(bot.mirror.equity)+'€ · '+bot.mirror.trades+' T</span></div>';
     if(bot.divergence && bot.assigned) info+='<div class="pf-desc-row pf-desc-nicht"><span class="pf-desc-label">⚠</span><span>Bot '+esc(bot.assigned)+' tradete zuletzt #'+esc(bot.live_strategy||'?')+', Registry sagt #'+esc(s.id)+'.</span></div>';
+    var par=bot.parity||{};
+    if(bot.deployed && par.status){
+      var plab, pcls='pf-desc-nicht';
+      if(par.status==='paritaet'){ plab='✅ Parität bestätigt — '+par.matched_pairs+' Paare, handelt wie der Shadow'; pcls='pf-desc-gut'; }
+      else if(par.status==='abweichung'){ plab='⚠️ Bot ≠ Shadow — Einstieg/SL/TP weichen ab'; }
+      else if(par.status==='needs_smoke_test'){ plab='🧪 Erst-Trade-Test offen — erst einen verifizierten Trade abwarten'; }
+      else { plab='⏳ Parität im Aufbau — '+par.matched_pairs+' von 10 Paaren (Einstieg '+par.entry_ok+'/'+par.matched_pairs+')'; pcls=''; }
+      info+='<div class="pf-desc-row '+pcls+'"><span class="pf-desc-label">Shadow↔Bot</span><span>'+plab+'</span></div>';
+    }
 
     var grid='';
     if(rows) grid+='<div class="pf-detail-block"><h4>Strategie</h4>'+rows+'</div>';

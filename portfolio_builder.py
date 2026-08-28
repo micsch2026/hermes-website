@@ -18,6 +18,15 @@ from collections import defaultdict
 from datetime import datetime, timezone
 import sqlite3
 
+# Trade-Paritäts-Tool (bot ↔ shadow Paar-Matching) als Modul importierbar machen
+sys.path.insert(0, "/root/fx-bot/tools")
+try:
+    from bot_shadow_parity import compute_bot_parity
+    HAS_PARITY = True
+except Exception as _e:  # pragma: no cover
+    print(f"  [warn] bot_shadow_parity: {_e}", file=sys.stderr)
+    HAS_PARITY = False
+
 SITE_API = "/root/.hermes/site/api"
 
 def norm(x):
@@ -202,21 +211,47 @@ def compute_bot_rec(shadow, lab, is_deployed):
         hint = "Noch nicht reif — erst Shadow weiterlaufen lassen."
     return {"score": score, "level": level, "checks": checks, "hint": hint, "already_deployed": is_deployed}
 
-def compute_live_rec(shadow, deployed, mirror, is_deployed, parity):
+def compute_live_rec(shadow, deployed, mirror, is_deployed, trade_parity):
     """💳 Live-Bereitschaft (0-100) — bewertet NUR bereits deployed Demo-Bots auf ihre
-    Eignung für Echtgeld. Strenger als bot_rec: braucht längeren Demo-Test-Record,
-    Parität (Shadow ↔ Bot) und keine Konsistenz-Lücken. Kein einzelner Faktor reicht."""
+    Eignung für Echtgeld. Strenger als bot_rec: braucht reale Shadow↔Bot-Trade-Parität,
+    längeren Demo-Test-Record und keine Konsistenz-Lücken. Kein einzelner Faktor reicht.
+
+    trade_parity: dict aus bot_shadow_parity.compute_bot_parity (matched_pairs, status …).
+    Harte Blocker (→ 0, "hochrisiko", NICHT auf Echtgeld):
+      - needs_smoke_test : 0 gematchte Paare (nach Umstellung erst ersten Testrade prüfen)
+      - abweichung       : gematchte Paare mit Entry/SL/TP-Divergenz zum Shadow
+    """
     if not is_deployed:
         return {"score": 0, "level": "kein Bot", "checks": [{"ok": False, "label": "Kein Demo-Bot deployed"}], "hint": "Erst auf Demo testen."}
+
+    tp = trade_parity or {}
+    p_status = tp.get("status")
+    p_matched = tp.get("matched_pairs") or 0
+    p_entry = tp.get("entry_ok") or 0
+    p_rate = tp.get("match_rate") or 0.0
+
+    # 0. Harte Blocker: Parität unzureichend
+    if p_status == "needs_smoke_test":
+        return {"score": 0, "level": "hochrisiko",
+                "checks": [{"ok": False, "label": "Noch 0 gematchte Paare — Smoke-Test offen"},
+                           {"ok": False, "label": "Erst Testrade abwarten (Skalierung / SL / TP prüfen)"}],
+                "hint": "Bot hat nach Umstellung noch keinen gegen den Shadow verifizierten Trade."}
+    if p_status == "abweichung":
+        return {"score": 0, "level": "hochrisiko",
+                "checks": [{"ok": False, "label": f"Shadow↔Bot-Divergenz: {p_matched} Paare, Entry ok {p_entry}, Rate {p_rate:.0%}"},
+                           {"ok": False, "label": "Entry/SL/TP weichen vom Shadow ab — erst beheben"}],
+                "hint": "Bot handelt NICHT wie der Shadow (SL/TP/Entry-Drift). NICHT auf Echtgeld."}
+
     score = 0
     checks = []
-    # 1. Registry-Parität (Bot tradet wirklich das erlaubte Programm)
-    if parity:
+    # 1. Trade-Parität Shadow ↔ Bot (echtes Paar-Matching)
+    if p_status == "paritaet":
         score += 20
-        checks.append({"ok": True, "label": "Demo ↔ Registry abgeglichen (kein Drift)"})
-    else:
-        checks.append({"ok": False, "label": "Config-Drift: Bot ≠ Registry!"})
-        return {"score": 0, "level": "hochrisiko", "checks": checks, "hint": "Bot weicht von Registry ab — erst Drift beheben, NICHT auf Echtgeld."}
+        checks.append({"ok": True, "label": f"Parität bestätigt: {p_matched} gematchte Paare, Entry-Rate {p_rate:.0%}"})
+    else:  # sammlung — Paare vorhanden, aber noch < MIN_MATCHED_PAIRS
+        pt = "geprüft" if p_matched >= 5 else "im Aufbau"
+        score += 8
+        checks.append({"ok": False, "label": f"Parität {pt}: {p_matched} von min 10 Paare, Rate {p_rate:.0%}"})
     # 2. Demo-Test-Record (Trades + Equity)
     m = mirror or {}
     m_tr = m.get("trades") or 0
@@ -365,10 +400,20 @@ def main():
                 "bot": m.get("_bot"),
             }
 
+        # 🔀 Echte Trade-Parität Shadow ↔ Bot (nur für deployed Bots)
+        trade_parity = None
+        if is_deployed and assigned_bot and HAS_PARITY:
+            try:
+                trade_parity = compute_bot_parity(assigned_bot)
+            except Exception as _e:
+                print(f"  [warn] Parität {assigned_bot}: {_e}", file=sys.stderr)
+                trade_parity = None
+
         flags = {
             "has_shadow": bool(shadow_entry or mirror_list),
             "has_demo_bot": bool(mirror_list),
             "parity": is_deployed and assigned_bot and not divergence,
+            "parity_ok": bool(trade_parity and trade_parity.get("status") in ("sammlung", "paritaet")),
             "selected_shadow": is_selected,
         }
 
@@ -376,7 +421,7 @@ def main():
         # 🚀 Bot-Eignung (individuell, unabhängig von bereits existierendem Bot)
         bot_rec = compute_bot_rec(shadow_metric, lab, is_deployed)
         # 💳 Live-Bereitschaft (nur für deployed Demo-Bots: Echtgeld-Eignung)
-        live_rec = compute_live_rec(shadow_metric, deployed_metric, deployed_metric, is_deployed, flags["parity"])
+        live_rec = compute_live_rec(shadow_metric, deployed_metric, deployed_metric, is_deployed, trade_parity)
 
         # Assets/Strategie-Namen
         name = lab_row.get("name") if lab_row else f"#{ns}"
@@ -402,6 +447,7 @@ def main():
                 "mirror": deployed_metric,
                 "live_strategy": live_strat,
                 "divergence": divergence,
+                "parity": trade_parity,
             },
             "flags": flags,
             "ready": ready,
