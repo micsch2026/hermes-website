@@ -459,10 +459,32 @@ def main():
     # Sort: deployed first, dann score
     strategies.sort(key=lambda x: (0 if x["flags"]["has_demo_bot"] else 1, -x["ready"]["score"]))
 
+    # Berechne Top-Empfehlungen für das Dashboard-Entscheidungs-Board
+    top_bot_cand = None
+    nobot_strats = [s for s in strategies if not s["flags"]["has_demo_bot"] and (s.get("shadow", {}).get("trades") or 0) >= 3]
+    if nobot_strats:
+        nobot_strats.sort(key=lambda s: (s.get("bot_rec", {}).get("score", 0), s.get("shadow", {}).get("equity", 1000)), reverse=True)
+        top_bot_cand = nobot_strats[0]
+
+    top_live_cand = None
+    deployed_strats = [s for s in strategies if s["flags"]["has_demo_bot"]]
+    if deployed_strats:
+        deployed_strats.sort(key=lambda s: (s.get("live_rec", {}).get("score", 0), s.get("shadow", {}).get("equity", 1000)), reverse=True)
+        top_live_cand = deployed_strats[0]
+
+    stats = {
+        "total_strategies": len(strategies),
+        "deployed_count": sum(1 for s in strategies if s["flags"]["has_demo_bot"]),
+        "shadow_count": sum(1 for s in strategies if (s.get("shadow", {}).get("trades") or 0) > 0),
+        "top_bot_candidate": top_bot_cand,
+        "top_live_candidate": top_live_cand,
+    }
+
     payload = {
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "generated_by": "portfolio_builder v1 (advisory pipeline uebersicht)",
+        "generated_by": "portfolio_builder v2 (decision center & advisory dashboard)",
         "_note": "Advisory -- nur Vorschlaege, kein automatisches Deploy.",
+        "stats": stats,
         "bots": {name: {"account_id": b.get("account_id"), "demo": b.get("demo", True)} for name, b in bots.items()},
         "strategy_count": len(strategies),
         "strategies": strategies,

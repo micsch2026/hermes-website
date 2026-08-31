@@ -1,113 +1,155 @@
-<!--TITLE:Portfolio-Übersicht — Hermes-->
+<!--TITLE:Portfolio-Entscheidungscenter — Hermes-->
 <!--HEAD-->
 <style>
-  .pf-body { max-width: 1280px; }
+  .pf-body { max-width: 1280px; margin: 0 auto; }
   .pf-header h1 { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--s-1); }
   .pf-header p { color: var(--c-text-muted); font-size: var(--text-sm); margin: 0 0 var(--s-5); }
 
-  .pf-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-6); }
-  .pf-stat { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-4) var(--s-5); text-align: center; }
-  .pf-stat .pf-stat-value { font-size: var(--text-xl); font-weight: 700; }
-  .pf-stat .pf-stat-label { font-size: var(--text-xs); color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  /* Top Decision Cards */
+  .pf-decision-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-6); }
+  .pf-decision-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-5); position: relative; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+  .pf-decision-card.bot-rec { border-top: 4px solid var(--c-accent); }
+  .pf-decision-card.live-rec { border-top: 4px solid var(--c-success); }
+  .pf-card-badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: var(--r-lg); margin-bottom: var(--s-2); }
+  .bot-rec .pf-card-badge { background: rgba(100,149,237,0.15); color: #6495ed; }
+  .live-rec .pf-card-badge { background: rgba(34,197,94,0.15); color: var(--c-success); }
+  .pf-decision-title { font-size: var(--text-lg); font-weight: 700; margin: 0 0 var(--s-1); display: flex; align-items: center; justify-content: space-between; }
+  .pf-decision-desc { font-size: var(--text-xs); color: var(--c-text-muted); margin-bottom: var(--s-4); line-height: 1.4; }
+  .pf-decision-stats { display: flex; gap: var(--s-4); border-top: 1px solid var(--c-border); padding-top: var(--s-3); font-size: var(--text-xs); }
+  .pf-decision-stats div { flex: 1; }
+  .pf-decision-stats strong { display: block; font-size: var(--text-base); color: var(--c-text); }
+
+  /* Active 5 Bots Section */
+  .pf-section-title { font-size: var(--text-base); font-weight: 700; margin: var(--s-6) 0 var(--s-3); display: flex; align-items: center; gap: 8px; }
+  .pf-bots-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-6); }
+  .pf-bot-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-4); font-size: var(--text-xs); transition: transform 0.15s; }
+  .pf-bot-card:hover { transform: translateY(-2px); border-color: var(--c-accent); }
+  .pf-bot-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s-2); font-weight: 700; }
+  .pf-bot-name { font-size: var(--text-sm); color: var(--c-text); font-weight: 700; margin-bottom: 2px; }
+  .pf-bot-asset { color: var(--c-accent); font-weight: 600; font-size: 11px; margin-bottom: var(--s-2); }
+  .pf-bot-metrics { display: flex; justify-content: space-between; border-top: 1px dashed var(--c-border); padding-top: var(--s-2); margin-top: var(--s-2); color: var(--c-text-muted); }
+
+  /* Summary Metrics Bar */
+  .pf-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
+  .pf-stat { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); text-align: center; }
+  .pf-stat .pf-stat-value { font-size: var(--text-lg); font-weight: 700; }
+  .pf-stat .pf-stat-label { font-size: 10px; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
   .pf-stat.ok .pf-stat-value { color: var(--c-success); }
   .pf-stat.warn .pf-stat-value { color: var(--c-warn); }
   .pf-stat.danger .pf-stat-value { color: var(--c-danger); }
 
-  .pf-toolbar { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-bottom: var(--s-4); align-items: center; }
+  /* Toolbar & Filter */
+  .pf-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); align-items: center; }
   .pf-filters { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-  .pf-filter-btn { padding: var(--s-2) var(--s-3); border: 1px solid var(--c-border); border-radius: var(--r-lg); background: transparent; color: var(--c-text-muted); font-size: var(--text-sm); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .pf-filter-btn { padding: 4px 10px; border: 1px solid var(--c-border); border-radius: var(--r-md); background: transparent; color: var(--c-text-muted); font-size: var(--text-xs); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .pf-filter-btn:hover { border-color: var(--c-accent); color: var(--c-text); }
   .pf-filter-btn.active { background: var(--c-accent); border-color: var(--c-accent); color: #fff; }
-  .pf-filter-btn .pf-count { margin-left: 4px; opacity: 0.7; font-size: var(--text-xs); }
+  .pf-filter-btn .pf-count { margin-left: 4px; opacity: 0.8; font-size: 10px; }
 
-  .pf-legend { font-size: var(--text-xs); color: var(--c-text-muted); margin-bottom: var(--s-3); }
-
+  /* Table */
   .pf-table-wrap { overflow-x: auto; border: 1px solid var(--c-border); border-radius: var(--r-xl); background: var(--c-surface); }
-  table.pf-table { width: 100%; border-collapse: collapse; font-size: var(--text-xs); min-width: 980px; }
-  .pf-table thead th { padding: var(--s-3); text-align: left; border-bottom: 2px solid var(--c-border); white-space: nowrap; cursor: pointer; user-select: none; font-weight: 700; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  table.pf-table { width: 100%; border-collapse: collapse; font-size: var(--text-xs); min-width: 900px; }
+  .pf-table thead th { padding: var(--s-3); text-align: left; border-bottom: 2px solid var(--c-border); white-space: nowrap; cursor: pointer; user-select: none; font-weight: 700; color: var(--c-text-muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; }
   .pf-table thead th:hover { color: var(--c-text); }
   .pf-table th.num, .pf-table td.num { text-align: center; }
   .pf-table tbody td { padding: var(--s-3); border-bottom: 1px solid rgba(128,128,128,.08); white-space: nowrap; vertical-align: middle; }
-  .pf-table tbody tr.pf-row:hover { background: rgba(128,128,128,.05); }
-  .pf-table tbody tr.pf-row-deployed { background: rgba(100,149,237,.05); }
-  .pf-table tbody tr.pf-row-div { background: rgba(239,68,68,.06); }
+  .pf-table tbody tr.pf-row:hover { background: rgba(128,128,128,.05); cursor: pointer; }
+  .pf-table tbody tr.pf-row-deployed { background: rgba(100,149,237,.04); }
 
-  .pf-detail-row td { padding: var(--s-4) var(--s-5); white-space: normal !important; overflow-wrap: anywhere; vertical-align: top; }
-  tr.pf-detail-row:not([style*="display: none"]) { display: table-row; }
-  .pf-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--s-4); align-items: start; }
-  .pf-detail-block { min-width: 0; }
-  .pf-detail-block h4 { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--c-text-muted); margin: 0 0 var(--s-2); }
+  /* Details inside Row */
+  .pf-detail-row td { padding: var(--s-4) var(--s-5); white-space: normal !important; background: var(--c-surface-2); }
+  .pf-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s-4); }
+  .pf-desc-row { display: grid; grid-template-columns: 80px 1fr; gap: 8px; font-size: var(--text-xs); line-height: 1.5; padding: 2px 0; }
+  .pf-desc-label { font-weight: 700; color: var(--c-text-muted); }
+  .pf-desc-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: var(--r-md); background: rgba(100,149,237,.15); color: #6495ed; margin-bottom: var(--s-2); }
 
-  .pf-desc-row { display: grid; grid-template-columns: 72px 1fr; gap: 8px; font-size: var(--text-xs); line-height: 1.5; padding: 3px 0; align-items: start; }
-  .pf-desc-label { font-weight: 700; color: var(--c-text); white-space: normal; }
-  .pf-desc-tag { display: inline-block; font-size: var(--text-xs); font-weight: 700; padding: 2px 10px; border-radius: var(--r-lg); background: rgba(100,149,237,.14); color: #6495ed; margin-bottom: var(--s-2); }
-  .pf-desc-was { color: var(--c-text); }
-  .pf-desc-gut { color: var(--c-success); }
-  .pf-desc-nicht { color: var(--c-warn); }
-
-  .pf-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: var(--r-lg); font-size: 10px; font-weight: 700; white-space: nowrap; }
-  .pf-badge.bot { background: rgba(100,149,237,.14); color: #6495ed; }
+  .pf-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: var(--r-md); font-size: 10px; font-weight: 700; }
+  .pf-badge.bot { background: rgba(100,149,237,.15); color: #6495ed; }
   .pf-badge.tag { background: rgba(168,85,247,.12); color: #a855f7; }
-  .pf-badge.div { background: rgba(239,68,68,.14); color: var(--c-danger); }
+  .pf-badge.div { background: rgba(239,68,68,.15); color: var(--c-danger); }
+  .pf-badge.ok { background: rgba(34,197,94,.15); color: var(--c-success); }
 
-  .pf-assets { display: flex; flex-wrap: wrap; gap: 3px; max-width: 200px; }
-  .pf-asset-chip { font-size: 10px; padding: 1px 6px; border-radius: var(--r-lg); background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-muted); }
+  .pf-assets { display: flex; flex-wrap: wrap; gap: 2px; }
+  .pf-asset-chip { font-size: 9px; padding: 1px 5px; border-radius: var(--r-sm); background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-muted); }
 
-  .pf-score { display: inline-flex; align-items: center; gap: 6px; min-width: 70px; }
-  .pf-bar { width: 34px; height: 6px; border-radius: 4px; background: rgba(128,128,128,.18); overflow: hidden; position: relative; }
-  .pf-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
-  .pf-bar-hi i { background: var(--c-success); }
-  .pf-bar-mi i { background: var(--c-warn); }
-  .pf-bar-lo i { background: var(--c-danger); }
-  .pf-score .val { font-weight: 800; }
+  .pf-score-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 18px; border-radius: 9px; font-weight: 700; font-size: 11px; padding: 0 4px; }
+  .pf-score-pill.hi { background: rgba(34,197,94,0.15); color: var(--c-success); }
+  .pf-score-pill.mi { background: rgba(234,179,8,0.15); color: var(--c-warn); }
+  .pf-score-pill.lo { background: rgba(128,128,128,0.12); color: var(--c-text-muted); }
 
-  .pf-ok { color: var(--c-success); }
   .pf-pos { color: var(--c-success); font-weight: 600; }
   .pf-neg { color: var(--c-danger); }
   .pf-dim { color: var(--c-text-muted); }
-  .pf-icon { font-size: 12px; }
-
-  .pf-toggle { cursor: pointer; font-size: 11px; color: var(--c-text-muted); user-select: none; padding-right: 4px; }
-  .pf-toggle:hover { color: var(--c-text); }
-  .pf-empty { text-align: center; padding: var(--s-10); color: var(--c-text-muted); }
-  .pf-loading { text-align: center; padding: var(--s-10); color: var(--c-text-muted); }
-  .pf-updated { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: var(--s-5); }
+  .pf-toggle { cursor: pointer; font-size: 10px; color: var(--c-text-muted); padding-right: 4px; }
+  .pf-empty, .pf-loading { text-align: center; padding: var(--s-8); color: var(--c-text-muted); }
+  .pf-updated { font-size: 11px; color: var(--c-text-muted); margin-top: var(--s-4); text-align: right; }
 </style>
 <!--/HEAD-->
 
 <!--BODY-->
 <div class="container pf-body">
   <div class="pf-header">
-    <h1>Portfolio-Übersicht — Pipeline Lab → Shadow → Demo-Bot → Live</h1>
-    <p>Gesamtübersicht aller Strategien. Spalten sortierbar, Zeile klicken = Details. Scores sind advisory (Vorschlag), kein automatisches Deploy.</p>
+    <h1>Trading Portfolio & Entscheidungscenter</h1>
+    <p>Aktuelle Übersicht aller Handelsstrategien. Klare Empfehlungen für Demo-Bot-Tests und Echtgeld-Eignung.</p>
   </div>
 
+  <!-- 1. Top Decision Cards -->
+  <div class="pf-decision-grid" id="pf-decision-grid">
+    <div class="pf-decision-card bot-rec" id="card-bot-rec">
+      <span class="pf-card-badge">🚀 Nächster Bot-Kandidat (Demo-Slot)</span>
+      <div class="pf-decision-title"><span id="bot-rec-name">Lade Empfehlung…</span> <span class="pf-score-pill hi" id="bot-rec-score">—</span></div>
+      <div class="pf-decision-desc" id="bot-rec-desc">Beste Shadow-Strategie für den nächsten freien Demo-Bot.</div>
+      <div class="pf-decision-stats">
+        <div>Trades: <strong id="bot-rec-trades">—</strong></div>
+        <div>Win-Rate: <strong id="bot-rec-wr">—</strong></div>
+        <div>Shadow PnL: <strong id="bot-rec-pnl">—</strong></div>
+      </div>
+    </div>
+
+    <div class="pf-decision-card live-rec" id="card-live-rec">
+      <span class="pf-card-badge">💳 Echtgeld-Kandidat (Live-Reife)</span>
+      <div class="pf-decision-title"><span id="live-rec-name">Lade Empfehlung…</span> <span class="pf-score-pill hi" id="live-rec-score">—</span></div>
+      <div class="pf-decision-desc" id="live-rec-desc">Reifster Demo-Bot mit nachgewiesener Broker-Parität für Echtgeld.</div>
+      <div class="pf-decision-stats">
+        <div>Demo-Bot: <strong id="live-rec-bot">—</strong></div>
+        <div>Win-Rate: <strong id="live-rec-wr">—</strong></div>
+        <div>Parität: <strong id="live-rec-parity">—</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Active 5 Bots -->
+  <div class="pf-section-title">🤖 Aktives 5-Bot Portfolio (Demo)</div>
+  <div class="pf-bots-grid" id="pf-bots-grid">
+    <div class="pf-bot-card"><div class="pf-loading">Lade Bots…</div></div>
+  </div>
+
+  <!-- 3. Shadow Pipeline Table -->
+  <div class="pf-section-title">👻 Vollständige Strategie-Pipeline & Shadow-Pool</div>
+  
   <div class="pf-summary" id="pf-summary"></div>
 
   <div class="pf-toolbar">
     <div class="pf-filters" id="pf-filters"></div>
   </div>
 
-  <div class="pf-legend">🚀 <strong>Bot-Eignung</strong> = welche Strategie auf einen freien Bot-Slot · 💳 <strong>Live</strong> = welche Demo-Strategie für Echtgeld reif ist · ⚠ <strong>Divergenz</strong> = Bot tradet nicht, was die Registry sagt. Scores sind Vorschläge.</div>
-
   <div class="pf-table-wrap">
     <table class="pf-table" id="pf-table">
       <thead>
         <tr>
           <th data-k="id">#</th>
-          <th data-k="name">Strategie</th>
-          <th data-k="name" class="num">Assets</th>
+          <th data-k="name">Strategie / Ansatz</th>
+          <th data-k="name" class="num">Asset</th>
           <th data-k="bot" class="num">Bot</th>
-          <th data-k="ready" class="num" title="Live-Reife (generell)">💶 Reif</th>
-          <th data-k="botrec" class="num" title="Welche Strategie auf freien Bot">🚀 Bot</th>
-          <th data-k="liverec" class="num" title="Welcher Demo-Bot auf Echtgeld">💳 Live</th>
+          <th data-k="botrec" class="num" title="Eignung als Demo-Bot">🚀 Bot-Fit</th>
+          <th data-k="liverec" class="num" title="Eignung für Live-Echtgeld">💳 Live-Fit</th>
           <th data-k="tr" class="num">Trades</th>
-          <th data-k="eq" class="num">Equity</th>
           <th data-k="wr" class="num">WR</th>
-          <th data-k="wpw" class="num">€/Wo</th>
+          <th data-k="eq" class="num">Shadow PnL</th>
+          <th data-k="wpw" class="num">€/Woche</th>
         </tr>
       </thead>
-      <tbody id="pf-tbody"><tr><td colspan="11" class="pf-loading">Lade Portfolio-Daten…</td></tr></tbody>
+      <tbody id="pf-tbody"><tr><td colspan="10" class="pf-loading">Lade Pipeline-Daten…</td></tr></tbody>
     </table>
   </div>
 
@@ -116,184 +158,223 @@
 
 <script>
 (function(){
-  var state = { data:null, filter:'all', sortKey:'botrec', sortDesc:true };
+  var state = { data: null, filter: 'all', sortKey: 'botrec', sortDesc: true };
 
-  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function fmtEuro(v){ if(v==null || isNaN(v)) return '—'; var s=Number(v).toFixed(0); return (v>0?'+':'') + s.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmtEuro(v){ if(v == null || isNaN(v)) return '—'; var s = Number(v).toFixed(0); return (v > 0 ? '+' : '') + s.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
   function safeFetch(path){ var url = new URL(path, window.location.origin); return fetch(url.href); }
 
   function sortVal(s, k){
     switch(k){
-      case 'name': return (s.name||'').toLowerCase();
-      case 'bot': return s.flags.has_demo_bot ? (s.bot.assigned||'') : '';
-      case 'ready': return (s.ready&&s.ready.score)||0;
-      case 'botrec': return (s.bot_rec&&s.bot_rec.score)||0;
+      case 'id': return parseInt(s.id, 10) || 0;
+      case 'name': return (s.name || '').toLowerCase();
+      case 'bot': return s.flags.has_demo_bot ? (s.bot.assigned || '') : '';
+      case 'botrec': return (s.bot_rec && s.bot_rec.score) || 0;
       case 'liverec': return (s.flags.has_demo_bot && s.live_rec) ? s.live_rec.score : -1;
-      case 'tr': return (s.shadow&&s.shadow.trades)||0;
-      case 'eq': return (s.shadow&&s.shadow.equity)||0;
-      case 'wr': return (s.shadow&&s.shadow.wr)||-1;
-      case 'wpw': return (s.shadow&&s.shadow.pnl_per_week)||-999;
+      case 'tr': return (s.shadow && s.shadow.trades) || 0;
+      case 'eq': return (s.shadow && s.shadow.equity) || 0;
+      case 'wr': return (s.shadow && s.shadow.wr) || -1;
+      case 'wpw': return (s.shadow && s.shadow.pnl_per_week) || -999;
     }
     return 0;
   }
 
-  function scoreCell(sc){
-    if(sc==null) return '<span class="pf-dim">—</span>';
-    var pct = Math.max(0, Math.min(100, sc));
-    var bar = sc>=60 ? 'pf-bar-hi' : (sc>=40 ? 'pf-bar-mi' : 'pf-bar-lo');
-    var col = sc>=80 ? 'pf-ok' : (sc>=40 ? 'pf-pos' : 'pf-dim');
-    return '<span class="pf-score"><span class="pf-bar '+bar+' bar"><i style="width:'+pct+'%"></i></span><span class="val '+col+'">'+sc+'</span></span>';
+  function scorePill(sc){
+    if(sc == null || sc < 0) return '<span class="pf-dim">—</span>';
+    var cls = sc >= 75 ? 'hi' : (sc >= 45 ? 'mi' : 'lo');
+    return '<span class="pf-score-pill ' + cls + '">' + sc + '</span>';
   }
-
-  function liveIcon(s){
-    if(!s.flags.has_demo_bot) return '<span class="pf-dim">—</span>';
-    var lr=s.live_rec||{}; var sc=lr.score;
-    if(sc==null) return '<span class="pf-dim">—</span>';
-    var icon = sc>=80 ? '✅' : (sc>=60 ? '⚠️' : (lcrisiko(lr) ? '🚫' : '✗'));
-    var col = sc>=80 ? 'pf-ok' : (sc>=60 ? 'pf-pos' : (lcrisiko(lr) ? 'pf-neg' : 'pf-dim'));
-    return '<span class="pf-icon '+col+'">'+icon+' '+sc+'</span>';
-  }
-  function lcrisiko(lr){ return lr.level==='hochrisiko' && lr.score===0; }
 
   function assetsInline(assets){
-    if(!assets||!assets.length) return '<span class="pf-dim">—</span>';
-    var a = assets.slice(0,6).map(function(x){return '<span class="pf-asset-chip">'+esc(x)+'</span>';}).join('');
-    if(assets.length>6) a += '<span class="pf-asset-chip" style="background:transparent">+'+(assets.length-6)+'</span>';
-    return '<div class="pf-assets">'+a+'</div>';
+    if(!assets || !assets.length) return '<span class="pf-dim">—</span>';
+    var a = assets.slice(0, 4).map(function(x){ return '<span class="pf-asset-chip">' + esc(x) + '</span>'; }).join('');
+    if(assets.length > 4) a += '<span class="pf-asset-chip">+' + (assets.length - 4) + '</span>';
+    return '<div class="pf-assets">' + a + '</div>';
   }
 
   function buildDetail(s){
-    var de=s.desc||{}, sh=s.shadow||{}, bot=s.bot||{};
-    var rows='';
-    if(de.tag) rows+='<span class="pf-desc-tag">'+esc(de.tag)+'</span>';
-    if(de.was) rows+='<div class="pf-desc-row pf-desc-was"><span class="pf-desc-label">Was</span><span>'+esc(de.was)+'</span></div>';
-    if(de.gut) rows+='<div class="pf-desc-row pf-desc-gut"><span class="pf-desc-label">Gut</span><span>'+esc(de.gut)+'</span></div>';
-    if(de.nicht) rows+='<div class="pf-desc-row pf-desc-nicht"><span class="pf-desc-label">Nicht</span><span>'+esc(de.nicht)+'</span></div>';
-    if(de.ausmacht) rows+='<div class="pf-desc-row"><span class="pf-desc-label">Art</span><span>'+esc(de.ausmacht)+'</span></div>';
-    if(de.ergaenzt) rows+='<div class="pf-desc-row"><span class="pf-desc-label">Ergänzt</span><span>'+esc(de.ergaenzt)+'</span></div>';
+    var de = s.desc || {}, sh = s.shadow || {}, bot = s.bot || {};
+    var rows = '';
+    if(de.tag) rows += '<span class="pf-desc-tag">' + esc(de.tag) + '</span>';
+    if(de.was) rows += '<div class="pf-desc-row"><span class="pf-desc-label">Konzept:</span><span>' + esc(de.was) + '</span></div>';
+    if(de.gut) rows += '<div class="pf-desc-row"><span class="pf-desc-label">Stärken:</span><span style="color:var(--c-success);">' + esc(de.gut) + '</span></div>';
+    if(de.nicht) rows += '<div class="pf-desc-row"><span class="pf-desc-label">Schwächen:</span><span style="color:var(--c-warn);">' + esc(de.nicht) + '</span></div>';
+    if(de.ergaenzt) rows += '<div class="pf-desc-row"><span class="pf-desc-label">Portfolio-Fit:</span><span>' + esc(de.ergaenzt) + '</span></div>';
 
-    var info='';
-    if(sh.oos_pf!=null) info+='<div class="pf-desc-row"><span class="pf-desc-label">OOS PF</span><span>'+sh.oos_pf+'</span></div>';
-    if(sh.gap_pct!=null) info+='<div class="pf-desc-row"><span class="pf-desc-label">Gap</span><span>'+sh.gap_pct+'%</span></div>';
-    if(sh.days!=null) info+='<div class="pf-desc-row"><span class="pf-desc-label">Aktiv</span><span>'+sh.days.toFixed(0)+' Tage</span></div>';
-    if(bot.mirror) info+='<div class="pf-desc-row"><span class="pf-desc-label">Bot-EQ</span><span>'+fmtEuro(bot.mirror.equity)+'€ · '+bot.mirror.trades+' T</span></div>';
-    if(bot.divergence && bot.assigned) info+='<div class="pf-desc-row pf-desc-nicht"><span class="pf-desc-label">⚠</span><span>Bot '+esc(bot.assigned)+' tradete zuletzt #'+esc(bot.live_strategy||'?')+', Registry sagt #'+esc(s.id)+'.</span></div>';
-    var par=bot.parity||{};
-    if(bot.deployed && par.status){
-      var plab, pcls='pf-desc-nicht';
-      if(par.status==='paritaet'){ plab='✅ Parität bestätigt — '+par.matched_pairs+' Paare, handelt wie der Shadow'; pcls='pf-desc-gut'; }
-      else if(par.status==='abweichung'){ plab='⚠️ Bot ≠ Shadow — Einstieg/SL/TP weichen ab'; }
-      else if(par.status==='needs_smoke_test'){ plab='🧪 Erst-Trade-Test offen — erst einen verifizierten Trade abwarten'; }
-      else { plab='⏳ Parität im Aufbau — '+par.matched_pairs+' von 10 Paaren (Einstieg '+par.entry_ok+'/'+par.matched_pairs+')'; pcls=''; }
-      info+='<div class="pf-desc-row '+pcls+'"><span class="pf-desc-label">Shadow↔Bot</span><span>'+plab+'</span></div>';
+    var info = '';
+    if(sh.oos_pf != null) info += '<div class="pf-desc-row"><span class="pf-desc-label">Backtest PF:</span><span>' + sh.oos_pf + '</span></div>';
+    if(sh.days != null) info += '<div class="pf-desc-row"><span class="pf-desc-label">Forward-Tage:</span><span>' + sh.days.toFixed(0) + ' Tage</span></div>';
+    if(bot.assigned) {
+      info += '<div class="pf-desc-row"><span class="pf-desc-label">Demo-Konto:</span><span>' + esc(bot.assigned.toUpperCase()) + '</span></div>';
+      var par = bot.parity || {};
+      var parText = par.status === 'paritaet' ? '✅ Vollständige Parität' : (par.status === 'abweichung' ? '⚠️ Abweichung' : '⏳ Sammelt Test-Trades');
+      info += '<div class="pf-desc-row"><span class="pf-desc-label">Parität:</span><span>' + parText + '</span></div>';
     }
 
-    var grid='';
-    if(rows) grid+='<div class="pf-detail-block"><h4>Strategie</h4>'+rows+'</div>';
-    if(info) grid+='<div class="pf-detail-block"><h4>Details</h4>'+info+'</div>';
-    return '<div class="pf-detail-grid">'+grid+'</div>';
+    return '<div class="pf-detail-grid"><div>' + rows + '</div><div>' + info + '</div></div>';
   }
 
   function rowHtml(s){
-    var tag=(s.desc&&s.desc.tag)||'';
-    var assets=s.assets||[];
-    var rowCls = s.bot&&s.bot.divergence ? 'pf-row-div' : (s.flags.has_demo_bot?'pf-row-deployed':'');
-    var botC = s.flags.has_demo_bot
-      ? '<span class="pf-badge bot">🤖 '+esc(s.bot.assigned||'')+'</span>'
-      : '<span class="pf-dim">—</span>';
-    var divBadge = (s.bot&&s.bot.divergence) ? '<span class="pf-badge div">⚠ Drift</span>' : '';
-    var eq = (s.shadow&&s.shadow.equity!=null)?fmtEuro(s.shadow.equity)+'€':'—';
-    var eqCls = (s.shadow&&s.shadow.equity>1000)?'pf-pos':((s.shadow&&s.shadow.equity<1000)?'pf-neg':'pf-dim');
-    var wpw = (s.shadow&&s.shadow.pnl_per_week!=null)?fmtEuro(s.shadow.pnl_per_week)+'€':'—';
-    var wpwCls = (s.shadow&&s.shadow.pnl_per_week>0)?'pf-pos':((s.shadow&&s.shadow.pnl_per_week<0)?'pf-neg':'pf-dim');
-    var wr = (s.shadow&&s.shadow.wr!=null)?s.shadow.wr+'%':'—';
-    var tr = (s.shadow&&s.shadow.trades!=null)?s.shadow.trades:'—';
+    var tag = (s.desc && s.desc.tag) || '';
+    var assets = s.assets || [];
+    var rowCls = s.flags.has_demo_bot ? 'pf-row-deployed' : '';
+    var botBadge = s.flags.has_demo_bot ? '<span class="pf-badge bot">🤖 ' + esc(s.bot.assigned.toUpperCase()) + '</span>' : '<span class="pf-dim">—</span>';
+    var pnl = s.shadow && s.shadow.equity != null ? (s.shadow.equity - 1000) : null;
+    var pnlStr = pnl != null ? fmtEuro(pnl) + ' €' : '—';
+    var pnlCls = pnl > 0 ? 'pf-pos' : (pnl < 0 ? 'pf-neg' : 'pf-dim');
+    var wpw = s.shadow && s.shadow.pnl_per_week != null ? fmtEuro(s.shadow.pnl_per_week) + ' €' : '—';
+    var wpwCls = s.shadow && s.shadow.pnl_per_week > 0 ? 'pf-pos' : (s.shadow && s.shadow.pnl_per_week < 0 ? 'pf-neg' : 'pf-dim');
 
-    return '<tr class="pf-row '+rowCls+'" data-id="'+esc(s.id)+'">'
-      + '<td><span class="pf-toggle">▶</span><strong>#'+esc(s.id)+'</strong></td>'
-      + '<td><div style="font-weight:600">'+esc(s.name||'')+'</div>'+(tag?'<span class="pf-badge tag">'+esc(tag)+'</span> ':'')+divBadge+'</td>'
-      + '<td>'+assetsInline(assets)+'</td>'
-      + '<td class="num">'+botC+'</td>'
-      + '<td class="num">'+scoreCell((s.ready&&s.ready.score))+'</td>'
-      + '<td class="num">'+scoreCell((s.bot_rec&&s.bot_rec.score))+'</td>'
-      + '<td class="num">'+liveIcon(s)+'</td>'
-      + '<td class="num">'+tr+'</td>'
-      + '<td class="num '+eqCls+'">'+eq+'</td>'
-      + '<td class="num">'+wr+'</td>'
-      + '<td class="num '+wpwCls+'">'+wpw+'</td>'
+    return '<tr class="pf-row ' + rowCls + '" data-id="' + esc(s.id) + '">'
+      + '<td><span class="pf-toggle">▶</span><strong>#' + esc(s.id) + '</strong></td>'
+      + '<td><div style="font-weight:600">' + esc(s.name || '') + '</div>' + (tag ? '<span class="pf-badge tag">' + esc(tag) + '</span>' : '') + '</td>'
+      + '<td class="num">' + assetsInline(assets) + '</td>'
+      + '<td class="num">' + botBadge + '</td>'
+      + '<td class="num">' + scorePill(s.bot_rec && s.bot_rec.score) + '</td>'
+      + '<td class="num">' + (s.flags.has_demo_bot ? scorePill(s.live_rec && s.live_rec.score) : '<span class="pf-dim">—</span>') + '</td>'
+      + '<td class="num">' + (s.shadow ? s.shadow.trades : '—') + '</td>'
+      + '<td class="num">' + (s.shadow && s.shadow.wr != null ? s.shadow.wr + '%' : '—') + '</td>'
+      + '<td class="num ' + pnlCls + '">' + pnlStr + '</td>'
+      + '<td class="num ' + wpwCls + '">' + wpw + '</td>'
       + '</tr>'
-      + '<tr class="pf-detail-row" data-detail="'+esc(s.id)+'" style="display:none"><td colspan="11">'+buildDetail(s)+'</td></tr>';
+      + '<tr class="pf-detail-row" data-detail="' + esc(s.id) + '" style="display:none"><td colspan="10">' + buildDetail(s) + '</td></tr>';
+  }
+
+  function renderDecisionCards(stats, list){
+    var topBot = stats.top_bot_candidate;
+    var topLive = stats.top_live_candidate;
+
+    if(topBot){
+      document.getElementById('bot-rec-name').textContent = '#' + topBot.id + ' ' + (topBot.desc.tag || topBot.name);
+      document.getElementById('bot-rec-score').textContent = (topBot.bot_rec && topBot.bot_rec.score) || '—';
+      document.getElementById('bot-rec-desc').textContent = topBot.desc.was || 'Hervorragende Performance im Forward-Test.';
+      document.getElementById('bot-rec-trades').textContent = (topBot.shadow && topBot.shadow.trades) || '0';
+      document.getElementById('bot-rec-wr').textContent = (topBot.shadow && topBot.shadow.wr != null ? topBot.shadow.wr + '%' : '—');
+      var pnl = topBot.shadow && topBot.shadow.equity ? (topBot.shadow.equity - 1000) : 0;
+      document.getElementById('bot-rec-pnl').textContent = fmtEuro(pnl) + ' €';
+    }
+
+    if(topLive){
+      document.getElementById('live-rec-name').textContent = '#' + topLive.id + ' ' + (topLive.desc.tag || topLive.name);
+      document.getElementById('live-rec-score').textContent = (topLive.live_rec && topLive.live_rec.score) || '—';
+      document.getElementById('live-rec-desc').textContent = topLive.desc.ausmacht || 'Stabil auf Demo-Konto mit hoher Verlässlichkeit.';
+      document.getElementById('live-rec-bot').textContent = (topLive.bot && topLive.bot.assigned ? topLive.bot.assigned.toUpperCase() : '—');
+      document.getElementById('live-rec-wr').textContent = (topLive.shadow && topLive.shadow.wr != null ? topLive.shadow.wr + '%' : '—');
+      var par = topLive.bot && topLive.bot.parity;
+      document.getElementById('live-rec-parity').textContent = (par && par.status === 'paritaet') ? '✅ Bestätigt' : '⏳ In Prüfung';
+    }
+  }
+
+  function renderBotsGrid(list){
+    var deployed = list.filter(function(s){ return s.flags.has_demo_bot; });
+    deployed.sort(function(a,b){ return (a.bot.assigned || '').localeCompare(b.bot.assigned || ''); });
+
+    var html = deployed.map(function(s){
+      var de = s.desc || {}, sh = s.shadow || {}, b = s.bot || {};
+      var pnl = sh.equity != null ? (sh.equity - 1000) : 0;
+      var pnlCls = pnl >= 0 ? 'pf-pos' : 'pf-neg';
+      return '<div class="pf-bot-card">'
+        + '<div class="pf-bot-card-header"><span>🤖 ' + esc(b.assigned.toUpperCase()) + '</span><span class="pf-badge ok">#' + esc(s.id) + '</span></div>'
+        + '<div class="pf-bot-name">' + esc(de.tag || s.name) + '</div>'
+        + '<div class="pf-bot-asset">' + esc((s.assets || []).join(', ')) + '</div>'
+        + '<div class="pf-bot-metrics">'
+        + '<span>Trades: <strong>' + (sh.trades || 0) + '</strong></span>'
+        + '<span>WR: <strong>' + (sh.wr != null ? sh.wr + '%' : '—') + '</strong></span>'
+        + '<span>PnL: <strong class="' + pnlCls + '">' + fmtEuro(pnl) + ' €</strong></span>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    document.getElementById('pf-bots-grid').innerHTML = html || '<div class="pf-empty">Keine aktiven Demo-Bots.</div>';
   }
 
   function matches(s){
     switch(state.filter){
       case 'all': return true;
+      case 'cand': return !s.flags.has_demo_bot && (s.bot_rec && s.bot_rec.score >= 70);
       case 'bot': return s.flags.has_demo_bot;
-      case 'ready': return !!(s.ready&&s.ready.is_ready);
-      case 'div': return !!(s.bot&&s.bot.divergence);
-      case 'nobot': return !s.flags.has_demo_bot && (s.shadow&&s.shadow.trades>0);
-      case 'liver': return s.flags.has_demo_bot && s.live_rec && s.live_rec.score>=80;
-      case 'cand': return !s.flags.has_demo_bot && s.bot_rec && s.bot_rec.score>=70;
+      case 'pos': return s.shadow && s.shadow.equity > 1000;
       default: return true;
     }
   }
 
   function render(){
-    var d=state.data; if(!d) return;
-    var list=d.strategies||[];
-    var nBot=list.filter(s=>s.flags.has_demo_bot).length;
-    var nReady=list.filter(s=>s.ready&&s.ready.is_ready).length;
-    var nDiv=list.filter(s=>s.bot&&s.bot.divergence).length;
-    var nCand=list.filter(s=>!s.flags.has_demo_bot&&s.bot_rec&&s.bot_rec.score>=70).length;
-    var nLive=list.filter(s=>s.flags.has_demo_bot&&s.live_rec&&s.live_rec.score>=80).length;
+    var d = state.data; if(!d) return;
+    var list = d.strategies || [];
+
+    renderDecisionCards(d.stats || {}, list);
+    renderBotsGrid(list);
+
+    var nBot = list.filter(s => s.flags.has_demo_bot).length;
+    var nCand = list.filter(s => !s.flags.has_demo_bot && s.bot_rec && s.bot_rec.score >= 70).length;
+    var nPos = list.filter(s => s.shadow && s.shadow.equity > 1000).length;
+
     document.getElementById('pf-summary').innerHTML = ''
-      + '<div class="pf-stat"><div class="pf-stat-value">'+list.length+'</div><div class="pf-stat-label">Strategien</div></div>'
-      + '<div class="pf-stat ok"><div class="pf-stat-value">'+nCand+'</div><div class="pf-stat-label">🚀 Bot-Kand.</div></div>'
-      + '<div class="pf-stat"><div class="pf-stat-value">'+nBot+'</div><div class="pf-stat-label">Demo-Bots</div></div>'
-      + '<div class="pf-stat '+(nLive?'ok':'')+'"><div class="pf-stat-value">'+nLive+'</div><div class="pf-stat-label">💳 Live-bereit</div></div>'
-      + '<div class="pf-stat '+(nDiv?'danger':'')+'"><div class="pf-stat-value">'+nDiv+'</div><div class="pf-stat-label">⚠ Divergenzen</div></div>';
+      + '<div class="pf-stat"><div class="pf-stat-value">' + list.length + '</div><div class="pf-stat-label">Gesamt</div></div>'
+      + '<div class="pf-stat ok"><div class="pf-stat-value">' + nCand + '</div><div class="pf-stat-label">🚀 Bot-Kandidaten</div></div>'
+      + '<div class="pf-stat"><div class="pf-stat-value">' + nBot + '</div><div class="pf-stat-label">Aktive Bots</div></div>'
+      + '<div class="pf-stat ok"><div class="pf-stat-value">' + nPos + '</div><div class="pf-stat-label">Im Plus (Shadow)</div></div>';
 
-    var filters=[['all','Alle',list.length],['cand','🚀 Bot-Kand.',nCand],['liver','💳 Live-bereit',nLive],['bot','🤖 Demo-Bots',nBot],['div','⚠ Divergenzen',nDiv],['nob','👻 Nur Shadow',list.filter(s=>!s.flags.has_demo_bot&&s.shadow&&s.shadow.trades>0).length]];
-    var f='<div class="pf-filters">';
-    filters.forEach(function(x){ f+='<button class="pf-filter-btn'+(state.filter===x[0]?' active':'')+'" data-f="'+x[0]+'">'+esc(x[1])+' <span class="pf-count">'+x[2]+'</span></button>'; });
-    f+='</div>';
-    document.getElementById('pf-filters').innerHTML=f;
+    var filters = [
+      ['all', 'Alle Strategien', list.length],
+      ['cand', '🚀 Top Bot-Kandidaten', nCand],
+      ['bot', '🤖 Aktive Demo-Bots', nBot],
+      ['pos', '📈 Nur Gewinner', nPos]
+    ];
 
-    var filtered=list.filter(matches);
+    document.getElementById('pf-filters').innerHTML = filters.map(function(x){
+      return '<button class="pf-filter-btn' + (state.filter === x[0] ? ' active' : '') + '" data-f="' + x[0] + '">' + esc(x[1]) + ' <span class="pf-count">' + x[2] + '</span></button>';
+    }).join('');
+
+    var filtered = list.filter(matches);
     filtered.sort(function(a,b){
-      var av=sortVal(a,state.sortKey), bv=sortVal(b,state.sortKey);
-      var asc = av<bv ? -1 : (av>bv ? 1 : 0);
+      var av = sortVal(a, state.sortKey), bv = sortVal(b, state.sortKey);
+      var asc = av < bv ? -1 : (av > bv ? 1 : 0);
       return state.sortDesc ? -asc : asc;
     });
-    var body=document.getElementById('pf-tbody');
-    body.innerHTML = filtered.length ? filtered.map(rowHtml).join('') : '<tr><td colspan="11" class="pf-empty">Keine Strategien für diesen Filter.</td></tr>';
 
-    var up=d.updated_at;
-    if(up){ try{ var ts=/^\d{4}-\d{2}-\d{2}T/.test(up)?new Date(up):new Date(up+'Z'); document.getElementById('pf-updated').textContent='Datenstand: '+ts.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}); }catch(e){} }
+    document.getElementById('pf-tbody').innerHTML = filtered.length ? filtered.map(rowHtml).join('') : '<tr><td colspan="10" class="pf-empty">Keine Strategien für diesen Filter.</td></tr>';
+
+    var up = d.updated_at;
+    if(up){
+      try {
+        var ts = /^\d{4}-\d{2}-\d{2}T/.test(up) ? new Date(up) : new Date(up + 'Z');
+        document.getElementById('pf-updated').textContent = 'Stand: ' + ts.toLocaleString('de-DE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Berlin' }) + ' (Berliner Zeit)';
+      } catch(e){}
+    }
   }
 
   function bind(){
-    var ths=document.querySelectorAll('#pf-table thead th');
-    ths.forEach(function(th){ th.addEventListener('click', function(){
-      var k=th.getAttribute('data-k');
-      if(state.sortKey===k) state.sortDesc=!state.sortDesc;
-      else { state.sortKey=k; state.sortDesc=true; }  // neue Spalte: absteigend (beste zuerst)
-      render();
-    }); });
-    document.getElementById('pf-filters').addEventListener('click', function(e){
-      var btn=e.target.closest('.pf-filter-btn'); if(!btn) return;
-      state.filter=btn.getAttribute('data-f'); render();
+    document.querySelectorAll('#pf-table thead th').forEach(function(th){
+      th.addEventListener('click', function(){
+        var k = th.getAttribute('data-k');
+        if(state.sortKey === k) state.sortDesc = !state.sortDesc;
+        else { state.sortKey = k; state.sortDesc = true; }
+        render();
+      });
     });
+
+    document.getElementById('pf-filters').addEventListener('click', function(e){
+      var btn = e.target.closest('.pf-filter-btn'); if(!btn) return;
+      state.filter = btn.getAttribute('data-f'); render();
+    });
+
     document.getElementById('pf-tbody').addEventListener('click', function(e){
-      var tr=e.target.closest('tr.pf-row[data-id]'); if(!tr) return;
-      var id=tr.getAttribute('data-id');
-      var det=document.querySelector('tr.pf-detail-row[data-detail="'+id+'"]');
-      var tog=tr.querySelector('.pf-toggle');
-      if(det){ if(det.style.display==='none'){ det.style.display=''; tog.textContent='▼'; } else { det.style.display='none'; tog.textContent='▶'; } }
+      var tr = e.target.closest('tr.pf-row[data-id]'); if(!tr) return;
+      var id = tr.getAttribute('data-id');
+      var det = document.querySelector('tr.pf-detail-row[data-detail="' + id + '"]');
+      var tog = tr.querySelector('.pf-toggle');
+      if(det){
+        if(det.style.display === 'none'){ det.style.display = ''; tog.textContent = '▼'; }
+        else { det.style.display = 'none'; tog.textContent = '▶'; }
+      }
     });
   }
 
-  safeFetch('/api/portfolio.json').then(function(r){return r.json();}).then(function(d){ state.data=d; bind(); render(); }).catch(function(e){ document.getElementById('pf-tbody').innerHTML='<tr><td colspan="11" class="pf-empty">⚠ Daten konnten nicht geladen werden: '+esc(e.message)+'</td></tr>'; });
+  safeFetch('/api/portfolio.json')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ state.data = d; bind(); render(); })
+    .catch(function(e){ document.getElementById('pf-tbody').innerHTML = '<tr><td colspan="10" class="pf-empty">⚠ Fehler beim Laden: ' + esc(e.message) + '</td></tr>'; });
 })();
 </script>
 <!--/BODY-->
