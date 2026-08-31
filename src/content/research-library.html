@@ -27,6 +27,11 @@
   .rl-card.rl-card-skipped { opacity: 0.45; border-left: 3px solid var(--c-danger); }
   .rl-card.rl-card-high { border-left: 3px solid var(--c-success); }
   .rl-card.rl-card-med { border-left: 3px solid var(--c-warn); }
+  .rl-card.rl-card-lab { border: 1px solid rgba(180,100,255,0.28); box-shadow: 0 1px 12px rgba(180,100,255,0.08); }
+  .rl-card.rl-card-lab-prof { border: 1px solid rgba(34,197,94,0.5); box-shadow: 0 2px 16px rgba(34,197,94,0.12); }
+  .rl-card.rl-card-lab-prof .rl-card-top::after { content: "💰"; position: absolute; top: 10px; right: 46px; font-size: 15px; }
+  .rl-card.rl-card-lab .rl-card-name { color: #c9a6ff; }
+  .rl-card.rl-card-untested { border-left: 3px solid var(--c-accent); }
 
   .rl-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-2); margin-bottom: var(--s-2); }
   .rl-card-name { font-weight: 700; font-size: var(--text-base); line-height: 1.3; flex: 1; }
@@ -130,6 +135,14 @@
   function cardClass(s) {
     var c = 'rl-card';
     if (s.skip) return c + ' rl-card-skipped';
+    // Profitable lab-tested: green highlight (highest priority)
+    if (s.lab_tested) {
+      var prof = (s.lab_best_pf != null) ? (s.lab_best_pf >= 1) : (s.lab_best_pnl != null && s.lab_best_pnl > 0);
+      if (prof) return c + ' rl-card-lab-prof';
+      return c + ' rl-card-lab';
+    }
+    // Untested eligible concept: subtle accent border = open inspiration
+    if (!s.skip) return c + ' rl-card-untested';
     if (s.quality_score >= 80) return c + ' rl-card-high';
     if (s.quality_score >= 60) return c + ' rl-card-med';
     return c;
