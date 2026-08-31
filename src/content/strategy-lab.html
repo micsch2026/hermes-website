@@ -267,15 +267,15 @@ function renderTable() {
 
 const deployCols = [
   {key:'id', label:'ID', render: r => `<strong>#${r.id}</strong>`},
+  {key:'name', label:'Strategie / Ansatz', render: r => `<div><div style="font-weight:600">${r.name || r.label}</div><span style="font-size:0.75rem;color:var(--dim)">${(r.assets||[]).join(', ')}</span></div>`},
   {key:'score', label:'Score', num: true},
   {key:'pf', label:'PF', num: true, render: r => r.pf.toFixed(2)},
   {key:'pnl', label:'PnL', num: true, render: r => `<span class="${r.pnl>0?'pos':'neg'}">${r.pnl>0?'+':''}${r.pnl}€</span>`},
   {key:'pnl_per_month', label:'€/Mon', num: true, render: r => r.pnl_per_month ? `<span class="${r.pnl_per_month>0?'pos':'neg'}" style="font-weight:600">${r.pnl_per_month>0?'+':''}${r.pnl_per_month}€</span>` : '—'},
   {key:'trades', label:'Tr', num: true},
   {key:'trades_per_week', label:'Tr/Wk', num: true, render: r => r.trades_per_week != null ? r.trades_per_week : '—'},
-  {key:'avg_trade', label:'€/Tr', num: true, render: r => r.avg_trade != null ? `<span class="${r.avg_trade>0?'pos':'neg'}">${r.avg_trade>0?'+':''}${r.avg_trade}€</span>` : '—'},
+  {key:'avg_trade', label:'Ø/Tr', num: true, render: r => r.avg_trade != null ? `<span class="${r.avg_trade>0?'pos':'neg'}">${r.avg_trade>0?'+':''}${r.avg_trade}€</span>` : '—'},
   {key:'tier', label:'Tier', render: r => `<span class="tier-${r.tier.toLowerCase()}">${r.tier}</span>`},
-  {key:'assets', label:'Assets', render: r => (r.assets||[]).join(', ').slice(0,30)},
   {key:'archetype', label:'Typ', render: r => r.is_new ? '<span class="new-badge">ARCHETYPE</span> ' + r.archetype.slice(0,15) : r.archetype.slice(0,15)},
   {key:'bot', label:'Bot', render: r => r.bot ? `<span class="bot-badge">${r.bot}</span>` : ''},
   {key:'fire_test', label:'🔥', render: r => r.fire_test === true ? '✅' : r.fire_test === false ? '❌' : '—'},
@@ -396,46 +396,51 @@ function showDetail(row) {
     }
     html += '</div>';
   } else {
-  html += '<div class="detail-grid">';
-  const fields = [
-    ['ID', '#' + row.id], ['Score', row.score], ['PF', row.pf || row.best_pf],
-    ['PnL', (row.pnl>=0?'+':'') + (row.pnl||row.best_pnl) + '€'],
-    ['€/Monat', row.pnl_per_month ? (row.pnl_per_month>0?'+':'') + row.pnl_per_month + '€' : '—'],
-    ['Trades/Woche', row.trades_per_week != null ? row.trades_per_week : '—'],
-    ['€/Trade', row.avg_trade != null ? (row.avg_trade>0?'+':'') + row.avg_trade + '€' : '—'],
-    ['Trades', row.trades || row.best_trades], ['Tier', row.tier],
-    ['Win Rate', (row.wr||0) + '%'], ['Pass Rate', (row.pass_rate||0) + '%'],
-    ['Assets', (row.assets||[]).join(', ')], ['Timeframe', row.timeframe || '1h'],
-    ['Source', row.source || row.archetype || '?'], ['Bot', row.bot || '—'],
-  ];
-  for (const [label, val] of fields) {
-    html += `<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-value">${val}</div></div>`;
-  }
-  html += '</div>';
-
-  // Gates
-  if (row.gates) {
-    html += '<div style="margin-top:1rem"><strong>Gates:</strong> ';
-    for (const [k, v] of Object.entries(row.gates)) {
-      if (v === null) continue;
-      html += `<span class="gate ${v?'gate-pass':'gate-fail'}">${k.toUpperCase()}: ${v?'✅':'❌'}</span> `;
+    // Deploy-Kandidaten: Entscheidungs-Ampel & Details
+    const ampel = (row.pf >= 1.25 && row.trades >= 50)
+      ? '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--green-dim);color:var(--green);font-weight:600">🟢 Top-Kandidat: Starker Profit-Faktor bei hoher statistischer Signifikanz</div>'
+      : '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--blue-dim);color:var(--blue);font-weight:600">🟡 Solider Kandidat: Erfüllt Basiskriterien für Shadow-Forward-Test</div>';
+    html += ampel;
+    html += '<div class="detail-grid">';
+    const fields = [
+      ['ID', '#' + row.id], ['Score', row.score], ['PF', row.pf || row.best_pf],
+      ['PnL', (row.pnl>=0?'+':'') + (row.pnl||row.best_pnl) + '€'],
+      ['€/Monat', row.pnl_per_month ? (row.pnl_per_month>0?'+':'') + row.pnl_per_month + '€' : '—'],
+      ['Trades/Woche', row.trades_per_week != null ? row.trades_per_week : '—'],
+      ['Ø/Trade', row.avg_trade != null ? (row.avg_trade>0?'+':'') + row.avg_trade + '€' : '—'],
+      ['Trades', row.trades || row.best_trades], ['Tier', row.tier],
+      ['Win Rate', (row.wr||0) + '%'], ['Pass Rate', (row.pass_rate||0) + '%'],
+      ['Assets', (row.assets||[]).join(', ')], ['Timeframe', row.timeframe || '1h'],
+      ['Source', row.source || row.archetype || '?'], ['Bot', row.bot || '—'],
+    ];
+    for (const [label, val] of fields) {
+      html += `<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-value">${val}</div></div>`;
     }
     html += '</div>';
-  }
 
-  // Fire test
-  if (row.fire_test !== undefined && row.fire_test !== null) {
-    html += `<div style="margin-top:0.5rem"><strong>Feuer-Test:</strong> ${row.fire_test?'✅ Passed':'❌ Failed'}`;
-    if (row.signals_per_week) html += ` (${row.signals_per_week} Signale/Woche)`;
-    html += '</div>';
-  }
+    // Gates
+    if (row.gates) {
+      html += '<div style="margin-top:1rem"><strong>Gates:</strong> ';
+      for (const [k, v] of Object.entries(row.gates)) {
+        if (v === null) continue;
+        html += `<span class="gate ${v?'gate-pass':'gate-fail'}">${k.toUpperCase()}: ${v?'✅':'❌'}</span> `;
+      }
+      html += '</div>';
+    }
 
-  // Hold-Out
-  if (row.ho_status) {
-    if (row.ho_status === 'passed') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ✅ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades</div>`;
-    else if (row.ho_status === 'warning') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ⚠️ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades — negativ bei ausreichender Sample-Size</div>`;
-    else html += `<div style="margin-top:0.25rem;color:var(--dim)"><strong>Hold-Out:</strong> ➖ ${row.ho_trades||0} Trades — zu wenige für Aussage</div>`;
-  }
+    // Fire test
+    if (row.fire_test !== undefined && row.fire_test !== null) {
+      html += `<div style="margin-top:0.5rem"><strong>Feuer-Test:</strong> ${row.fire_test?'✅ Passed':'❌ Failed'}`;
+      if (row.signals_per_week) html += ` (${row.signals_per_week} Signale/Woche)`;
+      html += '</div>';
+    }
+
+    // Hold-Out
+    if (row.ho_status) {
+      if (row.ho_status === 'passed') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ✅ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades</div>`;
+      else if (row.ho_status === 'warning') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ⚠️ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades — negativ bei ausreichender Sample-Size</div>`;
+      else html += `<div style="margin-top:0.25rem;color:var(--dim)"><strong>Hold-Out:</strong> ➖ ${row.ho_trades||0} Trades — zu wenige für Aussage</div>`;
+    }
   }
 
   // Shadow tab: open positions + closed trade list
