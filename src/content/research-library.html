@@ -169,6 +169,8 @@
       { key: 'forex', label: '🌍 Forex' },
       { key: 'indices', label: '📊 Indices' },
       { key: 'lab', label: '🧪 Im Lab getestet' },
+      { key: 'labprof', label: '💰 Profitabel getestet' },
+      { key: 'open', label: '🔍 Offen (Inspiration)' },
     ];
     let html = '';
     for (const f of filters) {
@@ -203,6 +205,8 @@
       case 'forex': return s.is_forex;
       case 'indices': return s.is_indices;
       case 'lab': return s.lab_tested;
+      case 'labprof': return s.lab_tested && (s.lab_best_pf != null ? s.lab_best_pf >= 1 : (s.lab_best_pnl != null && s.lab_best_pnl > 0));
+      case 'open': return !s.lab_tested && !s.skip;
       default: return true;
     }
   }
@@ -270,12 +274,19 @@
       if (s.reported_wr) html += '<span>WR ' + fmtNum(s.reported_wr, 0) + '%</span>';
       if (s.reported_rr) html += '<span>RR ' + fmtNum(s.reported_rr, 1) + '</span>';
       html += '</div>';
-      // Lab badge
+      // Lab badge (Provenienz: Konzept → Strategie #ID)
       if (s.lab_tested) {
+        var lp = s.lab_best_pf;
+        var lpStr = (lp != null) ? ' · PF ' + fmtNum(lp, 2) : ' · PF —';
         var pnlColor = (s.lab_best_pnl > 0) ? '#22c55e' : 'var(--c-danger)';
         var pnlStr = (s.lab_best_pnl != null) ? ((s.lab_best_pnl > 0 ? '+' : '') + Math.round(s.lab_best_pnl) + '€') : '—';
-        var tierStr = s.lab_best_tier ? ' · Tier ' + s.lab_best_tier : '';
-        html += '<span style="font-size:var(--text-xs);font-weight:600;color:' + pnlColor + ';background:rgba(180,100,255,0.1);padding:2px 8px;border-radius:var(--r-lg)">🧪 ' + pnlStr + tierStr + '</span>';
+        var tTxt = s.lab_best_tier ? (' · ' + esc(s.lab_best_tier)) : '';
+        // Tier-Farbe ehrlich: grün nur A, gelb B/C, rot rejected
+        var tc = s.lab_best_tier === 'A' ? '#22c55e' : (s.lab_best_tier === 'B' ? '#facc15' : (s.lab_best_tier && s.lab_best_tier !== 'rejected' ? 'var(--c-warn)' : 'var(--c-danger)'));
+        html += '<a href="/strategy-lab" onclick="event.stopPropagation();" title="Im Strategy Lab ansehen: #' + esc(s.lab_strategy_id) + '" ' +
+          'style="font-size:var(--text-xs);font-weight:600;color:var(--c-accent);background:rgba(180,100,255,0.12);padding:2px 8px;border-radius:var(--r-lg);text-decoration:none;display:inline-flex;align-items:center;gap:3px">' +
+          '🧪 → #' + esc(s.lab_strategy_id) + '<span style="color:' + pnlColor + '">' + pnlStr + '</span>' + lpStr +
+          '<span style="color:' + tc + '">' + tTxt + '</span></a>';
       }
       html += '</div>';
 
@@ -378,10 +389,16 @@
       html += '<tr><td style="color:var(--c-text-muted);width:120px">OOS PnL</td><td><strong style="color:' + pnlColor + ';font-size:var(--text-lg)">' + pnlStr + '</strong></td></tr>';
       if (s.lab_best_pf != null) html += '<tr><td style="color:var(--c-text-muted)">Gewinnfaktor</td><td><strong>' + fmtNum(s.lab_best_pf, 2) + '</strong></td></tr>';
       if (s.lab_best_tier) {
-        var tColor = s.lab_best_tier === 'A' ? '#22c55e' : s.lab_best_tier === 'B' ? '#facc15' : 'var(--c-text-muted)';
-        html += '<tr><td style="color:var(--c-text-muted)">Tier</td><td><strong style="color:' + tColor + '">' + s.lab_best_tier + '</strong></td></tr>';
+        var tColor = s.lab_best_tier === 'A' ? '#22c55e' : s.lab_best_tier === 'B' ? '#facc15' : (s.lab_best_tier === 'rejected' ? 'var(--c-danger)' : 'var(--c-warn)');
+        var tExtra = (s.lab_best_tier === 'rejected') ? ' <span style="color:var(--c-text-muted);font-weight:400">(Gates abgelehnt)</span>' : '';
+        html += '<tr><td style="color:var(--c-text-muted)">Tier</td><td><strong style="color:' + tColor + '">' + esc(s.lab_best_tier) + '</strong>' + tExtra + '</td></tr>';
       }
-      if (s.lab_strategy_id) html += '<tr><td style="color:var(--c-text-muted)">Strategy Lab ID</td><td><a href="/strategy-lab" style="color:var(--c-accent)">#' + s.lab_strategy_id + ' →</a></td></tr>';
+      if (s.lab_legacy_tier) html += '<tr><td style="color:var(--c-text-muted)">Tier (legacy)</td><td>' + esc(s.lab_legacy_tier) + '</td></tr>';
+      if (s.lab_oos_trades != null) html += '<tr><td style="color:var(--c-text-muted)">OOS Trades</td><td>' + s.lab_oos_trades + '</td></tr>';
+      if (s.lab_oos_wr != null) html += '<tr><td style="color:var(--c-text-muted)">OOS Win Rate</td><td>' + fmtNum(s.lab_oos_wr, 1) + '%</td></tr>';
+      if (s.lab_strategy_name) html += '<tr><td style="color:var(--c-text-muted)">Strategie</td><td>' + esc(s.lab_strategy_name) + '</td></tr>';
+      if (s.lab_strategy_status) html += '<tr><td style="color:var(--c-text-muted)">Status</td><td>' + esc(s.lab_strategy_status) + '</td></tr>';
+      if (s.lab_strategy_id) html += '<tr><td style="color:var(--c-text-muted)">Strategy Lab ID</td><td><a href="/strategy-lab" style="color:var(--c-accent)">#' + esc(s.lab_strategy_id) + ' →</a></td></tr>';
       html += '</tbody></table></div></div>';
     }
 
