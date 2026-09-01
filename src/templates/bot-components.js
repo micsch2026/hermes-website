@@ -271,27 +271,38 @@ function renderPerformance(d) {
 
   var wrEl = el(C.prefix + '-winrate');
   if (wrEl) {
-    wrEl.textContent = wr;
+    wrEl.textContent = totalTrades > 0 ? wr : '—';
     if (totalTrades > 0) {
       var wrNum = (wins / totalTrades) * 100;
       wrEl.className = 'bot-card-value ' + (wrNum >= 50 ? 'bot-pnl-pos' : 'bot-pnl-neg');
+    } else {
+      wrEl.className = 'bot-card-value';
     }
   }
   var wrDetail = el(C.prefix + '-winrate-detail');
-  if (wrDetail) wrDetail.textContent = wins + 'W / ' + losses + 'L';
+  if (wrDetail) wrDetail.textContent = totalTrades > 0 ? (wins + 'W / ' + losses + 'L') : 'Warten auf Trades';
 
   var pf = perf.profit_factor;
   var pfEl = el(C.prefix + '-profit-factor');
   if (pfEl) {
-    pfEl.textContent = pf != null ? Number(pf).toFixed(2) : '—';
-    if (pf != null) pfEl.className = 'bot-card-value ' + (pf >= 1.5 ? 'bot-pnl-pos' : 'bot-pnl-neg');
+    pfEl.textContent = totalTrades > 0 && pf != null ? Number(pf).toFixed(2) : '—';
+    if (totalTrades > 0 && pf != null) {
+      pfEl.className = 'bot-card-value ' + (pf >= 1.5 ? 'bot-pnl-pos' : 'bot-pnl-neg');
+    } else {
+      pfEl.className = 'bot-card-value';
+    }
   }
 
-  var exp = perf.expectancy || 0;
+  var exp = perf.expectancy;
   var expEl = el(C.prefix + '-expectancy');
   if (expEl) {
-    expEl.textContent = (exp >= 0 ? '+' : '') + Number(exp).toFixed(2) + ' EUR';
-    expEl.className = 'bot-card-value ' + pnlClass(exp);
+    if (totalTrades > 0 && exp != null) {
+      expEl.textContent = (exp >= 0 ? '+' : '') + Number(exp).toFixed(2) + ' EUR';
+      expEl.className = 'bot-card-value ' + pnlClass(exp);
+    } else {
+      expEl.textContent = '—';
+      expEl.className = 'bot-card-value';
+    }
   }
 
   var dd = perf.max_drawdown || perf.max_drawdown_pct || 0;
@@ -584,13 +595,28 @@ function renderEquity(d) {
 
   var labels = [], values = [], drawdowns = [];
   var peak = 0;
+  var minVal = Infinity, maxVal = -Infinity;
   for (var i = 0; i < snapshots.length; i++) {
     var s = snapshots[i];
     var val = s.equity || s.balance || s.value || 0;
     labels.push(s.timestamp || s.date || '');
     values.push(val);
     if (val > peak) peak = val;
+    if (val < minVal) minVal = val;
+    if (val > maxVal) maxVal = val;
     drawdowns.push(peak > 0 ? ((val - peak) / peak * 100) : 0);
+  }
+
+  // Y-Axis padding: ensure at least ±1.5% (or ±15 EUR) span around balance so micro-cent fluctuations don't look like crashes
+  var yMin = undefined, yMax = undefined;
+  if (minVal !== Infinity && maxVal !== -Infinity) {
+    var mid = (minVal + maxVal) / 2;
+    var range = maxVal - minVal;
+    var minSpan = Math.max(15, mid * 0.03); // at least 15 EUR or 3% total span
+    if (range < minSpan) {
+      yMin = Math.floor(mid - minSpan / 2);
+      yMax = Math.ceil(mid + minSpan / 2);
+    }
   }
 
   if (_chartInstances.equity) _chartInstances.equity.destroy();
@@ -640,7 +666,7 @@ function renderEquity(d) {
       },
       scales: {
         x: { display: true, ticks: { color: '#555', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { position: 'left', ticks: { color: '#5b8def', callback: function(v) { return '€' + v.toFixed(0); } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { position: 'left', min: yMin, max: yMax, ticks: { color: '#5b8def', callback: function(v) { return '€' + v.toFixed(0); } }, grid: { color: 'rgba(255,255,255,0.04)' } },
         y1: { position: 'right', ticks: { color: '#ef4444', callback: function(v) { return v.toFixed(0) + '%'; } }, grid: { drawOnChartArea: false } }
       }
     }
