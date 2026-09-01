@@ -1519,6 +1519,37 @@ function renderReoptimize() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+ *  TAB NAVIGATION
+ * ═══════════════════════════════════════════════════════════ */
+
+function switchTab(prefix, tabName) {
+  var nav = el(prefix + '-nav-tabs');
+  if (nav) {
+    var btns = nav.querySelectorAll('.bot-tab-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.remove('active');
+    }
+  }
+  // Find clicked button
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.add('active');
+  }
+
+  // Panes
+  var panes = ['history', 'backtest', 'params', 'reopt'];
+  for (var p = 0; p < panes.length; p++) {
+    var pane = el(prefix + '-tab-' + panes[p]);
+    if (pane) {
+      if (panes[p] === tabName) {
+        pane.classList.add('active');
+      } else {
+        pane.classList.remove('active');
+      }
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
  *  DATA LOADING
  * ═══════════════════════════════════════════════════════════ */
 
@@ -1569,6 +1600,7 @@ function init(config) {
 window.BotDash = {
   init: init,
   loadDashboard: loadDashboard,
+  switchTab: switchTab,
   openChart: openChart,
   closeChart: closeChart,
   setRange: setRange,

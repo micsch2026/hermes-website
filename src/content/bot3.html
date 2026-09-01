@@ -58,7 +58,7 @@
   </div>
 </div>
 
-<!-- 3. KPI & PERFORMANCE SUMMARY MATRIX (Compact 4-6 cards) -->
+<!-- 3. KPI SUMMARY BAR (Full Width) -->
 <div class="bot-grid" id="bot3-kpi-row" style="margin-bottom:var(--s-4)">
   <div class="bot-card" style="padding:var(--s-3) var(--s-4)">
     <div class="bot-card-title">Balance / Equity</div>
@@ -92,38 +92,37 @@
   </div>
 </div>
 
-<!-- 4. CORE TWO-COLUMN DASHBOARD (Live Positions/Signals + Equity Chart) -->
-<div class="bot-dashboard-columns">
-  <!-- Left Column: Open Positions + Signal Overview -->
-  <div class="bot-column-left">
-    <div>
-      <p class="bot-section-title" style="margin-top:0">🔵 Open Positions (<span id="bot3-positions-count">0</span>) <span class="bot-data-age" id="bot3-data-age"></span></p>
-      <div class="bot-card bot-table-wrap" style="padding:var(--s-3)">
-        <table class="bot-table">
-          <thead><tr></tr></thead>
-          <tbody id="bot3-positions-body"><tr><td class="bot-no-data">Loading...</td></tr></tbody>
-        </table>
-      </div>
-    </div>
+<!-- 4. VISUAL EQUITY & PERFORMANCE HUB (Full Width Hero Chart) -->
+<div class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2)">
+    <span style="font-weight:700;font-size:var(--text-md)">📈 Live Equity Curve & Drawdown Profile</span>
+    <div class="bot-chart-summary" id="bot3-equity-summary" style="font-size:var(--text-xs);color:var(--c-text-dim)"></div>
+  </div>
+  <div class="bot-chart-container" style="min-height:280px;height:320px">
+    <canvas id="bot3-equity-chart"></canvas>
+  </div>
+</div>
 
-    
+<!-- 5. LIVE TRADING DESK: OPEN POSITIONS (100% Full Width Table) -->
+<div class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2)">
+    <span style="font-weight:700;font-size:var(--text-md)">🔵 Open Positions (<span id="bot3-positions-count">0</span>)</span>
+    <span class="bot-data-age" id="bot3-data-age"></span>
+  </div>
+  <div class="bot-table-wrap">
+    <table class="bot-table">
+      <thead><tr></tr></thead>
+      <tbody id="bot3-positions-body"><tr><td class="bot-no-data">Loading positions...</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 6. LIVE SIGNAL RADAR (Full Width Grid) -->
+
 <!-- 6. SIGNAL OVERVIEW -->
 <p class="bot-section-title">📡 Signal Overview</p>
 <div class="bot-signal-grid" id="bot3-signal-grid">
   <div class="bot-signal-card"><div class="bot-no-data">Loading signals...</div></div>
-</div>
-  </div>
-
-  <!-- Right Column: Live Equity Curve -->
-  <div class="bot-column-right">
-    <div style="display:flex;flex-direction:column;height:100%">
-      <p class="bot-section-title" style="margin-top:0">📈 Equity Curve</p>
-      <div class="bot-card" style="display:flex;flex-direction:column;flex:1;padding:var(--s-3)">
-        <div class="bot-chart-container" style="min-height:220px;flex:1"><canvas id="bot3-equity-chart"></canvas></div>
-        <div class="bot-chart-summary" id="bot3-equity-summary" style="margin-top:var(--s-2)"></div>
-      </div>
-    </div>
-  </div>
 </div>
 
 
@@ -167,30 +166,94 @@
   </div>
 </div>
 
-<!-- 5. TRADE HISTORY (Full Width) -->
-<p class="bot-section-title">📋 Trade History</p>
-<div class="bot-card bot-table-wrap" style="margin-bottom:var(--s-4);padding:var(--s-3)">
-  <table class="bot-table">
-    <thead><tr><th>Strategy</th><th>Eröffnet</th><th>Pair</th><th>Direction</th><th>Entry</th><th>Exit</th><th>Margin</th><th>P&L</th><th>Hold Time</th><th>Close</th></tr></thead>
-    <tbody id="bot3-history-body"><tr><td colspan="10" class="bot-no-data">No trades yet</td></tr></tbody>
-  </table>
+<!-- 7. TABBED DESK: TRADE HISTORY / BACKTEST BENCHMARK / HEATMAP / PARAMETERS -->
+<div class="bot-nav-tabs" id="bot3-nav-tabs">
+  <button class="bot-tab-btn active" onclick="BotDash.switchTab('bot3', 'history')">📋 Trade History</button>
+  <button class="bot-tab-btn" onclick="BotDash.switchTab('bot3', 'backtest')">🧪 Backtest Benchmark</button>
+  <button class="bot-tab-btn" onclick="BotDash.switchTab('bot3', 'params')">⚙️ Strategy Parameters</button>
+  <button class="bot-tab-btn" onclick="BotDash.switchTab('bot3', 'reopt')">🔄 Re-Optimization</button>
 </div>
 
-<!-- 6. COLLAPSIBLE STRATEGY DETAILS & RE-OPTIMIZATION -->
-<details class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
-  <summary style="cursor:pointer;font-weight:600;font-size:var(--text-sm);color:var(--c-text);display:flex;align-items:center;justify-content:space-between;user-select:none">
-    <span>⚙️ Strategy Parameters & Setup Details</span>
-    <span style="color:var(--c-text-dim);font-size:var(--text-xs)">Details einblenden ▸</span>
-  </summary>
-  <div style="margin-top:var(--s-3)">
-    <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)" id="bot3-config-chips">
+<!-- TAB 1: TRADE HISTORY -->
+<div class="bot-tab-pane active" id="bot3-tab-history">
+  <div class="bot-card bot-table-wrap" style="padding:var(--s-4)">
+    <table class="bot-table">
+      <thead><tr><th>Strategy</th><th>Eröffnet</th><th>Pair</th><th>Direction</th><th>Entry</th><th>Exit</th><th>Margin</th><th>P&L</th><th>Hold Time</th><th>Close</th></tr></thead>
+      <tbody id="bot3-history-body"><tr><td colspan="10" class="bot-no-data">No completed trades</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 2: BACKTEST BENCHMARK -->
+<div class="bot-tab-pane" id="bot3-tab-backtest">
+  
+<!-- BACKTEST BENCHMARK TABLE & STATS -->
+<div class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2)">
+    <span style="font-weight:700;font-size:var(--text-md)">🧪 Backtest Benchmark (1H WFO, 11 Splits, 6M Hold-Out)</span>
+    <span id="bot3-bt-verdict" class="bot-badge bot-badge-signal" style="font-size:var(--text-xs)">—</span>
+  </div>
+
+  <div class="bot-grid" id="bot3-bt-grid" style="margin-bottom:var(--s-4)">
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest WR</div>
+      <div class="bot-card-value" id="bot3-bt-wr">—</div>
+      <div class="bot-card-sub" id="bot3-bt-wr-ci">Expected WR</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest PF</div>
+      <div class="bot-card-value" id="bot3-bt-pf">—</div>
+      <div class="bot-card-sub" id="bot3-bt-pf-sub">Profit Factor</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest Exp</div>
+      <div class="bot-card-value" id="bot3-bt-exp">—</div>
+      <div class="bot-card-sub" id="bot3-bt-exp-ci">Per trade</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest PnL</div>
+      <div class="bot-card-value" id="bot3-bt-pnl">—</div>
+      <div class="bot-card-sub" id="bot3-bt-pnl-sub">Simulated Net</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest DD</div>
+      <div class="bot-card-value" id="bot3-bt-dd">—</div>
+      <div class="bot-card-sub">Max Drawdown</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">OOS Validation</div>
+      <div class="bot-card-value" id="bot3-bt-oos">—</div>
+      <div class="bot-card-sub" id="bot3-bt-oos-sub">Walk-Forward</div>
+    </div>
+  </div>
+
+  <div style="font-size:var(--text-xs);color:var(--c-text-dim);border-top:1px solid var(--c-border);padding-top:var(--s-3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--s-2)">
+    <span><b>Setup Parameter:</b> <span id="bot3-bt-verdict-sub">—</span></span>
+    <span><b>Aktive Assets:</b> <span id="bot3-bt-pairs-sub">—</span> (<span id="bot3-bt-pairs">—</span> Paare)</span>
+  </div>
+</div>
+  
+<!-- 10. PERFORMANCE HEATMAP -->
+<p class="bot-section-title">🗺️ Asset Performance Heatmap</p>
+<div class="bot-card">
+  <div class="bot-heatmap-grid" id="bot3-heatmap-grid">
+    <div class="bot-no-data">Loading heatmap...</div>
+  </div>
+</div>
+</div>
+
+<!-- TAB 3: STRATEGY PARAMETERS -->
+<div class="bot-tab-pane" id="bot3-tab-params">
+  <div class="bot-card" style="padding:var(--s-4)">
+    <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-4)" id="bot3-config-chips">
           <span class="bot-config-chip">#372 — mean_reversion_forex (EURAUD, EURCHF)</span>
     <span class="bot-config-chip">2 Assets · Max 2 Positionen · 1.0% Risk/Trade (2% Agg)</span>
     <span class="bot-config-chip">SL: ATR×1.2–1.6 · TP: 1.3–1.7R · 48h Timeout</span>
     <span class="bot-config-chip">Demo-Konto 47104460 — Pepperstone Razor</span>
     <span class="bot-config-chip">1H Timeframe · Range- & Mittelwert-Handel</span>
     </div>
-    <div style="overflow-x:auto">
+    <p class="bot-section-title" style="margin-top:0">Per-Pair Risk & Indicator Parameters</p>
+    <div class="bot-table-wrap">
       <table class="bot-table" style="font-size:var(--text-xs)" id="bot3-pair-params">
         <thead><tr><th>Pair</th><th>RSI Levels</th><th>Strategy</th><th>SL (pips)</th><th>TP (pips)</th><th>R:R</th><th>Exp/Trade</th></tr></thead>
         <tbody id="bot3-pair-params-body">
@@ -199,64 +262,11 @@
       </table>
     </div>
   </div>
-</details>
-
-
-<!-- 10. PERFORMANCE HEATMAP -->
-<p class="bot-section-title">🗺️ Asset Performance Heatmap</p>
-<div class="bot-card">
-  <div class="bot-heatmap-grid" id="bot3-heatmap-grid">
-    <div class="bot-no-data">Loading heatmap...</div>
-  </div>
 </div>
 
-
-<!-- 4b. BACKTEST OVERVIEW -->
-<p class="bot-section-title">🧪 Backtest (1H WFO, 11 Splits, 6M Hold-Out)</p>
-<div class="bot-grid" id="bot3-bt-grid">
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest WR</div>
-    <div class="bot-card-value" id="bot3-bt-wr">—</div>
-    <div class="bot-card-sub" id="bot3-bt-wr-ci">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest PF</div>
-    <div class="bot-card-value" id="bot3-bt-pf">—</div>
-    <div class="bot-card-sub" id="bot3-bt-pf-sub">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest Exp</div>
-    <div class="bot-card-value" id="bot3-bt-exp">—</div>
-    <div class="bot-card-sub" id="bot3-bt-exp-ci">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest PnL</div>
-    <div class="bot-card-value" id="bot3-bt-pnl">—</div>
-    <div class="bot-card-sub" id="bot3-bt-pnl-sub">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest DD</div>
-    <div class="bot-card-value" id="bot3-bt-dd">—</div>
-    <div class="bot-card-sub">Max</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">OOS Validation</div>
-    <div class="bot-card-value" id="bot3-bt-oos">—</div>
-    <div class="bot-card-sub" id="bot3-bt-oos-sub">Walk-Forward</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Verdict</div>
-    <div class="bot-card-value" id="bot3-bt-verdict" style="font-size:var(--text-sm)">—</div>
-    <div class="bot-card-sub" id="bot3-bt-verdict-sub">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Active Pairs</div>
-    <div class="bot-card-value" id="bot3-bt-pairs">—</div>
-    <div class="bot-card-sub" id="bot3-bt-pairs-sub">—</div>
-  </div>
-</div>
-
-
+<!-- TAB 4: RE-OPTIMIZATION -->
+<div class="bot-tab-pane" id="bot3-tab-reopt">
+  
 <!-- RE-OPTIMIZATION STATUS -->
 <p class="bot-section-title">🔄 Re-Optimierung</p>
 <div class="bot-card" id="bot3-reopt-card" data-interval="3">
@@ -286,8 +296,9 @@
     </div>
   </details>
 </div>
+</div>
 
-<!-- BOT-SPECIFIC SECTIONS (market scan, focus, patterns, etc.) -->
+<!-- BOT-SPECIFIC EXTRA SECTIONS -->
 
 
 <!-- 11. INIT -->

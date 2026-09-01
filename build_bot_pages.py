@@ -87,52 +87,53 @@ def build_backtest_section(features, bot_id, config):
     dm = ro.get('data_months', '?')
     im = ro.get('interval_months', '?')
     if strategy == 'lab_live':
-        bt_title = f'🧪 Backtest ({tf} WFO, 11 Splits, 6M Hold-Out)'
+        bt_title = f'🧪 Backtest Benchmark ({tf} WFO, 11 Splits, 6M Hold-Out)'
     else:
-        bt_title = f'🧪 Backtest ({tf} WFO, IS={dm}M/OOS={im}M)'
+        bt_title = f'🧪 Backtest Benchmark ({tf} WFO, IS={dm}M/OOS={im}M)'
     return f'''
-<!-- 4b. BACKTEST OVERVIEW -->
-<p class="bot-section-title">{bt_title}</p>
-<div class="bot-grid" id="{bot_id}-bt-grid">
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest WR</div>
-    <div class="bot-card-value" id="{bot_id}-bt-wr">—</div>
-    <div class="bot-card-sub" id="{bot_id}-bt-wr-ci">—</div>
+<!-- BACKTEST BENCHMARK TABLE & STATS -->
+<div class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2)">
+    <span style="font-weight:700;font-size:var(--text-md)">{bt_title}</span>
+    <span id="{bot_id}-bt-verdict" class="bot-badge bot-badge-signal" style="font-size:var(--text-xs)">—</span>
   </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest PF</div>
-    <div class="bot-card-value" id="{bot_id}-bt-pf">—</div>
-    <div class="bot-card-sub" id="{bot_id}-bt-pf-sub">—</div>
+
+  <div class="bot-grid" id="{bot_id}-bt-grid" style="margin-bottom:var(--s-4)">
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest WR</div>
+      <div class="bot-card-value" id="{bot_id}-bt-wr">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-wr-ci">Expected WR</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest PF</div>
+      <div class="bot-card-value" id="{bot_id}-bt-pf">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-pf-sub">Profit Factor</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest Exp</div>
+      <div class="bot-card-value" id="{bot_id}-bt-exp">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-exp-ci">Per trade</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest PnL</div>
+      <div class="bot-card-value" id="{bot_id}-bt-pnl">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-pnl-sub">Simulated Net</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest DD</div>
+      <div class="bot-card-value" id="{bot_id}-bt-dd">—</div>
+      <div class="bot-card-sub">Max Drawdown</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">OOS Validation</div>
+      <div class="bot-card-value" id="{bot_id}-bt-oos">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-oos-sub">Walk-Forward</div>
+    </div>
   </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest Exp</div>
-    <div class="bot-card-value" id="{bot_id}-bt-exp">—</div>
-    <div class="bot-card-sub" id="{bot_id}-bt-exp-ci">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest PnL</div>
-    <div class="bot-card-value" id="{bot_id}-bt-pnl">—</div>
-    <div class="bot-card-sub" id="{bot_id}-bt-pnl-sub">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Backtest DD</div>
-    <div class="bot-card-value" id="{bot_id}-bt-dd">—</div>
-    <div class="bot-card-sub">Max</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">OOS Validation</div>
-    <div class="bot-card-value" id="{bot_id}-bt-oos">—</div>
-    <div class="bot-card-sub" id="{bot_id}-bt-oos-sub">Walk-Forward</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Verdict</div>
-    <div class="bot-card-value" id="{bot_id}-bt-verdict" style="font-size:var(--text-sm)">—</div>
-    <div class="bot-card-sub" id="{bot_id}-bt-verdict-sub">—</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Active Pairs</div>
-    <div class="bot-card-value" id="{bot_id}-bt-pairs">—</div>
-    <div class="bot-card-sub" id="{bot_id}-bt-pairs-sub">—</div>
+
+  <div style="font-size:var(--text-xs);color:var(--c-text-dim);border-top:1px solid var(--c-border);padding-top:var(--s-3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--s-2)">
+    <span><b>Setup Parameter:</b> <span id="{bot_id}-bt-verdict-sub">—</span></span>
+    <span><b>Aktive Assets:</b> <span id="{bot_id}-bt-pairs-sub">—</span> (<span id="{bot_id}-bt-pairs">—</span> Paare)</span>
   </div>
 </div>'''
 
