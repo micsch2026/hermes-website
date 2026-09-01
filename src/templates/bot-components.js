@@ -297,18 +297,18 @@ function renderPerformance(d) {
   var expEl = el(C.prefix + '-expectancy');
   if (expEl) {
     if (totalTrades > 0 && exp != null) {
-      expEl.textContent = (exp >= 0 ? '+' : '') + Number(exp).toFixed(2) + ' EUR';
-      expEl.className = 'bot-card-value ' + pnlClass(exp);
+      expEl.textContent = 'Exp: ' + (exp >= 0 ? '+' : '') + Number(exp).toFixed(2) + ' EUR';
+      expEl.className = 'bot-card-sub ' + pnlClass(exp);
     } else {
-      expEl.textContent = '—';
-      expEl.className = 'bot-card-value';
+      expEl.textContent = 'Exp: —';
+      expEl.className = 'bot-card-sub';
     }
   }
 
   var dd = perf.max_drawdown || perf.max_drawdown_pct || 0;
   var ddEl = el(C.prefix + '-max-dd');
   if (ddEl) {
-    ddEl.textContent = Number(dd).toFixed(2) + '%';
+    ddEl.textContent = 'DD: ' + Number(dd).toFixed(2) + '%';
     ddEl.className = 'bot-card-value ' + (dd <= 10 ? 'bot-pnl-pos' : 'bot-pnl-neg');
   }
 
@@ -316,8 +316,8 @@ function renderPerformance(d) {
   var mu = perf.margin_utilization_pct;
   var muEl = el(C.prefix + '-margin-util');
   if (muEl) {
-    muEl.textContent = mu != null ? Number(mu).toFixed(1) + '%' : '—';
-    if (mu != null) muEl.className = 'bot-card-value ' + (mu <= 50 ? 'bot-pnl-pos' : mu <= 80 ? '' : 'bot-pnl-neg');
+    muEl.textContent = 'Margin: ' + (mu != null ? Number(mu).toFixed(1) + '%' : '—');
+    muEl.className = 'bot-card-sub ' + (mu <= 50 ? 'bot-pnl-pos' : mu <= 80 ? '' : 'bot-pnl-neg');
   }
 }
 

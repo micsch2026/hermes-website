@@ -7,120 +7,115 @@
 <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <script src="/assets/bot-components.js"></script>
 
-<!-- 1. STATUS BAR -->
-<div class="bot-status-bar">
-  <div>
-    <span class="bot-status-dot" id="{{BOT_ID}}-dot"></span>
-    <span id="{{BOT_ID}}-status">Loading...</span>
-    <span class="bot-badge" id="{{BOT_ID}}-mode-badge" style="margin-left:8px"></span>
+<!-- 1. STATUS & STRATEGY HEADER -->
+<div class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
+  <div class="bot-status-bar" style="margin-bottom:var(--s-3)">
+    <div style="display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap">
+      <span class="bot-status-dot" id="{{BOT_ID}}-dot"></span>
+      <span id="{{BOT_ID}}-status" style="font-weight:600">Loading...</span>
+      <span class="bot-badge" id="{{BOT_ID}}-mode-badge"></span>
+    </div>
+    <span id="{{BOT_ID}}-last-update" style="color:var(--c-text-dim);font-size:var(--text-xs)">—</span>
   </div>
-  <span id="{{BOT_ID}}-last-update" style="color:var(--c-text-dim);font-size:var(--text-xs)">—</span>
+
+  <!-- 1b. HEALTH BANNER (if needed) -->
+  <div class="bot-health-banner" id="{{BOT_ID}}-health-banner">
+    <span class="bot-health-icon">⚠️</span>
+    <span class="bot-health-text" id="{{BOT_ID}}-health-text"></span>
+    <span class="bot-health-time" id="{{BOT_ID}}-health-time"></span>
+  </div>
+
+  <!-- 2. STRATEGY INFO TAGS -->
+  <div class="bot-strategy-info" style="margin-bottom:0">
+    {{STRATEGY_TAGS}}
+  </div>
 </div>
 
-<!-- 1b. HEALTH BANNER -->
-<div class="bot-health-banner" id="{{BOT_ID}}-health-banner">
-  <span class="bot-health-icon">⚠️</span>
-  <span class="bot-health-text" id="{{BOT_ID}}-health-text"></span>
-  <span class="bot-health-time" id="{{BOT_ID}}-health-time"></span>
-</div>
-
-<!-- 2. STRATEGY INFO -->
-<div class="bot-strategy-info">
-  {{STRATEGY_TAGS}}
-</div>
-
-<!-- 3. KPI CARDS -->
-<div class="bot-grid" id="{{BOT_ID}}-kpi-row">
-  <div class="bot-card">
-    <div class="bot-card-title">Balance</div>
+<!-- 3. KPI & PERFORMANCE SUMMARY MATRIX (Compact 4-6 cards) -->
+<div class="bot-grid" id="{{BOT_ID}}-kpi-row" style="margin-bottom:var(--s-4)">
+  <div class="bot-card" style="padding:var(--s-3) var(--s-4)">
+    <div class="bot-card-title">Balance / Equity</div>
     <div class="bot-card-value" id="{{BOT_ID}}-balance">—</div>
     <div class="bot-card-sub" id="{{BOT_ID}}-equity-sub">—</div>
   </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Open Positions</div>
-    <div class="bot-card-value" id="{{BOT_ID}}-positions-count">—</div>
-    <div class="bot-card-sub" id="{{BOT_ID}}-positions-sub">—</div>
-  </div>
-  <div class="bot-card">
+  <div class="bot-card" style="padding:var(--s-3) var(--s-4)">
     <div class="bot-card-title">Daily P&L</div>
     <div class="bot-card-value" id="{{BOT_ID}}-daily-pnl">—</div>
     <div class="bot-card-sub" id="{{BOT_ID}}-trades-today">—</div>
   </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Total P&L</div>
+  <div class="bot-card" style="padding:var(--s-3) var(--s-4)">
+    <div class="bot-card-title">Total P&L (Live)</div>
     <div class="bot-card-value" id="{{BOT_ID}}-total-pnl">—</div>
     <div class="bot-card-sub" id="{{BOT_ID}}-winrate-sub">—</div>
   </div>
-</div>
-
-<!-- 4. PERFORMANCE METRICS -->
-<p class="bot-section-title">📊 Performance (Live)</p>
-<div class="bot-grid" id="{{BOT_ID}}-perf-grid">
-  <div class="bot-card">
+  <div class="bot-card" style="padding:var(--s-3) var(--s-4)">
     <div class="bot-card-title">Win Rate</div>
     <div class="bot-card-value" id="{{BOT_ID}}-winrate">—</div>
     <div class="bot-card-sub" id="{{BOT_ID}}-winrate-detail">—</div>
   </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Profit Factor</div>
+  <div class="bot-card" style="padding:var(--s-3) var(--s-4)">
+    <div class="bot-card-title">Profit Factor / Exp</div>
     <div class="bot-card-value" id="{{BOT_ID}}-profit-factor">—</div>
-    <div class="bot-card-sub">Target: &gt; 1.5</div>
+    <div class="bot-card-sub" id="{{BOT_ID}}-expectancy">Exp: —</div>
   </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Expectancy</div>
-    <div class="bot-card-value" id="{{BOT_ID}}-expectancy">—</div>
-    <div class="bot-card-sub">Per trade</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Max Drawdown</div>
+  <div class="bot-card" style="padding:var(--s-3) var(--s-4)">
+    <div class="bot-card-title">Risk & Margin</div>
     <div class="bot-card-value" id="{{BOT_ID}}-max-dd">—</div>
-    <div class="bot-card-sub">Limit: 10%</div>
-  </div>
-  <div class="bot-card">
-    <div class="bot-card-title">Margin Used</div>
-    <div class="bot-card-value" id="{{BOT_ID}}-margin-util">—</div>
-    <div class="bot-card-sub">of available</div>
+    <div class="bot-card-sub" id="{{BOT_ID}}-margin-util">Margin: —</div>
   </div>
 </div>
 
-<!-- 7. OPEN POSITIONS -->
-<p class="bot-section-title">🔵 Open Positions <span class="bot-data-age" id="{{BOT_ID}}-data-age"></span></p>
-<div class="bot-card bot-table-wrap">
-  <table class="bot-table">
-    <thead><tr></tr></thead>
-    <tbody id="{{BOT_ID}}-positions-body"><tr><td class="bot-no-data">Loading...</td></tr></tbody>
-  </table>
-</div>
+<!-- 4. CORE TWO-COLUMN DASHBOARD (Live Positions/Signals + Equity Chart) -->
+<div class="bot-dashboard-columns">
+  <!-- Left Column: Open Positions + Signal Overview -->
+  <div class="bot-column-left">
+    <div>
+      <p class="bot-section-title" style="margin-top:0">🔵 Open Positions (<span id="{{BOT_ID}}-positions-count">0</span>) <span class="bot-data-age" id="{{BOT_ID}}-data-age"></span></p>
+      <div class="bot-card bot-table-wrap" style="padding:var(--s-3)">
+        <table class="bot-table">
+          <thead><tr></tr></thead>
+          <tbody id="{{BOT_ID}}-positions-body"><tr><td class="bot-no-data">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
 
-{{SIGNAL_SECTION}}
+    {{SIGNAL_SECTION}}
+  </div>
+
+  <!-- Right Column: Live Equity Curve -->
+  <div class="bot-column-right">
+    <div style="display:flex;flex-direction:column;height:100%">
+      <p class="bot-section-title" style="margin-top:0">📈 Equity Curve</p>
+      <div class="bot-card" style="display:flex;flex-direction:column;flex:1;padding:var(--s-3)">
+        <div class="bot-chart-container" style="min-height:220px;flex:1"><canvas id="{{BOT_ID}}-equity-chart"></canvas></div>
+        <div class="bot-chart-summary" id="{{BOT_ID}}-equity-summary" style="margin-top:var(--s-2)"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {{CANDLESTICK_SECTION}}
 
-<!-- 5. EQUITY CURVE -->
-<p class="bot-section-title">📈 Equity Curve</p>
-<div class="bot-card">
-  <div class="bot-chart-container"><canvas id="{{BOT_ID}}-equity-chart"></canvas></div>
-  <div class="bot-chart-summary" id="{{BOT_ID}}-equity-summary"></div>
-</div>
-
-<!-- 8. TRADE HISTORY -->
+<!-- 5. TRADE HISTORY (Full Width) -->
 <p class="bot-section-title">📋 Trade History</p>
-<div class="bot-card bot-table-wrap">
+<div class="bot-card bot-table-wrap" style="margin-bottom:var(--s-4);padding:var(--s-3)">
   <table class="bot-table">
     <thead><tr><th>Strategy</th><th>Eröffnet</th><th>Pair</th><th>Direction</th><th>Entry</th><th>Exit</th><th>Margin</th><th>P&L</th><th>Hold Time</th><th>Close</th></tr></thead>
     <tbody id="{{BOT_ID}}-history-body"><tr><td colspan="10" class="bot-no-data">No trades yet</td></tr></tbody>
   </table>
 </div>
 
-<!-- 9. STRATEGY DETAILS -->
-<p class="bot-section-title">⚙️ Strategy Details</p>
-<div class="bot-card">
-  <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)" id="{{BOT_ID}}-config-chips">
-    {{CONFIG_CHIPS}}
-  </div>
-  <details style="font-size:var(--text-xs)">
-    <summary style="cursor:pointer;color:var(--c-text-dim);user-select:none">Per-Pair Parameters ▸</summary>
-    <div style="margin-top:var(--s-2);overflow-x:auto">
+<!-- 6. COLLAPSIBLE STRATEGY DETAILS & RE-OPTIMIZATION -->
+<details class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
+  <summary style="cursor:pointer;font-weight:600;font-size:var(--text-sm);color:var(--c-text);display:flex;align-items:center;justify-content:space-between;user-select:none">
+    <span>⚙️ Strategy Parameters & Setup Details</span>
+    <span style="color:var(--c-text-dim);font-size:var(--text-xs)">Details einblenden ▸</span>
+  </summary>
+  <div style="margin-top:var(--s-3)">
+    <div style="display:flex;flex-wrap:wrap;gap:var(--s-2);margin-bottom:var(--s-3)" id="{{BOT_ID}}-config-chips">
+      {{CONFIG_CHIPS}}
+    </div>
+    <div style="overflow-x:auto">
       <table class="bot-table" style="font-size:var(--text-xs)" id="{{BOT_ID}}-pair-params">
         <thead><tr><th>Pair</th><th>RSI Levels</th><th>Strategy</th><th>SL (pips)</th><th>TP (pips)</th><th>R:R</th><th>Exp/Trade</th></tr></thead>
         <tbody id="{{BOT_ID}}-pair-params-body">
@@ -128,8 +123,8 @@
         </tbody>
       </table>
     </div>
-  </details>
-</div>
+  </div>
+</details>
 
 {{HEATMAP_SECTION}}
 
