@@ -652,11 +652,14 @@ function renderEquity(d) {
     var first = values[0] || 0;
     var last = values[values.length - 1] || 0;
     var minDD = Math.min.apply(null, drawdowns);
+    var tradeCount = (d.last_trades && d.last_trades.length) || 0;
+    var note = tradeCount === 0 ? '<span style="color:var(--c-text-dim);margin-left:auto;font-style:italic">ℹ️ Startwert nach Deploy (noch keine Trades der aktuellen Strategie)</span>' : '';
     summary.innerHTML =
       '<span>Start: <b>€' + first.toFixed(2) + '</b></span>' +
       '<span>Current: <b>€' + last.toFixed(2) + '</b></span>' +
       '<span>P&L: <b class="' + pnlClass(last - first) + '">' + fmtPnl(last - first) + '</b></span>' +
-      '<span>Max DD: <b class="bot-pnl-neg">' + minDD.toFixed(2) + '%</b></span>';
+      '<span>Max DD: <b class="bot-pnl-neg">' + minDD.toFixed(2) + '%</b></span>' +
+      note;
   }
 }
 
