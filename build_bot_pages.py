@@ -269,16 +269,111 @@ def build_reoptimize_section(config, bot_id):
 </div>'''
 
 
-def build_page(config, template):
+def load_descriptions():
+    """Load human-readable strategy descriptions from portfolio_descriptions.json."""
+    desc_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'portfolio_descriptions.json')
+    if os.path.exists(desc_path):
+        try:
+            with open(desc_path) as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def describe_strategy(sid, lab_name, desc_data):
+    """Return structured description dict (tag, was, gut, nicht, ausmacht, ergaenzt)."""
+    name_l = (lab_name or "").lower()
+    overrides = desc_data.get("overrides", {}) or {}
+    if str(sid) in overrides:
+        o = overrides[str(sid)]
+        return {"tag": o.get("tag") or "Individuell",
+                "was": o.get("was", ""), "gut": o.get("gut", ""), "nicht": o.get("nicht", ""),
+                "ausmacht": o.get("ausmacht", ""), "ergaenzt": o.get("ergaenzt", "")}
+    for a in desc_data.get("approaches", []) or []:
+        for kw in a.get("match", []) or []:
+            if kw in name_l or kw in str(sid):
+                return {"tag": a.get("tag"), "was": a.get("was", ""),
+                        "gut": a.get("gut", ""), "nicht": a.get("nicht", ""),
+                        "ausmacht": a.get("ausmacht", ""), "ergaenzt": a.get("ergaenzt", "")}
+    return {"tag": "Trading-Strategie", "was": "", "gut": "", "nicht": "", "ausmacht": "", "ergaenzt": ""}
+
+
+def build_strategy_concept_section(bot_id, config, desc_data):
+    """Generate a clean visual strategy explanation card based on portfolio_descriptions."""
+    # Extract strategy ID from config/tags
+    strat_id = ""
+    strat_name = config.get("name", "")
+    for tag in config.get("strategy_tags", []):
+        val = tag.get("value", "")
+        if "#" in val:
+            parts = val.split("#")[1].split()[0].replace("—", "").strip()
+            if parts.isdigit():
+                strat_id = parts
+                break
+    if not strat_id and "reoptimize" in config:
+        script = config["reoptimize"].get("script", "")
+        if "#" in script:
+            strat_id = script.split("#")[1].split("'")[0].strip()
+
+    desc = describe_strategy(strat_id, strat_name, desc_data)
+    tag = desc.get("tag", "Trading-Strategie")
+    was = desc.get("was", "")
+    gut = desc.get("gut", "")
+    nicht = desc.get("nicht", "")
+    ausmacht = desc.get("ausmacht", "")
+    ergaenzt = desc.get("ergaenzt", "")
+
+    chips_html = ""
+    for chip in config.get("config_chips", []):
+        chips_html += f'<span class="bot-strategy-tag" style="background:var(--c-surface-2);border:1px solid var(--c-border);font-size:var(--text-xs);padding:4px 10px;border-radius:var(--r-md);">{chip}</span>\n'
+
+    return f"""
+<!-- STRATEGY CONCEPT & PROFILE -->
+<div class="bot-card" style="padding:var(--s-4);margin-bottom:var(--s-4);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2);">
+    <div>
+      <span class="bot-tag-primary" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--r-md);background:rgba(99,102,241,0.15);color:#818cf8;margin-right:8px;">{tag}</span>
+      <strong style="font-size:var(--text-md);color:var(--c-text);">Strategie-Profil {'#' + strat_id if strat_id else ''}</strong>
+    </div>
+  </div>
+
+  <div class="bot-desc-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:var(--s-4);margin-bottom:var(--s-4);">
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="bot-desc-row"><span class="bot-desc-label">Konzept:</span><span style="color:var(--c-text);">{was or 'Systematische Handelsstrategie basierend auf quantitativen Signalfiltern.'}</span></div>
+      {f'<div class="bot-desc-row"><span class="bot-desc-label">Profil:</span><span style="color:var(--c-text);">{ausmacht}</span></div>' if ausmacht else ''}
+      {f'<div class="bot-desc-row"><span class="bot-desc-label">Portfolio:</span><span style="color:var(--c-text);">{ergaenzt}</span></div>' if ergaenzt else ''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      {f'<div class="bot-desc-row"><span class="bot-desc-label">Stärken:</span><span style="color:var(--c-success,#10b981);">{gut}</span></div>' if gut else ''}
+      {f'<div class="bot-desc-row"><span class="bot-desc-label">Schwächen:</span><span style="color:var(--c-warn,#f59e0b);">{nicht}</span></div>' if nicht else ''}
+    </div>
+  </div>
+
+  <div style="border-top:1px solid var(--c-border);padding-top:var(--s-3);margin-top:var(--s-2);">
+    <p style="font-size:var(--text-xs);font-weight:600;color:var(--c-text-muted);margin-bottom:var(--s-2);text-transform:uppercase;letter-spacing:0.5px;">Setup- & Execution-Parameter</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      {chips_html}
+    </div>
+  </div>
+</div>
+"""
+
+
+def build_page(config, template, desc_data=None):
     """Generate a complete content HTML from config + template."""
     bot_id = config['bot_id']
     features = config.get('features', {})
+    desc_data = desc_data or {}
 
     # Strategy tags
     strategy_tags = build_strategy_tags(config.get('strategy_tags', []))
 
     # Config chips
     config_chips = build_config_chips(config.get('config_chips', []))
+
+    # Strategy Concept
+    strategy_concept_section = build_strategy_concept_section(bot_id, config, desc_data)
 
     # Conditional sections
     backtest_section = build_backtest_section(features, bot_id, config)
@@ -303,6 +398,7 @@ def build_page(config, template):
     html = html.replace('{{REFRESH_INTERVAL}}', str(config.get('refresh_interval', 60000)))
     html = html.replace('{{STRATEGY_TAGS}}', strategy_tags)
     html = html.replace('{{CONFIG_CHIPS}}', config_chips)
+    html = html.replace('{{STRATEGY_CONCEPT_SECTION}}', strategy_concept_section)
     html = html.replace('{{BACKTEST_SECTION}}', backtest_section)
     html = html.replace('{{SIGNAL_SECTION}}', signal_section)
     html = html.replace('{{CANDLESTICK_SECTION}}', candlestick_section)
@@ -354,13 +450,14 @@ def main():
         sys.exit(1)
 
     template = load_template()
+    desc_data = load_descriptions()
     print(f'Building {len(configs)} bot page(s) from template...\n')
 
     results = []
     for cfg in configs:
         bot_id = cfg['bot_id']
         print(f'  Building {cfg.get("name", bot_id)}...')
-        html = build_page(cfg, template)
+        html = build_page(cfg, template, desc_data)
         out = write_content(bot_id, html)
         results.append((bot_id, out))
 
