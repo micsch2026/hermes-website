@@ -1709,6 +1709,11 @@ function renderParity(prefix, p) {
           lastDev = bits.join(', ') || 'Exit-Mismatch';
         }
       }
+      var missed2 = a2.missed_shadow || [];
+      if (missed2.length) {
+        lastDev = '⚠ ' + missed2.length + '× Shadow-Trade ohne Bot-Gegenstück (zuletzt ' +
+          new Date(missed2[missed2.length - 1].ts * 1000).toLocaleDateString('de-DE') + ')';
+      }
       h += '<tr><td><b>' + sym2 + '</b></td><td>' + st2 + '</td><td>' +
            a2.confirmed_count + '/' + minReq + '</td><td>' + lastDev + '</td></tr>';
     }
