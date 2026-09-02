@@ -1536,7 +1536,7 @@ function switchTab(prefix, tabName) {
   }
 
   // Panes
-  var panes = ['history', 'backtest', 'params', 'reopt'];
+  var panes = ['concept', 'history', 'backtest', 'params', 'reopt'];
   for (var p = 0; p < panes.length; p++) {
     var pane = el(prefix + '-tab-' + panes[p]);
     if (pane) {
