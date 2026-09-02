@@ -1706,6 +1706,29 @@ function renderParity(prefix, p) {
     }
     h += '</table>';
 
+    // Auto-Diagnose (Stufe 1, 2026-09-02)
+    var dg = (p && p.diagnosis) || '';
+    var dgCats = (p && p.diagnosis_cats) || [];
+    if (dgCats.length) {
+    var catLabels = {
+      missed_trades: 'Verpasste Trades',
+      sl_drift: 'SL-Drift',
+      tp_drift: 'TP-Drift',
+      risk_scaling: 'Risk-Skalierung',
+      entry_mismatch: 'Entry-Fehler',
+      exit_mismatch: 'Exit-Mismatch',
+      single_outlier: 'Einzelausreisser'
+    };
+    var catTags = '';
+    for (var ci = 0; ci < dgCats.length; ci++) {
+      catTags += '<span style="display:inline-block;background:rgba(240,90,90,.15);color:#f0a0a0;' +
+        'border-radius:10px;padding:1px 8px;margin:2px 4px 2px 0;font-size:.8em">' +
+        (catLabels[dgCats[ci]] || dgCats[ci]) + '</span>';
+    }
+    h += '<div style="margin-top:var(--s-3)"><b>🔍 Auto-Diagnose:</b> ' + catTags +
+         '<div style="color:var(--txt-dim,#9aa4b2);font-size:.92em;margin-top:4px">' + dg + '</div></div>';
+    }
+
     // Ersetzte Strategien (Tagging)
     var rep = (p && p.replaced_strategies) || {};
     var repKeys = Object.keys(rep);
