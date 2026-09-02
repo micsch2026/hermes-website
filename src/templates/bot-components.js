@@ -1569,6 +1569,7 @@ function loadDashboard() {
     if (C.hasBacktest) renderBacktest(d);
     renderPairParams(d);
     renderReoptimize();
+    renderParity(C.prefix, d.parity);
     // Fire custom render callback if set
     if (typeof C.onData === 'function') C.onData(d);
   }).catch(function(e) {
@@ -1601,6 +1602,7 @@ window.BotDash = {
   init: init,
   loadDashboard: loadDashboard,
   switchTab: switchTab,
+  toggleParityDetail: toggleParityDetail,
   openChart: openChart,
   closeChart: closeChart,
   setRange: setRange,
@@ -1626,3 +1628,107 @@ window.BotDash = {
 };
 
 })();
+
+/* ═══════════════════════════════════════════════════════════
+ *  SHADOW-PARITÄT BADGE (2026-09-02, plakativ)
+ * ═══════════════════════════════════════════════════════════ */
+
+function toggleParityDetail(prefix) {
+  var d = el(prefix + '-parity-detail');
+  if (d) d.style.display = (d.style.display === 'none') ? 'block' : 'none';
+  var t = el(prefix + '-parity-toggle');
+  if (t) t.textContent = (d && d.style.display === 'none') ? '▾' : '▴';
+}
+
+function renderParity(prefix, p) {
+  var banner = el(prefix + '-parity-banner');
+  if (!banner) return;
+  var icon = el(prefix + '-parity-icon');
+  var label = el(prefix + '-parity-label');
+  var inline = el(prefix + '-parity-inline');
+  var detail = el(prefix + '-parity-detail');
+  banner.className = 'bot-parity-banner';
+
+  var status = (p && p.status) || 'wartet';
+  var assets = (p && p.assets) || {};
+  var checkedAt = p && p.checked_at ? BotDash.fmtTime(p.checked_at) : '—';
+
+  // Ampel
+  if (status === 'bestaetigt') {
+    banner.classList.add('ok');
+    icon.textContent = '✅';
+    label.textContent = 'SHADOW-PARITÄT: ÜBEREINSTIMMEND';
+  } else if (status === 'abweichung') {
+    banner.classList.add('error');
+    icon.textContent = '🔴';
+    label.textContent = 'SHADOW-PARITÄT: ABWEICHUNG';
+  } else if (status === 'qualifizierung') {
+    banner.classList.add('warn');
+    icon.textContent = '🟡';
+    label.textContent = 'QUALIFIZIERUNG LÄUFT';
+  } else if (status === 'fehler') {
+    banner.classList.add('idle');
+    icon.textContent = '⚫';
+    label.textContent = 'Parität nicht prüfbar';
+  } else {
+    banner.classList.add('idle');
+    icon.textContent = '⚪';
+    label.textContent = 'Wartet auf erste Trades';
+  }
+
+  // Inline-Asset-Übersicht
+  var minReq = (p && p.min_confirmed_per_asset) || 3;
+  var parts = [];
+  for (var sym in assets) {
+    var a = assets[sym];
+    var mark = a.status === 'bestaetigt' ? '✔' : (a.status === 'abweichung' ? '✗' : '⏳');
+    parts.push(mark + ' ' + sym + ' ' + a.confirmed_count + '/' + minReq);
+  }
+  inline.textContent = parts.join(' · ') + '  (≥' + minReq + ' Trades/Asset)';
+
+  // Detail-Tabelle
+  if (detail) {
+    var h = '<b>Shadow ↔ Bot Prüfung</b> — Stand: ' + checkedAt +
+            ' · Fenster: ' + (p.recent_window_days || 30) + ' Tage';
+    h += '<table><tr><th>Asset</th><th>Status</th><th>Bestätigt</th><th>Letzte Abweichung</th></tr>';
+    for (var sym2 in assets) {
+      var a2 = assets[sym2];
+      var st2 = a2.status === 'bestaetigt' ? '✔ Bestätigt'
+              : a2.status === 'abweichung' ? '✗ Abweichung'
+              : a2.status === 'qualifizierung' ? '⏳ ' + a2.confirmed_count + '/' + minReq
+              : '– keine Trades';
+      var lastDev = '—';
+      var pairs2 = a2.pairs || [];
+      for (var i = 0; i < pairs2.length; i++) {
+        if (!pairs2[i].ok) {
+          var bits = [];
+          if (pairs2[i].entry_ok === false) bits.push('Entry +' + pairs2[i].entry_diff_pips + 'p');
+          if (pairs2[i].sl_ok === false) bits.push('SL +' + pairs2[i].sl_diff_pips + 'p');
+          if (pairs2[i].tp_ok === false) bits.push('TP +' + pairs2[i].tp_diff_pips + 'p');
+          if (pairs2[i].risk_ok === false) bits.push('Risk ×' + pairs2[i].risk_ratio);
+          lastDev = bits.join(', ') || 'Exit-Mismatch';
+        }
+      }
+      h += '<tr><td><b>' + sym2 + '</b></td><td>' + st2 + '</td><td>' +
+           a2.confirmed_count + '/' + minReq + '</td><td>' + lastDev + '</td></tr>';
+    }
+    h += '</table>';
+
+    // Ersetzte Strategien (Tagging)
+    var rep = (p && p.replaced_strategies) || {};
+    var repKeys = Object.keys(rep);
+    if (repKeys.length) {
+      h += '<div style="margin-top:var(--s-3)"><b>Frühere Strategien dieses Bots:</b><br>';
+      for (var j = 0; j < repKeys.length; j++) {
+        var r = rep[repKeys[j]];
+        var badge = r.status === 'bestaetigt' ? '<span style="color:#22c55e">✔ Bestätigt</span>'
+                  : r.status === 'abgeloest' ? '<span style="color:#f0b940">⏸ Ersetzt</span>'
+                  : '○ ungeprüft';
+        h += '#' + repKeys[j] + ': ' + badge + ' (' + r.matched + ' Paare, letzter Trade ' +
+             (r.last_trade || '—') + ')<br>';
+      }
+      h += '</div>';
+    }
+    detail.innerHTML = h;
+  }
+}
