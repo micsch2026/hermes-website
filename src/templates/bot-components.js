@@ -1627,19 +1627,6 @@ window.BotDash = {
   renderPairParams: renderPairParams,
 };
 
-})();
-
-/* ═══════════════════════════════════════════════════════════
- *  SHADOW-PARITÄT BADGE (2026-09-02, plakativ)
- * ═══════════════════════════════════════════════════════════ */
-
-function toggleParityDetail(prefix) {
-  var d = el(prefix + '-parity-detail');
-  if (d) d.style.display = (d.style.display === 'none') ? 'block' : 'none';
-  var t = el(prefix + '-parity-toggle');
-  if (t) t.textContent = (d && d.style.display === 'none') ? '▾' : '▴';
-}
-
 function renderParity(prefix, p) {
   var banner = el(prefix + '-parity-banner');
   if (!banner) return;
@@ -1737,3 +1724,16 @@ function renderParity(prefix, p) {
     detail.innerHTML = h;
   }
 }
+
+function toggleParityDetail(prefix) {
+  var d = el(prefix + '-parity-detail');
+  if (d) d.style.display = (d.style.display === 'none') ? 'block' : 'none';
+  var t = el(prefix + '-parity-toggle');
+  if (t) t.textContent = (d && d.style.display === 'none') ? '▾' : '▴';
+}
+
+})();
+
+/* ═══════════════════════════════════════════════════════════
+ *  SHADOW-PARITÄT BADGE (2026-09-02, plakativ)
+ * ═══════════════════════════════════════════════════════════ */
