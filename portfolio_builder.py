@@ -21,7 +21,7 @@ import sqlite3
 # Trade-Paritäts-Tool (bot ↔ shadow Paar-Matching) als Modul importierbar machen
 sys.path.insert(0, "/root/fx-bot/tools")
 try:
-    from bot_shadow_parity import compute_bot_parity
+    from bot_shadow_parity import compute_bot_parity, compute_strategy_parity, bot_history
     HAS_PARITY = True
 except Exception as _e:  # pragma: no cover
     print(f"  [warn] bot_shadow_parity: {_e}", file=sys.stderr)
@@ -213,13 +213,14 @@ def compute_bot_rec(shadow, lab, is_deployed):
 
 def compute_live_rec(shadow, deployed, mirror, is_deployed, trade_parity):
     """💳 Live-Bereitschaft (0-100) — bewertet NUR bereits deployed Demo-Bots auf ihre
-    Eignung für Echtgeld. Strenger als bot_rec: braucht reale Shadow↔Bot-Trade-Parität,
-    längeren Demo-Test-Record und keine Konsistenz-Lücken. Kein einzelner Faktor reicht.
+    Eignung für Echtgeld. LEISTUNGS-Score OHNE Parität (User 2026-09-03: Parität ist ein
+    neutraler Pflicht-Status für die Echtgeld-Umstellung — kein Score-Faktor, kein Einfluss
+    auf die Gewichtung/Rangfolge der Bots).
 
     trade_parity: dict aus bot_shadow_parity.compute_bot_parity (matched_pairs, status …).
-    Harte Blocker (→ 0, "hochrisiko", NICHT auf Echtgeld):
-      - needs_smoke_test : 0 gematchte Paare (nach Umstellung erst ersten Testrade prüfen)
-      - abweichung       : gematchte Paare mit Entry/SL/TP-Divergenz zum Shadow
+    Das Paritäts-Ergebnis geht NICHT in den Score ein, sondern als separates Pflicht-Gate
+    zurück: gate.passed = True nur bei status='paritaet'. Gate nicht bestanden = Echtgeld
+    gesperrt (Anzeige-Frage, kein Score-Abzug).
     """
     if not is_deployed:
         return {"score": 0, "level": "kein Bot", "checks": [{"ok": False, "label": "Kein Demo-Bot deployed"}], "hint": "Erst auf Demo testen."}
@@ -230,38 +231,32 @@ def compute_live_rec(shadow, deployed, mirror, is_deployed, trade_parity):
     p_entry = tp.get("entry_ok") or 0
     p_rate = tp.get("match_rate") or 0.0
 
-    # 0. Harte Blocker: Parität unzureichend
-    if p_status == "needs_smoke_test":
-        return {"score": 0, "level": "hochrisiko",
-                "checks": [{"ok": False, "label": "Noch 0 gematchte Paare — Smoke-Test offen"},
-                           {"ok": False, "label": "Erst Testrade abwarten (Skalierung / SL / TP prüfen)"}],
-                "hint": "Bot hat nach Umstellung noch keinen gegen den Shadow verifizierten Trade."}
-    if p_status == "abweichung":
-        return {"score": 0, "level": "hochrisiko",
-                "checks": [{"ok": False, "label": f"Shadow↔Bot-Divergenz: {p_matched} Paare, Entry ok {p_entry}, Rate {p_rate:.0%}"},
-                           {"ok": False, "label": "Entry/SL/TP weichen vom Shadow ab — erst beheben"}],
-                "hint": "Bot handelt NICHT wie der Shadow (SL/TP/Entry-Drift). NICHT auf Echtgeld."}
+    # 🔒 Paritäts-Gate: neutraler Pflicht-Status (kein Score-Faktor, User 2026-09-03)
+    if p_status == "paritaet":
+        gate = {"passed": True,
+                "label": f"Parität bestätigt ({p_matched} Paare, Entry-Rate {p_rate:.0%})"}
+    elif p_status == "needs_smoke_test":
+        gate = {"passed": False,
+                "label": "Smoke-Test offen: noch 0 gematchte Paare — erst Testrade prüfen"}
+    elif p_status == "abweichung":
+        gate = {"passed": False,
+                "label": f"Abweichung: Entry ok {p_entry}/{p_matched}, Rate {p_rate:.0%} — erst beheben"}
+    else:  # sammlung — noch < MIN_MATCHED_PAIRS
+        gate = {"passed": False,
+                "label": f"Parität im Aufbau: {p_matched} Paare (Rate {p_rate:.0%})"}
 
     score = 0
     checks = []
-    # 1. Trade-Parität Shadow ↔ Bot (echtes Paar-Matching)
-    if p_status == "paritaet":
-        score += 20
-        checks.append({"ok": True, "label": f"Parität bestätigt: {p_matched} gematchte Paare, Entry-Rate {p_rate:.0%}"})
-    else:  # sammlung — Paare vorhanden, aber noch < MIN_MATCHED_PAIRS
-        pt = "geprüft" if p_matched >= 5 else "im Aufbau"
-        score += 8
-        checks.append({"ok": False, "label": f"Parität {pt}: {p_matched} von min 10 Paare, Rate {p_rate:.0%}"})
-    # 2. Demo-Test-Record (Trades + Equity)
+    # 1. Demo-Test-Record (Trades + Equity)
     m = mirror or {}
     m_tr = m.get("trades") or 0
     m_eq = m.get("equity") or 0
     if m_tr >= 5 and m_eq > 1000:
-        score += 30
+        score += 35
         checks.append({"ok": True, "label": f"Demo ≥5 Trades & positiv ({m_eq:.0f}€)"})
     else:
         checks.append({"ok": False, "label": f"Demo nur {m_tr} Trades / {m_eq:.0f}€"})
-    # 3. Shadow-Stabilität (Forward, unterlegt)
+    # 2. Shadow-Stabilität (Forward, unterlegt)
     s_tr = (shadow.get("trades") or 0) if shadow else 0
     s_eq = (shadow.get("equity") or 1000) if shadow else 1000
     if s_tr >= 10 and s_eq > 1000:
@@ -269,18 +264,17 @@ def compute_live_rec(shadow, deployed, mirror, is_deployed, trade_parity):
         checks.append({"ok": True, "label": f"Shadow ≥10 Trades & stabil ({s_eq:.0f}€)"})
     else:
         checks.append({"ok": False, "label": f"Shadow {s_tr} Trades / {s_eq:.0f}€"})
-    # 4. Win-Rate
+    # 3. Win-Rate
     wr = mirror.get("wr") if mirror else None
     if wr is not None and wr >= 50:
-        score += 15
+        score += 20
         checks.append({"ok": True, "label": f"WR ≥ 50% ({wr:.0f}%)"})
     else:
         checks.append({"ok": False, "label": f"WR {'%s' % wr if wr is not None else 'n.a.'}"})
-    # 5. Lab-Backtest + Gap (hold Versprechen)
+    # 4. Lab-Backtest (OOS PF)
     oos_pf = shadow.get("oos_pf") if shadow else None
-    gap = shadow.get("gap_pct") if shadow else None
     if oos_pf is not None and oos_pf >= 1.2:
-        score += 10
+        score += 20
         checks.append({"ok": True, "label": f"OOS PF ≥ 1.2 ({oos_pf:.2f})"})
     else:
         checks.append({"ok": False, "label": f"OOS PF {'%s' % oos_pf if oos_pf is not None else 'n.a.'}"})
@@ -289,7 +283,9 @@ def compute_live_rec(shadow, deployed, mirror, is_deployed, trade_parity):
     hint = ("Starker Kandidat für Echtgeld." if level == "bereit"
             else ("Fast bereit — noch etwas Demo-Track aufbauen." if level == "nah_ran"
             else "Noch nicht: mehr Demo- oder Shadow-Konsistenz abwarten."))
-    return {"score": score, "level": level, "checks": checks, "hint": hint}
+    if not gate["passed"]:
+        hint = "🚫 Echtgeld gesperrt (Paritäts-Pflicht): " + gate["label"]
+    return {"score": score, "level": level, "checks": checks, "hint": hint, "gate": gate}
 
 def main():
     catalog = load(f"{SITE_API}/strategy-lab/catalog.json") or {}
@@ -323,6 +319,29 @@ def main():
 
     # Echte Bot-Trades
     bot_trades = load_bot_trades()
+    # 🕓 Bot-Historie: welche Strategien liefen WANN auf welchem Bot (aus Trade-Logs)
+    b_history = bot_history() if HAS_PARITY else {}
+    # {sid: [{bot, trades, parity(status/rate/pairs kompakt)}]} — historisch inkl. aktuell
+    history_by_sid = defaultdict(list)
+    if HAS_PARITY:
+        for _bot, entries in b_history.items():
+            for e in entries:
+                hist = {"bot": _bot, "trades": e["trades"],
+                        "first_ts": e["first_ts"], "last_ts": e["last_ts"]}
+                try:
+                    par = compute_strategy_parity(e["id"], _bot)
+                    hist["parity"] = {
+                        "status": par.get("status"),
+                        "matched_pairs": par.get("matched_pairs"),
+                        "entry_ok": par.get("entry_ok"),
+                        "match_rate": par.get("match_rate"),
+                        "first_pair_ts": par.get("first_pair_ts"),
+                        "last_pair_ts": par.get("last_pair_ts"),
+                        "pairs": par.get("pairs") or [],
+                    }
+                except Exception as _e:
+                    print(f"  [warn] Historie #{e['id']}@{_bot}: {_e}", file=sys.stderr)
+                history_by_sid[e["id"]].append(hist)
     # Echte Strategie-Namen (Recipe) aus catalog.db
     cat_names = load_catalog_names()
 
@@ -448,7 +467,13 @@ def main():
                 "live_strategy": live_strat,
                 "divergence": divergence,
                 "parity": trade_parity,
+                # 🕓 Historie: war die Strategie schon mal auf einem Bot (auch heute)?
+                "history": history_by_sid.get(ns, []),
             },
+            "parity_status": (
+                # Aktuell deployed → echter Paritäts-Status
+                (trade_parity or {}).get("status") if (is_deployed and trade_parity) else None
+            ),
             "flags": flags,
             "ready": ready,
             "bot_rec": bot_rec,

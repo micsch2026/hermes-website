@@ -82,6 +82,9 @@
   .pf-dim { color: var(--c-text-muted); }
   .pf-toggle { cursor: pointer; font-size: 10px; color: var(--c-text-muted); padding-right: 4px; }
   .pf-empty, .pf-loading { text-align: center; padding: var(--s-8); color: var(--c-text-muted); }
+  .pf-pairs { margin-top: var(--s-2); border-top: 1px dashed var(--c-border); padding-top: var(--s-2); }
+  .pf-pair-head { font-size: 11px; font-weight: 700; margin: 4px 0 2px; }
+  .pf-pair-row { display: flex; gap: 10px; font-size: 10px; font-family: monospace; padding: 1px 0; flex-wrap: wrap; }
   .pf-updated { font-size: 11px; color: var(--c-text-muted); margin-top: var(--s-4); text-align: right; }
 </style>
 <!--/HEAD-->
@@ -141,6 +144,7 @@
           <th data-k="name">Strategie / Ansatz</th>
           <th data-k="name" class="num">Asset</th>
           <th data-k="bot" class="num">Bot</th>
+          <th data-k="parity" class="num" title="Shadow↔Bot-Trade-Parität (Pflicht für Echtgeld, kein Score-Faktor)">Parität</th>
           <th data-k="botrec" class="num" title="Eignung als Demo-Bot">🚀 Bot-Fit</th>
           <th data-k="liverec" class="num" title="Eignung für Live-Echtgeld">💳 Live-Fit</th>
           <th data-k="tr" class="num">Trades</th>
@@ -149,7 +153,7 @@
           <th data-k="wpw" class="num">€/Woche</th>
         </tr>
       </thead>
-      <tbody id="pf-tbody"><tr><td colspan="10" class="pf-loading">Lade Pipeline-Daten…</td></tr></tbody>
+      <tbody id="pf-tbody"><tr><td colspan="11" class="pf-loading">Lade Pipeline-Daten…</td></tr></tbody>
     </table>
   </div>
 
@@ -169,6 +173,15 @@
       case 'id': return parseInt(s.id, 10) || 0;
       case 'name': return (s.name || '').toLowerCase();
       case 'bot': return s.flags.has_demo_bot ? (s.bot.assigned || '') : '';
+      case 'parity': {
+        // deployed mit Parität → Status priorisieren, dann nie-Bot zuletzt
+        var ps = s.parity_status;
+        if (s.flags.has_demo_bot) {
+          return ps === 'paritaet' ? 3 : (ps === 'abweichung' ? 0 : (ps ? 2 : 1));
+        }
+        var h = (s.bot && s.bot.history || []);
+        return h.length ? 1 : 0; // Ex-Bot > nie-Bot
+      }
       case 'botrec': return (s.bot_rec && s.bot_rec.score) || 0;
       case 'liverec': return (s.flags.has_demo_bot && s.live_rec) ? s.live_rec.score : -1;
       case 'tr': return (s.shadow && s.shadow.trades) || 0;
@@ -192,6 +205,61 @@
     return '<div class="pf-assets">' + a + '</div>';
   }
 
+  function parityInfo(s){
+    // Liefert {icon, text, title} für die Paritäts-Spalte — neutraler Pflicht-Status,
+    // KEIN Score-Faktor (User 2026-09-03).
+    var bot = s.bot || {};
+    var ps = s.parity_status;
+    if (s.flags.has_demo_bot && bot.parity) {
+      var par = bot.parity;
+      var n = par.matched_pairs || 0, rate = Math.round((par.match_rate || 0) * 100);
+      var base = n + ' Paare · ' + rate + '%';
+      if (ps === 'paritaet') return {icon:'✅', text:base, title:'Parität bestätigt: '+base};
+      if (ps === 'abweichung') return {icon:'⚠️', text:base, title:'Abweichung vom Shadow: '+base+' — erst beheben'};
+      if (ps === 'sammlung') return {icon:'⏳', text:base, title:'Sammelt Test-Paare: '+base};
+      return {icon:'🧪', text:'0 Paare', title:'Smoke-Test offen: erst ersten Trade prüfen'};
+    }
+    // Nicht deployed: Ex-Bot (war schon mal Bot) oder nie Bot
+    var hist = bot.history || [];
+    if (hist.length) {
+      var parts = hist.map(function(h){
+        var p = h.parity || {}, st = p.status, n = p.matched_pairs || 0, rate = Math.round((p.match_rate || 0) * 100);
+        var ic = st === 'paritaet' ? '✅' : (st === 'abweichung' ? '⚠️' : (st === 'sammlung' ? '⏳' : '🧪'));
+        return ic + ' ' + h.bot + ' (' + n + ' Paare · ' + rate + '%)';
+      });
+      return {icon:'🕓', text:'war Bot', title:'Historische Parität: ' + parts.join(' | ')};
+    }
+    return {icon:'—', text:'nie Bot', title:'Noch nie auf einem Demo-Bot gewesen (neutral)'};
+  }
+
+  function parityDetail(s){
+    // Paar-Einzelanzeige fürs <details> — aktuell deployed UND historisch
+    var rows = [];
+    function pairRows(par, label){
+      if(!par || !par.pairs || !par.pairs.length) return;
+      var icon = par.status === 'paritaet' ? '✅' : (par.status === 'abweichung' ? '⚠️' : (par.status === 'sammlung' ? '⏳' : '🧪'));
+      rows.push('<div class="pf-pair-head">' + icon + ' ' + label + ': ' + (par.matched_pairs||0) + ' Paare, Entry-Rate ' + Math.round((par.match_rate||0)*100) + '%</div>');
+      par.pairs.forEach(function(p){
+        var ok = p.entry_ok ? 'pf-pos' : 'pf-neg';
+        rows.push('<div class="pf-pair-row">'
+          + '<span>' + esc(p.symbol) + ' ' + esc(p.direction) + '</span>'
+          + '<span>EntryΔ ' + p.entry_diff_pips + 'p</span>'
+          + '<span class="' + ok + '">' + (p.entry_ok ? '✓' : '✗') + ' Entry</span>'
+          + '<span>' + (p.sl_ok == null ? '·' : (p.sl_ok ? '✓' : '✗')) + ' SL</span>'
+          + '<span>' + (p.tp_ok == null ? '·' : (p.tp_ok ? '✓' : '✗')) + ' TP</span>'
+          + '<span class="pf-dim">Δt ' + p.time_gap_h + 'h</span>'
+          + '</div>');
+      });
+    }
+    if (s.flags.has_demo_bot && s.bot && s.bot.parity) pairRows(s.bot.parity, 'Aktuell (' + (s.bot.assigned||'') + ')');
+    var hist = (s.bot && s.bot.history) || [];
+    hist.forEach(function(h){
+      var p = h.parity || {};
+      if (p.pairs && p.pairs.length) pairRows(p, 'Historisch ' + h.bot);
+    });
+    return rows.join('');
+  }
+
   function buildDetail(s){
     var de = s.desc || {}, sh = s.shadow || {}, bot = s.bot || {};
     var rows = '';
@@ -206,10 +274,16 @@
     if(sh.days != null) info += '<div class="pf-desc-row"><span class="pf-desc-label">Forward-Tage:</span><span>' + sh.days.toFixed(0) + ' Tage</span></div>';
     if(bot.assigned) {
       info += '<div class="pf-desc-row"><span class="pf-desc-label">Demo-Konto:</span><span>' + esc(bot.assigned.toUpperCase()) + '</span></div>';
-      var par = bot.parity || {};
-      var parText = par.status === 'paritaet' ? '✅ Vollständige Parität' : (par.status === 'abweichung' ? '⚠️ Abweichung' : '⏳ Sammelt Test-Trades');
-      info += '<div class="pf-desc-row"><span class="pf-desc-label">Parität:</span><span>' + parText + '</span></div>';
     }
+    // 🔒 Parität: neutraler Pflicht-Status + Paare-Einzelanzeige (kein Score-Faktor)
+    var pi = parityInfo(s);
+    info += '<div class="pf-desc-row"><span class="pf-desc-label">Parität:</span><span title="' + esc(pi.title) + '">' + pi.icon + ' ' + esc(pi.text) + '</span></div>';
+    var lr = s.live_rec || {};
+    if (s.flags.has_demo_bot && lr.gate) {
+      info += '<div class="pf-desc-row"><span class="pf-desc-label">Echtgeld:</span><span>' + (lr.gate.passed ? '<span class="pf-pos">✓ freigegeben</span> — ' : '<span class="pf-neg">🚫 gesperrt</span> — ') + esc(lr.gate.label) + '</span></div>';
+    }
+    var pd = parityDetail(s);
+    if (pd) info += '<div class="pf-pairs">' + pd + '</div>';
 
     return '<div class="pf-detail-grid"><div>' + rows + '</div><div>' + info + '</div></div>';
   }
@@ -219,6 +293,8 @@
     var assets = s.assets || [];
     var rowCls = s.flags.has_demo_bot ? 'pf-row-deployed' : '';
     var botBadge = s.flags.has_demo_bot ? '<span class="pf-badge bot">🤖 ' + esc(s.bot.assigned.toUpperCase()) + '</span>' : '<span class="pf-dim">—</span>';
+    var pi = parityInfo(s);
+    var parityCell = '<span title="' + esc(pi.title) + '">' + pi.icon + ' <span class="pf-dim" style="font-size:10px">' + esc(pi.text) + '</span></span>';
     var pnl = s.shadow && s.shadow.equity != null ? (s.shadow.equity - 1000) : null;
     var pnlStr = pnl != null ? fmtEuro(pnl) + ' €' : '—';
     var pnlCls = pnl > 0 ? 'pf-pos' : (pnl < 0 ? 'pf-neg' : 'pf-dim');
@@ -230,6 +306,7 @@
       + '<td><div style="font-weight:600">' + esc(s.name || '') + '</div>' + (tag ? '<span class="pf-badge tag">' + esc(tag) + '</span>' : '') + '</td>'
       + '<td class="num">' + assetsInline(assets) + '</td>'
       + '<td class="num">' + botBadge + '</td>'
+      + '<td class="num">' + parityCell + '</td>'
       + '<td class="num">' + scorePill(s.bot_rec && s.bot_rec.score) + '</td>'
       + '<td class="num">' + (s.flags.has_demo_bot ? scorePill(s.live_rec && s.live_rec.score) : '<span class="pf-dim">—</span>') + '</td>'
       + '<td class="num">' + (s.shadow ? s.shadow.trades : '—') + '</td>'
@@ -237,7 +314,7 @@
       + '<td class="num ' + pnlCls + '">' + pnlStr + '</td>'
       + '<td class="num ' + wpwCls + '">' + wpw + '</td>'
       + '</tr>'
-      + '<tr class="pf-detail-row" data-detail="' + esc(s.id) + '" style="display:none"><td colspan="10">' + buildDetail(s) + '</td></tr>';
+      + '<tr class="pf-detail-row" data-detail="' + esc(s.id) + '" style="display:none"><td colspan="11">' + buildDetail(s) + '</td></tr>';
   }
 
   function renderDecisionCards(stats, list){
@@ -261,7 +338,8 @@
       document.getElementById('live-rec-bot').textContent = (topLive.bot && topLive.bot.assigned ? topLive.bot.assigned.toUpperCase() : '—');
       document.getElementById('live-rec-wr').textContent = (topLive.shadow && topLive.shadow.wr != null ? topLive.shadow.wr + '%' : '—');
       var par = topLive.bot && topLive.bot.parity;
-      document.getElementById('live-rec-parity').textContent = (par && par.status === 'paritaet') ? '✅ Bestätigt' : '⏳ In Prüfung';
+      var gate = topLive.live_rec && topLive.live_rec.gate;
+      document.getElementById('live-rec-parity').textContent = (gate && gate.passed) ? '✅ Bestätigt' : (par ? '⚠️ Offen/Abweichung' : '⏳ In Prüfung');
     }
   }
 
@@ -333,7 +411,7 @@
       return state.sortDesc ? -asc : asc;
     });
 
-    document.getElementById('pf-tbody').innerHTML = filtered.length ? filtered.map(rowHtml).join('') : '<tr><td colspan="10" class="pf-empty">Keine Strategien für diesen Filter.</td></tr>';
+    document.getElementById('pf-tbody').innerHTML = filtered.length ? filtered.map(rowHtml).join('') : '<tr><td colspan="11" class="pf-empty">Keine Strategien für diesen Filter.</td></tr>';
 
     var up = d.updated_at;
     if(up){
