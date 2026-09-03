@@ -206,56 +206,86 @@
   }
 
   function parityInfo(s){
-    // Liefert {icon, text, title} für die Paritäts-Spalte — neutraler Pflicht-Status,
-    // KEIN Score-Faktor (User 2026-09-03).
+    // v2-Parität (identisch Bot-Websites): Assets mit confirmed/matched/missed.
+    // Neutraler Pflicht-Status, KEIN Score-Faktor (User 2026-09-03).
     var bot = s.bot || {};
     var ps = s.parity_status;
     if (s.flags.has_demo_bot && bot.parity) {
       var par = bot.parity;
-      var n = par.matched_pairs || 0, rate = Math.round((par.match_rate || 0) * 100);
-      var base = n + ' Paare · ' + rate + '%';
-      if (ps === 'paritaet') return {icon:'✅', text:base, title:'Parität bestätigt: '+base};
-      if (ps === 'abweichung') return {icon:'⚠️', text:base, title:'Abweichung vom Shadow: '+base+' — erst beheben'};
-      if (ps === 'sammlung') return {icon:'⏳', text:base, title:'Sammelt Test-Paare: '+base};
-      return {icon:'🧪', text:'0 Paare', title:'Smoke-Test offen: erst ersten Trade prüfen'};
+      var assets = par.assets || {};
+      var conf = 0, match = 0, missed = 0;
+      Object.keys(assets).forEach(function(k){
+        var a = assets[k];
+        conf += (a.confirmed_count || 0);
+        match += (a.matched || 0);
+        missed += ((a.missed_shadow || []).length);
+      });
+      var base = conf + ' bestätigt · ' + match + ' Paare' + (missed ? ' · ' + missed + ' missed' : '');
+      if (ps === 'bestaetigt') return {icon:'🟢', text:base, title:'Alle Assets bestätigt: ' + base};
+      if (ps === 'abweichung') return {icon:'🔴', text:base, title:'Abweichung: ' + (par.diagnosis || base)};
+      if (ps === 'qualifizierung') return {icon:'🟡', text:base, title:'Qualifizierung: ' + base};
+      if (ps === 'wartet') return {icon:'⏳', text:'wartet', title:'Noch keine gematchten Paare'};
+      return {icon:'⚪', text:base || 'ungeprüft', title:par.diagnosis || base};
     }
     // Nicht deployed: Ex-Bot (war schon mal Bot) oder nie Bot
     var hist = bot.history || [];
     if (hist.length) {
       var parts = hist.map(function(h){
-        var p = h.parity || {}, st = p.status, n = p.matched_pairs || 0, rate = Math.round((p.match_rate || 0) * 100);
-        var ic = st === 'paritaet' ? '✅' : (st === 'abweichung' ? '⚠️' : (st === 'sammlung' ? '⏳' : '🧪'));
-        return ic + ' ' + h.bot + ' (' + n + ' Paare · ' + rate + '%)';
+        var p = h.parity || {}, st = p.status;
+        var ic = st === 'bestaetigt' ? '🟢' : (st === 'abweichung' ? '🔴' : (st === 'qualifizierung' ? '🟡' : '⚪'));
+        return ic + ' ' + h.bot + ' (' + (p.ok_pairs || 0) + '/' + (p.matched_pairs || 0) + ' Paare' + (p.missed_count ? ', ' + p.missed_count + ' missed' : '') + ')';
       });
-      return {icon:'🕓', text:'war Bot', title:'Historische Parität: ' + parts.join(' | ')};
+      return {icon:'🕓', text:'war Bot', title:'Historische Parität (v2): ' + parts.join(' | ')};
     }
     return {icon:'—', text:'nie Bot', title:'Noch nie auf einem Demo-Bot gewesen (neutral)'};
   }
 
   function parityDetail(s){
-    // Paar-Einzelanzeige fürs <details> — aktuell deployed UND historisch
+    // Paar-Einzelanzeige fürs <details> — v2-Struktur (ok pro Paar, Assets gruppiert)
     var rows = [];
     function pairRows(par, label){
-      if(!par || !par.pairs || !par.pairs.length) return;
-      var icon = par.status === 'paritaet' ? '✅' : (par.status === 'abweichung' ? '⚠️' : (par.status === 'sammlung' ? '⏳' : '🧪'));
-      rows.push('<div class="pf-pair-head">' + icon + ' ' + label + ': ' + (par.matched_pairs||0) + ' Paare, Entry-Rate ' + Math.round((par.match_rate||0)*100) + '%</div>');
-      par.pairs.forEach(function(p){
-        var ok = p.entry_ok ? 'pf-pos' : 'pf-neg';
-        rows.push('<div class="pf-pair-row">'
-          + '<span>' + esc(p.symbol) + ' ' + esc(p.direction) + '</span>'
-          + '<span>EntryΔ ' + p.entry_diff_pips + 'p</span>'
-          + '<span class="' + ok + '">' + (p.entry_ok ? '✓' : '✗') + ' Entry</span>'
-          + '<span>' + (p.sl_ok == null ? '·' : (p.sl_ok ? '✓' : '✗')) + ' SL</span>'
-          + '<span>' + (p.tp_ok == null ? '·' : (p.tp_ok ? '✓' : '✗')) + ' TP</span>'
-          + '<span class="pf-dim">Δt ' + p.time_gap_h + 'h</span>'
-          + '</div>');
+      var assets = (par && par.assets) || {};
+      var any = false;
+      Object.keys(assets).forEach(function(sym){
+        var a = assets[sym];
+        var pairs = a.pairs || [];
+        if(!pairs.length) return;
+        any = true;
+        var icon = a.status === 'bestaetigt' ? '🟢' : (a.status === 'abweichung' ? '🔴' : (a.status === 'qualifizierung' ? '🟡' : '⚪'));
+        var missedN = (a.missed_shadow || []).length;
+        rows.push('<div class="pf-pair-head">' + icon + ' ' + label + ' · ' + esc(sym) + ': ' + (a.confirmed_count||0) + ' bestätigt / ' + pairs.length + ' Paare' + (missedN ? ', ' + missedN + ' missed' : '') + '</div>');
+        pairs.forEach(function(p){
+          var ok = p.ok;
+          var okCls = ok ? 'pf-pos' : 'pf-neg';
+          rows.push('<div class="pf-pair-row">'
+            + '<span>' + esc(p.symbol) + ' ' + esc(p.direction) + '</span>'
+            + '<span>Bot ' + (p.bot_entry != null ? p.bot_entry : '—') + '</span>'
+            + '<span>Shadow ' + (p.shadow_entry != null ? p.shadow_entry : '—') + '</span>'
+            + '<span class="' + okCls + '">' + (ok ? '✓ ok' : '✗ Abweichung') + '</span>'
+            + '</div>');
+        });
+        (a.missed_shadow || []).forEach(function(m){
+          rows.push('<div class="pf-pair-row"><span>' + esc(m.symbol) + ' ' + esc(m.direction) + '</span><span class="pf-neg">✗ Shadow ohne Bot-Gegenstück</span></div>');
+        });
       });
+      return any;
     }
     if (s.flags.has_demo_bot && s.bot && s.bot.parity) pairRows(s.bot.parity, 'Aktuell (' + (s.bot.assigned||'') + ')');
     var hist = (s.bot && s.bot.history) || [];
     hist.forEach(function(h){
       var p = h.parity || {};
-      if (p.pairs && p.pairs.length) pairRows(p, 'Historisch ' + h.bot);
+      if (p.pairs && p.pairs.length) {
+        // v2-Historie: flache Paar-Liste
+        rows.push('<div class="pf-pair-head">🕓 Historisch ' + h.bot + ': ' + (p.ok_pairs||0) + '/' + (p.matched_pairs||0) + ' Paare ok' + (p.missed_count ? ', ' + p.missed_count + ' missed' : '') + '</div>');
+        p.pairs.forEach(function(pp){
+          rows.push('<div class="pf-pair-row">'
+            + '<span>' + esc(pp.symbol) + ' ' + esc(pp.direction) + '</span>'
+            + '<span>Bot ' + (pp.bot_entry != null ? pp.bot_entry : '—') + '</span>'
+            + '<span>Shadow ' + (pp.shadow_entry != null ? pp.shadow_entry : '—') + '</span>'
+            + '<span class="' + (pp.ok ? 'pf-pos' : 'pf-neg') + '">' + (pp.ok ? '✓ ok' : '✗ Abweichung') + '</span>'
+            + '</div>');
+        });
+      }
     });
     return rows.join('');
   }

@@ -22,9 +22,10 @@ import sqlite3
 sys.path.insert(0, "/root/fx-bot/tools")
 try:
     from bot_shadow_parity import compute_bot_parity, compute_strategy_parity, bot_history
+    from parity_status import compute_parity_v2, compute_parity_v2_strategy
     HAS_PARITY = True
 except Exception as _e:  # pragma: no cover
-    print(f"  [warn] bot_shadow_parity: {_e}", file=sys.stderr)
+    print(f"  [warn] bot_shadow_parity/parity_status: {_e}", file=sys.stderr)
     HAS_PARITY = False
 
 SITE_API = "/root/.hermes/site/api"
@@ -227,23 +228,28 @@ def compute_live_rec(shadow, deployed, mirror, is_deployed, trade_parity):
 
     tp = trade_parity or {}
     p_status = tp.get("status")
-    p_matched = tp.get("matched_pairs") or 0
-    p_entry = tp.get("entry_ok") or 0
-    p_rate = tp.get("match_rate") or 0.0
+    # v2 aggregiert pro Asset → Totals hier ableiten (Paare mit ok=True / gesamt / missed)
+    _assets = tp.get("assets") or {}
+    _pairs_all = [pp for a in _assets.values() for pp in (a.get("pairs") or [])]
+    p_matched = tp.get("matched_pairs") or len(_pairs_all)
+    p_ok = tp.get("ok_pairs") or sum(1 for pp in _pairs_all if pp.get("ok"))
+    p_missed = tp.get("missed_count") or sum(len(a.get("missed_shadow") or []) for a in _assets.values())
 
     # 🔒 Paritäts-Gate: neutraler Pflicht-Status (kein Score-Faktor, User 2026-09-03)
-    if p_status == "paritaet":
+    #    v2-Ampel (identisch Bot-Websites): 🟢 bestaetigt / 🟡 qualifizierung / 🔴 abweichung
+    if p_status == "bestaetigt":
         gate = {"passed": True,
-                "label": f"Parität bestätigt ({p_matched} Paare, Entry-Rate {p_rate:.0%})"}
-    elif p_status == "needs_smoke_test":
-        gate = {"passed": False,
-                "label": "Smoke-Test offen: noch 0 gematchte Paare — erst Testrade prüfen"}
+                "label": f"Alle Assets bestätigt ({p_ok} Paare ok)"}
     elif p_status == "abweichung":
         gate = {"passed": False,
-                "label": f"Abweichung: Entry ok {p_entry}/{p_matched}, Rate {p_rate:.0%} — erst beheben"}
-    else:  # sammlung — noch < MIN_MATCHED_PAIRS
+                "label": f"Abweichung: {p_ok}/{p_matched} Paare ok" + (f", {p_missed} Shadow-Trade(s) ohne Bot-Gegenstück" if p_missed else "")}
+    elif p_status == "qualifizierung":
         gate = {"passed": False,
-                "label": f"Parität im Aufbau: {p_matched} Paare (Rate {p_rate:.0%})"}
+                "label": f"Qualifizierung: {p_ok} Paare bestätigt (mind. {tp.get('min_confirmed_per_asset', 3)} je Asset nötig)"}
+    elif p_status == "wartet":
+        gate = {"passed": False, "label": "Wartet: noch keine gematchten Paare"}
+    else:  # kein_bot / ungeprueft / None
+        gate = {"passed": False, "label": "Parität nicht geprüft (kein Deploy-Mapping oder 0 Paare)"}
 
     score = 0
     checks = []
@@ -329,12 +335,12 @@ def main():
                 hist = {"bot": _bot, "trades": e["trades"],
                         "first_ts": e["first_ts"], "last_ts": e["last_ts"]}
                 try:
-                    par = compute_strategy_parity(e["id"], _bot)
+                    par = compute_parity_v2_strategy(e["id"], _bot)
                     hist["parity"] = {
                         "status": par.get("status"),
                         "matched_pairs": par.get("matched_pairs"),
-                        "entry_ok": par.get("entry_ok"),
-                        "match_rate": par.get("match_rate"),
+                        "ok_pairs": par.get("ok_pairs"),
+                        "missed_count": par.get("missed_count"),
                         "first_pair_ts": par.get("first_pair_ts"),
                         "last_pair_ts": par.get("last_pair_ts"),
                         "pairs": par.get("pairs") or [],
@@ -419,11 +425,12 @@ def main():
                 "bot": m.get("_bot"),
             }
 
-        # 🔀 Echte Trade-Parität Shadow ↔ Bot (nur für deployed Bots)
+        # 🔀 Echte Trade-Parität Shadow ↔ Bot (v2, identisch zu den Bot-Websites —
+        #     EINE Wahrheit: parity_status.py, 1-Min-Takt der Status-Services)
         trade_parity = None
         if is_deployed and assigned_bot and HAS_PARITY:
             try:
-                trade_parity = compute_bot_parity(assigned_bot)
+                trade_parity = compute_parity_v2(assigned_bot)
             except Exception as _e:
                 print(f"  [warn] Parität {assigned_bot}: {_e}", file=sys.stderr)
                 trade_parity = None
