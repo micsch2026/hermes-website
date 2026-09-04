@@ -1,0 +1,135 @@
+{
+  "id": 680,
+  "label": "#680",
+  "name": "RV: AUDJPY/CADJPY ratio z-score MR (leg AUDJPY)",
+  "display_name": "RV: AUDJPY/CADJPY ratio z-score MR (leg AUDJPY)",
+  "description": "RV AUDJPY/CADJPY ratio MR, handelt AUDJPY-Leg, other=CADJPY. Shadow-only bis eigenes Shadow-OOS.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "candidate",
+  "readiness": "promising",
+  "rejection_reason": null,
+  "overall_score": 0.0,
+  "iteration_count": 0,
+  "source": "iterative_discovery-rv-cross",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-09-02 06:13:05",
+  "updated_at": "2026-09-02 06:13:05",
+  "notes": null,
+  "concept": {
+    "name": "RV: AUDJPY/CADJPY ratio z-score MR (leg AUDJPY)",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "AUDJPY"
+    ],
+    "tree": {
+      "pairs": [
+        "AUDJPY"
+      ],
+      "timeframe": "1h",
+      "risk_pct": 1.0,
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.2
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 1.6
+      },
+      "archetype": "relative_value",
+      "description": "AUDJPY/CADJPY ratio z-score mean reversion (RV): Entry |z|>2 (120x1h window), Exit TP 1.6R oder Timeout 72h, SL 1.2xATR. Oekonomie: AUD=Copper/China-Risiko, CAD=Oil/US-Risiko -> Ratio mean-revertiert. Backtest 2023-08..2026-09: PF 1.80 netto (238 tr, alle 36 Param-Kombis positiv), P3 (ab 2025-07) nur 1.04 -> regime-abhaengig, bewusst Shadow-only.",
+      "enter": {
+        "signals": [
+          {
+            "id": "rv_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 60,
+            "rules": [
+              {
+                "indicator": "cross_zscore",
+                "timeframe": "1h",
+                "params": {
+                  "other_symbol": "CADJPY",
+                  "period": 120
+                },
+                "op": "<",
+                "value": -2.0
+              }
+            ]
+          },
+          {
+            "id": "rv_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 60,
+            "rules": [
+              {
+                "indicator": "cross_zscore",
+                "timeframe": "1h",
+                "params": {
+                  "other_symbol": "CADJPY",
+                  "period": 120
+                },
+                "op": ">",
+                "value": 2.0
+              }
+            ]
+          }
+        ],
+        "min_score": 50,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 72
+      },
+      "pair_overrides": {
+        "AUDJPY": {
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.2
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 1.6
+          }
+        }
+      }
+    },
+    "description": "RV AUDJPY/CADJPY ratio MR, handelt AUDJPY-Leg, other=CADJPY. Shadow-only bis eigenes Shadow-OOS."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "oos_pf": 1.8,
+    "oos_trades": 238,
+    "oos_pnl": 25829,
+    "tier_v2": "B",
+    "note": "RV-Backtest (rv_robust.py, 2026-09-02): alle 36 Param-Kombis netto-positiv; P3 (2025-07->) nur PF 1.04. Backtest eigener RV-Engine, nicht WFO-Pipeline -> als Shadow-Test zu behandeln."
+  },
+  "enrichment_result": null,
+  "asset_results": [],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": null,
+  "best_oos_pnl": 25829,
+  "best_pf": 1.8,
+  "best_wr": null,
+  "best_tier": null,
+  "best_oos_pass_rate": null,
+  "oos_trades": 238,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

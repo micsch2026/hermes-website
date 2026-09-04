@@ -306,7 +306,15 @@ const archiveCols = [
 ];
 
 const shadowCols = [
-  {key:'id', label:'ID', render: r => `<strong>#${r.id}</strong>`},
+  {key:'id', label:'ID', render: r => {
+    let badge = '';
+    const bh = r.bot_health;
+    if (bh === 'strong') badge = ' <span class="gate gate-pass" title="Bot stark im Shadow-Forward">🤖🟢</span>';
+    else if (bh === 'weak') badge = ' <span class="gate gate-fail" title="Bot schwach — Alternative prüfen">🤖🔴</span>';
+    else if (bh === 'ok') badge = ' <span class="gate gate-na" title="Bot neutral im Shadow-Forward">🤖🟡</span>';
+    else if (bh === 'new') badge = ' <span class="gate gate-na" title="Zu wenig Forward-Daten">🤖⚪</span>';
+    return `<strong>#${r.id}</strong>${badge}`;
+  }},
   {key:'shadow_flag', label:'Flag', render: r => {
     if (r.shadow_flag === 'deploy_ready') return '<span class="gate gate-pass">🚀</span>';
     if (r.shadow_flag === 'busted') return '<span class="gate gate-fail">💀</span>';
@@ -358,6 +366,12 @@ function setSort(col) {
   renderTable();
 }
 
+function showDetailById(sid) {
+  const data = (shadowData && shadowData.strategies) ? shadowData.strategies : [];
+  const row = data.find(r => String(r.id) === String(sid));
+  if (row) showDetail(row);
+}
+
 function showDetail(row) {
   const m = document.getElementById('sl4-modal-content');
   let html = `<span class="close" onclick="document.getElementById('sl4-modal-overlay').classList.remove('show')">×</span>`;
@@ -367,6 +381,24 @@ function showDetail(row) {
     // Shadow-spezifischer Header: Live-Forward-Test vs OOS-Referenz
     if (row.shadow_flag === 'deploy_ready') html += '<div style="padding:0.5rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--green-dim);color:var(--green);font-weight:600">🚀 Deploy-Ready — Forward-Test bestätigt OOS-Prognose</div>';
     else if (row.shadow_flag === 'busted') html += '<div style="padding:0.5rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--red-dim);color:var(--red);font-weight:600">💀 Busted — Strategie widerlegt sich im Forward-Test</div>';
+    // Bot-Health-Ampel (2026-09-04)
+    const bhMap = {
+      strong: ['var(--green-dim)', 'var(--green)', '🤖🟢 Bot-Instanz STARK'],
+      ok:     ['rgba(59,130,246,0.12)', 'var(--blue)', '🤖🟡 Bot-Instanz NEUTRAL'],
+      weak:   ['var(--red-dim)', 'var(--red)', '🤖🔴 Bot-Instanz SCHWACH'],
+      new:    ['rgba(107,114,128,0.12)', 'var(--dim)', '🤖⚪ Zu wenig Daten'],
+    };
+    if (bhMap[row.bot_health]) {
+      const [bg, fg, title] = bhMap[row.bot_health];
+      html += `<div style="padding:0.5rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:${bg};color:${fg};font-weight:600">${title}</div>`;
+      if (row.bot_health_reason) html += `<div style="color:var(--dim);font-size:0.75rem;margin-bottom:0.6rem">${row.bot_health_reason}</div>`;
+    }
+    if (row.bot_alternative && row.bot_health !== 'strong') {
+      const a = row.bot_alternative;
+      html += `<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:rgba(59,130,246,0.12);color:var(--blue);font-size:0.8rem">💡 <strong>Alternative im Shadow:</strong> <a href="#" onclick="showDetailById(${a.id});return false;" style="color:var(--blue);font-weight:600">#${a.id}</a> — +${a.net_pnl}€ in ${a.trades} Trades (OOS PF ${a.oos_pf||'—'})` +
+        (a.shared_assets && a.shared_assets.length ? ` · gleiche Assets: ${a.shared_assets.join(', ')}` : '') +
+        `<br><span style="color:var(--dim);font-size:0.7rem">Nur ein Hinweis, keine Automatik — Swap-Entscheidung manuell.</span></div>`;
+    }
     if (row.description) html += `<div style="color:var(--dim);font-size:0.8rem;margin-bottom:0.8rem">${row.description}</div>`;
     const eqPct = (row.equity - 1000) / 10;
     const gapTxt = row.gap_pct != null ? `<span class="${row.gap_pct>0?'pos':'neg'}">${row.gap_pct}%</span> der OOS-Prognose` : '—';

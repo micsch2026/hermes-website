@@ -1,0 +1,993 @@
+{
+  "id": 671,
+  "label": "#671",
+  "name": "RCP-CLUSTER: gm1b_keltner_stoch (20260828_065009)",
+  "display_name": "RCP-CLUSTER: gm1b_keltner_stoch (20260828_065009)",
+  "description": "Portfolio from recipe_llm_cluster (gm1b_keltner_stoch) — 1 cluster/tf combos, 2 assets",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "candidate",
+  "readiness": "bot_ready",
+  "rejection_reason": null,
+  "overall_score": 613.8,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-08-28 06:54:35",
+  "updated_at": "2026-08-28 06:54:37",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"gm1b_keltner_stoch\"], \"clusters\": [\"expand_metals_trend\"], \"total_assets\": 2, \"total_pnl\": 2330.82}",
+  "concept": {
+    "name": "RCP-CLUSTER: gm1b_keltner_stoch",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "XAGUSD",
+      "XAUEUR"
+    ],
+    "tree": {
+      "name": "gm1b_keltner_stoch",
+      "description": "gm1-Variante B: Keltner-Pullback + Stoch-Übertreibung. SL1.4 TP2.4",
+      "enter": {
+        "signals": [
+          {
+            "id": "gm1b_keltner_stoch_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": ">",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 200
+                }
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<=",
+                "ref_indicator": "kc_lower",
+                "ref_params": {
+                  "period": 20,
+                  "mult": 2.0
+                }
+              },
+              {
+                "indicator": "stoch_k",
+                "timeframe": "1h",
+                "params": {
+                  "k_period": 14,
+                  "smooth": 3
+                },
+                "op": "<",
+                "value": 40
+              }
+            ]
+          },
+          {
+            "id": "gm1b_keltner_stoch_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": "<",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 200
+                }
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">=",
+                "ref_indicator": "kc_upper",
+                "ref_params": {
+                  "period": 20,
+                  "mult": 2.0
+                }
+              },
+              {
+                "indicator": "stoch_k",
+                "timeframe": "1h",
+                "params": {
+                  "k_period": 14,
+                  "smooth": 3
+                },
+                "op": ">",
+                "value": 60
+              }
+            ]
+          }
+        ],
+        "min_score": 50,
+        "merge_mode": "highest_score",
+        "gates": [],
+        "boosts": []
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.4
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.4
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "XAGUSD",
+        "XAUEUR"
+      ],
+      "timeframe": "1h"
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Portfolio from recipe_llm_cluster (gm1b_keltner_stoch) — 1 cluster/tf combos, 2 assets"
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "B",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "24M"
+      },
+      "g2_splits": {
+        "pass": false,
+        "value": "9 splits"
+      },
+      "g3_ho": {
+        "pass": true,
+        "value": "1 trades"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "1.44"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "68%"
+      }
+    },
+    "fire_test": {
+      "passed": true,
+      "total_signals": 25,
+      "signals_per_week": 5.8,
+      "min_required": 1,
+      "per_asset": {
+        "XAGUSD": {
+          "signals": 7,
+          "signals_per_week": 1.6,
+          "bars_available": 11647,
+          "window_bars": 507
+        },
+        "XAUEUR": {
+          "signals": 18,
+          "signals_per_week": 4.2,
+          "bars_available": 5660,
+          "window_bars": 500
+        }
+      },
+      "days_tested": 30
+    },
+    "oos_pnl": 2330.82,
+    "oos_score": 613.8,
+    "oos_pf": 1.44,
+    "oos_wr": 36.6,
+    "oos_trades": 179,
+    "oos_pass_rate": 0.678,
+    "tier_reason": "Bedingt geeignet; PF 1.44 < Ziel 1.5; WR 37% < Ziel 50%; Assets profitabel: 68%",
+    "clusters": [
+      {
+        "cluster": "expand_metals_trend",
+        "timeframe": "1h",
+        "approach": "gm1b_keltner_stoch",
+        "approach_summary": [
+          {
+            "approach": "gm1_keltner_trend_pullback",
+            "score": 139.9,
+            "pnl": 612.99,
+            "recipe_used": false,
+            "trades": 98,
+            "wr": 30.4,
+            "pf": 1.55,
+            "pass_rate": 0.556,
+            "tier": "B"
+          },
+          {
+            "approach": "gm1a_keltner_pull20",
+            "score": 70.9,
+            "pnl": 1148.27,
+            "recipe_used": true,
+            "trades": 360,
+            "wr": 34.0,
+            "pf": 1.15,
+            "pass_rate": 0.689,
+            "tier": "A"
+          },
+          {
+            "approach": "gm1b_keltner_stoch",
+            "score": 613.8,
+            "pnl": 2330.82,
+            "recipe_used": false,
+            "trades": 179,
+            "wr": 44.9,
+            "pf": 1.48,
+            "pass_rate": 0.678,
+            "tier": "B"
+          },
+          {
+            "approach": "gm1c_keltner_adx",
+            "score": 341.5,
+            "pnl": 1817.11,
+            "recipe_used": false,
+            "trades": 132,
+            "wr": 50.8,
+            "pf": 1.44,
+            "pass_rate": 0.678,
+            "tier": "B"
+          }
+        ],
+        "best_tree": {
+          "name": "gm1b_keltner_stoch",
+          "description": "gm1-Variante B: Keltner-Pullback + Stoch-Übertreibung. SL1.4 TP2.4",
+          "enter": {
+            "signals": [
+              {
+                "id": "gm1b_keltner_stoch_long",
+                "condition": "AND",
+                "direction": "long",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "ema",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": ">",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 200
+                    }
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "<=",
+                    "ref_indicator": "kc_lower",
+                    "ref_params": {
+                      "period": 20,
+                      "mult": 2.0
+                    }
+                  },
+                  {
+                    "indicator": "stoch_k",
+                    "timeframe": "1h",
+                    "params": {
+                      "k_period": 14,
+                      "smooth": 3
+                    },
+                    "op": "<",
+                    "value": 40
+                  }
+                ]
+              },
+              {
+                "id": "gm1b_keltner_stoch_short",
+                "condition": "AND",
+                "direction": "short",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "ema",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": "<",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 200
+                    }
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">=",
+                    "ref_indicator": "kc_upper",
+                    "ref_params": {
+                      "period": 20,
+                      "mult": 2.0
+                    }
+                  },
+                  {
+                    "indicator": "stoch_k",
+                    "timeframe": "1h",
+                    "params": {
+                      "k_period": 14,
+                      "smooth": 3
+                    },
+                    "op": ">",
+                    "value": 60
+                  }
+                ]
+              }
+            ],
+            "min_score": 50,
+            "merge_mode": "highest_score",
+            "gates": [],
+            "boosts": []
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 48
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.4
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.4
+          },
+          "risk_pct": 2.0,
+          "pairs": [
+            "XAUUSD",
+            "XAGUSD",
+            "XAUEUR"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 2330.82,
+        "best_score": 613.8,
+        "selected_assets": [
+          "XAGUSD",
+          "XAUEUR"
+        ],
+        "dropped_assets": [
+          "XAUUSD"
+        ],
+        "pair_overrides": {
+          "XAGUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.4,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 3.8
+            }
+          },
+          "XAUEUR": {
+            "sl": {
+              "mode": "atr",
+              "mult": 0.7,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 3.8
+            }
+          }
+        },
+        "recipe_used": false,
+        "trades": 179,
+        "pass_rate": 0.678,
+        "tier": "B",
+        "pf": 1.48,
+        "wr": 44.9,
+        "per_asset": {
+          "XAUUSD": {
+            "oos_pnl": -167.02,
+            "oos_trades": 153,
+            "oos_pass_rate": 0.4,
+            "oos_score": 11.8,
+            "oos_wr": 32.6,
+            "oos_pf": 0.85,
+            "best_sl_mult": 1.0,
+            "best_tp_val": 3.8,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-09-08 → 2025-03-10",
+                "oos_range": "2025-03-10 → 2025-06-09",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.8,
+                "is_pnl": 136.48,
+                "is_trades": 64,
+                "oos_pnl": -125.85,
+                "oos_trades": 40,
+                "oos_wr": 20.0,
+                "oos_pf": 0.65,
+                "oos_profitable": false,
+                "oos_gp": 229.92,
+                "oos_gl": 355.77
+              },
+              {
+                "split": 1,
+                "is_range": "2024-12-09 → 2025-06-09",
+                "oos_range": "2025-06-09 → 2025-09-09",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.1,
+                "is_pnl": 99.04,
+                "is_trades": 73,
+                "oos_pnl": -79.92,
+                "oos_trades": 31,
+                "oos_wr": 25.8,
+                "oos_pf": 0.66,
+                "oos_profitable": false,
+                "oos_gp": 156.07,
+                "oos_gl": 235.99
+              },
+              {
+                "split": 2,
+                "is_range": "2025-03-10 → 2025-09-09",
+                "oos_range": "2025-09-09 → 2025-12-09",
+                "best_sl_mult": 2.2,
+                "best_tp_val": 1.4,
+                "is_pnl": -31.78,
+                "is_trades": 50,
+                "oos_pnl": 126.72,
+                "oos_trades": 19,
+                "oos_wr": 73.7,
+                "oos_pf": 3.2,
+                "oos_profitable": true,
+                "oos_gp": 184.23,
+                "oos_gl": 57.51
+              },
+              {
+                "split": 3,
+                "is_range": "2025-06-09 → 2025-12-09",
+                "oos_range": "2025-12-09 → 2026-03-10",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.8,
+                "is_pnl": 269.36,
+                "is_trades": 67,
+                "oos_pnl": -155.23,
+                "oos_trades": 30,
+                "oos_wr": 13.3,
+                "oos_pf": 0.42,
+                "oos_profitable": false,
+                "oos_gp": 110.18,
+                "oos_gl": 265.41
+              },
+              {
+                "split": 4,
+                "is_range": "2025-09-09 → 2026-03-10",
+                "oos_range": "2026-03-10 → 2026-06-10",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.1,
+                "is_pnl": 137.25,
+                "is_trades": 60,
+                "oos_pnl": 67.26,
+                "oos_trades": 33,
+                "oos_wr": 30.3,
+                "oos_pf": 1.29,
+                "oos_profitable": true,
+                "oos_gp": 296.71,
+                "oos_gl": 229.45
+              }
+            ],
+            "selected": false
+          },
+          "XAGUSD": {
+            "oos_pnl": 1766.54,
+            "oos_trades": 90,
+            "oos_pass_rate": 0.8,
+            "oos_score": 279.1,
+            "oos_wr": 42.7,
+            "oos_pf": 1.42,
+            "best_sl_mult": 1.4,
+            "best_tp_val": 3.8,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-09-08 → 2025-03-10",
+                "oos_range": "2025-03-10 → 2025-06-09",
+                "best_sl_mult": 1.4,
+                "best_tp_val": 3.8,
+                "is_pnl": 128.09,
+                "is_trades": 44,
+                "oos_pnl": 121.58,
+                "oos_trades": 20,
+                "oos_wr": 45.0,
+                "oos_pf": 1.55,
+                "oos_profitable": true,
+                "oos_gp": 341.51,
+                "oos_gl": 219.93
+              },
+              {
+                "split": 1,
+                "is_range": "2024-12-09 → 2025-06-09",
+                "oos_range": "2025-06-09 → 2025-09-09",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 3.1,
+                "is_pnl": 235.93,
+                "is_trades": 38,
+                "oos_pnl": -238.21,
+                "oos_trades": 22,
+                "oos_wr": 22.7,
+                "oos_pf": 0.47,
+                "oos_profitable": false,
+                "oos_gp": 208.6,
+                "oos_gl": 446.81
+              },
+              {
+                "split": 2,
+                "is_range": "2025-03-10 → 2025-09-09",
+                "oos_range": "2025-09-09 → 2025-12-09",
+                "best_sl_mult": 1.4,
+                "best_tp_val": 1.9,
+                "is_pnl": 265.2,
+                "is_trades": 47,
+                "oos_pnl": 27.7,
+                "oos_trades": 19,
+                "oos_wr": 42.1,
+                "oos_pf": 1.05,
+                "oos_profitable": true,
+                "oos_gp": 577.0,
+                "oos_gl": 549.3
+              },
+              {
+                "split": 3,
+                "is_range": "2025-06-09 → 2025-12-09",
+                "oos_range": "2025-12-09 → 2026-03-10",
+                "best_sl_mult": 2.2,
+                "best_tp_val": 2.4,
+                "is_pnl": 300.68,
+                "is_trades": 37,
+                "oos_pnl": 1465.32,
+                "oos_trades": 13,
+                "oos_wr": 53.8,
+                "oos_pf": 1.85,
+                "oos_profitable": true,
+                "oos_gp": 3180.14,
+                "oos_gl": 1714.82
+              },
+              {
+                "split": 4,
+                "is_range": "2025-09-09 → 2026-03-10",
+                "oos_range": "2026-03-10 → 2026-06-10",
+                "best_sl_mult": 2.2,
+                "best_tp_val": 3.8,
+                "is_pnl": 2284.53,
+                "is_trades": 31,
+                "oos_pnl": 390.15,
+                "oos_trades": 16,
+                "oos_wr": 50.0,
+                "oos_pf": 1.3,
+                "oos_profitable": true,
+                "oos_gp": 1679.46,
+                "oos_gl": 1289.31
+              }
+            ],
+            "selected": true
+          },
+          "XAUEUR": {
+            "oos_pnl": 564.28,
+            "oos_trades": 89,
+            "oos_pass_rate": 0.556,
+            "oos_score": 53.1,
+            "oos_wr": 30.5,
+            "oos_pf": 1.53,
+            "best_sl_mult": 0.7,
+            "best_tp_val": 3.8,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2023-07-19 → 2024-01-18",
+                "oos_range": "2024-01-18 → 2024-04-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 1.9,
+                "is_pnl": 84.39,
+                "is_trades": 7,
+                "oos_pnl": 61.23,
+                "oos_trades": 10,
+                "oos_wr": 60.0,
+                "oos_pf": 2.15,
+                "oos_profitable": true,
+                "oos_gp": 114.37,
+                "oos_gl": 53.14
+              },
+              {
+                "split": 1,
+                "is_range": "2023-10-19 → 2024-04-18",
+                "oos_range": "2024-04-18 → 2024-07-19",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 3.8,
+                "is_pnl": 147.6,
+                "is_trades": 7,
+                "oos_pnl": 0,
+                "oos_trades": 0,
+                "oos_wr": 0,
+                "oos_pf": 0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 0
+              },
+              {
+                "split": 2,
+                "is_range": "2024-01-18 → 2024-07-19",
+                "oos_range": "2024-07-19 → 2024-10-18",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 3.8,
+                "is_pnl": 147.6,
+                "is_trades": 7,
+                "oos_pnl": 44.23,
+                "oos_trades": 8,
+                "oos_wr": 37.5,
+                "oos_pf": 1.71,
+                "oos_profitable": true,
+                "oos_gp": 106.48,
+                "oos_gl": 62.25
+              },
+              {
+                "split": 3,
+                "is_range": "2024-04-18 → 2024-10-18",
+                "oos_range": "2024-10-18 → 2025-01-17",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.8,
+                "is_pnl": 222.65,
+                "is_trades": 9,
+                "oos_pnl": 0,
+                "oos_trades": 0,
+                "oos_wr": 0,
+                "oos_pf": 0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 0
+              },
+              {
+                "split": 4,
+                "is_range": "2024-07-19 → 2025-01-17",
+                "oos_range": "2025-01-17 → 2025-04-19",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.8,
+                "is_pnl": 222.65,
+                "is_trades": 9,
+                "oos_pnl": 196.37,
+                "oos_trades": 5,
+                "oos_wr": 80.0,
+                "oos_pf": 13.71,
+                "oos_profitable": true,
+                "oos_gp": 211.82,
+                "oos_gl": 15.45
+              },
+              {
+                "split": 5,
+                "is_range": "2024-10-18 → 2025-04-19",
+                "oos_range": "2025-04-19 → 2025-07-19",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.8,
+                "is_pnl": 196.37,
+                "is_trades": 5,
+                "oos_pnl": 177.28,
+                "oos_trades": 12,
+                "oos_wr": 41.7,
+                "oos_pf": 2.54,
+                "oos_profitable": true,
+                "oos_gp": 292.76,
+                "oos_gl": 115.48
+              },
+              {
+                "split": 6,
+                "is_range": "2025-01-17 → 2025-07-19",
+                "oos_range": "2025-07-19 → 2025-10-18",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.8,
+                "is_pnl": 373.65,
+                "is_trades": 17,
+                "oos_pnl": 0,
+                "oos_trades": 0,
+                "oos_wr": 0,
+                "oos_pf": 0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 0
+              },
+              {
+                "split": 7,
+                "is_range": "2025-04-19 → 2025-10-18",
+                "oos_range": "2025-10-18 → 2026-01-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.8,
+                "is_pnl": 170.82,
+                "is_trades": 11,
+                "oos_pnl": 248.36,
+                "oos_trades": 22,
+                "oos_wr": 36.4,
+                "oos_pf": 2.02,
+                "oos_profitable": true,
+                "oos_gp": 492.15,
+                "oos_gl": 243.79
+              },
+              {
+                "split": 8,
+                "is_range": "2025-07-19 → 2026-01-18",
+                "oos_range": "2026-01-18 → 2026-04-19",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.8,
+                "is_pnl": 576.03,
+                "is_trades": 27,
+                "oos_pnl": -163.19,
+                "oos_trades": 32,
+                "oos_wr": 18.8,
+                "oos_pf": 0.72,
+                "oos_profitable": false,
+                "oos_gp": 418.83,
+                "oos_gl": 582.02
+              }
+            ],
+            "selected": true
+          }
+        },
+        "updated_at": "2026-08-28T06:54:35.119163+00:00"
+      }
+    ],
+    "all_assets": [
+      "XAGUSD",
+      "XAUEUR"
+    ],
+    "pair_overrides": {
+      "XAGUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.4,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 3.8
+        }
+      },
+      "XAUEUR": {
+        "sl": {
+          "mode": "atr",
+          "mult": 0.7,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 3.8
+        }
+      }
+    },
+    "approaches_used": [
+      "gm1b_keltner_stoch"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": -72.72,
+      "trades": 1,
+      "pf": 0,
+      "per_cluster": [
+        {
+          "approach": "gm1b_keltner_stoch",
+          "pnl": -72.72,
+          "trades": 1,
+          "pf": 0
+        }
+      ]
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "XAUUSD",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "gm1b_keltner_stoch",
+      "tier": "B",
+      "oos_pnl_total": -167.02,
+      "oos_pf": 0.85,
+      "oos_wr": 32.6,
+      "oos_trades": 153,
+      "oos_pass_rate": 0.4,
+      "oos_score": 11.8,
+      "is_selected": false,
+      "sl_override": 1.0,
+      "tp_override": 3.8
+    },
+    {
+      "symbol": "XAGUSD",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "gm1b_keltner_stoch",
+      "tier": "B",
+      "oos_pnl_total": 1766.54,
+      "oos_pf": 1.42,
+      "oos_wr": 42.7,
+      "oos_trades": 90,
+      "oos_pass_rate": 0.8,
+      "oos_score": 279.1,
+      "is_selected": true,
+      "sl_override": 1.4,
+      "tp_override": 3.8
+    },
+    {
+      "symbol": "XAUEUR",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "gm1b_keltner_stoch",
+      "tier": "B",
+      "oos_pnl_total": 564.28,
+      "oos_pf": 1.53,
+      "oos_wr": 30.5,
+      "oos_trades": 89,
+      "oos_pass_rate": 0.556,
+      "oos_score": 53.1,
+      "is_selected": true,
+      "sl_override": 0.7,
+      "tp_override": 3.8
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "name": "gm1b_keltner_stoch",
+    "description": "gm1-Variante B: Keltner-Pullback + Stoch-Übertreibung. SL1.4 TP2.4",
+    "enter": {
+      "signals": [
+        {
+          "id": "gm1b_keltner_stoch_long",
+          "condition": "AND",
+          "direction": "long",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": ">",
+              "ref_indicator": "ema",
+              "ref_params": {
+                "period": 200
+              }
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": "<=",
+              "ref_indicator": "kc_lower",
+              "ref_params": {
+                "period": 20,
+                "mult": 2.0
+              }
+            },
+            {
+              "indicator": "stoch_k",
+              "timeframe": "1h",
+              "params": {
+                "k_period": 14,
+                "smooth": 3
+              },
+              "op": "<",
+              "value": 40
+            }
+          ]
+        },
+        {
+          "id": "gm1b_keltner_stoch_short",
+          "condition": "AND",
+          "direction": "short",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": "<",
+              "ref_indicator": "ema",
+              "ref_params": {
+                "period": 200
+              }
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">=",
+              "ref_indicator": "kc_upper",
+              "ref_params": {
+                "period": 20,
+                "mult": 2.0
+              }
+            },
+            {
+              "indicator": "stoch_k",
+              "timeframe": "1h",
+              "params": {
+                "k_period": 14,
+                "smooth": 3
+              },
+              "op": ">",
+              "value": 60
+            }
+          ]
+        }
+      ],
+      "min_score": 50,
+      "merge_mode": "highest_score",
+      "gates": [],
+      "boosts": []
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 48
+    },
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 1.4
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 2.4
+    },
+    "risk_pct": 2.0,
+    "pairs": [
+      "XAGUSD",
+      "XAUEUR"
+    ],
+    "timeframe": "1h"
+  },
+  "best_oos_pnl": 2330.82,
+  "best_pf": 1.44,
+  "best_wr": 36.6,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.678,
+  "oos_trades": 179,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

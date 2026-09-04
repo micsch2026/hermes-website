@@ -1,0 +1,936 @@
+{
+  "id": 684,
+  "label": "#684",
+  "name": "RCP-CLUSTER: gm4_metals_bb_squeeze_break (20260902_214624)",
+  "display_name": "RCP-CLUSTER: gm4_metals_bb_squeeze_break (20260902_214624)",
+  "description": "Portfolio from recipe_llm_cluster (gm4_metals_bb_squeeze_break) — 1 cluster/tf combos, 2 assets",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "candidate",
+  "readiness": "bot_ready",
+  "rejection_reason": null,
+  "overall_score": 395.7,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-09-02 21:47:51",
+  "updated_at": "2026-09-02 21:47:53",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"gm4_metals_bb_squeeze_break\"], \"clusters\": [\"expand_metals_trend\"], \"total_assets\": 2, \"total_pnl\": 1800.39}",
+  "concept": {
+    "name": "RCP-CLUSTER: gm4_metals_bb_squeeze_break",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "XAUUSD",
+      "XAGUSD"
+    ],
+    "tree": {
+      "name": "gm4_metals_bb_squeeze_break",
+      "description": "Metall-Volatilitaets-Expansion: BB-Squeeze (bandwidth<2%) + Break der Bands in Trendrichtung. Breakout-Track, eng SL 2ATR, 3R. Diversifiziert vom Pullback/MR.",
+      "enter": {
+        "signals": [
+          {
+            "id": "gm4_metals_bb_squeeze_break_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "bb_bandwidth",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "std": 2.0
+                },
+                "op": "<",
+                "value": 0.02
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "ref_indicator": "bb_upper",
+                "ref_params": {
+                  "period": 20,
+                  "std": 2.0
+                }
+              },
+              {
+                "indicator": "momentum",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "id": "gm4_metals_bb_squeeze_break_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "bb_bandwidth",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "std": 2.0
+                },
+                "op": "<",
+                "value": 0.02
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "ref_indicator": "bb_lower",
+                "ref_params": {
+                  "period": 20,
+                  "std": 2.0
+                }
+              },
+              {
+                "indicator": "momentum",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "min_score": 50,
+        "merge_mode": "highest_score"
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 48
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.5
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 4.0
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "XAUUSD",
+        "XAGUSD"
+      ],
+      "timeframe": "1h"
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Portfolio from recipe_llm_cluster (gm4_metals_bb_squeeze_break) — 1 cluster/tf combos, 2 assets"
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "B",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "24M"
+      },
+      "g2_splits": {
+        "pass": false,
+        "value": "9 splits"
+      },
+      "g3_ho": {
+        "pass": true,
+        "value": "1 trades"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "1.21"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "70%"
+      }
+    },
+    "fire_test": {
+      "passed": true,
+      "total_signals": 57,
+      "signals_per_week": 13.3,
+      "min_required": 1,
+      "per_asset": {
+        "XAUUSD": {
+          "signals": 44,
+          "signals_per_week": 10.3,
+          "bars_available": 11638,
+          "window_bars": 507
+        },
+        "XAGUSD": {
+          "signals": 13,
+          "signals_per_week": 3.0,
+          "bars_available": 11639,
+          "window_bars": 507
+        }
+      },
+      "days_tested": 30
+    },
+    "oos_pnl": 1800.39,
+    "oos_score": 395.7,
+    "oos_pf": 1.21,
+    "oos_wr": 28.9,
+    "oos_trades": 455,
+    "oos_pass_rate": 0.7,
+    "tier_reason": "Bedingt geeignet; PF 1.21 < Ziel 1.5; WR 29% < Ziel 50%; Assets profitabel: 70%",
+    "clusters": [
+      {
+        "cluster": "expand_metals_trend",
+        "timeframe": "1h",
+        "approach": "gm4_metals_bb_squeeze_break",
+        "approach_summary": [
+          {
+            "approach": "gm4_metals_bb_squeeze_break",
+            "score": 395.7,
+            "pnl": 1800.39,
+            "recipe_used": true,
+            "trades": 455,
+            "wr": 27.8,
+            "pf": 1.21,
+            "pass_rate": 0.7,
+            "tier": "A"
+          }
+        ],
+        "best_tree": {
+          "name": "gm4_metals_bb_squeeze_break",
+          "description": "Metall-Volatilitaets-Expansion: BB-Squeeze (bandwidth<2%) + Break der Bands in Trendrichtung. Breakout-Track, eng SL 2ATR, 3R. Diversifiziert vom Pullback/MR.",
+          "enter": {
+            "signals": [
+              {
+                "id": "gm4_metals_bb_squeeze_break_long",
+                "condition": "AND",
+                "direction": "long",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "bb_bandwidth",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "std": 2.0
+                    },
+                    "op": "<",
+                    "value": 0.02
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "ref_indicator": "bb_upper",
+                    "ref_params": {
+                      "period": 20,
+                      "std": 2.0
+                    }
+                  },
+                  {
+                    "indicator": "momentum",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "id": "gm4_metals_bb_squeeze_break_short",
+                "condition": "AND",
+                "direction": "short",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "bb_bandwidth",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "std": 2.0
+                    },
+                    "op": "<",
+                    "value": 0.02
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "<",
+                    "ref_indicator": "bb_lower",
+                    "ref_params": {
+                      "period": 20,
+                      "std": 2.0
+                    }
+                  },
+                  {
+                    "indicator": "momentum",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 0
+                  }
+                ]
+              }
+            ],
+            "min_score": 50,
+            "merge_mode": "highest_score"
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 48
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.5
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 4.0
+          },
+          "risk_pct": 2.0,
+          "pairs": [
+            "XAUUSD",
+            "XAGUSD",
+            "XAUEUR"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 1800.39,
+        "best_score": 395.7,
+        "selected_assets": [
+          "XAUUSD",
+          "XAGUSD"
+        ],
+        "dropped_assets": [
+          "XAUEUR"
+        ],
+        "pair_overrides": {
+          "XAUUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.0,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 6.4
+            }
+          },
+          "XAGUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.5,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 2.4
+            }
+          }
+        },
+        "recipe_used": true,
+        "trades": 455,
+        "pass_rate": 0.7,
+        "tier": "A",
+        "pf": 1.21,
+        "wr": 27.8,
+        "per_asset": {
+          "XAUUSD": {
+            "oos_pnl": 907.71,
+            "oos_trades": 300,
+            "oos_pass_rate": 0.6,
+            "oos_score": 57.2,
+            "oos_wr": 25.6,
+            "oos_pf": 1.21,
+            "best_sl_mult": 1.0,
+            "best_tp_val": 6.4,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-09-12 → 2025-03-14",
+                "oos_range": "2025-03-14 → 2025-06-13",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 6.4,
+                "is_pnl": 378.41,
+                "is_trades": 104,
+                "oos_pnl": 410.49,
+                "oos_trades": 49,
+                "oos_wr": 36.7,
+                "oos_pf": 1.82,
+                "oos_profitable": true,
+                "oos_gp": 912.93,
+                "oos_gl": 502.44
+              },
+              {
+                "split": 1,
+                "is_range": "2024-12-13 → 2025-06-13",
+                "oos_range": "2025-06-13 → 2025-09-13",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 6.4,
+                "is_pnl": 816.89,
+                "is_trades": 137,
+                "oos_pnl": -144.18,
+                "oos_trades": 74,
+                "oos_wr": 18.9,
+                "oos_pf": 0.87,
+                "oos_profitable": false,
+                "oos_gp": 981.44,
+                "oos_gl": 1125.62
+              },
+              {
+                "split": 2,
+                "is_range": "2025-03-14 → 2025-09-13",
+                "oos_range": "2025-09-13 → 2025-12-13",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 6.4,
+                "is_pnl": 367.54,
+                "is_trades": 137,
+                "oos_pnl": 293.2,
+                "oos_trades": 61,
+                "oos_wr": 26.2,
+                "oos_pf": 1.31,
+                "oos_profitable": true,
+                "oos_gp": 1229.05,
+                "oos_gl": 935.85
+              },
+              {
+                "split": 3,
+                "is_range": "2025-06-13 → 2025-12-13",
+                "oos_range": "2025-12-13 → 2026-03-14",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 3.2,
+                "is_pnl": 193.22,
+                "is_trades": 166,
+                "oos_pnl": -123.66,
+                "oos_trades": 62,
+                "oos_wr": 24.2,
+                "oos_pf": 0.82,
+                "oos_profitable": false,
+                "oos_gp": 566.93,
+                "oos_gl": 690.59
+              },
+              {
+                "split": 4,
+                "is_range": "2025-09-13 → 2026-03-14",
+                "oos_range": "2026-03-14 → 2026-06-14",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 6.4,
+                "is_pnl": 428.79,
+                "is_trades": 118,
+                "oos_pnl": 471.86,
+                "oos_trades": 54,
+                "oos_wr": 22.2,
+                "oos_pf": 1.46,
+                "oos_profitable": true,
+                "oos_gp": 1507.56,
+                "oos_gl": 1035.7
+              }
+            ],
+            "selected": true
+          },
+          "XAGUSD": {
+            "oos_pnl": 892.68,
+            "oos_trades": 155,
+            "oos_pass_rate": 0.8,
+            "oos_score": 54.6,
+            "oos_wr": 35.2,
+            "oos_pf": 1.21,
+            "best_sl_mult": 1.5,
+            "best_tp_val": 2.4,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-09-12 → 2025-03-14",
+                "oos_range": "2025-03-14 → 2025-06-13",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 2.4,
+                "is_pnl": 135.41,
+                "is_trades": 124,
+                "oos_pnl": -426.06,
+                "oos_trades": 59,
+                "oos_wr": 27.1,
+                "oos_pf": 0.58,
+                "oos_profitable": false,
+                "oos_gp": 596.61,
+                "oos_gl": 1022.67
+              },
+              {
+                "split": 1,
+                "is_range": "2024-12-13 → 2025-06-13",
+                "oos_range": "2025-06-13 → 2025-09-13",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 2.4,
+                "is_pnl": 55.38,
+                "is_trades": 93,
+                "oos_pnl": 38.32,
+                "oos_trades": 49,
+                "oos_wr": 38.8,
+                "oos_pf": 1.05,
+                "oos_profitable": true,
+                "oos_gp": 846.2,
+                "oos_gl": 807.88
+              },
+              {
+                "split": 2,
+                "is_range": "2025-03-14 → 2025-09-13",
+                "oos_range": "2025-09-13 → 2025-12-13",
+                "best_sl_mult": 2.4,
+                "best_tp_val": 6.4,
+                "is_pnl": 162.35,
+                "is_trades": 80,
+                "oos_pnl": 208.34,
+                "oos_trades": 24,
+                "oos_wr": 41.7,
+                "oos_pf": 1.22,
+                "oos_profitable": true,
+                "oos_gp": 1172.09,
+                "oos_gl": 963.75
+              },
+              {
+                "split": 3,
+                "is_range": "2025-06-13 → 2025-12-13",
+                "oos_range": "2025-12-13 → 2026-03-14",
+                "best_sl_mult": 2.0,
+                "best_tp_val": 6.4,
+                "is_pnl": 813.53,
+                "is_trades": 67,
+                "oos_pnl": 543.55,
+                "oos_trades": 6,
+                "oos_wr": 33.3,
+                "oos_pf": 2.19,
+                "oos_profitable": true,
+                "oos_gp": 1000.31,
+                "oos_gl": 456.76
+              },
+              {
+                "split": 4,
+                "is_range": "2025-09-13 → 2026-03-14",
+                "oos_range": "2026-03-14 → 2026-06-14",
+                "best_sl_mult": 1.5,
+                "best_tp_val": 6.4,
+                "is_pnl": 1230.72,
+                "is_trades": 32,
+                "oos_pnl": 528.53,
+                "oos_trades": 17,
+                "oos_wr": 35.3,
+                "oos_pf": 1.48,
+                "oos_profitable": true,
+                "oos_gp": 1624.48,
+                "oos_gl": 1095.95
+              }
+            ],
+            "selected": true
+          },
+          "XAUEUR": {
+            "oos_pnl": -139.25,
+            "oos_trades": 201,
+            "oos_pass_rate": 0.222,
+            "oos_score": 4.1,
+            "oos_wr": 17.0,
+            "oos_pf": 0.92,
+            "best_sl_mult": 0.8,
+            "best_tp_val": 2.4,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2023-07-19 → 2024-01-18",
+                "oos_range": "2024-01-18 → 2024-04-18",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 5.2,
+                "is_pnl": 46.84,
+                "is_trades": 14,
+                "oos_pnl": -9.17,
+                "oos_trades": 34,
+                "oos_wr": 23.5,
+                "oos_pf": 0.97,
+                "oos_profitable": false,
+                "oos_gp": 291.4,
+                "oos_gl": 300.57
+              },
+              {
+                "split": 1,
+                "is_range": "2023-10-19 → 2024-04-18",
+                "oos_range": "2024-04-18 → 2024-07-19",
+                "best_sl_mult": 2.4,
+                "best_tp_val": 5.2,
+                "is_pnl": 70.41,
+                "is_trades": 19,
+                "oos_pnl": 0,
+                "oos_trades": 0,
+                "oos_wr": 0,
+                "oos_pf": 0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 0
+              },
+              {
+                "split": 2,
+                "is_range": "2024-01-18 → 2024-07-19",
+                "oos_range": "2024-07-19 → 2024-10-18",
+                "best_sl_mult": 2.4,
+                "best_tp_val": 5.2,
+                "is_pnl": 70.41,
+                "is_trades": 19,
+                "oos_pnl": 46.58,
+                "oos_trades": 16,
+                "oos_wr": 37.5,
+                "oos_pf": 1.47,
+                "oos_profitable": true,
+                "oos_gp": 146.34,
+                "oos_gl": 99.76
+              },
+              {
+                "split": 3,
+                "is_range": "2024-04-18 → 2024-10-18",
+                "oos_range": "2024-10-18 → 2025-01-17",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 6.4,
+                "is_pnl": 261.03,
+                "is_trades": 26,
+                "oos_pnl": 0,
+                "oos_trades": 0,
+                "oos_wr": 0,
+                "oos_pf": 0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 0
+              },
+              {
+                "split": 4,
+                "is_range": "2024-07-19 → 2025-01-17",
+                "oos_range": "2025-01-17 → 2025-04-19",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 6.4,
+                "is_pnl": 261.03,
+                "is_trades": 26,
+                "oos_pnl": -27.12,
+                "oos_trades": 9,
+                "oos_wr": 11.1,
+                "oos_pf": 0.73,
+                "oos_profitable": false,
+                "oos_gp": 72.27,
+                "oos_gl": 99.39
+              },
+              {
+                "split": 5,
+                "is_range": "2024-10-18 → 2025-04-19",
+                "oos_range": "2025-04-19 → 2025-07-19",
+                "best_sl_mult": 0.8,
+                "best_tp_val": 2.4,
+                "is_pnl": 30.04,
+                "is_trades": 13,
+                "oos_pnl": 7.06,
+                "oos_trades": 12,
+                "oos_wr": 33.3,
+                "oos_pf": 1.08,
+                "oos_profitable": true,
+                "oos_gp": 93.46,
+                "oos_gl": 86.4
+              },
+              {
+                "split": 6,
+                "is_range": "2025-01-17 → 2025-07-19",
+                "oos_range": "2025-07-19 → 2025-10-18",
+                "best_sl_mult": 0.8,
+                "best_tp_val": 2.4,
+                "is_pnl": 37.1,
+                "is_trades": 25,
+                "oos_pnl": 0,
+                "oos_trades": 0,
+                "oos_wr": 0,
+                "oos_pf": 0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 0
+              },
+              {
+                "split": 7,
+                "is_range": "2025-04-19 → 2025-10-18",
+                "oos_range": "2025-10-18 → 2026-01-18",
+                "best_sl_mult": 0.8,
+                "best_tp_val": 2.4,
+                "is_pnl": 7.06,
+                "is_trades": 12,
+                "oos_pnl": -90.65,
+                "oos_trades": 79,
+                "oos_wr": 27.8,
+                "oos_pf": 0.84,
+                "oos_profitable": false,
+                "oos_gp": 483.3,
+                "oos_gl": 573.95
+              },
+              {
+                "split": 8,
+                "is_range": "2025-07-19 → 2026-01-18",
+                "oos_range": "2026-01-18 → 2026-04-19",
+                "best_sl_mult": 1.0,
+                "best_tp_val": 5.2,
+                "is_pnl": 43.62,
+                "is_trades": 58,
+                "oos_pnl": -65.95,
+                "oos_trades": 51,
+                "oos_wr": 19.6,
+                "oos_pf": 0.88,
+                "oos_profitable": false,
+                "oos_gp": 463.46,
+                "oos_gl": 529.41
+              }
+            ],
+            "selected": false
+          }
+        },
+        "updated_at": "2026-09-02T21:47:51.759112+00:00"
+      }
+    ],
+    "all_assets": [
+      "XAUUSD",
+      "XAGUSD"
+    ],
+    "pair_overrides": {
+      "XAUUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.0,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 6.4
+        }
+      },
+      "XAGUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.5,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.4
+        }
+      }
+    },
+    "approaches_used": [
+      "gm4_metals_bb_squeeze_break"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": -73.09,
+      "trades": 1,
+      "pf": 0,
+      "per_cluster": [
+        {
+          "approach": "gm4_metals_bb_squeeze_break",
+          "pnl": -73.09,
+          "trades": 1,
+          "pf": 0
+        }
+      ]
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "XAUUSD",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "gm4_metals_bb_squeeze_break",
+      "tier": "A",
+      "oos_pnl_total": 907.71,
+      "oos_pf": 1.21,
+      "oos_wr": 25.6,
+      "oos_trades": 300,
+      "oos_pass_rate": 0.6,
+      "oos_score": 57.2,
+      "is_selected": true,
+      "sl_override": 1.0,
+      "tp_override": 6.4
+    },
+    {
+      "symbol": "XAGUSD",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "gm4_metals_bb_squeeze_break",
+      "tier": "A",
+      "oos_pnl_total": 892.68,
+      "oos_pf": 1.21,
+      "oos_wr": 35.2,
+      "oos_trades": 155,
+      "oos_pass_rate": 0.8,
+      "oos_score": 54.6,
+      "is_selected": true,
+      "sl_override": 1.5,
+      "tp_override": 2.4
+    },
+    {
+      "symbol": "XAUEUR",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "gm4_metals_bb_squeeze_break",
+      "tier": "A",
+      "oos_pnl_total": -139.25,
+      "oos_pf": 0.92,
+      "oos_wr": 17.0,
+      "oos_trades": 201,
+      "oos_pass_rate": 0.222,
+      "oos_score": 4.1,
+      "is_selected": false,
+      "sl_override": 0.8,
+      "tp_override": 2.4
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "name": "gm4_metals_bb_squeeze_break",
+    "description": "Metall-Volatilitaets-Expansion: BB-Squeeze (bandwidth<2%) + Break der Bands in Trendrichtung. Breakout-Track, eng SL 2ATR, 3R. Diversifiziert vom Pullback/MR.",
+    "enter": {
+      "signals": [
+        {
+          "id": "gm4_metals_bb_squeeze_break_long",
+          "condition": "AND",
+          "direction": "long",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "bb_bandwidth",
+              "timeframe": "1h",
+              "params": {
+                "period": 20,
+                "std": 2.0
+              },
+              "op": "<",
+              "value": 0.02
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "ref_indicator": "bb_upper",
+              "ref_params": {
+                "period": 20,
+                "std": 2.0
+              }
+            },
+            {
+              "indicator": "momentum",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "id": "gm4_metals_bb_squeeze_break_short",
+          "condition": "AND",
+          "direction": "short",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "bb_bandwidth",
+              "timeframe": "1h",
+              "params": {
+                "period": 20,
+                "std": 2.0
+              },
+              "op": "<",
+              "value": 0.02
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": "<",
+              "ref_indicator": "bb_lower",
+              "ref_params": {
+                "period": 20,
+                "std": 2.0
+              }
+            },
+            {
+              "indicator": "momentum",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "min_score": 50,
+      "merge_mode": "highest_score"
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 48
+    },
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 1.5
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 4.0
+    },
+    "risk_pct": 2.0,
+    "pairs": [
+      "XAUUSD",
+      "XAGUSD"
+    ],
+    "timeframe": "1h"
+  },
+  "best_oos_pnl": 1800.39,
+  "best_pf": 1.21,
+  "best_wr": 28.9,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.7,
+  "oos_trades": 455,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}
