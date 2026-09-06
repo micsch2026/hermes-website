@@ -82,11 +82,31 @@ def load_bot_trades():
             ctr[norm(r.get("strategy_id"))] += 1
         open_n = sum(1 for r in rows if str(r.get("status")) == "open")
         last_sid = norm(rows[-1].get("strategy_id")) if rows else None
+        
+        # Lade Live-Equity & Sparkline aus Bot-Dashboard falls vorhanden
+        b_dash_path = f"/root/.hermes/site/api/bot{n}/dashboard.json"
+        b_equity = 1000.0
+        sparkline = []
+        try:
+            with open(b_dash_path) as _bf:
+                _bd = json.load(_bf)
+                eh = _bd.get("equity_history", [])
+                if eh:
+                    b_equity = eh[-1].get("equity") or eh[-1].get("balance") or 1000.0
+                    step = max(1, len(eh) // 20)
+                    sparkline = [round(pt.get("equity", 1000.0), 1) for pt in eh[::step]][-20:]
+                else:
+                    b_equity = _bd.get("equity") or _bd.get("balance") or 1000.0
+        except Exception:
+            pass
+
         out[f"bot{n}"] = {
             "count": len(rows),
             "strategy_ids": dict(ctr),
             "last_strategy": last_sid,
             "open": open_n,
+            "equity": b_equity,
+            "sparkline": sparkline,
         }
     return out
 
@@ -487,6 +507,7 @@ def main():
                 "live_strategy": live_strat,
                 "divergence": divergence,
                 "parity": trade_parity,
+                "sparkline": (bot_trades.get(assigned_bot or "") or {}).get("sparkline", []),
                 # 🕓 Historie: war die Strategie schon mal auf einem Bot (auch heute)?
                 "history": history_by_sid.get(ns, []),
             },
@@ -514,8 +535,20 @@ def main():
     top_live_cand = None
     deployed_strats = [s for s in strategies if s["flags"]["has_demo_bot"]]
     if deployed_strats:
-        deployed_strats.sort(key=lambda s: (s.get("live_rec", {}).get("score", 0), s.get("shadow", {}).get("equity", 1000)), reverse=True)
+        # Sortiere nach: 1) Paritäts-Gate bestanden (True > False), 2) Score, 3) Equity
+        deployed_strats.sort(
+            key=lambda s: (
+                1 if s.get("live_rec", {}).get("gate", {}).get("passed") else 0,
+                s.get("live_rec", {}).get("score", 0),
+                s.get("shadow", {}).get("equity", 1000)
+            ),
+            reverse=True
+        )
         top_live_cand = deployed_strats[0]
+
+    # Lade Korrelationen falls vorhanden
+    corr_data = load(f"{SITE_API}/strategy-lab/shadow_correlation.json") or {}
+    high_corrs = corr_data.get("high_correlations", [])
 
     stats = {
         "total_strategies": len(strategies),
@@ -523,6 +556,8 @@ def main():
         "shadow_count": sum(1 for s in strategies if (s.get("shadow", {}).get("trades") or 0) > 0),
         "top_bot_candidate": top_bot_cand,
         "top_live_candidate": top_live_cand,
+        "high_correlations": high_corrs[:8],
+        "high_corr_count": len(high_corrs),
     }
 
     payload = {
@@ -530,7 +565,14 @@ def main():
         "generated_by": "portfolio_builder v2 (decision center & advisory dashboard)",
         "_note": "Advisory -- nur Vorschlaege, kein automatisches Deploy.",
         "stats": stats,
-        "bots": {name: {"account_id": b.get("account_id"), "demo": b.get("demo", True)} for name, b in bots.items()},
+        "bots": {
+            name: {
+                "account_id": b.get("account_id"),
+                "demo": b.get("demo", True),
+                "equity": (bot_trades.get(name) or {}).get("equity", 1000.0),
+                "sparkline": (bot_trades.get(name) or {}).get("sparkline", []),
+            } for name, b in bots.items()
+        },
         "strategy_count": len(strategies),
         "strategies": strategies,
     }
