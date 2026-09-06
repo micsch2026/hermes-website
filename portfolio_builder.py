@@ -364,14 +364,27 @@ def main():
         is_deployed = bool(mirror_list)
         is_selected = ns in {norm(x) for x in selected}
 
-        # Divergenz-Check: letzter Trade des zugewiesenen Bots
+        # Divergenz-Check: prüfe, ob der Bot tatsächlich für diese Strategie konfiguriert ist
+        # Vorheriger Bug: prüfte rows[-1]["strategy_id"] in botN_trades.jsonl. Hatte ein Bot
+        # nach einem Swap auf eine neue Strategie (z.B. Bot5 auf #534) noch keinen Trade gemacht,
+        # stand dort noch die alte Vorgänger-ID (#546) -> fälschlich als "Divergenz" geflaggt.
         live_strat = None
         divergence = False
-        if assigned_bot and bot_trades.get(assigned_bot):
-            bt = bot_trades[assigned_bot]
-            live_strat = bt["last_strategy"]
-            if live_strat:
-                divergence = (live_strat != ns)
+        if assigned_bot:
+            # Ermittle aktuell konfigurierte Strategy-ID aus der Bot-Config
+            cfg_p = f"/root/fx-bot/config/{assigned_bot}_lab{ns}.toml"
+            if not os.path.exists(cfg_p):
+                # Fallback: schau ob ein anderes lab*.toml existiert
+                other_cfgs = [f for f in os.listdir("/root/fx-bot/config") if f.startswith(f"{assigned_bot}_lab") and f.endswith(".toml") and not f.endswith("_risk.toml")]
+                if other_cfgs:
+                    # z.B. bot5_lab546.toml
+                    import re
+                    m = re.search(r"_lab(\d+)\.toml", other_cfgs[0])
+                    live_strat = m.group(1) if m else None
+                    divergence = (live_strat != ns)
+            else:
+                live_strat = ns
+                divergence = False
 
         # Lab-Metrik
         lab = None
