@@ -526,8 +526,26 @@ def main():
     strategies.sort(key=lambda x: (0 if x["flags"]["has_demo_bot"] else 1, -x["ready"]["score"]))
 
     # Berechne Top-Empfehlungen für das Dashboard-Entscheidungs-Board
+    # Filter für Bot-Kandidaten:
+    # 1. Kein Demo-Bot zugeordnet
+    # 2. Mindestens 3 Shadow-Trades
+    # 3. AKTIV im Shadow Trader (selected_ids.json)
+    # 4. Keine Misch-Strategie (Forex + Metalle strikt getrennt)
+    METALS = {"XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"}
+    def _is_mixed(syms):
+        s_set = set(syms or [])
+        has_m = bool(s_set & METALS)
+        has_fx = bool(s_set - METALS)
+        return has_m and has_fx
+
     top_bot_cand = None
-    nobot_strats = [s for s in strategies if not s["flags"]["has_demo_bot"] and (s.get("shadow", {}).get("trades") or 0) >= 3]
+    nobot_strats = [
+        s for s in strategies
+        if not s["flags"]["has_demo_bot"]
+        and (s.get("shadow", {}).get("trades") or 0) >= 3
+        and s.get("flags", {}).get("selected_shadow") is True
+        and not _is_mixed(s.get("assets", []))
+    ]
     if nobot_strats:
         nobot_strats.sort(key=lambda s: (s.get("bot_rec", {}).get("score", 0), s.get("shadow", {}).get("equity", 1000)), reverse=True)
         top_bot_cand = nobot_strats[0]
