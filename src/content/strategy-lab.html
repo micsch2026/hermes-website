@@ -612,8 +612,8 @@ function renderShadowDashboard() {
   // ── Charts Grid ──
   html += '<div class="rd-grid">';
 
-  // 1) Strategie-Ranking nach PnL
-  html += '<div class="rd-card rd-grid-wide"><h3>📊 Strategie-Ranking nach PnL</h3><div class="rd-chart-wrap h300"><canvas id="sh-pnl-rank"></canvas></div></div>';
+  // 1) PnL nach Asset-Klasse
+  html += '<div class="rd-card"><h3>💰 PnL nach Asset-Klasse</h3><div class="rd-chart-wrap h250"><canvas id="sh-pnl-class"></canvas></div></div>';
 
   // 2) Asset-Ranking nach PnL
   html += '<div class="rd-card"><h3>💰 Asset-Ranking nach PnL</h3><div class="rd-chart-wrap h250"><canvas id="sh-asset-pnl"></canvas></div></div>';
@@ -624,8 +624,8 @@ function renderShadowDashboard() {
   // 4) Bot Health Donut
   html += '<div class="rd-card"><h3>🤖 Bot Health</h3><div class="rd-chart-wrap h250"><canvas id="sh-bot-health"></canvas></div></div>';
 
-  // 5) Shadow vs OOS Gap
-  html += '<div class="rd-card rd-grid-wide"><h3>📏 Shadow vs OOS Gap — Erwartung vs Realität</h3><div class="rd-chart-wrap h280"><canvas id="sh-gap"></canvas></div></div>';
+  // 5) Gap-Verteilung
+  html += '<div class="rd-card"><h3>📏 Gap-Verteilung (OOS vs Shadow)</h3><div class="rd-chart-wrap h250"><canvas id="sh-gap-dist"></canvas></div></div>';
 
   // 6) Win Rate Verteilung
   html += '<div class="rd-card"><h3>🎯 Win Rate Verteilung</h3><div class="rd-chart-wrap h250"><canvas id="sh-wr-dist"></canvas></div></div>';
@@ -637,16 +637,13 @@ function renderShadowDashboard() {
   html += '<div class="rd-card"><h3>🧬 Strategie-Quelle</h3><div class="rd-chart-wrap h250"><canvas id="sh-source"></canvas></div></div>';
 
   // 9) Days Active vs PnL
-  html += '<div class="rd-card"><h3>⏱️ Alter vs PnL</h3><div class="rd-chart-wrap h250"><canvas id="sh-age-pnl"></canvas></div></div>';
+  html += '<div class="rd-card"><h3>⏱️ Alter vs Ø PnL</h3><div class="rd-chart-wrap h250"><canvas id="sh-age-pnl"></canvas></div></div>';
 
-  // 10) Ø PnL pro Trade
-  html += '<div class="rd-card rd-grid-wide"><h3>💹 Ø PnL/Trade nach Strategie</h3><div class="rd-chart-wrap h250"><canvas id="sh-avg-trade"></canvas></div></div>';
+  // 10) Margin-Risiko (Donut)
+  html += '<div class="rd-card"><h3>⚖️ Margin-Risiko</h3><div class="rd-chart-wrap h250"><canvas id="sh-margin-donut"></canvas></div></div>';
 
   // 11) Exit-Analyse
   html += '<div class="rd-card"><h3>🚪 Exit-Analyse (TP/SL/Timeout)</h3><div class="rd-chart-wrap h250"><canvas id="sh-exits"></canvas></div></div>';
-
-  // 12) Margin-Risiko
-  html += '<div class="rd-card"><h3>⚖️ Margin-Auslastung</h3><div class="rd-chart-wrap h280"><canvas id="sh-margin"></canvas></div></div>';
 
   html += '</div>'; // close rd-grid
 
@@ -731,12 +728,21 @@ function renderShadowDashboard() {
   // ═══════════════════════════════════
   // (active already defined above)
 
-  // 1) Strategie-Ranking nach PnL (Horizontal Bar)
-  const sorted = active.slice().sort((a,b) => (a.net_pnl||0) - (b.net_pnl||0));
-  _mkBar('sh-pnl-rank',
-    sorted.map(s => '#'+s.id+' '+(s.name||'').slice(0,20)),
-    [{ label: 'PnL €', data: sorted.map(s => s.net_pnl||0),
-       backgroundColor: sorted.map(s => (s.net_pnl||0)>=0 ? 'rgba(63,185,80,0.7)' : 'rgba(248,81,73,0.7)') }],
+  // 1) PnL nach Asset-Klasse (Donut)
+  const classPnl = {Metalle:0, FX:0, Indizes:0};
+  for (const s of active) {
+    const assets = s.assets||[];
+    const isMet = assets.some(a => a.includes('XAU') || a.includes('XAG'));
+    const isIdx = assets.some(a => ['UK100','FRA40','GER40','DE40','NAS100','US30'].includes(a));
+    if (isMet) classPnl.Metalle += (s.net_pnl||0);
+    else if (isIdx) classPnl.Indizes += (s.net_pnl||0);
+    else classPnl.FX += (s.net_pnl||0);
+  }
+  const classLabels = Object.keys(classPnl);
+  const classData = Object.values(classPnl);
+  const classColors = classData.map(v => v>=0 ? '#3fb950' : '#f85149');
+  _mkBar('sh-pnl-class', classLabels,
+    [{ label: 'PnL €', data: classData.map(v => Math.round(v)), backgroundColor: classColors }],
     { horizontal: true });
 
   // 2) Asset-Ranking nach PnL
@@ -772,15 +778,22 @@ function renderShadowDashboard() {
     bhLabels.map(l => bhCounts[l]||0),
     bhColors, strongBots.toString(), 'Strong');
 
-  // 5) Shadow vs OOS Gap (Horizontal Bar)
-  const withGap = active.filter(s => s.gap_pct != null).sort((a,b) => (a.gap_pct||0) - (b.gap_pct||0));
-  if (withGap.length > 0) {
-    _mkBar('sh-gap',
-      withGap.map(s => '#'+s.id+' '+(s.name||'').slice(0,18)),
-      [{ label: 'Gap %', data: withGap.map(s => s.gap_pct||0),
-         backgroundColor: withGap.map(s => (s.gap_pct||0)>=0 ? 'rgba(63,185,80,0.7)' : 'rgba(248,81,73,0.7)') }],
-      { horizontal: true });
+  // 5) Gap-Verteilung (Histogramm)
+  const gapBuckets = {'< -100%':0, '-100..-50%':0, '-50..0%':0, '0..+50%':0, '+50..+200%':0, '> +200%':0};
+  for (const s of active) {
+    const g = s.gap_pct;
+    if (g == null) continue;
+    if (g < -100) gapBuckets['< -100%']++;
+    else if (g < -50) gapBuckets['-100..-50%']++;
+    else if (g < 0) gapBuckets['-50..0%']++;
+    else if (g < 50) gapBuckets['0..+50%']++;
+    else if (g < 200) gapBuckets['+50..+200%']++;
+    else gapBuckets['> +200%']++;
   }
+  const gapLabels = Object.keys(gapBuckets);
+  const gapColors = ['#f85149','#f85149','#d29922','#3fb950','#58a6ff','#bc8cff'];
+  _mkBar('sh-gap-dist', gapLabels,
+    [{ label: 'Strategien', data: Object.values(gapBuckets), backgroundColor: gapColors }]);
 
   // 6) Win Rate Verteilung (Bar)
   const wrBuckets = {'0%':0, '1-25%':0, '26-40%':0, '41-50%':0, '51-65%':0, '66-80%':0, '81-100%':0};
@@ -838,15 +851,18 @@ function renderShadowDashboard() {
       { label: 'Ø PnL €', data: ageAvg, backgroundColor: ageAvg.map(v => v>=0?'rgba(63,185,80,0.7)':'rgba(248,81,73,0.7)') }
     ]);
 
-  // 10) Ø PnL pro Trade (Horizontal Bar)
-  const withAvgTrade = active.filter(s => (s.trades||0) > 0).map(s => ({
-    id: s.id, name: s.name, avg: (s.net_pnl||0) / (s.trades||1)
-  })).sort((a,b) => a.avg - b.avg);
-  _mkBar('sh-avg-trade',
-    withAvgTrade.map(s => '#'+s.id+' '+(s.name||'').slice(0,20)),
-    [{ label: 'Ø PnL/Trade €', data: withAvgTrade.map(s => Math.round(s.avg*100)/100),
-       backgroundColor: withAvgTrade.map(s => s.avg>=0 ? 'rgba(63,185,80,0.7)' : 'rgba(248,81,73,0.7)') }],
-    { horizontal: true });
+  // 10) Margin-Risiko (Donut)
+  const marginBuckets = {'Sicher <40%':0, 'Mittel 40-70%':0, 'Risikant >70%':0};
+  for (const s of active) {
+    const m = s.avg_margin_utilization_pct||0;
+    if (m > 70) marginBuckets['Risikant >70%']++;
+    else if (m > 40) marginBuckets['Mittel 40-70%']++;
+    else if (m > 0) marginBuckets['Sicher <40%']++;
+  }
+  _mkDoughnut('sh-margin-donut',
+    Object.keys(marginBuckets), Object.values(marginBuckets),
+    ['#3fb950','#d29922','#f85149'],
+    active.filter(s => (s.avg_margin_utilization_pct||0)>0).length.toString(), 'Mit Margin');
 
   // 11) Exit-Analyse Donut
   const totalSL2 = strats.reduce((s,x) => s + (x.sl_hits||0), 0);
@@ -858,19 +874,6 @@ function renderShadowDashboard() {
     ['#3fb950','#f85149','#d29922'],
     (totalTP2+totalSL2+totalTO2).toString(), 'Exits');
 
-  // 12) Margin-Auslastung (Horizontal Bar)
-  const withMargin = active.filter(s => (s.avg_margin_utilization_pct||0) > 0)
-    .sort((a,b) => (a.avg_margin_utilization_pct||0) - (b.avg_margin_utilization_pct||0));
-  if (withMargin.length > 0) {
-    _mkBar('sh-margin',
-      withMargin.map(s => '#'+s.id+' '+(s.name||'').slice(0,18)),
-      [{ label: 'Ø Margin %', data: withMargin.map(s => s.avg_margin_utilization_pct||0),
-         backgroundColor: withMargin.map(s => {
-           const m = s.avg_margin_utilization_pct||0;
-           return m > 70 ? 'rgba(248,81,73,0.7)' : m > 40 ? 'rgba(210,153,34,0.7)' : 'rgba(63,185,80,0.7)';
-         }) }],
-      { horizontal: true });
-  }
   } catch(shErr) {
     const el = document.getElementById('sl4-content');
     if (el) el.innerHTML = '<div class="rd-card" style="color:var(--red)">⚠️ Shadow Dashboard Fehler: ' + esc(shErr.message || shErr) + '</div>';
