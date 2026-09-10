@@ -503,12 +503,30 @@ function showDetail(row) {
   // Shadow tab: open positions + closed trade list
   if (currentTab === 'shadow') {
     const fmtDT = ts => new Date(ts*1000).toLocaleString('de-DE', {timeZone:'Europe/Berlin', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    const fmtDur = sec => {
+      if (!sec || sec < 60) return '< 1m';
+      const m = Math.floor(sec / 60);
+      const h = Math.floor(m / 60);
+      const d = Math.floor(h / 24);
+      if (d > 0) return d + 'd ' + (h % 24) + 'h';
+      if (h > 0) return h + 'h ' + (m % 60) + 'm';
+      return m + 'm';
+    };
     const openPos = ((shadowData && shadowData.open_positions) || []).filter(p => p.id === row.id);
     if (openPos.length > 0) {
       html += `<h3 style="margin-top:1.2rem">📂 Offene Positionen (${openPos.length})</h3>`;
-      html += '<table class="sl4-table"><thead><tr><th>Symbol</th><th>Richtung</th><th class="num">Entry</th><th class="num">SL</th><th class="num">TP</th><th>Seit (Berlin)</th></tr></thead><tbody>';
+      html += '<table class="sl4-table"><thead><tr><th>Symbol</th><th>Richtung</th><th class="num">Dauer</th><th class="num">PnL</th><th class="num">Margin</th><th class="num">SL (ATR)</th><th class="num">TP (ATR)</th><th class="num">R:R</th><th>Seit (Berlin)</th></tr></thead><tbody>';
       for (const p of openPos) {
-        html += `<tr><td>${p.symbol}</td><td>${p.direction==='long'?'🟢 Long':'🔴 Short'}</td><td class="num">${p.entry}</td><td class="num">${p.sl}</td><td class="num">${p.tp}</td><td>${fmtDT(p.entry_ts)}</td></tr>`;
+        const pnl = p.unrealized_pnl || 0;
+        const pnlCls = pnl >= 0 ? 'pos' : 'neg';
+        const pnlSign = pnl >= 0 ? '+' : '';
+        const pipsSign = (p.unrealized_pips || 0) >= 0 ? '+' : '';
+        const slAtr = p.sl_atr != null ? p.sl_atr.toFixed(1) + 'x' : '—';
+        const tpAtr = p.tp_atr != null ? p.tp_atr.toFixed(1) + 'x' : '—';
+        const rr = p.rr != null ? p.rr.toFixed(1) : '—';
+        const durStr = fmtDur(p.hold_seconds);
+        const marginStr = (p.margin_eur != null ? p.margin_eur.toFixed(1) : '—') + '€';
+        html += `<tr><td><strong>${esc(p.symbol)}</strong></td><td>${p.direction==='long'?'🟢 Long':'🔴 Short'}</td><td class="num">${durStr}</td><td class="num ${pnlCls}" style="font-weight:600">${pnlSign}${pnl.toFixed(2)}€ (${pipsSign}${p.unrealized_pips||0}p)</td><td class="num">${marginStr}</td><td class="num">${slAtr}</td><td class="num">${tpAtr}</td><td class="num">${rr}</td><td>${fmtDT(p.entry_ts)}</td></tr>`;
       }
       html += '</tbody></table>';
     }
@@ -544,23 +562,46 @@ function renderShadowDashboard() {
 
   // ── Offene Positionen ──
   if (openPos.length > 0) {
+    const fmtDur = sec => {
+      if (!sec || sec < 60) return '< 1m';
+      const m = Math.floor(sec / 60);
+      const h = Math.floor(m / 60);
+      const d = Math.floor(h / 24);
+      if (d > 0) return d + 'd ' + (h % 24) + 'h';
+      if (h > 0) return h + 'h ' + (m % 60) + 'm';
+      return m + 'm';
+    };
     html += '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ')</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
     for (const p of openPos) {
       const dir = (p.direction||'').toLowerCase();
       const dirColor = dir === 'long' ? '#3fb950' : '#f85149';
       const dirIcon = dir === 'long' ? '🟢' : '🔴';
+      const pnl = p.unrealized_pnl || 0;
+      const pnlColor = pnl >= 0 ? '#3fb950' : '#f85149';
+      const pnlSign = pnl >= 0 ? '+' : '';
+      const pipsSign = (p.unrealized_pips || 0) >= 0 ? '+' : '';
+      const slAtr = p.sl_atr != null ? p.sl_atr.toFixed(1) + 'x ATR' : '—';
+      const tpAtr = p.tp_atr != null ? p.tp_atr.toFixed(1) + 'x ATR' : '—';
+      const rrStr = p.rr != null ? ' (R:R ' + p.rr.toFixed(1) + ')' : '';
+      const durStr = fmtDur(p.hold_seconds);
+      const marginStr = (p.margin_eur != null ? p.margin_eur.toFixed(1) : '—') + '€';
+
       html += '<div class="rd-card" style="border-left:3px solid '+dirColor+'">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-      html += '<strong>'+esc(p.symbol)+'</strong>';
+      html += '<strong>'+esc(p.symbol)+'</strong> <span style="font-size:0.75rem;color:var(--dim)">#'+p.id+'</span>';
       html += '<span style="color:'+dirColor+';font-weight:700">'+dirIcon+' '+(dir.toUpperCase())+'</span>';
       html += '</div>';
-      html += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">';
-      html += 'Entry: <strong>'+(p.entry||p.entry_price||'—')+'</strong>';
-      html += ' · SL: <span style="color:var(--red)">'+(p.sl||'—')+'</span>';
-      html += ' · TP: <span style="color:var(--green)">'+(p.tp||'—')+'</span>';
-      if (p.volume) html += ' · Vol: '+(p.volume/100000).toFixed(1)+' lot';
+
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.35rem">';
+      html += '<span style="font-size:0.78rem;color:var(--dim)">Dauer: <strong style="color:var(--text)">'+durStr+'</strong> · Margin: <strong style="color:var(--text)">'+marginStr+'</strong></span>';
+      html += '<span style="font-size:0.85rem;font-weight:700;color:'+pnlColor+'">'+pnlSign+pnl.toFixed(2)+'€ ('+pipsSign+(p.unrealized_pips||0)+'p)</span>';
       html += '</div>';
+
+      html += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">';
+      html += 'SL: <span style="color:var(--red);font-weight:600">'+slAtr+'</span> · TP: <span style="color:var(--green);font-weight:600">'+tpAtr+'</span>'+rrStr;
+      html += '</div>';
+
       html += '</div>';
     }
     html += '</div>';
