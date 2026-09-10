@@ -622,6 +622,43 @@ function renderRdLive() {
     <span class="rd-activity-detail" style="margin-left:auto">${wTime}${w.elapsed_s != null ? ' · '+w.elapsed_s+'s' : ''}</span>
   </div>`;
 
+  // ── AKTUELLER FOKUS ──
+  const fk = rdData.fokus || {};
+  const fkClusters = fk.clusters || {};
+  const fkKeys = Object.keys(fkClusters);
+  const cs = rdData.cycle_stats || {};
+  if (fkKeys.length > 0) {
+    html += `<div class="rd-section-title">🎯 AKTUELLER FOKUS — Worker-Ausrichtung</div>`;
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:0.7rem;margin-bottom:0.9rem">';
+    for (const ck of fkKeys) {
+      const c = fkClusters[ck];
+      const cStats = (cs.clusters||{})[ck] || {runs:0, success:0, fail:0, approaches:[]};
+      const succRate = cStats.runs > 0 ? Math.round(cStats.success / cStats.runs * 100) : 0;
+      const cls = c.asset_class === 'metals' ? 'Metalle' : 'FX';
+      const clsColor = cls === 'Metalle' ? '#d29922' : '#58a6ff';
+      const icon = cls === 'Metalle' ? '🪙' : '💱';
+      html += `<div class="rd-card" style="border-left:3px solid ${clsColor}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+          <div><span style="font-size:1rem">${icon}</span> <strong style="color:${clsColor}">${esc(ck)}</strong></div>
+          <span class="rd-pill ${succRate>50?'ok':succRate>0?'warn':'dim'}">${cStats.runs} Zyklen · ${succRate}% ✅</span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">${esc(c.note||'')}</div>
+        <div style="display:flex;gap:0.8rem;flex-wrap:wrap;font-size:0.72rem">
+          <span><strong>Assets:</strong> ${(c.assets||[]).join(', ')}</span>
+          <span><strong>TF:</strong> ${(c.timeframes||[]).join(', ')}</span>
+          <span><strong>Komm:</strong> ${cls==='Metalle'?'0€':'6€/100k'}</span>
+        </div>
+        <div style="margin-top:0.4rem;font-size:0.7rem;color:var(--dim)">
+          <strong>Approaches:</strong> ${(c.strategy_approaches||[]).map(a => {
+            const used = (cStats.approaches||[]).includes(a);
+            return '<span style="color:'+(used?'var(--green)':'var(--dim)')+';margin-right:0.5rem">'+(used?'✅':'⬜')+' '+esc(a)+'</span>';
+          }).join('')}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
   // ── KPI Row ──
   const sf = ch.strategy_funnel || {};
   const rp = ch.recipe_pipeline || {};
@@ -691,6 +728,48 @@ function renderRdLive() {
   }
 
   html += '</div>'; // close rd-grid
+
+  // ── PHASEN-MARKER ──
+  if (ch.weekly_focus && ch.weekly_focus.length > 0) {
+    const wf = ch.weekly_focus;
+    const focusStartWeek = '2026-W37';
+    const focusIdx = wf.findIndex(w => w.week === focusStartWeek);
+    if (focusIdx >= 0) {
+      html += `<div class="rd-card" style="background:rgba(88,166,255,0.06);border-color:var(--blue);font-size:0.8rem">
+        📍 <strong>Phasen-Wechsel:</strong> Ab <span style="color:var(--blue)">${focusStartWeek}</span> — Fokus von breiter Exploration auf <strong>2 sortenreine Cluster</strong> umgestellt
+        (Metalle 0€ Komm + FX 10-Basket H4). Davor: ${wf.slice(0, focusIdx).reduce((s,w)=>s+w.FX+w.Indizes+w.Metalle,0)} Strategien über ${focusIdx} Wochen breit getestet.
+      </div>`;
+    }
+  }
+
+  // ── Was fehlt ──
+  const sc = ch.symbol_coverage || [];
+  const underTest = sc.filter(s => s.count < 5);
+  const fkAll = {};
+  for (const ck of fkKeys) {
+    for (const a of (fkClusters[ck].assets||[])) { fkAll[a] = ck; }
+  }
+  const fokusUntested = Object.keys(fkAll).filter(s => !sc.find(x => x.symbol === s));
+  if (underTest.length > 0 || fokusUntested.length > 0) {
+    html += `<div class="rd-section-title">🔍 Was fehlt — Coverage-Lücken</div>`;
+    html += '<div class="rd-card">';
+    if (underTest.length > 0) {
+      html += '<div style="font-size:0.78rem;margin-bottom:0.5rem"><strong>Symbole mit &lt;5 Tests:</strong> ';
+      html += underTest.map(s => {
+        const inFokus = fkAll[s.symbol];
+        return '<span style="color:'+(inFokus?'var(--yellow)':'var(--dim)')+';margin-right:0.4rem">'
+          +esc(s.symbol)+' ('+s.count+')'
+          +(inFokus?' ⚠️':'')+'</span>';
+      }).join('');
+      html += '</div>';
+    }
+    if (fokusUntested.length > 0) {
+      html += '<div style="font-size:0.78rem"><span style="color:var(--yellow)">⚠️</span> <strong>FOKUS-Assets ohne Asset-Result:</strong> '
+        + fokusUntested.map(s => '<span style="color:var(--yellow);margin-right:0.4rem">'+esc(s)+'</span>').join('')
+        + ' — Diese Assets sind im aktuellen FOKUS konfiguriert, haben aber noch keine WFO-Ergebnisse.</div>';
+    }
+    html += '</div>';
+  }
 
   // ── Heutige Produktion (Tabelle) ──
   html += `<div class="rd-section-title">📅 Heutige Produktion (${today.length})</div>`;
