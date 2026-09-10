@@ -572,13 +572,105 @@ function showDetail(row) {
   document.getElementById('sl4-modal-overlay').classList.add('show');
 }
 
+let shadowSortCol = 'net_pnl';
+let shadowSortDir = 'desc';
+
+function setShadowSort(col) {
+  if (shadowSortCol === col) {
+    shadowSortDir = shadowSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    shadowSortCol = col;
+    shadowSortDir = (col === 'id' || col === 'name') ? 'asc' : 'desc';
+  }
+  _updateShadowTableOnly();
+}
+
+function _updateShadowTableOnly() {
+  const tbody = document.getElementById('sl4-shadow-tbody');
+  const thead = document.getElementById('sl4-shadow-thead');
+  if (!tbody || !shadowData) return;
+  const strats = (shadowData.strategies || []).slice();
+  strats.sort((a, b) => {
+    let va = a[shadowSortCol], vb = b[shadowSortCol];
+    if (shadowSortCol === 'assets') {
+      va = (a.assets || []).join(', ');
+      vb = (b.assets || []).join(', ');
+    }
+    if (va == null) va = shadowSortDir === 'asc' ? Infinity : -Infinity;
+    if (vb == null) vb = shadowSortDir === 'asc' ? Infinity : -Infinity;
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (shadowSortDir === 'asc') return va > vb ? 1 : (va < vb ? -1 : 0);
+    return va < vb ? 1 : (va > vb ? -1 : 0);
+  });
+
+  if (thead) {
+    const cols = [
+      {k:'id', l:'#'},
+      {k:'name', l:'Strategie'},
+      {k:'assets', l:'Assets'},
+      {k:'days_active', l:'Tage', num:true},
+      {k:'net_pnl', l:'PnL', num:true},
+      {k:'trades', l:'Trades', num:true},
+      {k:'win_rate', l:'WR', num:true},
+      {k:'shadow_avg_trade', l:'Ø€/Tr', num:true},
+      {k:'pnl_per_week', l:'€/Wk', num:true},
+      {k:'oos_pf', l:'OOS PF', num:true},
+      {k:'gap_pct', l:'Gap', num:true},
+      {k:'bot_health', l:'Health'}
+    ];
+    let thHtml = '<tr>';
+    for (const c of cols) {
+      const cls = (c.num ? 'num ' : '') + (shadowSortCol === c.k ? 'sorted-' + shadowSortDir : '');
+      thHtml += `<th class="${cls.trim()}" onclick="setShadowSort('${c.k}')">${c.l}</th>`;
+    }
+    thHtml += '</tr>';
+    thead.innerHTML = thHtml;
+  }
+
+  let rowsHtml = '';
+  for (const s of strats) {
+    const pnlCls = (s.net_pnl||0) >= 0 ? 'pos' : 'neg';
+    const gapCls = (s.gap_pct||0) >= 0 ? 'pos' : 'neg';
+    const bhMap = {strong:'🟢', ok:'🟡', weak:'🔴', new:'⚪'};
+    rowsHtml += '<tr onclick="showDetail('+JSON.stringify(s).replace(/"/g,'&quot;')+')">';
+    rowsHtml += '<td><strong>#'+s.id+'</strong>'+(s.shadow_flag==='deploy_ready'?' 🚀':'')+'</td>';
+    rowsHtml += '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(s.name)+'">'+esc((s.name||'').slice(0,35))+'</td>';
+    rowsHtml += '<td style="font-size:0.7rem">'+(s.assets||[]).join(', ')+'</td>';
+    rowsHtml += '<td class="num">'+(s.days_active?Math.floor(s.days_active)+'d':'—')+'</td>';
+    rowsHtml += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span></td>';
+    rowsHtml += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+'</td>';
+    rowsHtml += '<td class="num">'+((s.trades||0)>0?(s.win_rate||0).toFixed(0)+'%':'—')+'</td>';
+    rowsHtml += '<td class="num">'+(s.shadow_avg_trade!=null?s.shadow_avg_trade+'€':'—')+'</td>';
+    rowsHtml += '<td class="num">'+(s.pnl_per_week!=null?'<span class="'+((s.pnl_per_week>=0)?'pos':'neg')+'">'+((s.pnl_per_week>=0)?'+':'')+s.pnl_per_week+'€</span>':'—')+'</td>';
+    rowsHtml += '<td class="num" style="color:var(--dim)">'+(s.oos_pf!=null?s.oos_pf.toFixed(2):'—')+'</td>';
+    rowsHtml += '<td class="num"><span class="'+gapCls+'">'+(s.gap_pct!=null?((s.gap_pct>=0)?'+':'')+s.gap_pct+'%':'—')+'</span></td>';
+    rowsHtml += '<td>'+(bhMap[s.bot_health]||'—')+'</td>';
+    rowsHtml += '</tr>';
+  }
+  tbody.innerHTML = rowsHtml;
+}
+
 // ── Shadow Dashboard ──
 function renderShadowDashboard() {
   try {
   _destroyRdCharts();
   const el = document.getElementById('sl4-content');
   if (!shadowData) { el.innerHTML = '<div class="rd-card">Shadow-Daten laden…</div>'; return; }
-  const strats = (shadowData.strategies || []).slice().sort((a,b) => (b.net_pnl||0) - (a.net_pnl||0));
+  const strats = (shadowData.strategies || []).slice();
+  strats.sort((a, b) => {
+    let va = a[shadowSortCol], vb = b[shadowSortCol];
+    if (shadowSortCol === 'assets') {
+      va = (a.assets || []).join(', ');
+      vb = (b.assets || []).join(', ');
+    }
+    if (va == null) va = shadowSortDir === 'asc' ? Infinity : -Infinity;
+    if (vb == null) vb = shadowSortDir === 'asc' ? Infinity : -Infinity;
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (shadowSortDir === 'asc') return va > vb ? 1 : (va < vb ? -1 : 0);
+    return va < vb ? 1 : (va > vb ? -1 : 0);
+  });
   const openPos = shadowData.open_positions || [];
   const sd = shadowData;
   let html = '';
@@ -712,9 +804,27 @@ function renderShadowDashboard() {
 
   // ── Strategy Table (nach oben verschoben) ──
   html += '<div class="rd-section-title">📋 Alle Shadow-Strategien ('+strats.length+')</div>';
-  html += '<div class="rd-card" style="overflow-x:auto"><table class="sl4-table"><thead><tr>';
-  html += '<th>#</th><th>Strategie</th><th>Assets</th><th class="num">Tage</th><th class="num">PnL</th><th class="num">Trades</th><th class="num">WR</th><th class="num">Ø€/Tr</th><th class="num">€/Wk</th><th class="num">OOS PF</th><th class="num">Gap</th><th>Health</th>';
-  html += '</tr></thead><tbody>';
+  html += '<div class="rd-card" style="overflow-x:auto"><table class="sl4-table"><thead id="sl4-shadow-thead">';
+  const sCols = [
+    {k:'id', l:'#'},
+    {k:'name', l:'Strategie'},
+    {k:'assets', l:'Assets'},
+    {k:'days_active', l:'Tage', num:true},
+    {k:'net_pnl', l:'PnL', num:true},
+    {k:'trades', l:'Trades', num:true},
+    {k:'win_rate', l:'WR', num:true},
+    {k:'shadow_avg_trade', l:'Ø€/Tr', num:true},
+    {k:'pnl_per_week', l:'€/Wk', num:true},
+    {k:'oos_pf', l:'OOS PF', num:true},
+    {k:'gap_pct', l:'Gap', num:true},
+    {k:'bot_health', l:'Health'}
+  ];
+  html += '<tr>';
+  for (const c of sCols) {
+    const cls = (c.num ? 'num ' : '') + (shadowSortCol === c.k ? 'sorted-' + shadowSortDir : '');
+    html += `<th class="${cls.trim()}" onclick="setShadowSort('${c.k}')">${c.l}</th>`;
+  }
+  html += '</tr></thead><tbody id="sl4-shadow-tbody">';
   for (const s of strats) {
     const pnlCls = (s.net_pnl||0) >= 0 ? 'pos' : 'neg';
     const gapCls = (s.gap_pct||0) >= 0 ? 'pos' : 'neg';
@@ -1430,7 +1540,8 @@ document.querySelectorAll('.sl4-tab').forEach(tab => {
     tab.classList.add('active');
     currentTab = tab.dataset.tab;
     if (currentTab !== 'rdlive') _destroyRdCharts();
-    sortCol = currentTab === 'shadow' ? 'net_pnl' : 'score'; sortDir = 'desc';
+    if (currentTab === 'shadow') { shadowSortCol = 'net_pnl'; shadowSortDir = 'desc'; }
+    else { sortCol = 'score'; sortDir = 'desc'; }
     renderTable();
   });
 });
