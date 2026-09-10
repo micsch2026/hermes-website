@@ -332,11 +332,13 @@ const shadowCols = [
   {key:'id', label:'ID', render: r => {
     let badge = '';
     const bh = r.bot_health;
-    if (bh === 'strong') badge = ' <span class="gate gate-pass" title="Bot stark im Shadow-Forward">🤖🟢</span>';
-    else if (bh === 'weak') badge = ' <span class="gate gate-fail" title="Bot schwach — Alternative prüfen">🤖🔴</span>';
-    else if (bh === 'ok') badge = ' <span class="gate gate-na" title="Bot neutral im Shadow-Forward">🤖🟡</span>';
-    else if (bh === 'new') badge = ' <span class="gate gate-na" title="Zu wenig Forward-Daten">🤖⚪</span>';
-    return `<strong>#${r.id}</strong>${badge}`;
+    const bt = r.deployed_to_bot;
+    const btBadge = bt ? ` <span style="font-size:0.65rem;color:var(--blue);font-weight:600">${esc(bt)}</span>` : '';
+    if (bh === 'strong') badge = ' <span class="gate gate-pass" title="Bot stark im Shadow-Forward">🟢</span>';
+    else if (bh === 'weak') badge = ' <span class="gate gate-fail" title="Bot schwach — Alternative prüfen">🔴</span>';
+    else if (bh === 'ok') badge = ' <span class="gate gate-na" title="Bot neutral im Shadow-Forward">🟡</span>';
+    else if (bh === 'new') badge = ' <span class="gate gate-na" title="Zu wenig Forward-Daten">⚪</span>';
+    return `<strong>#${r.id}</strong>${btBadge}${badge}`;
   }},
   {key:'shadow_flag', label:'Flag', render: r => {
     if (r.shadow_flag === 'deploy_ready') return '<span class="gate gate-pass">🚀</span>';
@@ -406,9 +408,9 @@ function showDetail(row) {
     else if (row.shadow_flag === 'busted') html += '<div style="padding:0.5rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--red-dim);color:var(--red);font-weight:600">💀 Busted — Strategie widerlegt sich im Forward-Test</div>';
     // Bot-Health-Ampel (2026-09-04)
     const bhMap = {
-      strong: ['var(--green-dim)', 'var(--green)', '🤖🟢 Bot-Instanz STARK'],
-      ok:     ['rgba(59,130,246,0.12)', 'var(--blue)', '🤖🟡 Bot-Instanz NEUTRAL'],
-      weak:   ['var(--red-dim)', 'var(--red)', '🤖🔴 Bot-Instanz SCHWACH'],
+      strong: ['var(--green-dim)', 'var(--green)', '🤖🟢 Bot STARK'],
+      ok:     ['rgba(59,130,246,0.12)', 'var(--blue)', '🤖🟡 Bot NEUTRAL'],
+      weak:   ['var(--red-dim)', 'var(--red)', '🤖🔴 Bot SCHWACH'],
       new:    ['rgba(107,114,128,0.12)', 'var(--dim)', '🤖⚪ Zu wenig Daten'],
     };
     if (bhMap[row.bot_health]) {
@@ -648,14 +650,14 @@ function renderShadowDashboard() {
   html += '</div>'; // close rd-grid
 
   // ── Deployed Bots (echte Konten) ──
-  const deployed = strats.filter(s => s.deployed_instance);
+  const deployed = strats.filter(s => s.deployed_to_bot);
   if (deployed.length > 0) {
     html += '<div class="rd-section-title">🤖 Deployed Bots (Echtgeld/Demo)</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
     for (const s of deployed.sort((a,b) => (b.net_pnl||0)-(a.net_pnl||0))) {
       const pnl = s.net_pnl||0;
       const pnlColor = pnl>=0 ? '#3fb950' : '#f85149';
-      const botLabel = (s.name||'').includes('@') ? (s.name||'').split('@')[1].split(' ')[0] : '#'+s.id;
+      const botLabel = s.deployed_to_bot || '#'+s.id;
       const botName = (s.name||'').slice(0,30);
       html += '<div class="rd-card" style="border-left:3px solid '+pnlColor+'">';
       html += '<div style="display:flex;justify-content:space-between"><strong>'+esc(botLabel)+'</strong>';
