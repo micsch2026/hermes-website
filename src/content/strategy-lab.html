@@ -583,6 +583,32 @@ function renderShadowDashboard() {
   html += '<div class="rd-kpi-card"><div class="rd-kpi-val" style="color:var(--purple)">'+strongBots+'</div><div class="rd-kpi-label">Bot Strong</div></div>';
   html += '</div>';
 
+  // ── Strategy Table (nach oben verschoben) ──
+  html += '<div class="rd-section-title">📋 Alle Shadow-Strategien ('+strats.length+')</div>';
+  html += '<div class="rd-card" style="overflow-x:auto"><table class="sl4-table"><thead><tr>';
+  html += '<th>#</th><th>Strategie</th><th>Assets</th><th class="num">Tage</th><th class="num">PnL</th><th class="num">Trades</th><th class="num">WR</th><th class="num">Ø€/Tr</th><th class="num">€/Wk</th><th class="num">OOS PF</th><th class="num">Gap</th><th>Health</th>';
+  html += '</tr></thead><tbody>';
+  for (const s of strats) {
+    const pnlCls = (s.net_pnl||0) >= 0 ? 'pos' : 'neg';
+    const gapCls = (s.gap_pct||0) >= 0 ? 'pos' : 'neg';
+    const bhMap = {strong:'🟢', ok:'🟡', weak:'🔴', new:'⚪'};
+    html += '<tr onclick="showDetail('+JSON.stringify(s).replace(/"/g,'&quot;')+')">';
+    html += '<td><strong>#'+s.id+'</strong>'+(s.shadow_flag==='deploy_ready'?' 🚀':'')+'</td>';
+    html += '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(s.name)+'">'+esc((s.name||'').slice(0,35))+'</td>';
+    html += '<td style="font-size:0.7rem">'+(s.assets||[]).join(', ')+'</td>';
+    html += '<td class="num">'+(s.days_active?Math.floor(s.days_active)+'d':'—')+'</td>';
+    html += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span></td>';
+    html += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+'</td>';
+    html += '<td class="num">'+((s.trades||0)>0?(s.win_rate||0).toFixed(0)+'%':'—')+'</td>';
+    html += '<td class="num">'+(s.shadow_avg_trade!=null?s.shadow_avg_trade+'€':'—')+'</td>';
+    html += '<td class="num">'+(s.pnl_per_week!=null?'<span class="'+((s.pnl_per_week>=0)?'pos':'neg')+'">'+((s.pnl_per_week>=0)?'+':'')+s.pnl_per_week+'€</span>':'—')+'</td>';
+    html += '<td class="num" style="color:var(--dim)">'+(s.oos_pf!=null?s.oos_pf.toFixed(2):'—')+'</td>';
+    html += '<td class="num"><span class="'+gapCls+'">'+(s.gap_pct!=null?((s.gap_pct>=0)?'+':'')+s.gap_pct+'%':'—')+'</span></td>';
+    html += '<td>'+(bhMap[s.bot_health]||'—')+'</td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
   // ── Charts Grid ──
   html += '<div class="rd-grid">';
 
@@ -697,32 +723,6 @@ function renderShadowDashboard() {
   html += '<div>📊 <strong>Asset-Klassen:</strong> Metalle: '+(metPnl>=0?'+':'')+metPnl.toFixed(0)+'€ ('+metStrats.length+' Strats) · FX: '+(fxPnl>=0?'+':'')+fxPnl.toFixed(0)+'€ ('+fxStrats.length+' Strats)</div>';
 
   html += '</div></div>';
-
-  // ── Strategy Table ──
-  html += '<div class="rd-section-title">📋 Alle Shadow-Strategien ('+strats.length+')</div>';
-  html += '<div class="rd-card" style="overflow-x:auto"><table class="sl4-table"><thead><tr>';
-  html += '<th>#</th><th>Strategie</th><th>Assets</th><th class="num">Tage</th><th class="num">PnL</th><th class="num">Trades</th><th class="num">WR</th><th class="num">Ø€/Tr</th><th class="num">€/Wk</th><th class="num">OOS PF</th><th class="num">Gap</th><th>Health</th>';
-  html += '</tr></thead><tbody>';
-  for (const s of strats) {
-    const pnlCls = (s.net_pnl||0) >= 0 ? 'pos' : 'neg';
-    const gapCls = (s.gap_pct||0) >= 0 ? 'pos' : 'neg';
-    const bhMap = {strong:'🟢', ok:'🟡', weak:'🔴', new:'⚪'};
-    html += '<tr onclick="showDetail('+JSON.stringify(s).replace(/"/g,'&quot;')+')">';
-    html += '<td><strong>#'+s.id+'</strong>'+(s.shadow_flag==='deploy_ready'?' 🚀':'')+'</td>';
-    html += '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(s.name)+'">'+esc((s.name||'').slice(0,35))+'</td>';
-    html += '<td style="font-size:0.7rem">'+(s.assets||[]).join(', ')+'</td>';
-    html += '<td class="num">'+(s.days_active?Math.floor(s.days_active)+'d':'—')+'</td>';
-    html += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span></td>';
-    html += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+'</td>';
-    html += '<td class="num">'+((s.trades||0)>0?(s.win_rate||0).toFixed(0)+'%':'—')+'</td>';
-    html += '<td class="num">'+(s.shadow_avg_trade!=null?s.shadow_avg_trade+'€':'—')+'</td>';
-    html += '<td class="num">'+(s.pnl_per_week!=null?'<span class="'+((s.pnl_per_week>=0)?'pos':'neg')+'">'+((s.pnl_per_week>=0)?'+':'')+s.pnl_per_week+'€</span>':'—')+'</td>';
-    html += '<td class="num" style="color:var(--dim)">'+(s.oos_pf!=null?s.oos_pf.toFixed(2):'—')+'</td>';
-    html += '<td class="num"><span class="'+gapCls+'">'+(s.gap_pct!=null?((s.gap_pct>=0)?'+':'')+s.gap_pct+'%':'—')+'</span></td>';
-    html += '<td>'+(bhMap[s.bot_health]||'—')+'</td>';
-    html += '</tr>';
-  }
-  html += '</tbody></table></div>';
 
   el.innerHTML = html;
 
