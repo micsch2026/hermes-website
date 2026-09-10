@@ -748,39 +748,37 @@ function renderShadowDashboard() {
       return m + 'm';
     };
     html += '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ')</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
+    html += '<div class="rd-card" style="overflow-x:auto;margin-bottom:1rem">';
+    html += '<table class="sl4-table"><thead><tr>';
+    html += '<th># ID</th><th>Symbol</th><th>Richtung</th><th>Dauer</th><th class="num">Margin</th><th class="num">SL (ATR)</th><th class="num">TP (ATR)</th><th class="num">R:R</th><th class="num">Unrealized PnL</th>';
+    html += '</tr></thead><tbody>';
     for (const p of openPos) {
       const dir = (p.direction||'').toLowerCase();
-      const dirColor = dir === 'long' ? '#3fb950' : '#f85149';
-      const dirIcon = dir === 'long' ? '🟢' : '🔴';
+      const dirColor = dir === 'long' ? 'var(--green)' : 'var(--red)';
+      const dirIcon = dir === 'long' ? '🟢 LONG' : '🔴 SHORT';
       const pnl = p.unrealized_pnl || 0;
-      const pnlColor = pnl >= 0 ? '#3fb950' : '#f85149';
+      const pnlCls = pnl >= 0 ? 'pos' : 'neg';
       const pnlSign = pnl >= 0 ? '+' : '';
       const pipsSign = (p.unrealized_pips || 0) >= 0 ? '+' : '';
-      const slAtr = p.sl_atr != null ? p.sl_atr.toFixed(1) + 'x ATR' : '—';
-      const tpAtr = p.tp_atr != null ? p.tp_atr.toFixed(1) + 'x ATR' : '—';
-      const rrStr = p.rr != null ? ' (R:R ' + p.rr.toFixed(1) + ')' : '';
+      const slAtr = p.sl_atr != null ? p.sl_atr.toFixed(1) + 'x' : '—';
+      const tpAtr = p.tp_atr != null ? p.tp_atr.toFixed(1) + 'x' : '—';
+      const rrStr = p.rr != null ? p.rr.toFixed(1) : '—';
       const durStr = fmtDur(p.hold_seconds);
       const marginStr = (p.margin_eur != null ? p.margin_eur.toFixed(1) : '—') + '€';
 
-      html += '<div class="rd-card" style="border-left:3px solid '+dirColor+'">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-      html += '<strong>'+esc(p.symbol)+'</strong> <span style="font-size:0.75rem;color:var(--dim)">#'+p.id+'</span>';
-      html += '<span style="color:'+dirColor+';font-weight:700">'+dirIcon+' '+(dir.toUpperCase())+'</span>';
-      html += '</div>';
-
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.35rem">';
-      html += '<span style="font-size:0.78rem;color:var(--dim)">Dauer: <strong style="color:var(--text)">'+durStr+'</strong> · Margin: <strong style="color:var(--text)">'+marginStr+'</strong></span>';
-      html += '<span style="font-size:0.85rem;font-weight:700;color:'+pnlColor+'">'+pnlSign+pnl.toFixed(2)+'€ ('+pipsSign+(p.unrealized_pips||0)+'p)</span>';
-      html += '</div>';
-
-      html += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">';
-      html += 'SL: <span style="color:var(--red);font-weight:600">'+slAtr+'</span> · TP: <span style="color:var(--green);font-weight:600">'+tpAtr+'</span>'+rrStr;
-      html += '</div>';
-
-      html += '</div>';
+      html += '<tr>';
+      html += '<td><strong>#'+p.id+'</strong></td>';
+      html += '<td><strong>'+esc(p.symbol)+'</strong></td>';
+      html += '<td style="color:'+dirColor+';font-weight:700">'+dirIcon+'</td>';
+      html += '<td>'+durStr+'</td>';
+      html += '<td class="num">'+marginStr+'</td>';
+      html += '<td class="num" style="color:var(--red)">'+slAtr+'</td>';
+      html += '<td class="num" style="color:var(--green)">'+tpAtr+'</td>';
+      html += '<td class="num">'+rrStr+'</td>';
+      html += '<td class="num"><strong class="'+pnlCls+'">'+pnlSign+pnl.toFixed(2)+'€ ('+pipsSign+(p.unrealized_pips||0)+'p)</strong></td>';
+      html += '</tr>';
     }
-    html += '</div>';
+    html += '</tbody></table></div>';
   }
 
   // ── KPI Row ──
