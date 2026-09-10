@@ -425,6 +425,29 @@ function showDetail(row) {
         `<br><span style="color:var(--dim);font-size:0.7rem">Nur ein Hinweis, keine Automatik — Swap-Entscheidung manuell.</span></div>`;
     }
     if (row.description) html += `<div style="color:var(--dim);font-size:0.8rem;margin-bottom:0.8rem">${row.description}</div>`;
+
+    // ── Verständliche Strategie-Erklärung (Konzept, Stärken, Schwächen, Rolle) ──
+    const de = row.desc || {};
+    if (de.tag || de.was || de.gut || de.nicht || de.ergaenzt) {
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.75rem 0.9rem;margin-bottom:0.9rem">';
+      if (de.tag) {
+        html += `<div style="display:inline-block;padding:0.2rem 0.5rem;background:rgba(88,166,255,0.15);color:var(--blue);border-radius:4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;margin-bottom:0.5rem">${esc(de.tag)}</div>`;
+      }
+      if (de.was) {
+        html += `<div style="font-size:0.82rem;line-height:1.4;margin-bottom:0.5rem"><strong>💡 Konzept:</strong> ${esc(de.was)}</div>`;
+      }
+      if (de.gut) {
+        html += `<div style="font-size:0.8rem;line-height:1.35;margin-bottom:0.4rem;color:var(--green)"><strong>🟢 Stärken:</strong> ${esc(de.gut)}</div>`;
+      }
+      if (de.nicht) {
+        html += `<div style="font-size:0.8rem;line-height:1.35;margin-bottom:0.4rem;color:var(--yellow)"><strong>⚠️ Schwächen / Meiden:</strong> ${esc(de.nicht)}</div>`;
+      }
+      if (de.ergaenzt || de.ausmacht) {
+        html += `<div style="font-size:0.78rem;line-height:1.35;color:var(--dim)"><strong>🧩 Portfolio-Fit:</strong> ${esc(de.ergaenzt || de.ausmacht)}</div>`;
+      }
+      html += '</div>';
+    }
+
     const eqPct = (row.equity - 1000) / 10;
     const gapTxt = row.gap_pct != null ? `<span class="${row.gap_pct>0?'pos':'neg'}">${row.gap_pct}%</span> der OOS-Prognose` : '—';
     const startTxt = row.start_date ? new Date(row.start_date).toLocaleDateString('de-DE') : '?';
@@ -559,6 +582,67 @@ function renderShadowDashboard() {
   const openPos = shadowData.open_positions || [];
   const sd = shadowData;
   let html = '';
+
+  // ── 5 Demo-Bots Übersicht (Kopfzeile) ──
+  const botsData = sd.bots || {};
+  const botKeys = Object.keys(botsData).sort();
+  if (botKeys.length > 0) {
+    html += '<div class="rd-section-title">🤖 Aktive Demo-Bots (Status & Parität)</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
+    for (const bk of botKeys) {
+      const b = botsData[bk];
+      const pnl = b.pnl || 0;
+      const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+      const pnlSign = pnl >= 0 ? '+' : '';
+      const bhMap = {strong: '🟢', ok: '🟡', weak: '🔴', new: '⚪'};
+      const bhIcon = bhMap[b.bot_health] || '⚪';
+      const parStatus = b.parity_status || 'ungeprueft';
+      const parIcon = parStatus === 'bestaetigt' ? '🟢' : (parStatus === 'qualifizierung' ? '🟡' : (parStatus === 'abweichung' ? '🔴' : '⚪'));
+      const parTxt = parStatus === 'bestaetigt' ? 'Parität OK' : (parStatus === 'qualifizierung' ? 'Qualifizierung' : (parStatus === 'abweichung' ? 'Abweichung' : 'Ungeprüft'));
+
+      html += '<div class="rd-card" style="padding:0.6rem 0.8rem;border-top:3px solid '+(pnl>=0?'var(--green)':'var(--red)')+'">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem">';
+      html += '<strong>'+bk.toUpperCase()+'</strong>';
+      html += '<span style="font-size:0.75rem">'+bhIcon+' Health</span>';
+      html += '</div>';
+
+      html += '<div style="font-size:0.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.35rem" title="'+esc(b.strategy_name)+'">';
+      html += '#' + (b.strategy_id || '?') + ' ' + esc(b.strategy_name || '');
+      html += '</div>';
+
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.85rem">';
+      html += '<span style="color:'+pnlColor+';font-weight:700">'+pnlSign+pnl.toFixed(2)+'€</span>';
+      html += '<span style="font-size:0.75rem;color:var(--dim)">'+(b.trades||0)+' Tr '+(b.open_trades ? ' · <span style="color:var(--yellow)">'+b.open_trades+' offen</span>' : '')+'</span>';
+      html += '</div>';
+
+      html += '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.35rem;border-top:1px solid var(--border);padding-top:0.3rem">';
+      html += parIcon + ' ' + parTxt + ' (' + (b.parity_pairs_ok||0) + '/' + (b.parity_pairs_total||0) + ' Paare)';
+      html += '</div>';
+
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // ── Korrelations-Warnbox (Klumpenrisiko vor Deploy) ──
+  const corrData = sd.correlation || {};
+  const highCorrs = corrData.high_correlations || [];
+  if (highCorrs.length > 0) {
+    html += '<div class="rd-section-title">🚨 Klumpenrisiko-Audit (Korrelation ≥ 0.50)</div>';
+    html += '<div class="rd-card" style="margin-bottom:0.9rem;border-left:3px solid var(--yellow);padding:0.65rem 0.9rem">';
+    html += '<div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">Die folgenden Strategien bewegen sich stark synchron. Niemals zwei hoch-korrelierte Strategien zeitgleich auf Demo/Live deployen!</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.4rem">';
+    for (const hc of highCorrs.slice(0, 6)) {
+      const isExtreme = hc.correlation >= 0.70;
+      const warnIcon = isExtreme ? '🚨' : '⚠️';
+      const col = isExtreme ? 'var(--red)' : 'var(--yellow)';
+      html += '<div style="font-size:0.75rem;background:rgba(255,255,255,0.03);padding:0.3rem 0.5rem;border-radius:4px">';
+      html += `${warnIcon} <strong>#${hc.strategy_a} ↔ #${hc.strategy_b}</strong>: <span style="color:${col};font-weight:700">r = ${(hc.correlation>=0?'+':'')+hc.correlation.toFixed(2)}</span>`;
+      html += `<div style="color:var(--dim);font-size:0.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(hc.name_a)} vs ${esc(hc.name_b)}</div>`;
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
 
   // ── Offene Positionen ──
   if (openPos.length > 0) {
