@@ -1,5 +1,6 @@
 <!--TITLE:Strategy Lab — Hermes-->
 <!--HEAD-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <!--/HEAD-->
 <!--BODY-->
 <!-- Strategy Lab v4 — Auto-generated -->
@@ -96,6 +97,27 @@
 .rd-tl-row { display: flex; gap: 0.6rem; align-items: baseline; font-size: 0.8rem; }
 .rd-tl-cluster { font-weight: 600; min-width: 130px; }
 .rd-tl-result { color: var(--dim); }
+/* R&D Dashboard Visual */
+.rd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 0.9rem; margin-bottom: 0.9rem; }
+.rd-grid-wide { grid-column: 1 / -1; }
+.rd-chart-wrap { position: relative; width: 100%; }
+.rd-chart-wrap.h200 { height: 200px; }
+.rd-chart-wrap.h250 { height: 250px; }
+.rd-chart-wrap.h280 { height: 280px; }
+.rd-chart-wrap.h300 { height: 300px; }
+.rd-kpi { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+.rd-kpi-card { flex: 1; min-width: 130px; background: var(--surface); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.6rem 0.8rem; text-align: center; }
+.rd-kpi-val { font-size: 1.4rem; font-weight: 700; }
+.rd-kpi-label { font-size: 0.68rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.12rem; }
+.rd-section-title { font-size: 0.75rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; margin: 0.8rem 0 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
+.rd-activity-strip { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.6rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
+.rd-activity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.rd-activity-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: rd-pulse 2s infinite; }
+.rd-activity-dot.idle { background: var(--dim); }
+.rd-activity-dot.working { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); animation: rd-pulse 1s infinite; }
+@keyframes rd-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.rd-activity-text { font-size: 0.85rem; font-weight: 600; }
+.rd-activity-detail { font-size: 0.78rem; color: var(--dim); }
 </style>
 
 <div class="sl4-wrap">
@@ -506,7 +528,76 @@ function showDetail(row) {
   document.getElementById('sl4-modal-overlay').classList.add('show');
 }
 
+// ── R&D Dashboard Charts ──
+let _rdCharts = [];
+function _destroyRdCharts() {
+  for (const c of _rdCharts) { try { c.destroy(); } catch(e) {} }
+  _rdCharts = [];
+}
+const _centerTextPlugin = {
+  id: 'rdCenterText',
+  afterDraw(chart) {
+    if (!chart.config.options.plugins || !chart.config.options.plugins.rdCenterText) return;
+    const {ctx, chartArea: {top, bottom, left, right}} = chart;
+    const cfg = chart.config.options.plugins.rdCenterText;
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const cx = (left + right) / 2, cy = (top + bottom) / 2;
+    ctx.font = 'bold 1.1rem sans-serif'; ctx.fillStyle = '#e6edf3';
+    ctx.fillText(cfg.text || '', cx, cy - 7);
+    if (cfg.sub) { ctx.font = '0.6rem sans-serif'; ctx.fillStyle = '#7d8590'; ctx.fillText(cfg.sub, cx, cy + 12); }
+    ctx.restore();
+  }
+};
+try { Chart.register(_centerTextPlugin); } catch(e) {}
+
+function _mkDoughnut(canvasId, labels, data, colors, centerText, centerSub) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '60%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#7d8590', font: { size: 11 }, padding: 10, boxWidth: 10 } },
+        tooltip: { callbacks: { label: t => t.label + ': ' + t.raw } },
+        rdCenterText: { text: centerText, sub: centerSub }
+      }
+    }
+  });
+  _rdCharts.push(chart);
+  return chart;
+}
+
+function _mkBar(canvasId, labels, datasets, opts) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const stacked = opts && opts.stacked;
+  const horiz = opts && opts.horizontal;
+  const chartType = horiz ? 'bar' : 'bar';
+  const chart = new Chart(ctx, {
+    type: chartType,
+    data: { labels, datasets },
+    options: {
+      indexAxis: horiz ? 'y' : 'x',
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked, ticks: { color: '#7d8590', font: { size: 10 } }, grid: { color: 'rgba(48,54,61,0.4)' } },
+        y: { stacked, ticks: { color: '#7d8590', font: { size: 10 } }, grid: { color: 'rgba(48,54,61,0.4)' } }
+      },
+      plugins: {
+        legend: { display: datasets.length > 1, position: 'top', labels: { color: '#7d8590', font: { size: 11 }, boxWidth: 10 } },
+        tooltip: {}
+      }
+    }
+  });
+  _rdCharts.push(chart);
+  return chart;
+}
+
 function renderRdLive() {
+  _destroyRdCharts();
   const el = document.getElementById('sl4-content');
   if (!rdData) { el.innerHTML = '<div class="rd-card">R&D-Daten laden…</div>'; return; }
   const w = rdData.worker || {};
@@ -514,19 +605,96 @@ function renderRdLive() {
   const cl = rdData.clusters || {total:0, done:[], cooldown:[], open:[]};
   const cycles = rdData.recent_cycles || [];
   const bl = rdData.blacklist || [];
+  const ch = rdData.charts || {};
   let html = '';
 
-  // 1) Worker-Status
-  const wState = {designing:'🟡 Designing', recipe_running:'🟢 Recipe läuft', idle:'⚪ Idle'}[w.status] || (w.status || '?');
-  const wUpd = w.updated_at ? new Date(w.updated_at).toLocaleTimeString('de-DE') : '—';
-  html += `<div class="rd-card"><h3>🟢 Worker-Status</h3><div class="rd-worker">
-    <span class="rd-status">${wState}</span>
-    <span class="rd-msg">${esc(w.message || 'keine Aktivität')}</span>
-    <span class="rd-meta">${w.elapsed_s != null ? w.elapsed_s + 's · ' : ''}${wUpd}</span>
-  </div></div>`;
+  // ── Activity Strip (was passiert aktuell) ──
+  const wStatus = (w.status || '').toLowerCase();
+  const dotClass = wStatus === 'recipe_running' || wStatus === 'designing' ? 'working' : (wStatus === 'idle' ? 'idle' : 'active');
+  const wLabel = {designing:'🔧 Designing…', recipe_running:'🟢 Recipe läuft', idle:'⚪ Idle'}[w.status] || (w.status || 'Unbekannt');
+  const lastCycle = cycles.length > 0 ? cycles[0] : null;
+  const cycleInfo = lastCycle ? `🖥️ ${esc(lastCycle.cluster||'?')} → ${esc(lastCycle.approach||'?')} · ${esc((lastCycle.result||'läuft…').slice(0,60))}` : '';
+  const wTime = w.updated_at ? new Date(w.updated_at+'Z').toLocaleTimeString('de-DE') : '—';
+  html += `<div class="rd-activity-strip">
+    <span class="rd-activity-dot ${dotClass}"></span>
+    <span class="rd-activity-text">${wLabel}</span>
+    <span class="rd-activity-detail">${cycleInfo || esc(w.message || 'kein aktiver Zyklus')}</span>
+    <span class="rd-activity-detail" style="margin-left:auto">${wTime}${w.elapsed_s != null ? ' · '+w.elapsed_s+'s' : ''}</span>
+  </div>`;
 
-  // 2) Heutige Produktion
-  html += `<div class="rd-card"><h3>📅 Heutige Produktion (${today.length})</h3>`;
+  // ── KPI Row ──
+  const sf = ch.strategy_funnel || {};
+  const rp = ch.recipe_pipeline || {};
+  const tierA = (ch.tier_by_class||{});
+  let totalA = 0, totalRes = 0;
+  for (const k of Object.keys(tierA)) { totalA += (tierA[k]||{}).A || 0; totalRes += Object.values(tierA[k]||{}).reduce((a,b)=>a+b,0); }
+  const totalStrat = Object.values(sf).reduce((a,b)=>a+b, 0);
+  const validated = sf.validated || 0;
+  const completed = rp.completed || 0;
+  const totalRecipes = Object.values(rp).reduce((a,b)=>a+b, 0);
+  const yieldPct = totalStrat > 0 ? (validated / totalStrat * 100).toFixed(1) : '0';
+  const comboRows = rdData.charts && rdData.charts.recipe_pipeline ? null : null; // placeholder
+  html += `<div class="rd-kpi">
+    <div class="rd-kpi-card"><div class="rd-kpi-val" style="color:var(--blue)">${totalStrat}</div><div class="rd-kpi-label">Strategien</div></div>
+    <div class="rd-kpi-card"><div class="rd-kpi-val" style="color:var(--green)">${validated}</div><div class="rd-kpi-label">Validated</div></div>
+    <div class="rd-kpi-card"><div class="rd-kpi-val" style="color:var(--green)">${yieldPct}%</div><div class="rd-kpi-label">Tier-A Yield</div></div>
+    <div class="rd-kpi-card"><div class="rd-kpi-val" style="color:var(--yellow)">${completed}</div><div class="rd-kpi-label">Recipes done</div></div>
+    <div class="rd-kpi-card"><div class="rd-kpi-val" style="color:var(--purple)">${totalRes}</div><div class="rd-kpi-label">Asset-Tests</div></div>
+    <div class="rd-kpi-card"><div class="rd-kpi-val" style="color:var(--blue)">${today.length}</div><div class="rd-kpi-label">Heute</div></div>
+  </div>`;
+
+  // ── Weekly Focus Shift (wenn Worker-Fokus wechselt) ──
+  if (ch.weekly_focus && ch.weekly_focus.length > 0) {
+    const wf = ch.weekly_focus;
+    html += `<div class="rd-section-title">📊 Wochen-Fokus — Worker-Gewichtung</div>`;
+    html += `<div class="rd-card rd-grid-wide"><div class="rd-chart-wrap h280"><canvas id="rd-focus-shift"></canvas></div></div>`;
+  }
+
+  // ── Charts Grid ──
+  html += `<div class="rd-grid">`;
+
+  // A) Strategie-Funnel
+  if (ch.strategy_funnel) {
+    html += `<div class="rd-card"><h3>📉 Strategie-Funnel</h3><div class="rd-chart-wrap h250"><canvas id="rd-funnel"></canvas></div></div>`;
+  }
+  // B) Recipe-Pipeline
+  if (ch.recipe_pipeline) {
+    html += `<div class="rd-card"><h3>🧪 Recipe-Pipeline</h3><div class="rd-chart-wrap h250"><canvas id="rd-recipe"></canvas></div></div>`;
+  }
+  // C) Asset-Abdeckung
+  if (ch.avg_pf_by_class) {
+    html += `<div class="rd-card"><h3>🎯 Asset-Abdeckung</h3><div class="rd-chart-wrap h250"><canvas id="rd-asset"></canvas></div></div>`;
+  }
+  // D) Tier pro Asset-Klasse
+  if (ch.tier_by_class) {
+    html += `<div class="rd-card"><h3>🏅 Tier-Verteilung</h3><div class="rd-chart-wrap h250"><canvas id="rd-tier"></canvas></div></div>`;
+  }
+  // E) Cluster-Aufmerksamkeit
+  if (ch.cluster_attention && ch.cluster_attention.length > 0) {
+    html += `<div class="rd-card"><h3>🗂️ Cluster-Aufmerksamkeit (Top 15)</h3><div class="rd-chart-wrap h300"><canvas id="rd-cluster-att"></canvas></div></div>`;
+  }
+  // F) Source-Verteilung
+  if (ch.source_breakdown) {
+    html += `<div class="rd-card"><h3>🧬 Source-Verteilung</h3><div class="rd-chart-wrap h250"><canvas id="rd-source"></canvas></div></div>`;
+  }
+  // G) Cluster Performance
+  if (ch.top_cluster_perf && ch.top_cluster_perf.length > 0) {
+    html += `<div class="rd-card"><h3>🏆 Top Cluster nach Ø Score</h3><div class="rd-chart-wrap h300"><canvas id="rd-cluster-perf"></canvas></div></div>`;
+  }
+  // H) Symbol Coverage
+  if (ch.symbol_coverage) {
+    html += `<div class="rd-card"><h3>📊 Symbole nach Coverage</h3><div class="rd-chart-wrap h300"><canvas id="rd-symbols"></canvas></div></div>`;
+  }
+  // I) Tägliche Produktion
+  if (ch.daily_production && ch.daily_production.length > 0) {
+    html += `<div class="rd-card rd-grid-wide"><h3>📈 Tägliche Produktion (30d)</h3><div class="rd-chart-wrap h200"><canvas id="rd-daily"></canvas></div></div>`;
+  }
+
+  html += '</div>'; // close rd-grid
+
+  // ── Heutige Produktion (Tabelle) ──
+  html += `<div class="rd-section-title">📅 Heutige Produktion (${today.length})</div>`;
+  html += '<div class="rd-card">';
   if (today.length === 0) { html += '<div style="color:var(--dim);font-size:0.8rem">Heute noch keine neuen Strategien.</div>'; }
   else {
     html += '<table class="sl4-table"><thead><tr><th>#</th><th>Strategie</th><th>Status</th><th class="num">PF</th><th class="num">Trades</th><th>Tier</th></tr></thead><tbody>';
@@ -537,47 +705,163 @@ function renderRdLive() {
         <td><span class="${stCls}">${s.status}</span></td>
         <td class="num">${s.pf != null ? s.pf : '—'}</td>
         <td class="num">${s.trades != null ? s.trades : '—'}</td>
-        <td>${s.tier ? `<span class="${tierCls}">${s.tier}</span>` : '—'}</td></tr>`;
+        <td>${s.tier ? '<span class="'+tierCls+'">'+s.tier+'</span>' : '—'}</td></tr>`;
     }
     html += '</tbody></table>';
   }
   html += '</div>';
 
-  // 3) Cluster-Fortschritt
+  // ── Cluster-Fortschritt ──
   const openList = cl.open || [];
-  html += `<div class="rd-card"><h3>🗂️ Cluster-Fortschritt (${cl.total})</h3><div class="rd-cluster-grid">`;
-  for (const c of cl.done) html += `<span class="rd-cluster-chip done" title="Strategie gespeichert">✅ ${c}</span>`;
-  for (const c of (cl.cooldown||[])) html += `<span class="rd-cluster-chip cool" title="Cooldown bis ${c.saved_ts||'?'} (→ #${c.strategy_id||'?'})">⏳ ${c.name}</span>`;
-  for (const c of openList) html += `<span class="rd-cluster-chip open">${c}</span>`;
-  if (cl.done.length + cl.cooldown.length + openList.length === 0) html += '<span style="color:var(--dim);font-size:0.8rem">keine Cluster-Daten</span>';
+  html += `<div class="rd-section-title">🗂️ Cluster-Fortschritt (${cl.total})</div>`;
+  html += '<div class="rd-card"><div class="rd-cluster-grid">';
+  for (const c of cl.done) html += '<span class="rd-cluster-chip done" title="Strategie gespeichert">✅ '+c+'</span>';
+  for (const c of (cl.cooldown||[])) html += '<span class="rd-cluster-chip cool" title="Cooldown bis '+(c.saved_ts||'?')+' (→ #'+(c.strategy_id||'?')+')">⏳ '+c.name+'</span>';
+  for (const c of openList) html += '<span class="rd-cluster-chip open">'+c+'</span>';
+  if (cl.done.length + (cl.cooldown||[]).length + openList.length === 0) html += '<span style="color:var(--dim);font-size:0.8rem">keine Cluster-Daten</span>';
   html += '</div></div>';
 
-  // 4) Letzte Zyklen
-  html += `<div class="rd-card"><h3>🕐 Letzte Zyklen</h3><div class="rd-timeline">`;
+  // ── Letzte Zyklen ──
+  html += `<div class="rd-section-title">🕐 Letzte Zyklen</div>`;
+  html += '<div class="rd-card"><div class="rd-timeline">';
   if (cycles.length === 0) { html += '<span style="color:var(--dim);font-size:0.8rem">keine Zyklen erfasst</span>'; }
   for (const cy of cycles) {
     const resCls = cy.result && cy.result.includes('Strategie') ? 'rd-pill ok'
       : (cy.result && cy.result.includes('Duplicate') ? 'rd-pill warn' : 'rd-pill bad');
-    html += `<div class="rd-tl-row"><span class="rd-tl-cluster">${esc(cy.cluster||'?')}</span>
-      <span class="rd-tl-result">${cy.approach ? esc(cy.approach) + ' · ' : ''}${cy.result ? `<span class="${resCls}">${esc(cy.result)}</span>` : '<span class="rd-pill dim">läuft…</span>'}</span></div>`;
+    html += '<div class="rd-tl-row"><span class="rd-tl-cluster">'+esc(cy.cluster||'?')+'</span><span class="rd-tl-result">'
+      +(cy.approach ? esc(cy.approach)+' · ' : '')
+      +(cy.result ? '<span class="'+resCls+'">'+esc(cy.result)+'</span>' : '<span class="rd-pill dim">läuft…</span>')
+      +'</span></div>';
   }
   html += '</div></div>';
 
-  // 5) Approach-Blacklist
-  html += `<div class="rd-card"><h3>🚫 Approach-Blacklist (${bl.length})</h3>`;
+  // ── Approach-Blacklist ──
+  html += `<div class="rd-section-title">🚫 Approach-Blacklist (${bl.length})</div>`;
+  html += '<div class="rd-card">';
   if (bl.length === 0) { html += '<div style="color:var(--dim);font-size:0.8rem">Keine blacklisteten Approaches.</div>'; }
   else {
     html += '<table class="sl4-table"><thead><tr><th>Approach</th><th class="num">Count</th><th>Grund</th><th>Zuletzt</th></tr></thead><tbody>';
     for (const b of bl) {
       const when = b.last_rejected ? new Date(b.last_rejected).toLocaleDateString('de-DE') + ' ' + new Date(b.last_rejected).toLocaleTimeString('de-DE') : '—';
-      html += `<tr><td>${esc(b.approach)}</td><td class="num">${b.count != null ? b.count : '—'}</td>
-        <td>${b.reason ? esc(b.reason) : '3× Rejection'}</td><td style="color:var(--dim)">${when}</td></tr>`;
+      html += '<tr><td>'+esc(b.approach)+'</td><td class="num">'+(b.count != null ? b.count : '—')+'</td>'
+        +'<td>'+(b.reason ? esc(b.reason) : '3× Rejection')+'</td><td style="color:var(--dim)">'+when+'</td></tr>';
     }
     html += '</tbody></table>';
   }
   html += '</div>';
 
   el.innerHTML = html;
+
+  // ═══════════════════════════════════
+  // Render Charts (after DOM is ready)
+  // ═══════════════════════════════════
+
+  // A) Strategie-Funnel (Doughnut)
+  if (ch.strategy_funnel) {
+    const sf = ch.strategy_funnel;
+    const order = ['validated','candidate','archived','rejected','invalidated'];
+    const colors = ['#3fb950','#58a6ff','#7d8590','#f85149','#d29922'];
+    const vals = order.map(k => sf[k] || 0);
+    const total = vals.reduce((a,b)=>a+b,0);
+    _mkDoughnut('rd-funnel', order, vals, colors, total.toString(), 'Total');
+  }
+
+  // B) Recipe-Pipeline (Doughnut)
+  if (ch.recipe_pipeline) {
+    const rp = ch.recipe_pipeline;
+    const rpOrd = ['completed','pending','failed','cancelled'];
+    const rpC = ['#3fb950','#58a6ff','#f85149','#7d8590'];
+    const rpV = rpOrd.map(k => rp[k] || 0);
+    const rpT = rpV.reduce((a,b)=>a+b,0);
+    _mkDoughnut('rd-recipe', rpOrd, rpV, rpC, rpT.toLocaleString('de-DE'), 'Rezepte');
+  }
+
+  // C) Asset-Abdeckung (Doughnut)
+  if (ch.avg_pf_by_class) {
+    const abc = ch.avg_pf_by_class;
+    const abLabels = Object.keys(abc);
+    const abData = abLabels.map(k => abc[k].count || 0);
+    const abColors = abLabels.map(k => k==='FX' ? '#58a6ff' : (k==='Indizes' ? '#bc8cff' : '#d29922'));
+    const abT = abData.reduce((a,b)=>a+b,0);
+    _mkDoughnut('rd-asset', abLabels, abData, abColors, abT.toString(), 'Tests');
+  }
+
+  // D) Tier pro Asset-Klasse (Grouped Bar)
+  if (ch.tier_by_class) {
+    const tbc = ch.tier_by_class;
+    const classes = Object.keys(tbc);
+    const tiers = ['A','B','C'];
+    const tColors = ['#3fb950','#d29922','#7d8590'];
+    const ds = tiers.map((t,i) => ({
+      label: 'Tier ' + t,
+      data: classes.map(c => (tbc[c]||{})[t] || 0),
+      backgroundColor: tColors[i]
+    }));
+    _mkBar('rd-tier', classes, ds);
+  }
+
+  // E) Cluster-Aufmerksamkeit (Horizontal Bar)
+  if (ch.cluster_attention && ch.cluster_attention.length > 0) {
+    const ca = ch.cluster_attention.slice(0,15);
+    _mkBar('rd-cluster-att',
+      ca.map(c => c.name.length > 28 ? c.name.slice(0,26)+'…' : c.name),
+      [{ label: 'Strategien', data: ca.map(c => c.count), backgroundColor: 'rgba(88,166,255,0.7)' }],
+      { horizontal: true });
+  }
+
+  // F) Source-Verteilung (Doughnut)
+  if (ch.source_breakdown) {
+    const sb = ch.source_breakdown;
+    const sbLabel = sb.map(s => s.source.replace('iterative_discovery','iterat.').replace('cluster_synthesis','cluster').slice(0,16));
+    const sbData = sb.map(s => s.count);
+    const sbColors = ['#58a6ff','#3fb950','#d29922','#f85149','#bc8cff','#7d8590','#22c55e','#ef4444','#eab308','#a78bfa'];
+    _mkDoughnut('rd-source', sbLabel, sbData, sbColors.slice(0,sb.length), '');
+  }
+
+  // G) Top Cluster Performance (Horizontal Bar)
+  if (ch.top_cluster_perf && ch.top_cluster_perf.length > 0) {
+    const cp = ch.top_cluster_perf.slice(0,12);
+    _mkBar('rd-cluster-perf',
+      cp.map(c => c.name.length > 28 ? c.name.slice(0,26)+'…' : c.name),
+      [{ label: 'Ø Score', data: cp.map(c => c.avg_pf || 0), backgroundColor: 'rgba(188,140,255,0.7)' }],
+      { horizontal: true });
+  }
+
+  // H) Symbol Coverage (Horizontal Bar)
+  if (ch.symbol_coverage) {
+    const sc = ch.symbol_coverage;
+    const aData = sc.map(s => Math.round(s.tier_a_pct));
+    const cData = sc.map(s => 100 - Math.round(s.tier_a_pct));
+    _mkBar('rd-symbols',
+      sc.map(s => s.symbol),
+      [
+        { label: 'Tier A %', data: aData, backgroundColor: 'rgba(63,185,80,0.7)' },
+        { label: 'Andere %', data: cData, backgroundColor: 'rgba(125,133,144,0.3)' }
+      ],
+      { horizontal: true, stacked: true });
+  }
+
+  // I) Weekly Focus Shift (Stacked Bar — only after innerHTML is set)
+  if (ch.weekly_focus && ch.weekly_focus.length > 0) {
+    const wf = ch.weekly_focus;
+    _mkBar('rd-focus-shift',
+      wf.map(w => w.week),
+      [
+        { label: 'FX', data: wf.map(w => w.FX), backgroundColor: 'rgba(88,166,255,0.7)' },
+        { label: 'Indizes', data: wf.map(w => w.Indizes), backgroundColor: 'rgba(188,140,255,0.7)' },
+        { label: 'Metalle', data: wf.map(w => w.Metalle), backgroundColor: 'rgba(210,153,34,0.7)' }
+      ],
+      { stacked: true });
+  }
+
+  // J) Daily Production (Bar)
+  if (ch.daily_production && ch.daily_production.length > 0) {
+    const dp = ch.daily_production;
+    _mkBar('rd-daily',
+      dp.map(d => d.date.slice(5)),
+      [{ label: 'Neue Strategien', data: dp.map(d => d.count), backgroundColor: 'rgba(88,166,255,0.6)', borderRadius: 3 }]
+    );
+  }
 }
 
 // Tab switching
@@ -586,6 +870,7 @@ document.querySelectorAll('.sl4-tab').forEach(tab => {
     document.querySelectorAll('.sl4-tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     currentTab = tab.dataset.tab;
+    if (currentTab !== 'rdlive') _destroyRdCharts();
     sortCol = currentTab === 'shadow' ? 'net_pnl' : 'score'; sortDir = 'desc';
     renderTable();
   });
