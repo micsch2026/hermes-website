@@ -1228,19 +1228,20 @@ function renderRdLive() {
       html += `<div class="rd-card" style="border-left:3px solid ${clsColor}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
           <div><span style="font-size:1rem">${icon}</span> <strong style="color:${clsColor}">${esc(ck)}</strong></div>
-          <span class="rd-pill ${succRate>50?'ok':succRate>0?'warn':'dim'}">${cStats.runs} Zyklen · ${succRate}% ✅</span>
+          <span class="rd-pill ${cStats.runs>0?'ok':'dim'}">${cStats.runs} Zyklen gelaufen · ${cStats.success} ✅ Gespeichert</span>
         </div>
         <div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">${esc(c.note||'')}</div>
-        <div style="display:flex;gap:0.8rem;flex-wrap:wrap;font-size:0.72rem">
+        <div style="display:flex;gap:0.8rem;flex-wrap:wrap;font-size:0.72rem;margin-bottom:0.5rem">
           <span><strong>Assets:</strong> ${(c.assets||[]).join(', ')}</span>
           <span><strong>TF:</strong> ${(c.timeframes||[]).join(', ')}</span>
           <span><strong>Komm:</strong> ${cls==='Metalle'?'0€':'6€/100k'}</span>
         </div>
-        <div style="margin-top:0.4rem;font-size:0.7rem;color:var(--dim)">
-          <strong>Approaches:</strong> ${(c.strategy_approaches||[]).map(a => {
-            const used = (cStats.approaches||[]).includes(a);
-            return '<span style="color:'+(used?'var(--green)':'var(--dim)')+';margin-right:0.5rem">'+(used?'✅':'⬜')+' '+esc(a)+'</span>';
-          }).join('')}
+        <div style="margin-top:0.4rem;font-size:0.75rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.4rem">
+          <div style="margin-bottom:0.25rem;color:var(--dim)"><strong>Ansätze (Approaches) & Status:</strong></div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem">${(c.strategy_approaches||[]).map(a => {
+            const used = (cStats.approaches||[]).some(x => x.startsWith(a.slice(0, 8)) || a.startsWith(x.slice(0, 8)));
+            return '<span class="rd-pill '+(used?'ok':'dim')+'" style="margin:0;font-size:0.68rem">'+(used?'✅ Bereits getestet: ':'⏳ Noch offen: ')+esc(a)+'</span>';
+          }).join('')}</div>
         </div>
       </div>`;
     }
