@@ -679,7 +679,7 @@ function renderShadowDashboard() {
   const botsData = sd.bots || {};
   const botKeys = Object.keys(botsData).sort();
   if (botKeys.length > 0) {
-    html += '<div class="rd-section-title">🤖 Aktive Demo-Bots (Status & Parität)</div>';
+    html += '<div class="rd-section-title">🤖 Aktive Demo-Bots (Status &amp; Parität — inkl. Deployed)</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
     for (const bk of botKeys) {
       const b = botsData[bk];
@@ -927,26 +927,9 @@ function renderShadowDashboard() {
 
   html += '</div>'; // close rd-grid
 
-  // ── Deployed Bots (echte Konten) ──
-  const deployed = strats.filter(s => s.deployed_to_bot);
-  if (deployed.length > 0) {
-    html += '<div class="rd-section-title">🤖 Deployed Bots (Echtgeld/Demo)</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
-    for (const s of deployed.sort((a,b) => (b.net_pnl||0)-(a.net_pnl||0))) {
-      const pnl = s.net_pnl||0;
-      const pnlColor = pnl>=0 ? '#3fb950' : '#f85149';
-      const botLabel = s.deployed_to_bot || '#'+s.id;
-      const botName = (s.name||'').slice(0,30);
-      html += '<div class="rd-card" style="border-left:3px solid '+pnlColor+'">';
-      html += '<div style="display:flex;justify-content:space-between"><strong>'+esc(botLabel)+'</strong>';
-      html += '<span style="color:'+pnlColor+';font-weight:700">'+(pnl>=0?'+':'')+pnl.toFixed(2)+'€</span></div>';
-      html += '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.2rem">'+esc(botName)+'</div>';
-      html += '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.2rem">';
-      html += (s.trades||0)+' Tr · WR '+(s.win_rate||0).toFixed(0)+'% · Ø Margin '+(s.avg_margin_utilization_pct||0).toFixed(0)+'%';
-      html += '</div></div>';
-    }
-    html += '</div>';
-  }
+  // ── Deployed Bots: MIT den Detail-Kacheln oben zusammengeführt (2026-09-14,
+  // User: Dopplung entfernt). Die Kacheln zeigen bereits Equity/PnL, Trades,
+  // WR, offene Positionen und Parität — dieser Abschnitt war 100% redundant. ──
 
   // ── Auffälligkeiten & Insights ──
   const active = strats.filter(s => (s.trades||0) > 0);
