@@ -702,14 +702,59 @@ function renderShadowDashboard() {
       html += '#' + (b.strategy_id || '?') + ' ' + esc(b.strategy_name || '');
       html += '</div>';
 
+      // Plakative Strategie-Beschreibung: tag als Badge + was als Einzeiler
+      const bd = b.desc||{};
+      if (bd.tag || bd.was) {
+        html += '<div style="margin-bottom:0.35rem">';
+        if (bd.tag) html += '<div style="display:inline-block;font-size:0.66rem;font-weight:700;background:rgba(120,180,255,0.12);color:var(--blue,#7ab4ff);border:1px solid rgba(120,180,255,0.25);border-radius:3px;padding:0.05rem 0.35rem;margin-bottom:0.2rem">'+esc(bd.tag)+'</div>';
+        if (bd.was) html += '<div style="font-size:0.7rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(bd.was)+'">'+esc(bd.was)+'</div>';
+        html += '</div>';
+      }
+
       html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.85rem">';
       html += '<span style="color:'+pnlColor+';font-weight:700">'+pnlSign+pnl.toFixed(2)+'€</span>';
       html += '<span style="font-size:0.75rem;color:var(--dim)">'+(b.trades||0)+' Tr '+(b.open_trades ? ' · <span style="color:var(--yellow)">'+b.open_trades+' offen</span>' : '')+'</span>';
       html += '</div>';
 
+      // Detail-Zeile: WR + 5-Tage-Statistik (2026-09-14)
+      const p5 = b.pnl_5d||0, p5c = p5>=0?'var(--green)':'var(--red)';
+      html += '<div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--dim);margin-top:0.25rem">';
+      html += '<span>WR '+(b.win_rate!=null?b.win_rate.toFixed(0)+'% ('+(b.wins||0)+'W/'+(b.losses||0)+'L)':'—')+'</span>';
+      html += '<span>5d: <span style="color:'+p5c+';font-weight:600">'+(p5>=0?'+':'')+p5.toFixed(2)+'€ / '+(b.trades_5d||0)+' Tr</span></span>';
+      html += '</div>';
+
+      // Offene Positionen (Symbol, Richtung, Dauer)
+      const ops = b.open_positions||[];
+      if (ops.length > 0) {
+        const fmtBtDur = s => { if(!s) return '—'; const m=Math.floor(s/60),h=Math.floor(m/60),d=Math.floor(h/24); if(d>0) return d+'d '+(h%24)+'h'; if(h>0) return h+'h '+(m%60)+'m'; return m+'m'; };
+        html += '<div style="margin-top:0.3rem;border-top:1px dashed var(--border);padding-top:0.25rem">';
+        for (const op of ops.slice(0,3)) {
+          const dIcon = (op.direction==='long'||op.direction==='buy')?'🟢▲':'🔴▼';
+          html += '<div style="font-size:0.7rem;display:flex;justify-content:space-between">';
+          html += '<span>'+dIcon+' '+esc(op.symbol||'?')+' <span style="color:var(--dim)">@ '+(op.entry!=null?op.entry:'—')+'</span></span>';
+          html += '<span style="color:var(--dim)">'+fmtBtDur(op.hold_seconds)+'</span>';
+          html += '</div>';
+        }
+        if (ops.length > 3) html += '<div style="font-size:0.68rem;color:var(--dim)">+'+(ops.length-3)+' weitere…</div>';
+        html += '</div>';
+      }
+
+      // Letzter Trade
+      if (b.last_trade) {
+        html += '<div style="font-size:0.7rem;color:var(--dim);margin-top:0.25rem">letzt.: '+esc(b.last_trade)+'</div>';
+      }
+
       html += '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.35rem;border-top:1px solid var(--border);padding-top:0.3rem">';
       html += parIcon + ' ' + parTxt + ' (' + (b.parity_pairs_ok||0) + '/' + (b.parity_pairs_total||0) + ' Paare)';
       html += '</div>';
+
+      // Alternative Strategie bei nicht-starker Health
+      if (b.bot_health !== 'strong' && b.bot_alternative) {
+        const a = b.bot_alternative;
+        html += '<div style="font-size:0.7rem;margin-top:0.25rem;color:var(--yellow)" title="'+esc(a.name||'')+'">';
+        html += '💡 Alt: <strong>#'+(a.id||'?')+'</strong> ' + esc((a.name||'').slice(0,28)) + ' <span style="color:var(--green)">+'+(a.net_pnl||0).toFixed(0)+'€</span> ('+(a.trades||0)+' Tr)';
+        html += '</div>';
+      }
 
       html += '</div>';
     }
