@@ -293,6 +293,7 @@ def build_nav(current_path):
         href = link['href']
         label = link['label']
         icon = link.get('icon')
+        badge = link.get('badge')
 
         is_active = False
         if href == '/' and current == '/':
@@ -302,11 +303,15 @@ def build_nav(current_path):
 
         attrs = ' aria-current="page"' if is_active else ''
 
+        badge_html = ''
+        if badge == 'live':
+            badge_html = ' <span class="nav-live-dot" title="Live-Handel aktiv"></span>'
+
         if icon and icon in ICONS:
             svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">{ICONS[icon]}</svg>'
-            parts.append(f'  <a href="{href}"{attrs}>{svg}\n    {label}\n  </a>')
+            parts.append(f'  <a href="{href}"{attrs}>{svg}\n    {label}{badge_html}\n  </a>')
         else:
-            parts.append(f'  <a href="{href}"{attrs}>{label}</a>')
+            parts.append(f'  <a href="{href}"{attrs}>{label}{badge_html}</a>')
 
     if len(parts) > 1:
         parts.insert(2, '  <span class="sep" aria-hidden="true">\u00b7</span>')
