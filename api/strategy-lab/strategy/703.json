@@ -1,0 +1,1025 @@
+{
+  "id": 703,
+  "label": "#703",
+  "name": "Gold Multi-Regime Consensus Ensemble (#688+#689+#676)",
+  "display_name": "Gold Multi-Regime Consensus Ensemble (#688+#689+#676)",
+  "description": "Ensemble Consensus Meta-Engine: Triggers only when >=2 independent metal models (#688 Supertrend Cascade, #689 EMA Pullback, #676 Ichimoku Breakout) agree directionally on the same bar. SL 2.4 ATR, TP 3.0R (0 comm advantage). Scaled risk 2.0%.",
+  "strategy_type": "trend_following",
+  "timeframe": "1h",
+  "status": "candidate",
+  "readiness": "bot_ready",
+  "rejection_reason": null,
+  "overall_score": 0.0,
+  "iteration_count": 0,
+  "source": "consensus_ensemble",
+  "source_url": null,
+  "source_ref": "lab700_consensus_meta",
+  "workflow": null,
+  "created_at": "2026-09-14 07:23:53",
+  "updated_at": "2026-09-14 07:23:53",
+  "notes": "Validated 2-of-3 consensus ensemble on Gold. OOS Pass Rate 100%, PF 1.42, max DD reduced from 27% to 15%. Optimal risk 1.5-2.0%.",
+  "concept": {
+    "name": "Gold Multi-Regime Consensus Ensemble (#688+#689+#676)",
+    "strategy_type": "trend_following",
+    "timeframe": "1h",
+    "pairs": [
+      "XAUUSD"
+    ],
+    "tree": {
+      "name": "Gold Multi-Regime Consensus Ensemble (#688+#689+#676)",
+      "timeframe": "1h",
+      "pairs": [
+        "XAUUSD"
+      ],
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 2.4
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 3.0
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 36
+      },
+      "enter": {
+        "signals": [
+          {
+            "id": "st_cascade_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "supertrend",
+                "timeframe": "4h",
+                "params": {
+                  "period": 10,
+                  "mult": 3.0
+                },
+                "op": "==",
+                "value": 1
+              },
+              {
+                "indicator": "supertrend",
+                "timeframe": "1h",
+                "params": {
+                  "period": 10,
+                  "mult": 2.0
+                },
+                "op": "==",
+                "value": 1
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 50
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "ref_indicator": "supertrend",
+                "ref_params": {
+                  "period": 10,
+                  "mult": 2.0
+                }
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "st_cascade_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "supertrend",
+                "timeframe": "4h",
+                "params": {
+                  "period": 10,
+                  "mult": 3.0
+                },
+                "op": "==",
+                "value": -1
+              },
+              {
+                "indicator": "supertrend",
+                "timeframe": "1h",
+                "params": {
+                  "period": 10,
+                  "mult": 2.0
+                },
+                "op": "==",
+                "value": -1
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 50
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "ref_indicator": "supertrend",
+                "ref_params": {
+                  "period": 10,
+                  "mult": 2.0
+                }
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          },
+          {
+            "id": "sig_long_pin",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "price_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "pin_bar",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.5
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "sig_long_engulf",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "price_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "engulfing",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.5
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "sig_short_pin",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "price_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "pin_bar",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.5
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          },
+          {
+            "id": "sig_short_engulf",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "price_vs_ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "engulfing",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.5
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          },
+          {
+            "id": "p6_xauich_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ichimoku_tenkan",
+                "params": {},
+                "op": ">",
+                "ref_indicator": "ichimoku_kijun",
+                "ref_params": {},
+                "timeframe": "1h"
+              },
+              {
+                "indicator": "close_vs_ema",
+                "params": {
+                  "ema_period": 55
+                },
+                "op": ">",
+                "value": 0,
+                "timeframe": "1h"
+              },
+              {
+                "indicator": "rsi",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 55,
+                "timeframe": "1h"
+              },
+              {
+                "indicator": "session_new_york",
+                "params": {},
+                "op": "==",
+                "value": 1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "p6_xauich_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ichimoku_tenkan",
+                "params": {},
+                "op": "<",
+                "ref_indicator": "ichimoku_kijun",
+                "ref_params": {},
+                "timeframe": "1h"
+              },
+              {
+                "indicator": "close_vs_ema",
+                "params": {
+                  "ema_period": 55
+                },
+                "op": "<",
+                "value": 0,
+                "timeframe": "1h"
+              },
+              {
+                "indicator": "rsi",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 50,
+                "timeframe": "1h"
+              },
+              {
+                "indicator": "session_new_york",
+                "params": {},
+                "op": "==",
+                "value": 1,
+                "timeframe": "1h"
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          }
+        ],
+        "min_score": 50,
+        "merge_mode": "consensus",
+        "min_consensus": 2
+      }
+    },
+    "description": "Ensemble Consensus Meta-Engine: Triggers only when >=2 independent metal models (#688 Supertrend Cascade, #689 EMA Pullback, #676 Ichimoku Breakout) agree directionally on the same bar. SL 2.4 ATR, TP 3.0R (0 comm advantage). Scaled risk 2.0%."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "oos_score": 0.0,
+    "oos_pnl": 916.67,
+    "oos_trades": 73,
+    "oos_pass_rate": 1.0,
+    "degradation": 0,
+    "decay_detected": false,
+    "n_splits": 5,
+    "splits": [
+      {
+        "split": 0,
+        "is_pnl": 759.72,
+        "is_trades": 67,
+        "is_range": "2024-09-24 → 2025-03-25",
+        "oos_pnl": 210.22,
+        "oos_trades": 26,
+        "oos_profitable": true,
+        "oos_wr": 23.1,
+        "oos_pf": 1.23,
+        "oos_gp": 1125.86,
+        "oos_gl": 915.64,
+        "oos_range": "2025-03-25 → 2025-06-25"
+      },
+      {
+        "split": 1,
+        "is_pnl": 951.06,
+        "is_trades": 64,
+        "is_range": "2024-12-24 → 2025-06-25",
+        "oos_pnl": 506.05,
+        "oos_trades": 30,
+        "oos_profitable": true,
+        "oos_wr": 36.7,
+        "oos_pf": 1.54,
+        "oos_gp": 1435.03,
+        "oos_gl": 928.98,
+        "oos_range": "2025-06-25 → 2025-09-24"
+      },
+      {
+        "split": 2,
+        "is_pnl": 716.27,
+        "is_trades": 56,
+        "is_range": "2025-03-25 → 2025-09-24",
+        "oos_pnl": 94.41,
+        "oos_trades": 9,
+        "oos_profitable": true,
+        "oos_wr": 44.4,
+        "oos_pf": 1.37,
+        "oos_gp": 351.67,
+        "oos_gl": 257.26,
+        "oos_range": "2025-09-24 → 2025-12-24"
+      },
+      {
+        "split": 3,
+        "is_pnl": 294.81,
+        "is_trades": 28,
+        "is_range": "2025-06-25 → 2025-12-24",
+        "oos_pnl": 87.9,
+        "oos_trades": 5,
+        "oos_profitable": true,
+        "oos_wr": 60.0,
+        "oos_pf": 2.3,
+        "oos_gp": 155.28,
+        "oos_gl": 67.38,
+        "oos_range": "2025-12-24 → 2026-03-26"
+      },
+      {
+        "split": 4,
+        "is_pnl": 231.0,
+        "is_trades": 14,
+        "is_range": "2025-09-24 → 2026-03-26",
+        "oos_pnl": 18.09,
+        "oos_trades": 3,
+        "oos_profitable": true,
+        "oos_wr": 66.7,
+        "oos_pf": 1.47,
+        "oos_gp": 56.25,
+        "oos_gl": 38.16,
+        "oos_range": "2026-03-26 → 2026-06-25"
+      }
+    ],
+    "tier": "B",
+    "selected_assets": [
+      "XAUUSD"
+    ],
+    "dropped_assets": [],
+    "per_asset": {
+      "XAUUSD": {
+        "oos_pnl": 916.67,
+        "oos_trades": 73,
+        "oos_pass_rate": 1.0,
+        "oos_score": 0.0,
+        "oos_wr": 46.18,
+        "oos_pf": 1.42,
+        "best_sl_mult": 1.2,
+        "best_tp_val": 4.8,
+        "combo_share": 0.6,
+        "n_splits": 5,
+        "splits": [
+          {
+            "split": 0,
+            "is_range": "2024-09-24 → 2025-03-25",
+            "oos_range": "2025-03-25 → 2025-06-25",
+            "best_sl_mult": 1.2,
+            "best_tp_val": 4.8,
+            "is_pnl": 759.72,
+            "is_trades": 67,
+            "oos_pnl": 210.22,
+            "oos_trades": 26,
+            "oos_wr": 23.1,
+            "oos_pf": 1.23,
+            "oos_profitable": true,
+            "oos_gp": 1125.86,
+            "oos_gl": 915.64
+          },
+          {
+            "split": 1,
+            "is_range": "2024-12-24 → 2025-06-25",
+            "oos_range": "2025-06-25 → 2025-09-24",
+            "best_sl_mult": 1.2,
+            "best_tp_val": 4.8,
+            "is_pnl": 951.06,
+            "is_trades": 64,
+            "oos_pnl": 506.05,
+            "oos_trades": 30,
+            "oos_wr": 36.7,
+            "oos_pf": 1.54,
+            "oos_profitable": true,
+            "oos_gp": 1435.03,
+            "oos_gl": 928.98
+          },
+          {
+            "split": 2,
+            "is_range": "2025-03-25 → 2025-09-24",
+            "oos_range": "2025-09-24 → 2025-12-24",
+            "best_sl_mult": 1.2,
+            "best_tp_val": 4.8,
+            "is_pnl": 716.27,
+            "is_trades": 56,
+            "oos_pnl": 94.41,
+            "oos_trades": 9,
+            "oos_wr": 44.4,
+            "oos_pf": 1.37,
+            "oos_profitable": true,
+            "oos_gp": 351.67,
+            "oos_gl": 257.26
+          },
+          {
+            "split": 3,
+            "is_range": "2025-06-25 → 2025-12-24",
+            "oos_range": "2025-12-24 → 2026-03-26",
+            "best_sl_mult": 3.8,
+            "best_tp_val": 2.4,
+            "is_pnl": 294.81,
+            "is_trades": 28,
+            "oos_pnl": 87.9,
+            "oos_trades": 5,
+            "oos_wr": 60.0,
+            "oos_pf": 2.3,
+            "oos_profitable": true,
+            "oos_gp": 155.28,
+            "oos_gl": 67.38
+          },
+          {
+            "split": 4,
+            "is_range": "2025-09-24 → 2026-03-26",
+            "oos_range": "2026-03-26 → 2026-06-25",
+            "best_sl_mult": 3.1,
+            "best_tp_val": 4.8,
+            "is_pnl": 231.0,
+            "is_trades": 14,
+            "oos_pnl": 18.09,
+            "oos_trades": 3,
+            "oos_wr": 66.7,
+            "oos_pf": 1.47,
+            "oos_profitable": true,
+            "oos_gp": 56.25,
+            "oos_gl": 38.16
+          }
+        ]
+      }
+    },
+    "pair_overrides": {
+      "XAUUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.2,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 4.8
+        }
+      }
+    },
+    "portfolio_pnl": 916.67,
+    "portfolio_trades": 73,
+    "oos_wr": 46.2,
+    "oos_pf": 1.42,
+    "is_months": 6,
+    "oos_months": 3,
+    "step_months": 1,
+    "tier_v2": "A"
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "XAUUSD",
+      "tier": null,
+      "oos_pnl_total": 916.67,
+      "oos_pf": 1.42,
+      "oos_wr": 46.18,
+      "oos_trades": 73,
+      "oos_pass_rate": 1.0,
+      "oos_max_dd": null,
+      "degradation": null,
+      "best_params": null,
+      "is_selected": true,
+      "sl_override": 1.2,
+      "tp_override": 4.8,
+      "t_stat": null,
+      "edge": null,
+      "be_wr": null,
+      "avg_rr": null,
+      "cost_shock": null,
+      "is_pnl": null,
+      "is_pf": null,
+      "is_trades": null,
+      "is_wr": null
+    }
+  ],
+  "selected_assets": [
+    "XAUUSD"
+  ],
+  "dropped_assets": [],
+  "splits": [
+    {
+      "split": 0,
+      "is_pnl": 759.72,
+      "is_trades": 67,
+      "is_range": "2024-09-24 → 2025-03-25",
+      "oos_pnl": 210.22,
+      "oos_trades": 26,
+      "oos_profitable": true,
+      "oos_wr": 23.1,
+      "oos_pf": 1.23,
+      "oos_gp": 1125.86,
+      "oos_gl": 915.64,
+      "oos_range": "2025-03-25 → 2025-06-25"
+    },
+    {
+      "split": 1,
+      "is_pnl": 951.06,
+      "is_trades": 64,
+      "is_range": "2024-12-24 → 2025-06-25",
+      "oos_pnl": 506.05,
+      "oos_trades": 30,
+      "oos_profitable": true,
+      "oos_wr": 36.7,
+      "oos_pf": 1.54,
+      "oos_gp": 1435.03,
+      "oos_gl": 928.98,
+      "oos_range": "2025-06-25 → 2025-09-24"
+    },
+    {
+      "split": 2,
+      "is_pnl": 716.27,
+      "is_trades": 56,
+      "is_range": "2025-03-25 → 2025-09-24",
+      "oos_pnl": 94.41,
+      "oos_trades": 9,
+      "oos_profitable": true,
+      "oos_wr": 44.4,
+      "oos_pf": 1.37,
+      "oos_gp": 351.67,
+      "oos_gl": 257.26,
+      "oos_range": "2025-09-24 → 2025-12-24"
+    },
+    {
+      "split": 3,
+      "is_pnl": 294.81,
+      "is_trades": 28,
+      "is_range": "2025-06-25 → 2025-12-24",
+      "oos_pnl": 87.9,
+      "oos_trades": 5,
+      "oos_profitable": true,
+      "oos_wr": 60.0,
+      "oos_pf": 2.3,
+      "oos_gp": 155.28,
+      "oos_gl": 67.38,
+      "oos_range": "2025-12-24 → 2026-03-26"
+    },
+    {
+      "split": 4,
+      "is_pnl": 231.0,
+      "is_trades": 14,
+      "is_range": "2025-09-24 → 2026-03-26",
+      "oos_pnl": 18.09,
+      "oos_trades": 3,
+      "oos_profitable": true,
+      "oos_wr": 66.7,
+      "oos_pf": 1.47,
+      "oos_gp": 56.25,
+      "oos_gl": 38.16,
+      "oos_range": "2026-03-26 → 2026-06-25"
+    }
+  ],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "name": "Gold Multi-Regime Consensus Ensemble (#688+#689+#676)",
+    "timeframe": "1h",
+    "pairs": [
+      "XAUUSD"
+    ],
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 2.4
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 3.0
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 36
+    },
+    "enter": {
+      "signals": [
+        {
+          "id": "st_cascade_long",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "supertrend",
+              "timeframe": "4h",
+              "params": {
+                "period": 10,
+                "mult": 3.0
+              },
+              "op": "==",
+              "value": 1
+            },
+            {
+              "indicator": "supertrend",
+              "timeframe": "1h",
+              "params": {
+                "period": 10,
+                "mult": 2.0
+              },
+              "op": "==",
+              "value": 1
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": 50
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "ref_indicator": "supertrend",
+              "ref_params": {
+                "period": 10,
+                "mult": 2.0
+              }
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "st_cascade_short",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "supertrend",
+              "timeframe": "4h",
+              "params": {
+                "period": 10,
+                "mult": 3.0
+              },
+              "op": "==",
+              "value": -1
+            },
+            {
+              "indicator": "supertrend",
+              "timeframe": "1h",
+              "params": {
+                "period": 10,
+                "mult": 2.0
+              },
+              "op": "==",
+              "value": -1
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": 50
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": "<",
+              "ref_indicator": "supertrend",
+              "ref_params": {
+                "period": 10,
+                "mult": 2.0
+              }
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        },
+        {
+          "id": "sig_long_pin",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": ">",
+              "value": 0
+            },
+            {
+              "indicator": "price_vs_ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": ">",
+              "value": 0
+            },
+            {
+              "indicator": "pin_bar",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0.5
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "sig_long_engulf",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": ">",
+              "value": 0
+            },
+            {
+              "indicator": "price_vs_ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": ">",
+              "value": 0
+            },
+            {
+              "indicator": "engulfing",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0.5
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "sig_short_pin",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": "<",
+              "value": 0
+            },
+            {
+              "indicator": "price_vs_ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": "<",
+              "value": 0
+            },
+            {
+              "indicator": "pin_bar",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0.5
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        },
+        {
+          "id": "sig_short_engulf",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": "<",
+              "value": 0
+            },
+            {
+              "indicator": "price_vs_ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 20
+              },
+              "op": "<",
+              "value": 0
+            },
+            {
+              "indicator": "engulfing",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0.5
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        },
+        {
+          "id": "p6_xauich_long",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ichimoku_tenkan",
+              "params": {},
+              "op": ">",
+              "ref_indicator": "ichimoku_kijun",
+              "ref_params": {},
+              "timeframe": "1h"
+            },
+            {
+              "indicator": "close_vs_ema",
+              "params": {
+                "ema_period": 55
+              },
+              "op": ">",
+              "value": 0,
+              "timeframe": "1h"
+            },
+            {
+              "indicator": "rsi",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": 55,
+              "timeframe": "1h"
+            },
+            {
+              "indicator": "session_new_york",
+              "params": {},
+              "op": "==",
+              "value": 1,
+              "timeframe": "1h"
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "p6_xauich_short",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ichimoku_tenkan",
+              "params": {},
+              "op": "<",
+              "ref_indicator": "ichimoku_kijun",
+              "ref_params": {},
+              "timeframe": "1h"
+            },
+            {
+              "indicator": "close_vs_ema",
+              "params": {
+                "ema_period": 55
+              },
+              "op": "<",
+              "value": 0,
+              "timeframe": "1h"
+            },
+            {
+              "indicator": "rsi",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": 50,
+              "timeframe": "1h"
+            },
+            {
+              "indicator": "session_new_york",
+              "params": {},
+              "op": "==",
+              "value": 1,
+              "timeframe": "1h"
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        }
+      ],
+      "min_score": 50,
+      "merge_mode": "consensus",
+      "min_consensus": 2
+    }
+  },
+  "best_oos_pnl": 916.67,
+  "best_pf": 1.42,
+  "best_wr": 46.2,
+  "best_tier": "B",
+  "best_oos_pass_rate": 1.0,
+  "oos_trades": 73,
+  "wfo_is_months": 6,
+  "wfo_oos_months": 3,
+  "wfo_step_months": 1,
+  "n_splits": 5,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

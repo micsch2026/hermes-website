@@ -1,0 +1,809 @@
+{
+  "id": 691,
+  "label": "#691",
+  "name": "RCP-CLUSTER: botr19_194_tom_protected (20260907_060056)",
+  "display_name": "RCP-CLUSTER: botr19_194_tom_protected (20260907_060056)",
+  "description": "Portfolio from recipe_llm_cluster (botr19_194_tom_protected) — 1 cluster/tf combos, 1 assets",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "candidate",
+  "readiness": "bot_ready",
+  "rejection_reason": null,
+  "overall_score": 631.9,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-09-07 06:03:34",
+  "updated_at": "2026-09-07 06:03:36",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"botr19_194_tom_protected\"], \"clusters\": [\"expand_metals_trend\"], \"total_assets\": 1, \"total_pnl\": 1238.2}",
+  "concept": {
+    "name": "RCP-CLUSTER: botr19_194_tom_protected",
+    "strategy_type": "unified",
+    "timeframe": "1H",
+    "assets_candidate": [
+      "XAGUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "metals_pullback_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": ">",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 200
+                }
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<=",
+                "ref_indicator": "bb_lower",
+                "ref_params": {
+                  "period": 20
+                }
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": "<",
+                "value": 30
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "metals_pullback_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": "<",
+                "ref_indicator": "ema",
+                "ref_params": {
+                  "period": 200
+                }
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">=",
+                "ref_indicator": "bb_upper",
+                "ref_params": {
+                  "period": 20
+                }
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 7
+                },
+                "op": ">",
+                "value": 70
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          }
+        ],
+        "min_score": 50,
+        "merge_mode": "highest_score",
+        "gates": [
+          {
+            "indicator": "hours_to_month_start",
+            "timeframe": "1h",
+            "params": {},
+            "op": ">",
+            "value": 48,
+            "comment": "ToM-Schutz: signifikant negative Trades <48h vor Monatsbeginn (Retro 2J: #194 -1221EUR in 42 ToM-Trades)"
+          },
+          {
+            "indicator": "adx",
+            "timeframe": "1h",
+            "params": {
+              "period": 14
+            },
+            "op": ">",
+            "value": 25,
+            "comment": "Silber-Regime-Filter: XAGUSD verlor in ADX<25-Regimes massiv (Juli 2026: -530e); mit ADX>25: XAG 2y +511->+1723e, Juli -530->-301e"
+          }
+        ]
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 24
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.3
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.0
+      },
+      "risk_pct": 2.0,
+      "pairs": [
+        "XAGUSD"
+      ],
+      "timeframe": "1h"
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Portfolio from recipe_llm_cluster (botr19_194_tom_protected) — 1 cluster/tf combos, 1 assets"
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "B",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "24M"
+      },
+      "g2_splits": {
+        "pass": false,
+        "value": "5 splits"
+      },
+      "g3_ho": {
+        "pass": true,
+        "value": "2 trades"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "1.40"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "50%"
+      }
+    },
+    "fire_test": {
+      "passed": true,
+      "total_signals": 9,
+      "signals_per_week": 2.1,
+      "min_required": 1,
+      "per_asset": {
+        "XAGUSD": {
+          "signals": 9,
+          "signals_per_week": 2.1,
+          "bars_available": 11639,
+          "window_bars": 467
+        }
+      },
+      "days_tested": 30
+    },
+    "oos_pnl": 1238.2,
+    "oos_score": 631.9,
+    "oos_pf": 1.4,
+    "oos_wr": 51.8,
+    "oos_trades": 82,
+    "oos_pass_rate": 0.5,
+    "tier_reason": "Bedingt geeignet; PF 1.40 < Ziel 1.5; Assets profitabel: 50%",
+    "clusters": [
+      {
+        "cluster": "expand_metals_trend",
+        "timeframe": "1h",
+        "approach": "botr19_194_tom_protected",
+        "approach_summary": [
+          {
+            "approach": "botr19_194_tom_protected",
+            "score": 631.9,
+            "pnl": 1238.2,
+            "recipe_used": true,
+            "trades": 179,
+            "wr": 43.1,
+            "pf": 1.33,
+            "pass_rate": 0.5,
+            "tier": "B"
+          }
+        ],
+        "best_tree": {
+          "enter": {
+            "signals": [
+              {
+                "id": "metals_pullback_long",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": ">",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 200
+                    }
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "<=",
+                    "ref_indicator": "bb_lower",
+                    "ref_params": {
+                      "period": 20
+                    }
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 7
+                    },
+                    "op": "<",
+                    "value": 30
+                  }
+                ],
+                "direction": "long",
+                "base_score": 50
+              },
+              {
+                "id": "metals_pullback_short",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": "<",
+                    "ref_indicator": "ema",
+                    "ref_params": {
+                      "period": 200
+                    }
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">=",
+                    "ref_indicator": "bb_upper",
+                    "ref_params": {
+                      "period": 20
+                    }
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 7
+                    },
+                    "op": ">",
+                    "value": 70
+                  }
+                ],
+                "direction": "short",
+                "base_score": 50
+              }
+            ],
+            "min_score": 50,
+            "merge_mode": "highest_score",
+            "gates": [
+              {
+                "indicator": "hours_to_month_start",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 48,
+                "comment": "ToM-Schutz: signifikant negative Trades <48h vor Monatsbeginn (Retro 2J: #194 -1221EUR in 42 ToM-Trades)"
+              },
+              {
+                "indicator": "adx",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 25,
+                "comment": "Silber-Regime-Filter: XAGUSD verlor in ADX<25-Regimes massiv (Juli 2026: -530e); mit ADX>25: XAG 2y +511->+1723e, Juli -530->-301e"
+              }
+            ]
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 24
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.3
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.0
+          },
+          "risk_pct": 2.0,
+          "pairs": [
+            "XAUUSD",
+            "XAGUSD"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 1238.2,
+        "best_score": 631.9,
+        "selected_assets": [
+          "XAGUSD"
+        ],
+        "dropped_assets": [],
+        "pair_overrides": {
+          "XAUUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.3,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 1.6
+            }
+          },
+          "XAGUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 2.1,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 2.0
+            }
+          }
+        },
+        "recipe_used": true,
+        "trades": 179,
+        "pass_rate": 0.5,
+        "tier": "B",
+        "pf": 1.33,
+        "wr": 43.1,
+        "per_asset": {
+          "XAUUSD": {
+            "oos_pnl": 22.77,
+            "oos_trades": 97,
+            "oos_pass_rate": 0.4,
+            "oos_score": 0.5,
+            "oos_wr": 36.3,
+            "oos_pf": 1.03,
+            "best_sl_mult": 1.3,
+            "best_tp_val": 1.6,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-09-17 → 2025-03-18",
+                "oos_range": "2025-03-18 → 2025-06-18",
+                "best_sl_mult": 1.3,
+                "best_tp_val": 2.6,
+                "is_pnl": 82.76,
+                "is_trades": 29,
+                "oos_pnl": -2.14,
+                "oos_trades": 24,
+                "oos_wr": 37.5,
+                "oos_pf": 0.99,
+                "oos_profitable": false,
+                "oos_gp": 157.02,
+                "oos_gl": 159.16
+              },
+              {
+                "split": 1,
+                "is_range": "2024-12-17 → 2025-06-18",
+                "oos_range": "2025-06-18 → 2025-09-17",
+                "best_sl_mult": 1.3,
+                "best_tp_val": 1.6,
+                "is_pnl": 141.96,
+                "is_trades": 37,
+                "oos_pnl": 27.28,
+                "oos_trades": 18,
+                "oos_wr": 44.4,
+                "oos_pf": 1.27,
+                "oos_profitable": true,
+                "oos_gp": 129.73,
+                "oos_gl": 102.45
+              },
+              {
+                "split": 2,
+                "is_range": "2025-03-18 → 2025-09-17",
+                "oos_range": "2025-09-17 → 2025-12-17",
+                "best_sl_mult": 1.3,
+                "best_tp_val": 1.6,
+                "is_pnl": 111.44,
+                "is_trades": 42,
+                "oos_pnl": 103.0,
+                "oos_trades": 18,
+                "oos_wr": 61.1,
+                "oos_pf": 2.2,
+                "oos_profitable": true,
+                "oos_gp": 189.15,
+                "oos_gl": 86.15
+              },
+              {
+                "split": 3,
+                "is_range": "2025-06-18 → 2025-12-17",
+                "oos_range": "2025-12-17 → 2026-03-19",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.2,
+                "is_pnl": 173.6,
+                "is_trades": 40,
+                "oos_pnl": -9.04,
+                "oos_trades": 17,
+                "oos_wr": 23.5,
+                "oos_pf": 0.95,
+                "oos_profitable": false,
+                "oos_gp": 158.05,
+                "oos_gl": 167.09
+              },
+              {
+                "split": 4,
+                "is_range": "2025-09-17 → 2026-03-19",
+                "oos_range": "2026-03-19 → 2026-06-18",
+                "best_sl_mult": 0.7,
+                "best_tp_val": 3.2,
+                "is_pnl": 243.39,
+                "is_trades": 36,
+                "oos_pnl": -96.33,
+                "oos_trades": 20,
+                "oos_wr": 15.0,
+                "oos_pf": 0.54,
+                "oos_profitable": false,
+                "oos_gp": 111.41,
+                "oos_gl": 207.74
+              }
+            ],
+            "selected": false
+          },
+          "XAGUSD": {
+            "oos_pnl": 1215.43,
+            "oos_trades": 82,
+            "oos_pass_rate": 0.6,
+            "oos_score": 259.1,
+            "oos_wr": 51.8,
+            "oos_pf": 1.4,
+            "best_sl_mult": 2.1,
+            "best_tp_val": 2.0,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-09-17 → 2025-03-18",
+                "oos_range": "2025-03-18 → 2025-06-18",
+                "best_sl_mult": 2.1,
+                "best_tp_val": 2.0,
+                "is_pnl": 205.11,
+                "is_trades": 32,
+                "oos_pnl": -6.58,
+                "oos_trades": 15,
+                "oos_wr": 53.3,
+                "oos_pf": 0.96,
+                "oos_profitable": false,
+                "oos_gp": 167.75,
+                "oos_gl": 174.33
+              },
+              {
+                "split": 1,
+                "is_range": "2024-12-17 → 2025-06-18",
+                "oos_range": "2025-06-18 → 2025-09-17",
+                "best_sl_mult": 2.1,
+                "best_tp_val": 1.2,
+                "is_pnl": 151.1,
+                "is_trades": 31,
+                "oos_pnl": -71.73,
+                "oos_trades": 25,
+                "oos_wr": 48.0,
+                "oos_pf": 0.8,
+                "oos_profitable": false,
+                "oos_gp": 290.86,
+                "oos_gl": 362.59
+              },
+              {
+                "split": 2,
+                "is_range": "2025-03-18 → 2025-09-17",
+                "oos_range": "2025-09-17 → 2025-12-17",
+                "best_sl_mult": 1.3,
+                "best_tp_val": 2.0,
+                "is_pnl": 77.59,
+                "is_trades": 44,
+                "oos_pnl": 281.47,
+                "oos_trades": 13,
+                "oos_wr": 53.8,
+                "oos_pf": 1.8,
+                "oos_profitable": true,
+                "oos_gp": 635.2,
+                "oos_gl": 353.73
+              },
+              {
+                "split": 3,
+                "is_range": "2025-06-18 → 2025-12-17",
+                "oos_range": "2025-12-17 → 2026-03-19",
+                "best_sl_mult": 2.1,
+                "best_tp_val": 2.0,
+                "is_pnl": 531.65,
+                "is_trades": 35,
+                "oos_pnl": 430.3,
+                "oos_trades": 13,
+                "oos_wr": 53.8,
+                "oos_pf": 1.34,
+                "oos_profitable": true,
+                "oos_gp": 1691.82,
+                "oos_gl": 1261.52
+              },
+              {
+                "split": 4,
+                "is_range": "2025-09-17 → 2026-03-19",
+                "oos_range": "2026-03-19 → 2026-06-18",
+                "best_sl_mult": 1.7,
+                "best_tp_val": 3.2,
+                "is_pnl": 1269.56,
+                "is_trades": 26,
+                "oos_pnl": 581.97,
+                "oos_trades": 16,
+                "oos_wr": 50.0,
+                "oos_pf": 1.63,
+                "oos_profitable": true,
+                "oos_gp": 1502.24,
+                "oos_gl": 920.27
+              }
+            ],
+            "selected": true
+          }
+        },
+        "updated_at": "2026-09-07T06:03:34.761190+00:00"
+      }
+    ],
+    "all_assets": [
+      "XAGUSD"
+    ],
+    "pair_overrides": {
+      "XAUUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.3,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.6
+        }
+      },
+      "XAGUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 2.1,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.0
+        }
+      }
+    },
+    "approaches_used": [
+      "botr19_194_tom_protected"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": -147.01,
+      "trades": 2,
+      "pf": 0,
+      "per_cluster": [
+        {
+          "approach": "botr19_194_tom_protected",
+          "pnl": -147.01,
+          "trades": 2,
+          "pf": 0
+        }
+      ]
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "XAUUSD",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "botr19_194_tom_protected",
+      "tier": "B",
+      "oos_pnl_total": 22.77,
+      "oos_pf": 1.03,
+      "oos_wr": 36.3,
+      "oos_trades": 97,
+      "oos_pass_rate": 0.4,
+      "oos_score": 0.5,
+      "is_selected": false,
+      "sl_override": 1.3,
+      "tp_override": 1.6
+    },
+    {
+      "symbol": "XAGUSD",
+      "cluster": "expand_metals_trend",
+      "timeframe": "1h",
+      "approach": "botr19_194_tom_protected",
+      "tier": "B",
+      "oos_pnl_total": 1215.43,
+      "oos_pf": 1.4,
+      "oos_wr": 51.8,
+      "oos_trades": 82,
+      "oos_pass_rate": 0.6,
+      "oos_score": 259.1,
+      "is_selected": true,
+      "sl_override": 2.1,
+      "tp_override": 2.0
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "enter": {
+      "signals": [
+        {
+          "id": "metals_pullback_long",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": ">",
+              "ref_indicator": "ema",
+              "ref_params": {
+                "period": 200
+              }
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": "<=",
+              "ref_indicator": "bb_lower",
+              "ref_params": {
+                "period": 20
+              }
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 7
+              },
+              "op": "<",
+              "value": 30
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "metals_pullback_short",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": "<",
+              "ref_indicator": "ema",
+              "ref_params": {
+                "period": 200
+              }
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">=",
+              "ref_indicator": "bb_upper",
+              "ref_params": {
+                "period": 20
+              }
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 7
+              },
+              "op": ">",
+              "value": 70
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        }
+      ],
+      "min_score": 50,
+      "merge_mode": "highest_score",
+      "gates": [
+        {
+          "indicator": "hours_to_month_start",
+          "timeframe": "1h",
+          "params": {},
+          "op": ">",
+          "value": 48,
+          "comment": "ToM-Schutz: signifikant negative Trades <48h vor Monatsbeginn (Retro 2J: #194 -1221EUR in 42 ToM-Trades)"
+        },
+        {
+          "indicator": "adx",
+          "timeframe": "1h",
+          "params": {
+            "period": 14
+          },
+          "op": ">",
+          "value": 25,
+          "comment": "Silber-Regime-Filter: XAGUSD verlor in ADX<25-Regimes massiv (Juli 2026: -530e); mit ADX>25: XAG 2y +511->+1723e, Juli -530->-301e"
+        }
+      ]
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 24
+    },
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 1.3
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 2.0
+    },
+    "risk_pct": 2.0,
+    "pairs": [
+      "XAGUSD"
+    ],
+    "timeframe": "1h"
+  },
+  "best_oos_pnl": 1238.2,
+  "best_pf": 1.4,
+  "best_wr": 51.8,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.5,
+  "oos_trades": 82,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}
