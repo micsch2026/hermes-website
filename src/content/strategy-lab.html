@@ -745,9 +745,13 @@ function renderShadowDashboard() {
         html += '<div style="margin-top:0.3rem;border-top:1px dashed var(--border);padding-top:0.25rem">';
         for (const op of ops.slice(0,3)) {
           const dIcon = (op.direction==='long'||op.direction==='buy')?'🟢▲':'🔴▼';
+          const pnl = op.unrealized_pnl;
+          const pnlStr = pnl!=null ? (pnl>=0?'+':'')+pnl.toFixed(2)+'€' : '';
+          const pnlCol = pnl!=null ? (pnl>=0?'var(--green)':'var(--red)') : 'var(--dim)';
+          const tip = op.entry_signal ? ' title="Signal-Entry: '+op.entry_signal+'"' : '';
           html += '<div style="font-size:0.7rem;display:flex;justify-content:space-between">';
-          html += '<span>'+dIcon+' '+esc(op.symbol||'?')+' <span style="color:var(--dim)">@ '+(op.entry!=null?op.entry:'—')+'</span></span>';
-          html += '<span style="color:var(--dim)">'+fmtBtDur(op.hold_seconds)+'</span>';
+          html += '<span'+tip+'>'+dIcon+' '+esc(op.symbol||'?')+' <span style="color:var(--dim)">@ '+(op.entry!=null?op.entry:'—')+'</span></span>';
+          html += '<span style="color:'+pnlCol+'">'+(pnlStr?pnlStr+' · ':'')+fmtBtDur(op.hold_seconds)+'</span>';
           html += '</div>';
         }
         if (ops.length > 3) html += '<div style="font-size:0.68rem;color:var(--dim)">+'+(ops.length-3)+' weitere…</div>';
@@ -1646,5 +1650,15 @@ setInterval(async () => {
     } catch(e) {}
   }
 }, 30000);
+// Auto-refresh Shadow-Daten alle 60s wenn Tab aktiv
+setInterval(async () => {
+  if (currentTab === 'shadow') {
+    try {
+      const sr = await fetch('/api/strategy-lab/shadow_portfolio.json?_=' + Date.now());
+      shadowData = await sr.json();
+      renderShadowDashboard();
+    } catch(e) {}
+  }
+}, 60000);
 </script>
 <!--/BODY-->
