@@ -97,6 +97,13 @@
 .rd-tl-row { display: flex; gap: 0.6rem; align-items: baseline; font-size: 0.8rem; }
 .rd-tl-cluster { font-weight: 600; min-width: 130px; }
 .rd-tl-result { color: var(--dim); }
+.rd-repeat { font-size: 0.68rem; color: #9ca3af; background: rgba(107,114,128,0.12); padding: 0.1rem 0.4rem; border-radius: 999px; }
+/* P2 (2026-09-17): ehrlicher Worker-Status + Effizienz-KPIs */
+.rd-activity-dot.stalled { background: #ef4444; box-shadow: 0 0 0 0 rgba(239,68,68,0.5); animation: rd-stall-pulse 1.2s infinite; }
+@keyframes rd-stall-pulse { 50% { box-shadow: 0 0 0 7px rgba(239,68,68,0); } }
+.rd-kpi-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.9rem; }
+.rd-kpi { font-size: 0.78rem; font-weight: 600; padding: 0.35rem 0.7rem; border: 1px solid var(--c-border); border-radius: 0.5rem; background: var(--c-surface); }
+.rd-kpi em { font-style: normal; color: var(--dim); font-weight: 400; }
 /* R&D Dashboard Visual */
 .rd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 0.9rem; margin-bottom: 0.9rem; }
 .rd-grid-wide { grid-column: 1 / -1; }
@@ -1236,9 +1243,19 @@ function renderRdLive() {
   let html = '';
 
   // ── Activity Strip (was passiert aktuell) ──
+  // P2 (2026-09-17): health-aware — worker_status.json wird nur vom Worker
+  // geschrieben; ein stummer Eintrag = Stillstand, nicht „läuft".
+  const wHealth = w.health || {};
   const wStatus = (w.status || '').toLowerCase();
-  const dotClass = wStatus === 'recipe_running' || wStatus === 'designing' ? 'working' : (wStatus === 'idle' ? 'idle' : 'active');
-  const wLabel = {designing:'🔧 Designing…', recipe_running:'🟢 Recipe läuft', idle:'⚪ Idle'}[w.status] || (w.status || 'Unbekannt');
+  let dotClass, wLabel;
+  if (wHealth.state === 'stalled') {
+    dotClass = 'stalled'; wLabel = `🔴 STILLSTAND — ${esc(wHealth.text || '')}`;
+  } else if (wHealth.state === 'idle') {
+    dotClass = 'idle'; wLabel = `🟡 Leerlauf — ${esc(wHealth.text || '')}`;
+  } else {
+    dotClass = wStatus === 'recipe_running' || wStatus === 'designing' ? 'working' : 'active';
+    wLabel = {designing:'🔧 Designing…', recipe_running:'🟢 Recipe läuft', idle:'⚪ Idle'}[w.status] || (w.status || 'Unbekannt');
+  }
   const lastCycle = cycles.length > 0 ? cycles[0] : null;
   const cycleInfo = lastCycle ? `🖥️ ${esc(lastCycle.cluster||'?')} → ${esc(lastCycle.approach||'?')} · ${esc((lastCycle.result||'läuft…').slice(0,60))}` : '';
   const wTime = w.updated_at ? new Date(w.updated_at+'Z').toLocaleTimeString('de-DE') : '—';
@@ -1248,6 +1265,17 @@ function renderRdLive() {
     <span class="rd-activity-detail">${cycleInfo || esc(w.message || 'kein aktiver Zyklus')}</span>
     <span class="rd-activity-detail" style="margin-left:auto">${wTime}${w.elapsed_s != null ? ' · '+w.elapsed_s+'s' : ''}</span>
   </div>`;
+
+  // ── Effizienz-KPIs (P2: Hit-Rate, Produktion, gesparte Runs, Blacklist) ──
+  const eff = rdData.efficiency || {};
+  if (eff.total != null) {
+    html += `<div class="rd-kpi-row">`
+      + `<span class="rd-kpi" title="Validierte Strategien / Katalog gesamt">🎯 Hit-Rate ${eff.hit_rate_pct ?? '—'}% <em>(${eff.validated}/${eff.total})</em></span>`
+      + `<span class="rd-kpi" title="Neue Kandidaten der letzten 7 Tage">📈 Produktion 7T ${eff.production_7d ?? '—'}</span>`
+      + `<span class="rd-kpi" title="Near-dup Pre-Screen-Skips — gesparte WFO/LLM-Runs (Log-Fenster)">💾 Gespart ${eff.saved_near_dup ?? '—'}</span>`
+      + `<span class="rd-kpi" title="Ansätze auf der Blacklist">🚫 Blacklist ${eff.blacklist_size ?? '—'}</span>`
+      + `</div>`;
+  }
 
   // ── AKTUELLER FOKUS ──
   const fk = rdData.fokus || {};
@@ -1435,9 +1463,11 @@ function renderRdLive() {
   for (const cy of cycles) {
     const resCls = cy.result && cy.result.includes('Strategie') ? 'rd-pill ok'
       : (cy.result && cy.result.includes('Duplicate') ? 'rd-pill warn' : 'rd-pill bad');
+    const repBadge = cy.repeat && cy.repeat > 1 ? ` <span class="rd-repeat">×${cy.repeat} aggregiert</span>` : '';
     html += '<div class="rd-tl-row"><span class="rd-tl-cluster">'+esc(cy.cluster||'?')+'</span><span class="rd-tl-result">'
       +(cy.approach ? esc(cy.approach)+' · ' : '')
       +(cy.result ? '<span class="'+resCls+'">'+esc(cy.result)+'</span>' : '<span class="rd-pill dim">läuft…</span>')
+      +repBadge
       +'</span></div>';
   }
   html += '</div></div>';
