@@ -1307,7 +1307,8 @@ function renderBacktest(d) {
     var recipe = bt.recipe;
     if (recipe) {
       var passRate = recipe.oos_pass_rate != null ? (recipe.oos_pass_rate * 100).toFixed(0) + '%' : '—';
-      oosEl.textContent = 'IS=' + recipe.is_months + 'M / OOS=' + recipe.oos_months + 'M · ' + passRate;
+      var mInfo = (recipe.is_months != null && recipe.oos_months != null) ? 'IS=' + recipe.is_months + 'M / OOS=' + recipe.oos_months + 'M · ' : 'WFO · ';
+      oosEl.textContent = mInfo + passRate;
       oosEl.className = 'bot-card-value ' + (recipe.tier === 'A' ? 'bot-pnl-pos' : '');
     } else {
       var oosOk = bt.oos_profitable || 0;
@@ -1672,6 +1673,16 @@ function renderParity(prefix, p) {
     parts.push(mark + ' ' + sym + ' ' + a.confirmed_count + '/' + minReq);
   }
   inline.textContent = parts.join(' · ') + '  (≥' + minReq + ' Trades/Asset)';
+
+  // Missed-Shadow-Summe im Banner (2026-09-17, wie Fleet-Radar)
+  var missedTotal = 0;
+  for (var ms in assets) {
+    var mArr = assets[ms].missed_shadow || [];
+    missedTotal += mArr.length;
+  }
+  if (missedTotal > 0) {
+    inline.textContent += ' · ⚠️ ' + missedTotal + ' Shadow ohne Bot';
+  }
 
   // Detail-Tabelle
   if (detail) {
