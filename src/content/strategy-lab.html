@@ -811,7 +811,7 @@ function renderShadowDashboard() {
       return m + 'm';
     };
     html += '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ')</div>';
-    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Spiegel zur Shadow-Position (Broker-Fill): 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ Daten stale &gt;30min. Toleranz: FX 3p / Metalle 50p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung).</div>';
+    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Zeile mit GLEICHEN Spalten wie Shadow (Broker-Fill) — direkt vergleichbar. Ampel im ID-Feld: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min (Details: Hover). Toleranz: FX 3p / Metalle 50p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung).</div>';
     html += '<div class="rd-card" style="overflow-x:auto;margin-bottom:1rem">';
     html += '<table class="sl4-table"><thead><tr>';
     html += '<th># ID</th><th>Symbol</th><th>Richtung</th><th>Dauer</th><th class="num">Margin</th><th class="num">SL (ATR)</th><th class="num">TP (ATR)</th><th class="num">R:R</th><th class="num">Unrealized PnL</th>';
@@ -845,15 +845,34 @@ function renderShadowDashboard() {
       if (bm) {
         const bIcon = bm.sync === 'sync' ? '🟢' : (bm.sync === 'drift' ? '🟡' : (bm.sync === 'missing' ? '🔴' : '⚫'));
         const bTxt = bm.sync === 'sync' ? 'Sync' : (bm.sync === 'drift' ? 'Drift' : (bm.sync === 'missing' ? 'fehlt' : 'stale'));
-        const bDet = [];
-        if (bm.diff_pips != null) bDet.push(bm.diff_pips + 'p');
-        if (bm.gap_h != null && bm.gap_h > 3) bDet.push('Fill +' + bm.gap_h + 'h');
-        html += '<tr style="font-size:0.78rem">';
-        html += '<td style="color:var(--dim)">🤖 ' + esc(bm.name) + (bm.stale ? ' ⚫' : '') + '</td>';
-        html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
-        html += '<td>' + bIcon + ' ' + bTxt + (bDet.length ? ' <span style="color:var(--dim)">(' + bDet.join(', ') + ')</span>' : '') + '</td>';
-        html += '<td colspan="6" style="color:var(--dim)">' + (bm.entry != null ? 'Entry ' + bm.entry : '') + (bm.volume != null ? ' · Vol ' + bm.volume : '') + '</td>';
-        html += '</tr>';
+        const bTitle = '🤖 Bot-Spiegel (' + bTxt + (bm.diff_pips != null ? ', ' + bm.diff_pips + 'p' : '') + (bm.gap_h != null ? ', Fill +' + bm.gap_h + 'h' : '') + ')';
+        const bDir = (bm.direction||'').toLowerCase();
+        const bDirColor = bDir === 'long' ? 'var(--green)' : 'var(--red)';
+        const bDirIcon = bDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
+        if (bm.entry != null) {
+          const bPnl = bm.unrealized_pnl || 0;
+          const bPnlCls = bPnl >= 0 ? 'pos' : 'neg';
+          const bPnlSign = bPnl >= 0 ? '+' : '';
+          const bPipsSign = (bm.unrealized_pips || 0) >= 0 ? '+' : '';
+          html += '<tr style="font-size:0.8rem" title="'+esc(bTitle)+'">';
+          html += '<td style="color:var(--dim)">🤖 <strong>' + esc(bm.name) + '</strong> ' + bIcon + (bm.stale ? ' ⚫' : '') + '</td>';
+          html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
+          html += '<td style="color:'+bDirColor+';font-weight:700">'+bDirIcon+'</td>';
+          html += '<td>' + fmtDur(bm.hold_seconds) + '</td>';
+          html += '<td class="num" style="color:var(--dim)">' + (bm.margin_eur != null ? bm.margin_eur.toFixed(1) + '€' : '—') + '</td>';
+          html += '<td class="num" style="color:var(--red)">' + (bm.sl_atr != null ? bm.sl_atr.toFixed(1) + 'x' : '—') + '</td>';
+          html += '<td class="num" style="color:var(--green)">' + (bm.tp_atr != null ? bm.tp_atr.toFixed(1) + 'x' : '—') + '</td>';
+          html += '<td class="num">' + (bm.rr != null ? bm.rr.toFixed(1) : '—') + '</td>';
+          html += '<td class="num"><strong class="'+bPnlCls+'">'+bPnlSign+bPnl.toFixed(2)+'€ ('+bPnlSign+(bm.unrealized_pips||0)+'p)</strong></td>';
+          html += '</tr>';
+        } else {
+          html += '<tr style="font-size:0.8rem">';
+          html += '<td style="color:var(--dim)">🤖 ' + esc(bm.name) + (bm.stale ? ' ⚫' : '') + '</td>';
+          html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
+          html += '<td>' + bIcon + ' ' + bTxt + '</td>';
+          html += '<td colspan="6" style="color:var(--dim)">keine Broker-Position</td>';
+          html += '</tr>';
+        }
       }
     }
     html += '</tbody></table></div>';
