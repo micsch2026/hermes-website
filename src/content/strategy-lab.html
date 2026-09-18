@@ -811,6 +811,7 @@ function renderShadowDashboard() {
       return m + 'm';
     };
     html += '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ')</div>';
+    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Spiegel zur Shadow-Position (Broker-Fill): 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ Daten stale &gt;30min. Toleranz: FX 3p / Metalle 50p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung).</div>';
     html += '<div class="rd-card" style="overflow-x:auto;margin-bottom:1rem">';
     html += '<table class="sl4-table"><thead><tr>';
     html += '<th># ID</th><th>Symbol</th><th>Richtung</th><th>Dauer</th><th class="num">Margin</th><th class="num">SL (ATR)</th><th class="num">TP (ATR)</th><th class="num">R:R</th><th class="num">Unrealized PnL</th>';
@@ -840,8 +841,27 @@ function renderShadowDashboard() {
       html += '<td class="num">'+rrStr+'</td>';
       html += '<td class="num"><strong class="'+pnlCls+'">'+pnlSign+pnl.toFixed(2)+'€ ('+pipsSign+(p.unrealized_pips||0)+'p)</strong></td>';
       html += '</tr>';
+      const bm = p.bot;
+      if (bm) {
+        const bIcon = bm.sync === 'sync' ? '🟢' : (bm.sync === 'drift' ? '🟡' : (bm.sync === 'missing' ? '🔴' : '⚫'));
+        const bTxt = bm.sync === 'sync' ? 'Sync' : (bm.sync === 'drift' ? 'Drift' : (bm.sync === 'missing' ? 'fehlt' : 'stale'));
+        const bDet = [];
+        if (bm.diff_pips != null) bDet.push(bm.diff_pips + 'p');
+        if (bm.gap_h != null && bm.gap_h > 3) bDet.push('Fill +' + bm.gap_h + 'h');
+        html += '<tr style="font-size:0.78rem">';
+        html += '<td style="color:var(--dim)">🤖 ' + esc(bm.name) + (bm.stale ? ' ⚫' : '') + '</td>';
+        html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
+        html += '<td>' + bIcon + ' ' + bTxt + (bDet.length ? ' <span style="color:var(--dim)">(' + bDet.join(', ') + ')</span>' : '') + '</td>';
+        html += '<td colspan="6" style="color:var(--dim)">' + (bm.entry != null ? 'Entry ' + bm.entry : '') + (bm.volume != null ? ' · Vol ' + bm.volume : '') + '</td>';
+        html += '</tr>';
+      }
     }
     html += '</tbody></table></div>';
+    const botOnly = sd.bot_only_positions || [];
+    if (botOnly.length > 0) {
+      html += '<div style="font-size:0.78rem;color:var(--yellow);margin-top:-0.6rem;margin-bottom:1rem">⚠️ Bot-only (kein Shadow-Pendant): ' +
+        botOnly.map(b => '🤖' + esc(b.bot) + ' ' + esc(b.symbol) + ' ' + esc(b.direction) + ' @' + esc(b.entry)).join(' · ') + '</div>';
+    }
   }
 
   // ── KPI Row ──
