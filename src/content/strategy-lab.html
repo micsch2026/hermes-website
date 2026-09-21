@@ -356,8 +356,10 @@ const shadowCols = [
   {key:'days_active', label:'Tage', num: true, render: r => {
     if (!r.days_active || r.days_active === 0) return '—';
     const d = Math.floor(r.days_active);
-    const start = r.start_date ? new Date(r.start_date).toLocaleDateString('de-DE') : '';
-    return `<span style="color:var(--dim)">${d}d</span> <span style="font-size:0.65rem;color:var(--dim)">seit ${start}</span>`;
+    const entry = r.shadow_entry || r.start_date;
+    const start = entry ? new Date(entry).toLocaleDateString('de-DE') : '';
+    const src = r.days_source === 'trade' ? ' (1.Trade)' : '';
+    return `<span style="color:var(--dim)">${d}d</span> <span style="font-size:0.65rem;color:var(--dim)">seit ${start}${src}</span>`;
   }},
   {key:'equity', label:'Konto', num: true, render: r => {
     const pct = ((r.equity - 1000) / 1000 * 100);
@@ -474,7 +476,12 @@ function showDetail(row) {
       ['Kosten', row.costs.toFixed(2) + '€'],
       ['OOS PF (Backtest)', `<span style="color:var(--dim)">${row.oos_pf.toFixed(2)}</span>`],
       ['OOS PnL (Backtest)', `<span style="color:var(--dim)">${row.oos_pnl>=0?'+':''}${row.oos_pnl}€ / ${row.oos_trades} Tr</span>`],
-      ['Aktiv seit', `${Math.floor(row.days_active)} Tage (seit ${startTxt})`],
+      ['Aktiv seit', (() => {
+          const se = row.shadow_entry || row.start_date;
+          const seD = se ? new Date(se).toLocaleDateString('de-DE') : startTxt;
+          const src = row.days_source === 'trade' ? ' — 1. Trade' : '';
+          return `${Math.floor(row.days_active)} Tage (seit ${seD}${src})`;
+        })() ],
       ['Assets', (row.assets||[]).join(', ') || '—'],
       ['Timeframe', row.timeframe || '1h'],
     ];
@@ -731,6 +738,26 @@ function renderShadowDashboard() {
       html += '<span style="font-size:0.75rem;color:var(--dim)">Konto '+(b.equity!=null?b.equity.toFixed(2)+'€':'—')+(b.open_trades ? ' · <span style="color:var(--yellow)">'+b.open_trades+' offen</span>' : '')+'</span>';
       html += '</div>';
 
+      // Kontostand-Kurve (2026-09-21, User: "Equity-Curve vom jeweiligen
+      // Kontostand innerhalb der Botkachel"). Balance statt equity —
+      // Floating-PnL-Skalierung bei Metallen 1000x (Bug offen).
+      const _ec = b.equity_curve || [];
+      const _ecm = b.equity_curve_meta || {};
+      if (_ec.length >= 2) {
+        const _ecD = (_ec[_ec.length-1][1] - _ec[0][1]);
+        const _ecCol = _ecD >= 0 ? 'var(--green)' : 'var(--red)';
+        const _ecSign = _ecD >= 0 ? '+' : '';
+        const _ecPct = _ec[0][1] > 0 ? ((_ecD / _ec[0][1]) * 100) : 0;
+        html += '<div style="margin:0.25rem 0 0.15rem">';
+        html += '<div style="height:38px"><canvas id="shb-c-'+bk+'"></canvas></div>';
+        html += '<div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--dim);margin-top:0.15rem">';
+        const _fromD = _ecm.from ? new Date(_ecm.from) : null;
+        const _fromS = _fromD && !isNaN(_fromD) ? _fromD.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) : '?';
+        html += '<span>Konto seit '+_fromS+'</span>';
+        html += '<span style="color:'+_ecCol+';font-weight:600">'+_ecSign+_ecPct.toFixed(1)+'%</span>';
+        html += '</div></div>';
+      }
+
       // Detail-Zeile: WR + 7-Tage-Statistik (2026-09-17: 5d→7d)
       const p7 = b.pnl_7d!=null ? b.pnl_7d : (b.pnl_5d||0), p7c = p7>=0?'var(--green)':'var(--red)';
       html += '<div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--dim);margin-top:0.25rem">';
@@ -933,7 +960,13 @@ function renderShadowDashboard() {
     html += '<td><strong>#'+s.id+'</strong>'+(s.shadow_flag==='deploy_ready'?' 🚀':'')+'</td>';
     html += '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(s.name)+'">'+esc((s.name||'').slice(0,35))+'</td>';
     html += '<td style="font-size:0.7rem">'+(s.assets||[]).join(', ')+'</td>';
-    html += '<td class="num">'+(s.days_active?Math.floor(s.days_active)+'d':'—')+'</td>';
+    {
+        const _dTxt = s.days_active ? Math.floor(s.days_active)+'d' : '';
+        const _sE = s.shadow_entry ? new Date(s.shadow_entry) : null;
+        const _sD = _sE && !isNaN(_sE) ? _sE.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) : '';
+        const _t = s.days_active ? (s.days_active).toFixed(1)+' Tage'+(s.days_source==='trade'?' (1. Trade)':'') : '';
+        html += '<td class="num" title="'+_t+'">'+_dTxt+(_sD?'<br><span style="font-size:0.6rem;color:var(--dim)">seit '+_sD+'</span>':'')+'</td>';
+      }
     html += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span></td>';
     html += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+'</td>';
     html += '<td class="num">'+((s.trades||0)>0?(s.win_rate||0).toFixed(0)+'%':'—')+'</td>';
@@ -1042,6 +1075,17 @@ function renderShadowDashboard() {
   html += '</div></div>';
 
   el.innerHTML = html;
+
+  // ── Kontostand-Sparklines der Bot-Kacheln (2026-09-21) ──
+  // _mkSparkline: Chart.js line, keine Achsen, Tooltip dd.MM HH:mm → balance €.
+  for (const _bk of Object.keys(sd.bots||{})) {
+    const _bdata = (sd.bots||{})[_bk] || {};
+    const _pts = _bdata.equity_curve;
+    if (!_pts || _pts.length < 2) continue;
+    const _d0 = _pts[0][1], _dN = _pts[_pts.length-1][1];
+    const _col = _dN >= _d0 ? '#3fb950' : '#f85149';
+    _mkSparkline('shb-c-'+_bk, _pts, _col);
+  }
 
   // ═══════════════════════════════════
   // Render Charts
@@ -1263,6 +1307,40 @@ function _mkBar(canvasId, labels, datasets, opts) {
         legend: { display: datasets.length > 1, position: 'top', labels: { color: '#7d8590', font: { size: 11 }, boxWidth: 10 } },
         tooltip: {}
       }
+    }
+  });
+  _rdCharts.push(chart);
+  return chart;
+}
+
+
+function _mkSparkline(canvasId, pts, color) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx || !pts || pts.length < 2) return null;
+  const fmt = ts => {
+    const d = new Date(ts*1000);
+    return isNaN(d) ? '' : d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  };
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: pts.map(p=>p[0]), datasets: [{ data: pts.map(p=>p[1]),
+      borderColor: color, backgroundColor: color + '18',
+      borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.2,
+      borderCapStyle: 'round', borderJoinStyle: 'round'
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: { x: {display:false}, y: {display:false} },
+      plugins: {
+        legend: {display:false},
+        tooltip: {
+          callbacks: {
+            title: items => fmt(items[0].label),
+            label: t => t.parsed.y.toFixed(2)+'€'
+          }
+        }
+      },
+      elements: { line: { borderCapStyle: 'round' } }
     }
   });
   _rdCharts.push(chart);
