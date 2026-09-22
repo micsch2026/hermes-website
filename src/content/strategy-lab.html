@@ -280,7 +280,7 @@ function renderTable() {
   let html = '<table class="sl4-table"><thead><tr>';
   for (const col of columns) {
     const cls = sortCol === col.key ? 'sorted-' + sortDir : '';
-    html += `<th class="${cls}" onclick="setSort('${col.key}')">${col.label}</th>`;
+    html += `<th class="${cls}"${col.title ? ` title="${col.title}"` : ''} onclick="setSort('${col.key}')">${col.label}</th>`;
   }
   html += '</tr></thead><tbody>';
   for (const row of data) {
@@ -304,7 +304,9 @@ const deployCols = [
   {key:'pnl_per_month', label:'€/Mon', num: true, render: r => r.pnl_per_month ? `<span class="${r.pnl_per_month>0?'pos':'neg'}" style="font-weight:600">${r.pnl_per_month>0?'+':''}${r.pnl_per_month}€</span>` : '—'},
   {key:'trades', label:'Tr', num: true},
   {key:'trades_per_week', label:'Tr/Wk', num: true, render: r => r.trades_per_week != null ? r.trades_per_week : '—'},
-  {key:'avg_trade', label:'Ø/Tr', num: true, render: r => r.avg_trade != null ? `<span class="${r.avg_trade>0?'pos':'neg'}">${r.avg_trade>0?'+':''}${r.avg_trade}€</span>` : '—'},
+  {key:'avg_win', label:'ØWin', num: true, title:'Durchschnittlicher GEWINN-Trade', render: r => r.avg_win != null ? `<span class="pos">+${r.avg_win}€</span>` : '—'},
+  {key:'avg_loss', label:'ØLoss', num: true, title:'Durchschnittlicher VERLUST-Trade', render: r => r.avg_loss != null ? `<span class="neg">−${Math.abs(r.avg_loss)}€</span>` : '—'},
+  {key:'avg_trade', label:'Ø/Tr ⌀', num: true, title:'Erwartungswert ueber ALLE Trades (ØWin × WR − ØLoss × (1−WR))', render: r => r.avg_trade != null ? `<span class="${r.avg_trade>0?'pos':'neg'}">${r.avg_trade>0?'+':''}${r.avg_trade}€</span>` : '—'},
   {key:'tier', label:'Tier', render: r => `<span class="tier-${r.tier.toLowerCase()}">${r.tier}</span>`},
   {key:'archetype', label:'Typ', render: r => r.is_new ? '<span class="new-badge">ARCHETYPE</span> ' + r.archetype.slice(0,15) : r.archetype.slice(0,15)},
   {key:'bot', label:'Bot', render: r => r.bot ? `<span class="bot-badge">${r.bot}</span>` : ''},
