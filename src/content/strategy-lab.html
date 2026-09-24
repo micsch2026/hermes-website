@@ -1546,18 +1546,31 @@ function renderRdLive() {
     html += '</div>';
   }
 
-  // ── Heutige Produktion (Tabelle) ──
-  html += `<div class="rd-section-title">📅 Heutige Produktion (${today.length})</div>`;
+  // ── Letzte Produktionen (Tabelle; 2026-09-24: letzte 20 statt nur heute) ──
+  const recent = rdData.recent || [];
+  html += `<div class="rd-section-title">📅 Letzte Produktionen (neueste 20)</div>`;
   html += '<div class="rd-card">';
-  if (today.length === 0) { html += '<div style="color:var(--dim);font-size:0.8rem">Heute noch keine neuen Strategien.</div>'; }
+  if (recent.length === 0) { html += '<div style="color:var(--dim);font-size:0.8rem">Noch keine Strategien produziert.</div>'; }
   else {
-    html += '<table class="sl4-table"><thead><tr><th>#</th><th>Strategie</th><th>Status</th><th class="num">PF</th><th class="num">Trades</th><th>Tier</th></tr></thead><tbody>';
-    for (const s of today) {
+    html += '<table class="sl4-table"><thead><tr><th>#</th><th title="Erstellungsdatum (Berlin)">Erstellt</th><th>Strategie</th><th title="Getestete Assets">Assets</th><th>TF</th><th>Status</th><th class="num" title="Summe aller Rolling-OOS-Fenster">Σ OOS</th><th class="num" title="Profit Factor (OOS)">PF</th><th class="num" title="Win Rate (OOS)">WR</th><th class="num" title="OOS-Trades">Trades</th><th>Tier</th></tr></thead><tbody>';
+    for (const s of recent) {
       const stCls = {validated:'rd-pill ok', candidate:'rd-pill warn', rejected:'rd-pill bad'}[s.status] || 'rd-pill dim';
       const tierCls = {A:'rd-pill ok', B:'rd-pill warn', C:'rd-pill bad'}[s.tier] || 'rd-pill dim';
-      html += `<tr><td>#${s.id}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.name)}">${esc(s.name)}</td>
+      const cd = s.created_at ? new Date(s.created_at) : null;
+      const cdOk = cd && !isNaN(cd);
+      const cdShort = cdOk ? cd.toLocaleString('de-DE', {timeZone:'Europe/Berlin', day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—';
+      const cdFull = cdOk ? cd.toLocaleString('de-DE', {timeZone:'Europe/Berlin', dateStyle:'full', timeStyle:'short'}) + ' (Berlin)' : '';
+      const assets = (s.assets && s.assets.length) ? s.assets.slice(0,4).join(', ') + (s.assets.length > 4 ? ' +' + (s.assets.length - 4) : '') : '—';
+      const pnlTxt = s.pnl != null ? (s.pnl > 0 ? '+' : '') + s.pnl.toFixed(0) + '€' : '—';
+      const pnlStyle = s.pnl != null ? (s.pnl > 0 ? 'color:#22c55e' : 'color:#ef4444') : '';
+      html += `<tr><td>#${s.id}</td><td title="${cdFull}">${cdShort}</td>
+        <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.name)}${s.stype ? ' · ' + esc(s.stype) : ''}">${esc(s.name)}</td>
+        <td style="font-size:0.7rem" title="${esc((s.assets||[]).join(', '))}">${esc(assets)}</td>
+        <td>${s.tf || '—'}</td>
         <td><span class="${stCls}">${s.status}</span></td>
+        <td class="num" style="${pnlStyle}">${pnlTxt}</td>
         <td class="num">${s.pf != null ? s.pf : '—'}</td>
+        <td class="num">${s.wr != null ? s.wr + '%' : '—'}</td>
         <td class="num">${s.trades != null ? s.trades : '—'}</td>
         <td>${s.tier ? '<span class="'+tierCls+'">'+s.tier+'</span>' : '—'}</td></tr>`;
     }
