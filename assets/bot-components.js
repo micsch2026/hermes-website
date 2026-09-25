@@ -156,15 +156,18 @@ function findNearestBarTime(bars, isoTime) {
 /** Status bar: dot, status text, mode badge, last update */
 function renderStatus(d) {
   var isActive = d.status ? d.status.active !== false : true;
+  var isPaused = !!(d.paused || (d.status && d.status.paused));
   var mode = d.mode || (d.demo ? 'demo' : 'live');
 
   var dot = el(C.prefix + '-dot');
-  if (dot) dot.className = dotClass(isActive);
+  if (dot) dot.className = isPaused ? 'bot-status-dot gray' : dotClass(isActive);
 
   var statusEl = el(C.prefix + '-status');
-  if (statusEl) statusEl.textContent = isActive
-    ? (d.status && d.status.message || 'Bot active')
-    : 'Bot inactive';
+  if (statusEl) statusEl.textContent = isPaused
+    ? (d.status && d.status.message || '⏸ GEPARKT — kein Trading')
+    : (isActive
+        ? (d.status && d.status.message || 'Bot active')
+        : 'Bot inactive');
 
   var badge = el(C.prefix + '-mode-badge');
   if (badge) {
@@ -187,8 +190,15 @@ function renderStatus(d) {
   // FX market: closed Fri 21:00 — Sun 21:00 UTC. Sync pauses, stale data is expected.
   var msgLower = (st.message || '').toLowerCase();
   var isMarketClosed = msgLower.indexOf('market closed') >= 0;
+  // Geparkter Bot: kein Fehler-Banner, sondern Info-Banner (25.09.2026)
+  var isPaused = !!(d.paused || st.paused);
 
-  if (!isActive && !isMarketClosed) {
+  if (isPaused) {
+    banner.className = 'bot-health-banner visible info';
+    if (healthText) healthText.textContent = st.message || '⏸ GEPARKT — kein Trading, kein Auto-Heal';
+    if (healthTime) healthTime.textContent = '';
+    bannerVisible = true;
+  } else if (!isActive && !isMarketClosed) {
     banner.className = 'bot-health-banner visible error';
     if (healthText) healthText.textContent = st.last_error_msg || st.message || 'Connection lost';
     if (healthTime) healthTime.textContent = 'since ' + fmtTime(st.last_error);
