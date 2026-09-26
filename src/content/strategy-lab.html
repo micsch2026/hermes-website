@@ -1408,7 +1408,9 @@ function renderRdLive() {
   }
   const lastCycle = cycles.length > 0 ? cycles[0] : null;
   const cycleInfo = lastCycle ? `🖥️ ${esc(lastCycle.cluster||'?')} → ${esc(lastCycle.approach||'?')} · ${esc((lastCycle.result||'läuft…').slice(0,60))}` : '';
-  const wTime = w.updated_at ? new Date(w.updated_at+'Z').toLocaleTimeString('de-DE') : '—';
+  const _tsP = (ts) => { if (!ts) return null; ts = String(ts).trim().replace(/Z$/i, ''); if (!ts.includes('T')) ts = ts.replace(' ', 'T'); const _li = Math.max(ts.lastIndexOf('+'), ts.lastIndexOf('-')); if (_li < 15) ts = ts + 'Z'; const _d = new Date(ts); return isNaN(_d.getTime()) ? null : _d; };
+  const _wD = _tsP(w.updated_at);
+  const wTime = _wD ? _wD.toLocaleTimeString('de-DE') : '—';
   html += `<div class="rd-activity-strip">
     <span class="rd-activity-dot ${dotClass}"></span>
     <span class="rd-activity-text">${wLabel}</span>
@@ -1427,31 +1429,36 @@ function renderRdLive() {
       + `</div>`;
   }
 
-  // ── AKTUELLER FOKUS ──
+  // ── AKTUELLER FOKUS ── (2026-09-26: Drop-in-fenster-aware — zeigt das ECHTE
+  // laufende Fenster aus RECIPE_CLUSTER_CONFIG; FOKUS-Datei nur noch als
+  // Fallback bzw. "nach Revert"-Hinweis)
   const fk = rdData.fokus || {};
   const fkClusters = fk.clusters || {};
   const fkKeys = Object.keys(fkClusters);
+  const wnd = rdData.window || {};
+  const wndClusters = wnd.clusters || {};
+  const wndKeys = Object.keys(wndClusters);
+  const wndActive = !!(wnd.manual && wndKeys.length > 0);
   const cs = rdData.cycle_stats || {};
-  if (fkKeys.length > 0) {
-    html += `<div class="rd-section-title">🎯 AKTUELLER FOKUS — Worker-Ausrichtung</div>`;
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:0.7rem;margin-bottom:0.9rem">';
-    for (const ck of fkKeys) {
-      const c = fkClusters[ck];
+  const _clsMeta = (ac) => (ac === 'metals') ? {lab:'Metalle', ico:'🪙', col:'#d29922', komm:'0€'}
+    : ((ac === 'index' || ac === 'indices') ? {lab:'Indizes', ico:'📈', col:'#a371f7', komm:'—'}
+    : {lab:'FX', ico:'💱', col:'#58a6ff', komm:'6€/100k'});
+  const _focusCards = (keys, m) => {
+    let h = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:0.7rem;margin-bottom:0.9rem">';
+    for (const ck of keys) {
+      const c = m[ck];
       const cStats = (cs.clusters||{})[ck] || {runs:0, success:0, fail:0, approaches:[]};
-      const succRate = cStats.runs > 0 ? Math.round(cStats.success / cStats.runs * 100) : 0;
-      const cls = c.asset_class === 'metals' ? 'Metalle' : 'FX';
-      const clsColor = cls === 'Metalle' ? '#d29922' : '#58a6ff';
-      const icon = cls === 'Metalle' ? '🪙' : '💱';
-      html += `<div class="rd-card" style="border-left:3px solid ${clsColor}">
+      const cm = _clsMeta(c.asset_class);
+      h += `<div class="rd-card" style="border-left:3px solid ${cm.col}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-          <div><span style="font-size:1rem">${icon}</span> <strong style="color:${clsColor}">${esc(ck)}</strong></div>
+          <div><span style="font-size:1rem">${cm.ico}</span> <strong style="color:${cm.col}">${esc(ck)}</strong> <span style="font-size:0.68rem;color:var(--dim)">${cm.lab}</span></div>
           <span class="rd-pill ${cStats.runs>0?'ok':'dim'}">${cStats.runs} Zyklen gelaufen · ${cStats.success} ✅ Gespeichert</span>
         </div>
         <div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">${esc(c.note||'')}</div>
         <div style="display:flex;gap:0.8rem;flex-wrap:wrap;font-size:0.72rem;margin-bottom:0.5rem">
           <span><strong>Assets:</strong> ${(c.assets||[]).join(', ')}</span>
           <span><strong>TF:</strong> ${(c.timeframes||[]).join(', ')}</span>
-          <span><strong>Komm:</strong> ${cls==='Metalle'?'0€':'6€/100k'}</span>
+          <span><strong>Komm:</strong> ${cm.komm}</span>
         </div>
         <div style="margin-top:0.4rem;font-size:0.75rem;border-top:1px solid rgba(255,255,255,0.06);padding-top:0.4rem">
           <div style="margin-bottom:0.25rem;color:var(--dim)"><strong>Ansätze (Approaches) & Status:</strong></div>
@@ -1462,9 +1469,23 @@ function renderRdLive() {
         </div>
       </div>`;
     }
-    html += '</div>';
+    h += '</div>';
+    return h;
+  };
+  if (wndActive) {
+    html += `<div class="rd-section-title">🎯 AKTUELLER FOKUS — MANUELLES FENSTER AKTIV</div>`;
+    html += '<div class="rd-card" style="border-color:#bc8cff;font-size:0.8rem;margin-bottom:0.7rem">'
+      + `🖥️ Worker liest <strong>${esc(wnd.config || '?')}</strong> per Drop-in (nicht die FOKUS-Datei)`
+      + (wnd.revert_display ? ` · ⏮ Auto-Revert: <strong>${esc(wnd.revert_display)}</strong> — danach greift die FOKUS-Rotation wieder` : '')
+      + '</div>';
+    html += _focusCards(wndKeys, wndClusters);
+    if (fkKeys.length > 0) {
+      html += `<div style="font-size:0.75rem;color:var(--dim);margin-bottom:0.9rem">🎯 Nach dem Revert (FOKUS-Datei): ${fkKeys.map(k => esc(k)).join(', ')}</div>`;
+    }
+  } else if (fkKeys.length > 0) {
+    html += `<div class="rd-section-title">🎯 AKTUELLER FOKUS — Worker-Ausrichtung</div>`;
+    html += _focusCards(fkKeys, fkClusters);
   }
-
   // ── KPI Row ──
   const sf = ch.strategy_funnel || {};
   const rp = ch.recipe_pipeline || {};
@@ -1551,9 +1572,11 @@ function renderRdLive() {
   // ── Was fehlt ──
   const sc = ch.symbol_coverage || [];
   const underTest = sc.filter(s => s.count < 5);
+  const _covKeys = wndActive ? wndKeys : fkKeys;
+  const _covSrc = wndActive ? wndClusters : fkClusters;
   const fkAll = {};
-  for (const ck of fkKeys) {
-    for (const a of (fkClusters[ck].assets||[])) { fkAll[a] = ck; }
+  for (const ck of _covKeys) {
+    for (const a of (_covSrc[ck].assets||[])) { fkAll[a] = ck; }
   }
   const fokusUntested = Object.keys(fkAll).filter(s => !sc.find(x => x.symbol === s));
   if (underTest.length > 0 || fokusUntested.length > 0) {
@@ -1570,9 +1593,9 @@ function renderRdLive() {
       html += '</div>';
     }
     if (fokusUntested.length > 0) {
-      html += '<div style="font-size:0.78rem"><span style="color:var(--yellow)">⚠️</span> <strong>FOKUS-Assets ohne Asset-Result:</strong> '
+      html += '<div style="font-size:0.78rem"><span style="color:var(--yellow)">⚠️</span> <strong>Aktive-Fenster-Assets ohne Asset-Result:</strong> '
         + fokusUntested.map(s => '<span style="color:var(--yellow);margin-right:0.4rem">'+esc(s)+'</span>').join('')
-        + ' — Diese Assets sind im aktuellen FOKUS konfiguriert, haben aber noch keine WFO-Ergebnisse.</div>';
+        + ' — Diese Assets sind im laufenden Worker-Fenster konfiguriert, haben aber noch keine WFO-Ergebnisse.</div>';
     }
     html += '</div>';
   }
