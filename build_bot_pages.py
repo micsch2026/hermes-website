@@ -299,6 +299,25 @@ def describe_strategy(sid, lab_name, desc_data):
     return {"tag": "Trading-Strategie", "was": "", "gut": "", "nicht": "", "ausmacht": "", "ergaenzt": ""}
 
 
+def build_multi_intro_section(config):
+    """Intro-Block für Multibots — statischer Text je Bot aus botN.json (`multi_intro`).
+
+    Beschreibt das Rotator-Konzept (klassenrein, Slots, Rotation nur bei Schwäche,
+    Challenge-Regeln). Leer für Einzelstrategie-Bots → Section bleibt ausgeblendet,
+    weil die Slots-Sektion nur bei vorhandenen dashboard.slots sichtbar wird.
+    """
+    intro = (config.get('multi_intro') or '').strip()
+    if not intro:
+        return ''
+    return (
+        '<div style="font-size:var(--text-xs);color:var(--c-text-2);line-height:1.65;'
+        'background:var(--c-surface-2);border:1px solid var(--c-border);border-left:3px solid #8b5cf6;'
+        'border-radius:var(--r-md);padding:var(--s-3) var(--s-4);margin-bottom:var(--s-3)">'
+        '🧩 ' + intro +
+        '</div>'
+    )
+
+
 def build_strategy_concept_section(bot_id, config, desc_data):
     """Generate a clean visual strategy explanation card based on portfolio_descriptions."""
     # Extract strategy ID from config/tags
@@ -324,6 +343,14 @@ def build_strategy_concept_section(bot_id, config, desc_data):
     ausmacht = desc.get("ausmacht", "")
     ergaenzt = desc.get("ergaenzt", "")
 
+    multi_chip = ''
+    multi_note = ''
+    if config.get('multi_intro'):
+        multi_chip = ' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span>'
+        multi_note = ('<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:var(--s-3)">'
+                      '🧩 Multibot: Dieser Bot handelt mehrere Strategie-Slots. Einzelstrategien, Status und Details: '
+                      'Abschnitt „🧩 Multibot — Slots &amp; Strategien“ weiter unten.</div>')
+
     chips_html = ""
     for chip in config.get("config_chips", []):
         chips_html += f'<span class="bot-strategy-tag" style="background:var(--c-surface-2);border:1px solid var(--c-border);font-size:var(--text-xs);padding:4px 10px;border-radius:var(--r-md);">{chip}</span>\n'
@@ -334,9 +361,10 @@ def build_strategy_concept_section(bot_id, config, desc_data):
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2);">
     <div>
       <span class="bot-tag-primary" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--r-md);background:rgba(99,102,241,0.15);color:#818cf8;margin-right:8px;">{tag}</span>
-      <strong style="font-size:var(--text-md);color:var(--c-text);">Strategie-Profil {'#' + strat_id if strat_id else ''}</strong>
+      <strong style="font-size:var(--text-md);color:var(--c-text);">Strategie-Profil {'#' + strat_id if strat_id else ''}{multi_chip}</strong>
     </div>
   </div>
+  {multi_note}
 
   <div class="bot-desc-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:var(--s-4);margin-bottom:var(--s-4);">
     <div style="display:flex;flex-direction:column;gap:8px;">
@@ -375,6 +403,9 @@ def build_page(config, template, desc_data=None):
     # Strategy Concept
     strategy_concept_section = build_strategy_concept_section(bot_id, config, desc_data)
 
+    # Multibot-Intro (leer bei Einzel-Bots)
+    multi_intro_section = build_multi_intro_section(config)
+
     # Conditional sections
     backtest_section = build_backtest_section(features, bot_id, config)
     signal_section = build_signal_section(features, bot_id)
@@ -399,6 +430,7 @@ def build_page(config, template, desc_data=None):
     html = html.replace('{{STRATEGY_TAGS}}', strategy_tags)
     html = html.replace('{{CONFIG_CHIPS}}', config_chips)
     html = html.replace('{{STRATEGY_CONCEPT_SECTION}}', strategy_concept_section)
+    html = html.replace('{{MULTI_INTRO}}', multi_intro_section)
     html = html.replace('{{BACKTEST_SECTION}}', backtest_section)
     html = html.replace('{{SIGNAL_SECTION}}', signal_section)
     html = html.replace('{{CANDLESTICK_SECTION}}', candlestick_section)

@@ -21,6 +21,24 @@ with open(os.path.join(TMPL_DIR, 'base.html'), 'r') as f:
 with open(os.path.join(DATA_DIR, 'nav.json'), 'r') as f:
     NAV_DATA = json.load(f)
 
+
+def _load_multi_bots():
+    """Bots mit Rotations-Slots (= Multibots) aus shadow_portfolio.json.
+
+    Single Source of Truth: shadow_portfolio.json → bot_rotation_slots
+    (vom shadow_portfolio_builder im 15-Min-Takt aus der Rotation-Policy gebaut).
+    Fail-soft: fehlt/kaputt → keine Kennzeichnung, kein Build-Abbruch.
+    """
+    try:
+        with open(os.path.join(SITE_DIR, 'api', 'strategy-lab', 'shadow_portfolio.json'), 'r') as f:
+            rot = json.load(f).get('bot_rotation_slots') or {}
+        return {b for b, slots in rot.items() if slots}
+    except Exception:
+        return set()
+
+
+MULTI_BOTS = _load_multi_bots()
+
 # Icons (simplified SVG paths)
 ICONS = {
     'home': '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
@@ -306,6 +324,9 @@ def build_nav(current_path):
         badge_html = ''
         if badge == 'live':
             badge_html = ' <span class="nav-live-dot" title="Live-Handel aktiv"></span>'
+        # Multibot-Kennzeichnung — datengetrieben (bot_rotation_slots), kein Hardcode
+        if href.startswith('/bot') and href[1:] in MULTI_BOTS:
+            badge_html += ' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">MULTI</span>'
 
         if icon and icon in ICONS:
             svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">{ICONS[icon]}</svg>'

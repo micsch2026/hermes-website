@@ -3,6 +3,11 @@
 shadow_portfolio.json (strategy_id, desc.tag, is_live/role) statt der
 hardcoded Juli-Karten (fix 2026-09-17: bot9/bot10 fehlten, Labels stale).
 
+Multibot-Kennzeichnung (2026-09-28): Bots mit Rotations-Slots
+(bot_rotation_slots nicht leer) bekommen ein MULTI-Chip + Slot-Zeile
+(z.B. "s372 #372 + s534 #534 + srot → #663"). Quelle bleibt
+shadow_portfolio.json — kein Hardcode, keine Extra-Config.
+
 Läuft manuell oder vor dem Site-Build:  python3 generate_home_sidebar.py
 Quelle der Wahrheit: /root/.hermes/site/api/strategy-lab/shadow_portfolio.json
 (Refresh: /root/fx-bot/src/shadow_portfolio_builder.py, 15-Min-Takt).
@@ -15,6 +20,8 @@ PORT = "/root/.hermes/site/api/strategy-lab/shadow_portfolio.json"
 
 sp = json.load(open(PORT))
 bots = sp.get("bots", {})
+rot_map = sp.get("bot_rotation_slots") or {}
+strategies = sp.get("strategies") or []
 
 def num(k):
     try:
@@ -25,20 +32,50 @@ def num(k):
 def label(k):
     return f"Bot #{num(k)}"
 
+# Fixe Slots je Bot aus strategies[].deployed_bots (slot_id + Strategie-ID)
+fixed_slots = {}
+for s in strategies:
+    for db in (s.get("deployed_bots") or []):
+        if isinstance(db, dict) and db.get("bot"):
+            fixed_slots.setdefault(db["bot"], []).append((db.get("slot"), s.get("id")))
+
 order = sorted(bots.keys(), key=num)
 live = [k for k in order if bots[k].get("is_live")]
 demo = [k for k in order if not bots[k].get("is_live")]
+
+def slot_line(k):
+    """Slot-Zusammenfassung für Multibots: 's372 #372 + s534 #534 + srot → #663'."""
+    parts = []
+    for slot, sid in fixed_slots.get(k, []):
+        if slot:
+            parts.append(f"{slot} #{sid}" if sid is not None else slot)
+    for rs in (rot_map.get(k) or []):
+        txt = rs.get("slot_id") or "rot"
+        ch = rs.get("challenge") or {}
+        if ch.get("candidate") is not None:
+            txt += f" → #{ch['candidate']}"
+        elif rs.get("holder") is not None:
+            txt += f" → #{rs['holder']}"
+        parts.append(txt)
+    return " + ".join(parts)
 
 def card(k, b):
     sid = b.get("strategy_id") or "?"
     tag = (b.get("desc") or {}).get("tag") or (b.get("strategy_name") or "")[:34]
     role = "LIVE" if b.get("is_live") else "Demo"
-    icon = "shield" if b.get("is_live") else "trending-up"
+    is_multi = bool(rot_map.get(k))
+    icon = "shield" if b.get("is_live") else ("layers" if is_multi else "trending-up")
     dot = ' <span style="color:#ff6b6b;font-weight:700">●</span>' if b.get("is_live") else ""
+    chip = (' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span>'
+            if is_multi else "")
+    if is_multi:
+        desc = f"{slot_line(k)} · {role}"
+    else:
+        desc = f"#{sid} · {tag} · {role}"
     return (f'          <a href="/{k}" class="quick-link">\n'
             f'            <i data-lucide="{icon}" class="quick-link-icon" style="width:28px;height:28px"></i>\n'
-            f'            <span class="quick-link-label">{label(k)}{dot}</span>\n'
-            f'            <span class="quick-link-desc">#{sid} · {tag} · {role}</span>\n'
+            f'            <span class="quick-link-label">{label(k)}{chip}{dot}</span>\n'
+            f'            <span class="quick-link-desc">{desc}</span>\n'
             f'          </a>')
 
 cards = []
@@ -64,4 +101,6 @@ if n != 1:
 if n != 1:
     raise SystemExit("❌ Sidebar-Block nicht gefunden!")
 open(INDEX, "w").write(new_html)
+multi = [k for k in order if rot_map.get(k)]
 print(f"✓ Sidebar generiert: {len(live)} LIVE + {len(demo)} DEMO Bots ({', '.join(order)})")
+print(f"  MULTI markiert: {', '.join(multi) if multi else '—'}")

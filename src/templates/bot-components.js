@@ -556,34 +556,120 @@ function escHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/** Slot-Kacheln + Slot-Historie (Multi-Slot/Rotation; Datenlayer A1, Rendering A2b) */
+/* ═══════════════════════════════════════════════════════════
+ *  MULTIBOT-SLOTS — Strategie-Metadaten aus shadow_portfolio.json
+ *  (Namen, Beschreibung, TF/Tier, OOS-Referenz; 15-Min-Refresh, gecacht)
+ * ═══════════════════════════════════════════════════════════ */
+
+var _spCache = null;
+var _spLoading = false;
+var _lastSlotsD = null;
+
+function _loadShadowPortfolio(cb) {
+  if (_spCache) { cb(_spCache); return; }
+  try {
+    if (typeof fetch !== 'function' || !window || !window.location || !window.location.origin) { cb(null); return; }
+  } catch (e) { cb(null); return; }
+  if (_spLoading) { cb(null); return; }  // läuft bereits — nächster Refresh nutzt den Cache
+  _spLoading = true;
+  try {
+    safeFetch('/api/strategy-lab/shadow_portfolio.json').then(function(r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function(d) {
+      _spCache = d; _spLoading = false;
+      cb(d);
+    }).catch(function() { _spLoading = false; cb(null); });
+  } catch (e) { _spLoading = false; cb(null); }
+}
+
+function _spShortName(nm) {
+  return String(nm || '').replace(/^RCP-CLUSTER:\s*/, '').replace(/\s*\(\d{8}_\d{6}\)\s*$/, '');
+}
+
+/** Slot-Kacheln + Slot-Historie (Multibot; Datenlayer A1, Rendering A2b; Detail-Ausbau 2026-09-28) */
 function renderSlots(d) {
   var wrap = el(C.prefix + '-slots-section');
   if (!wrap) return;
   var slots = d.slots || [];
   if (!slots.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
+  _lastSlotsD = d;
+  _loadShadowPortfolio(function(sp) { _renderSlotsInner(_lastSlotsD || d, sp); });
+}
 
-  // Strategie-Namen aus Trades (best effort; Fallback "#<id>")
+function _renderSlotsInner(d, sp) {
+  var slots = d.slots || [];
+  var spById = {};
+  if (sp && sp.strategies) {
+    for (var i = 0; i < sp.strategies.length; i++) spById[sp.strategies[i].id] = sp.strategies[i];
+  }
+  // Fallback-Namen aus Trades (falls shadow_portfolio.json nicht erreichbar)
   var nameById = {};
   var trs = (d.last_trades || d.trade_history || d.trades || []);
-  for (var i = 0; i < trs.length; i++) {
-    var t = trs[i];
+  for (var i2 = 0; i2 < trs.length; i2++) {
+    var t = trs[i2];
     if (t && t.strategy_id != null && t.strategy && !nameById[t.strategy_id]) {
       nameById[t.strategy_id] = t.strategy;
     }
   }
   function sidLabel(sid) {
     if (sid == null || sid === '') return '—';
+    var m = spById[sid] || spById[String(sid)];
+    if (m && m.name) return '#' + sid + ' · ' + _spShortName(m.name);
     var nm = nameById[sid] || nameById[String(sid)];
     return '#' + sid + (nm ? ' · ' + nm : '');
+  }
+  function chipsAndMeta(sid, slot) {
+    var m = spById[sid] || spById[String(sid)] || {};
+    var assets = (m.assets && m.assets.length) ? m.assets : ((slot && slot.assets) || []);
+    var chips = '';
+    for (var a = 0; a < assets.length; a++) {
+      chips += '<span style="display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;background:var(--c-surface-2);border:1px solid var(--c-border);margin:0 4px 4px 0">' + escHtml(assets[a]) + '</span>';
+    }
+    var bits = [];
+    if (m.timeframe) bits.push(String(m.timeframe).toUpperCase());
+    if (m.tier) bits.push('Tier ' + escHtml(m.tier));
+    if (slot && slot.risk_pct != null) bits.push('Budget ' + slot.risk_pct + ' %');
+    return '<div style="margin:4px 0">' + chips + (bits.length ? '<span style="font-size:10px;color:var(--c-text-dim)">' + bits.join(' · ') + '</span>' : '') + '</div>';
+  }
+  function descBlock(sid, compact) {
+    var m = spById[sid] || spById[String(sid)];
+    var dd = (m && m.desc) || {};
+    var h = '';
+    if (dd.tag) h += '<div style="display:inline-block;font-size:10px;font-weight:700;background:rgba(120,180,255,0.12);color:#7ab4ff;border:1px solid rgba(120,180,255,0.25);border-radius:3px;padding:1px 6px;margin-bottom:4px">' + escHtml(dd.tag) + '</div>';
+    if (dd.was) {
+      var wasTxt = String(dd.was);
+      if (compact && wasTxt.length > 180) wasTxt = wasTxt.slice(0, 180) + '…';
+      h += '<div style="font-size:var(--text-xs);color:var(--c-text-2);margin-bottom:4px">' + escHtml(wasTxt) + '</div>';
+    }
+    if (dd.gut && !compact) h += '<div style="font-size:var(--text-xs);color:#10b981"><b>Stärken:</b> ' + escHtml(dd.gut) + '</div>';
+    if (dd.nicht && !compact) h += '<div style="font-size:var(--text-xs);color:#f59e0b"><b>Schwächen:</b> ' + escHtml(dd.nicht) + '</div>';
+    return h;
+  }
+  function statsRows(st) {
+    st = st || {};
+    var h = '';
+    h += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px"><span>Trades</span><b>' + (st.trades || 0) + '</b></div>';
+    h += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px"><span>Win-Rate</span><b>' + (st.closed ? (st.win_rate || 0) + '%' : '—') + '</b></div>';
+    h += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs)"><span>Netto</span><b class="' + pnlClass(st.net_eur || 0) + '">' + fmtPnl(st.net_eur || 0) + ' €</b></div>';
+    return h;
+  }
+  function oosLine(sid) {
+    var m = spById[sid] || spById[String(sid)];
+    if (!m) return '';
+    var bits = [];
+    if (m.oos_pf != null) bits.push('PF ' + Number(m.oos_pf).toFixed(2));
+    if (m.oos_pnl != null) bits.push((m.oos_pnl >= 0 ? '+' : '') + Math.round(m.oos_pnl) + ' €');
+    if (!bits.length) return '';
+    return '<div style="font-size:10px;color:var(--c-text-dim);margin-top:4px">OOS-Referenz (Lab-WFO): ' + bits.join(' · ') + '</div>';
   }
 
   var sub = el(C.prefix + '-slots-sub');
   var nRot = 0;
   for (var j = 0; j < slots.length; j++) if (slots[j].kind === 'rotation') nRot++;
   if (sub) sub.textContent = slots.length + ' Slot' + (slots.length === 1 ? '' : 's') +
-    (nRot ? ' · ' + nRot + ' Rotationsslot' : '');
+    (nRot ? ' · ' + nRot + ' Rotationsslot' : '') + ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)';
 
   var html = '';
   for (var k = 0; k < slots.length; k++) {
@@ -597,22 +683,31 @@ function renderSlots(d) {
     html += '<b style="font-size:var(--text-md)">' + escHtml(s.slot_id) + '</b>' + kindBadge + '</div>';
 
     if (!isRot) {
-      html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:var(--s-2)">' +
-        escHtml(sidLabel(s.strategy_id)) + '</div>';
-      var st = s.stats || {};
-      html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px"><span>Trades</span><b>' + (st.trades || 0) + '</b></div>';
-      html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px"><span>Win-Rate</span><b>' + (st.closed ? (st.win_rate || 0) + '%' : '—') + '</b></div>';
-      html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs)"><span>Netto</span><b class="' + pnlClass(st.net_eur || 0) + '">' + fmtPnl(st.net_eur || 0) + ' €</b></div>';
+      var m0 = spById[s.strategy_id] || spById[String(s.strategy_id)];
+      var nm0 = (m0 && m0.name) ? _spShortName(m0.name) : (nameById[s.strategy_id] || nameById[String(s.strategy_id)] || '');
+      html += '<div style="font-size:var(--text-sm);margin-bottom:4px"><b>#' + escHtml(s.strategy_id) + '</b> ' +
+        (nm0 ? '<span title="' + escHtml((m0 && m0.name) || nm0) + '">' + escHtml(nm0) + '</span>' : '') + '</div>';
+      html += descBlock(s.strategy_id, false);
+      html += chipsAndMeta(s.strategy_id, s);
+      html += statsRows(s.stats);
+      html += oosLine(s.strategy_id);
     } else {
-      var holder = s.holder != null ? sidLabel(s.holder) : null;
       var ch = s.challenge;
-      if (holder) {
-        html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">Bestückt: ' + escHtml(holder) + '</div>';
+      if (s.holder != null) {
+        html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:4px">Bestückt: ' + escHtml(sidLabel(s.holder)) + '</div>';
+        html += descBlock(s.holder, true);
+        html += statsRows(s.stats);
+        html += oosLine(s.holder);
       } else if (ch && ch.candidate != null) {
-        html += '<div style="font-size:var(--text-xs);margin-bottom:4px">🔄 Challenge <b>#' + escHtml(ch.candidate) + '</b> · Tag ' + (ch.day || 1) + '/' + (ch.days_total || 14) + '</div>';
+        var cand = ch.candidate;
+        var cm = spById[cand] || spById[String(cand)];
+        html += '<div style="font-size:var(--text-xs);margin-bottom:4px">🔄 Challenge <b>#' + escHtml(cand) + '</b> · Tag ' + (ch.day || 1) + '/' + (ch.days_total || 14) + '</div>';
+        if (cm && cm.name) html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:4px">' + escHtml(_spShortName(cm.name)) + '</div>';
+        html += descBlock(cand, true);
         var pct = Math.max(2, Math.min(100, Math.round(((ch.day || 1) / (ch.days_total || 14)) * 100)));
-        html += '<div style="height:6px;border-radius:3px;background:var(--c-border);overflow:hidden;margin-bottom:6px"><div style="height:100%;width:' + pct + '%;background:#3b82f6"></div></div>';
+        html += '<div style="height:6px;border-radius:3px;background:var(--c-border);overflow:hidden;margin:4px 0 6px"><div style="height:100%;width:' + pct + '%;background:#3b82f6"></div></div>';
         html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs)"><span>Trades ' + (ch.trades || 0) + '</span><b class="' + pnlClass(ch.net_eur || 0) + '">' + fmtPnl(ch.net_eur || 0) + ' €</b></div>';
+        html += oosLine(cand);
       } else {
         html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">frei — wartet auf Challenge</div>';
       }

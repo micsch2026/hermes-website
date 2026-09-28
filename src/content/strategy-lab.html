@@ -732,6 +732,30 @@ function renderShadowDashboard() {
     const liveKeys = botKeys.filter(k => botsData[k].is_live);
     const demoKeys = botKeys.filter(k => !botsData[k].is_live);
     const ordered = liveKeys.map(k=>['live',k]).concat(demoKeys.map(k=>['demo',k]));
+
+  // Multibot-Kennzeichnung (2026-09-28): fixe Slots aus strategies[].deployed_bots
+  // + Rotationsslots aus bot_rotation_slots (Challenge/Status). Kein Hardcode.
+  const rotMap = sd.bot_rotation_slots || {};
+  const slotAgg = {};
+  for (const s of strats) {
+    for (const db of (s.deployed_bots || [])) {
+      if (db && db.bot) (slotAgg[db.bot] = slotAgg[db.bot] || []).push({slot: db.slot || null, id: s.id});
+    }
+  }
+  function _multiSlotsLine(bk) {
+    const parts = [];
+    for (const e of (slotAgg[bk] || [])) parts.push((e.slot ? e.slot + ' ' : '') + '#' + e.id);
+    for (const rs of (rotMap[bk] || [])) {
+      let t = rs.slot_id || 'rot';
+      const ch = rs.challenge || {};
+      if (ch.candidate != null) t += ' → #' + ch.candidate + ' (Tag ' + (ch.day || 1) + '/' + (ch.days_total || 14) + ')';
+      else if (rs.holder != null) t += ' → #' + rs.holder;
+      else t += ' (frei)';
+      parts.push(t);
+    }
+    return parts.join(' · ');
+  }
+
   html += '<div class="rd-section-title">🤖 Fleet-Radar (Echtgeld-Messkonten &amp; Demo-Ansatz-Matrix)</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
   let _lastGroup = null;
@@ -741,6 +765,8 @@ function renderShadowDashboard() {
       _lastGroup = grp;
     }
     const b = botsData[bk];
+      const _rotSlots = rotMap[bk] || [];
+      const _isMulti = _rotSlots.length > 0;
       const pnl = b.pnl || 0;
       const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
       const pnlSign = pnl >= 0 ? '+' : '';
@@ -752,13 +778,19 @@ function renderShadowDashboard() {
 
       html += '<div class="rd-card" style="padding:0.6rem 0.8rem;border-top:3px solid '+(pnl>=0?'var(--green)':'var(--red)')+';cursor:pointer" data-href="/'+bk+'" onclick="location.href=this.dataset.href" title="Zur Bot-Seite">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem">';
-      html += '<strong>'+bk.toUpperCase()+(b.is_live ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.15);color:var(--red,#ff6b6b);border:1px solid rgba(255,90,90,0.35);border-radius:3px;padding:0.02rem 0.3rem">LIVE</span>' : '')+'</strong>';
+      html += '<strong>'+bk.toUpperCase()+(b.is_live ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.15);color:var(--red,#ff6b6b);border:1px solid rgba(255,90,90,0.35);border-radius:3px;padding:0.02rem 0.3rem">LIVE</span>' : '')+(_isMulti ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">🧩 MULTI</span>' : '')+'</strong>';
       html += '<span style="font-size:0.75rem">'+bhIcon+' Health</span>';
       html += '</div>';
 
       html += '<div style="font-size:0.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.35rem" title="'+esc(b.strategy_name)+'">';
       html += '#' + (b.strategy_id || '?') + ' ' + esc(b.strategy_name || '');
       html += '</div>';
+
+      // Multibot: Slot-Zeile (fixe Slots + Rotationsslot mit Challenge-Status)
+      if (_isMulti) {
+        const _sl = _multiSlotsLine(bk);
+        html += '<div style="font-size:0.7rem;color:var(--dim);margin-bottom:0.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(_sl)+'">🧩 '+esc(_sl)+'</div>';
+      }
 
       // Plakative Strategie-Beschreibung: tag als Badge + was als Einzeiler
       const bd = b.desc||{};
