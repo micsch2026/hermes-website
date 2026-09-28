@@ -341,8 +341,11 @@ const shadowCols = [
   {key:'id', label:'ID', render: r => {
     let badge = '';
     const bh = r.bot_health;
-    const bt = r.deployed_to_bot;
-    const btBadge = bt ? ` <span style="font-size:0.65rem;color:var(--blue);font-weight:600">${esc(bt)}</span>` : '';
+    const _bots = Array.isArray(r.deployed_bots) && r.deployed_bots.length
+      ? r.deployed_bots
+      : (r.deployed_to_bot ? [{bot: r.deployed_to_bot, slot: r.deployed_slot}] : []);
+    const btTxt = _bots.map(b => b.slot ? `${b.bot}·${b.slot}` : b.bot).join(' + ');
+    const btBadge = btTxt ? ` <span style="font-size:0.65rem;color:var(--blue);font-weight:600">${esc(btTxt)}</span>` : '';
     if (bh === 'strong') badge = ' <span class="gate gate-pass" title="Bot stark im Shadow-Forward">🟢</span>';
     else if (bh === 'weak') badge = ' <span class="gate gate-fail" title="Bot schwach — Alternative prüfen">🔴</span>';
     else if (bh === 'ok') badge = ' <span class="gate gate-na" title="Bot neutral im Shadow-Forward">🟡</span>';
