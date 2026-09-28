@@ -530,8 +530,10 @@ function renderHistory(d) {
       : (t.hold_time_hours ? Number(t.hold_time_hours).toFixed(1) + 'h' : '—'));
     var sym = t.symbol || t.pair || '—';
     var stratId = t.strategy_id || '—';
+    var _slot = (t.slot_id != null && t.slot_id !== '') ? t.slot_id : '';
+    var slotBadge = _slot ? ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Multi-Slot">' + escHtml(_slot) + '</span>' : '';
     html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
-    html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + stratId + '</td>';
+    html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + stratId + slotBadge + '</td>';
     html += '<td>' + fmtTime(t.timestamp || t.close_time || t.closed_at) + '</td>';
     html += '<td><b>' + sym + '</b></td>';
     html += '<td>' + dirBadge + '</td>';
@@ -545,6 +547,105 @@ function renderHistory(d) {
     html += '</tr>';
   }
   tbody.innerHTML = html;
+}
+
+/** HTML-Escape (Slots-Sektion, A2b) */
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/** Slot-Kacheln + Slot-Historie (Multi-Slot/Rotation; Datenlayer A1, Rendering A2b) */
+function renderSlots(d) {
+  var wrap = el(C.prefix + '-slots-section');
+  if (!wrap) return;
+  var slots = d.slots || [];
+  if (!slots.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  // Strategie-Namen aus Trades (best effort; Fallback "#<id>")
+  var nameById = {};
+  var trs = (d.last_trades || d.trade_history || d.trades || []);
+  for (var i = 0; i < trs.length; i++) {
+    var t = trs[i];
+    if (t && t.strategy_id != null && t.strategy && !nameById[t.strategy_id]) {
+      nameById[t.strategy_id] = t.strategy;
+    }
+  }
+  function sidLabel(sid) {
+    if (sid == null || sid === '') return '—';
+    var nm = nameById[sid] || nameById[String(sid)];
+    return '#' + sid + (nm ? ' · ' + nm : '');
+  }
+
+  var sub = el(C.prefix + '-slots-sub');
+  var nRot = 0;
+  for (var j = 0; j < slots.length; j++) if (slots[j].kind === 'rotation') nRot++;
+  if (sub) sub.textContent = slots.length + ' Slot' + (slots.length === 1 ? '' : 's') +
+    (nRot ? ' · ' + nRot + ' Rotationsslot' : '');
+
+  var html = '';
+  for (var k = 0; k < slots.length; k++) {
+    var s = slots[k];
+    var isRot = s.kind === 'rotation';
+    var kindBadge = isRot
+      ? '<span class="bot-badge bot-badge-warn">ROTATION</span>'
+      : '<span class="bot-badge bot-badge-buy">STRATEGIE</span>';
+    html += '<div class="bot-card" style="padding:var(--s-3);border:1px solid var(--c-border)">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s-2);margin-bottom:var(--s-2)">';
+    html += '<b style="font-size:var(--text-md)">' + escHtml(s.slot_id) + '</b>' + kindBadge + '</div>';
+
+    if (!isRot) {
+      html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:var(--s-2)">' +
+        escHtml(sidLabel(s.strategy_id)) + '</div>';
+      var st = s.stats || {};
+      html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px"><span>Trades</span><b>' + (st.trades || 0) + '</b></div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px"><span>Win-Rate</span><b>' + (st.closed ? (st.win_rate || 0) + '%' : '—') + '</b></div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs)"><span>Netto</span><b class="' + pnlClass(st.net_eur || 0) + '">' + fmtPnl(st.net_eur || 0) + ' €</b></div>';
+    } else {
+      var holder = s.holder != null ? sidLabel(s.holder) : null;
+      var ch = s.challenge;
+      if (holder) {
+        html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">Bestückt: ' + escHtml(holder) + '</div>';
+      } else if (ch && ch.candidate != null) {
+        html += '<div style="font-size:var(--text-xs);margin-bottom:4px">🔄 Challenge <b>#' + escHtml(ch.candidate) + '</b> · Tag ' + (ch.day || 1) + '/' + (ch.days_total || 14) + '</div>';
+        var pct = Math.max(2, Math.min(100, Math.round(((ch.day || 1) / (ch.days_total || 14)) * 100)));
+        html += '<div style="height:6px;border-radius:3px;background:var(--c-border);overflow:hidden;margin-bottom:6px"><div style="height:100%;width:' + pct + '%;background:#3b82f6"></div></div>';
+        html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs)"><span>Trades ' + (ch.trades || 0) + '</span><b class="' + pnlClass(ch.net_eur || 0) + '">' + fmtPnl(ch.net_eur || 0) + ' €</b></div>';
+      } else {
+        html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">frei — wartet auf Challenge</div>';
+      }
+    }
+    if (s.since) html += '<div style="font-size:10px;color:var(--c-text-dim);margin-top:6px">seit ' + fmtTime(s.since) + '</div>';
+    html += '</div>';
+  }
+  var grid = el(C.prefix + '-slots-grid');
+  if (grid) grid.innerHTML = html;
+
+  // Slot-Historie-Tabelle
+  var hb = el(C.prefix + '-slot-history-body');
+  var hist = d.slot_history || [];
+  if (hb) {
+    if (!hist.length) {
+      hb.innerHTML = '<tr><td colspan="5" class="bot-no-data">—</td></tr>';
+    } else {
+      var reasonMap = { deploy: 'Deploy', rotation: 'Rotation', backfill: 'Backfill', legacy: 'Altbestand' };
+      var hh = '';
+      for (var m = 0; m < hist.length; m++) {
+        var e = hist[m];
+        var sidTxt = e.strategy_id != null ? sidLabel(e.strategy_id) : '—';
+        hh += '<tr>';
+        hh += '<td><b>' + escHtml(e.slot_id || '—') + '</b></td>';
+        hh += '<td>' + escHtml(sidTxt) + '</td>';
+        hh += '<td>' + fmtTime(e.from) + '</td>';
+        hh += '<td>' + (e.to ? fmtTime(e.to) : '<span style="color:#22c55e">läuft</span>') + '</td>';
+        hh += '<td>' + escHtml(reasonMap[e.reason] || e.reason || '—') + '</td>';
+        hh += '</tr>';
+      }
+      hb.innerHTML = hh;
+    }
+  }
 }
 
 /** Signal overview grid */
@@ -1575,6 +1676,7 @@ function loadDashboard() {
     renderPositions(d);
     renderDataAge(d);
     renderHistory(d);
+    renderSlots(d);
     if (C.hasEquity) renderEquity(d);
     if (C.hasSignals) renderSignals(d);
     if (C.hasBacktest) renderBacktest(d);
@@ -1632,6 +1734,7 @@ window.BotDash = {
   renderPerformance: renderPerformance,
   renderPositions: renderPositions,
   renderHistory: renderHistory,
+  renderSlots: renderSlots,
   renderSignals: renderSignals,
   renderEquity: renderEquity,
   renderBacktest: renderBacktest,
