@@ -38,6 +38,8 @@ for s in strategies:
     for db in (s.get("deployed_bots") or []):
         if isinstance(db, dict) and db.get("bot"):
             fixed_slots.setdefault(db["bot"], []).append((db.get("slot"), s.get("id")))
+for _k in fixed_slots:
+    fixed_slots[_k].sort(key=lambda x: (x[0] or ""))
 
 order = sorted(bots.keys(), key=num)
 live = [k for k in order if bots[k].get("is_live")]
