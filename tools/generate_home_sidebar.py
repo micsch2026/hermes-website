@@ -15,7 +15,7 @@ Quelle der Wahrheit: /root/.hermes/site/api/strategy-lab/shadow_portfolio.json
 import json
 import re
 
-INDEX = "/root/.hermes/site/src/content/index.html"
+INDEX = "/root/.hermes/site/src/content/dashboard.html"  # E4-Swap 29.09.: Fleet-Block wohnt hier (/dashboard); das Kommandocenter (index.html) rendert seine Fleet selbst aus api/overview/overview.json
 PORT = "/root/.hermes/site/api/strategy-lab/shadow_portfolio.json"
 
 sp = json.load(open(PORT))
