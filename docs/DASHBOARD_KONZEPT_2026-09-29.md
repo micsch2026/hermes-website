@@ -11,8 +11,11 @@ und E2 (Seite `/overview` „System-Kommandocenter") **fertig** — Commits
 `/overview` (Basic Auth). **E3 (Charts) ebenfalls fertig** (`503b3b693`): Equity
 (Gesamt + je Bot, LWCharts 4.2.1), Tages-P&L, Monats-P&L (SVG), Korrelations-
 Heatmap, TCA-Bars (Schwelle), Exposure, Fleet-Sparklines — Suiten 25/25 +
-Node-Render-Harness 16/16, Browser-E2E mit echten Daten. Offen: **E4** =
-nav.json-Eintrag + Swap ( `/` → neue Seite, altes Dashboard ersetzt).
+Node-Render-Harness 16/16, Browser-E2E mit echten Daten. **E4 (Swap) fertig**
+(`047c22fd8`, Caddy `b128b51`): Startseite `/` ist das Kommandocenter (Nav-Label
+„Kommandocenter"), altes Dashboard → `/dashboard`, `/overview` → 301 `/`;
+Tests/Harness auf `index.html` umgestellt. **Damit ist der Dashboard-Neubau
+abgeschlossen** — altes Dashboard bleibt unter `/dashboard` erreichbar.
 
 **Ziel:** Neue Startseite „System-Kommandocenter" ersetzt das aktuelle Dashboard.
 Detaillierte Auswertung, Auffälligkeiten, Gesamtbeurteilung — **viele Charts,
