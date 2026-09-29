@@ -1,0 +1,565 @@
+<!--TITLE:System-Kommandocenter — Hermes-->
+<!--HEAD-->
+<style>
+  /* ── System-Kommandocenter (/overview) — nur Design-System-Variablen ── */
+  #overview-page { max-width: 1400px; margin: 0 auto; }
+
+  #overview-page .ov-hero {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-xl); padding: var(--s-6); margin-bottom: var(--s-6);
+  }
+  #overview-page .ov-hero-top { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; }
+  #overview-page .ov-amp {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    display: inline-block; border: 2px solid var(--c-border); background: var(--c-text-dim);
+  }
+  #overview-page .ov-amp.status-green { background: var(--c-ok); box-shadow: 0 0 8px var(--c-ok); border-color: var(--c-ok); }
+  #overview-page .ov-amp.status-yellow { background: var(--c-warn); box-shadow: 0 0 8px var(--c-warn); border-color: var(--c-warn); }
+  #overview-page .ov-amp.status-red { background: var(--c-err); box-shadow: 0 0 8px var(--c-err); border-color: var(--c-err); }
+  #overview-page #hero-headline { margin: 0; font-size: var(--text-2xl); font-weight: 700; }
+  #overview-page #hero-why { margin: var(--s-3) 0 0; padding-left: 1.2em; color: var(--c-text-dim); font-size: var(--text-sm); }
+  #overview-page #hero-why li { margin: 2px 0; }
+  #overview-page #data-age { margin-top: var(--s-3); font-size: var(--text-xs); color: var(--c-text-muted); }
+  #overview-page #data-age.ov-fetch-error { color: var(--c-err); font-weight: 600; }
+
+  #overview-page .ov-section-title {
+    font-size: var(--text-sm); font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--c-text-dim); margin: 0 0 var(--s-3);
+  }
+  #overview-page .ov-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4);
+  }
+  #overview-page .ov-comp-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--s-4); margin-bottom: var(--s-6);
+  }
+  #overview-page .ov-comp-head { display: flex; align-items: center; gap: 8px; margin-bottom: var(--s-2); }
+  #overview-page .ov-comp-head .ov-amp { width: 12px; height: 12px; }
+  #overview-page .ov-comp-head h3 { margin: 0; font-size: var(--text-sm); font-weight: 600; }
+  #overview-page .ov-why { margin: 0 0 var(--s-2); padding-left: 1.1em; font-size: var(--text-xs); color: var(--c-text-dim); }
+  #overview-page .ov-why li { margin: 1px 0; }
+  #overview-page .ov-why.ov-empty { list-style: none; padding-left: 0; }
+  #overview-page .ov-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  #overview-page .ov-chip {
+    font-size: 10px; padding: 1px 7px; border-radius: var(--r-sm);
+    background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-dim);
+  }
+  #overview-page .ov-chip b { color: var(--c-text); font-weight: 600; }
+
+  #overview-page .ov-badge {
+    display: inline-block; padding: 1px 8px; border-radius: var(--r-sm);
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  #overview-page .ov-badge.sev-red { background: var(--c-err-bg); color: var(--c-err); }
+  #overview-page .ov-badge.sev-yellow { background: var(--c-warn-bg); color: var(--c-warn); }
+  #overview-page .ov-badge.sev-info { background: var(--c-surface-2); color: var(--c-text-dim); }
+  #overview-page .ov-badge.lv0 { background: var(--c-surface-2); color: var(--c-text-dim); }
+  #overview-page .ov-badge.lv1 { background: var(--c-warn-bg); color: var(--c-warn); }
+  #overview-page .ov-badge.lv2 { background: var(--c-warn-bg); color: var(--c-err); }
+  #overview-page .ov-badge.lv3 { background: var(--c-err-bg); color: var(--c-err); }
+  #overview-page .ov-badge.mode-live { background: var(--c-ok-bg); color: var(--c-ok); }
+  #overview-page .ov-badge.mode-multi { background: var(--c-surface-2); color: var(--c-accent); }
+
+  #overview-page .ov-findings { display: flex; flex-direction: column; gap: var(--s-2); margin-bottom: var(--s-6); }
+  #overview-page .ov-finding {
+    display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap;
+    padding: var(--s-3) var(--s-4); border-radius: var(--r-lg);
+    background: var(--c-surface); border: 1px solid var(--c-border); font-size: var(--text-sm);
+  }
+  #overview-page .ov-finding.sev-red { border-left: 3px solid var(--c-err); }
+  #overview-page .ov-finding.sev-yellow { border-left: 3px solid var(--c-warn); }
+  #overview-page .ov-finding.sev-info { border-left: 3px solid var(--c-accent); }
+  #overview-page .ov-finding a { color: var(--c-accent); }
+  #overview-page .ov-finding .ov-detail { color: var(--c-text-dim); font-size: var(--text-xs); }
+  #overview-page .ov-findings-empty { color: var(--c-ok); font-size: var(--text-sm); }
+
+  #overview-page .ov-kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--s-3); margin-bottom: var(--s-5);
+  }
+  #overview-page .ov-kpi {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); text-align: center;
+  }
+  #overview-page .ov-kpi-value { font-size: var(--text-xl); font-weight: 700; }
+  #overview-page .ov-kpi-label { font-size: 10px; color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  #overview-page .pos { color: var(--c-ok); }
+  #overview-page .neg { color: var(--c-err); }
+
+  #overview-page .ov-table-wrap {
+    overflow-x: auto; border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    background: var(--c-surface); margin-bottom: var(--s-3);
+  }
+  #overview-page table.ov-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  #overview-page table.ov-table th {
+    padding: var(--s-2) var(--s-3); text-align: left; font-size: 10px; font-weight: 600;
+    color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--c-border); position: sticky; top: 0; background: var(--c-surface);
+  }
+  #overview-page table.ov-table td {
+    padding: var(--s-2) var(--s-3); font-size: var(--text-xs); border-bottom: 1px solid var(--c-border);
+  }
+  #overview-page table.ov-table td.ov-num { text-align: right; font-variant-numeric: tabular-nums; }
+  #overview-page table.ov-table th.ov-num { text-align: right; }
+
+  #overview-page .ov-subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); margin-bottom: var(--s-6); }
+  @media (max-width: 980px) { #overview-page .ov-subgrid { grid-template-columns: 1fr; } }
+  #overview-page .ov-card h3 { margin: 0 0 var(--s-3); font-size: var(--text-sm); font-weight: 600; }
+
+  #overview-page .ov-chart-ph {
+    border: 1px dashed var(--c-border); border-radius: var(--r-lg);
+    padding: var(--s-6); text-align: center; color: var(--c-text-dim);
+    font-size: var(--text-sm); background: var(--c-surface);
+    display: flex; align-items: center; justify-content: center; min-height: 90px;
+  }
+  #overview-page .ov-charts-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--s-4); margin-bottom: var(--s-6);
+  }
+
+  #overview-page .ov-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    vertical-align: middle; margin-right: 6px; background: var(--c-text-dim);
+  }
+  #overview-page .ov-dot.fresh { background: var(--c-ok); }
+  #overview-page .ov-dot.old { background: var(--c-warn); }
+  #overview-page .ov-dot.stale { background: var(--c-err); }
+  #overview-page .ov-dot.missing { background: var(--c-text-dim); }
+  #overview-page .ov-sources-foot { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: var(--s-2); }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div id="overview-page">
+
+  <!-- 1. Hero -->
+  <div class="ov-hero" id="hero">
+    <div class="ov-hero-top">
+      <span class="ov-amp" id="hero-amp" title="Gesamt-Status"></span>
+      <h1 id="hero-headline">System-Kommandocenter</h1>
+    </div>
+    <ul id="hero-why"><li>lade…</li></ul>
+    <div id="data-age">Datenstand wird geladen…</div>
+  </div>
+
+  <!-- 2. Komponenten-Ampeln -->
+  <p class="ov-section-title">Komponenten</p>
+  <div class="ov-comp-grid" id="verdict-components">
+    <div class="ov-card" id="comp-lab"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Strategy Lab</h3></div></div>
+    <div class="ov-card" id="comp-shadow"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Shadow Trader</h3></div></div>
+    <div class="ov-card" id="comp-demo_live"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Demo / Live</h3></div></div>
+    <div class="ov-card" id="comp-risk"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Risk</h3></div></div>
+    <div class="ov-card" id="comp-data"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Data Pipeline</h3></div></div>
+  </div>
+
+  <!-- 3. Findings -->
+  <p class="ov-section-title">Findings</p>
+  <div class="ov-findings" id="findings"></div>
+
+  <!-- 4. Live/Demo -->
+  <p class="ov-section-title">Live / Demo</p>
+  <div id="live-block">
+    <div class="ov-kpi-grid" id="live-kpis"></div>
+    <div class="ov-table-wrap">
+      <table class="ov-table" id="fleet-table">
+        <thead>
+          <tr>
+            <th>Bot</th><th>Modus</th><th class="ov-num">Equity</th><th class="ov-num">Balance</th>
+            <th class="ov-num">P&amp;L 7d</th><th class="ov-num">P&amp;L 30d</th>
+            <th class="ov-num">DD %</th><th>DD-Level</th><th>Blocked</th>
+            <th class="ov-num">Tag %</th><th class="ov-num">Pos.</th><th>Slots</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="12">lade…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. Shadow -->
+  <p class="ov-section-title">Shadow Trader</p>
+  <div id="shadow-block">
+    <div class="ov-kpi-grid" id="shadow-kpis"></div>
+    <div class="ov-subgrid">
+      <div class="ov-card">
+        <h3>Top-Strategien (30 d)</h3>
+        <div class="ov-table-wrap">
+          <table class="ov-table" id="shadow-ranking">
+            <thead><tr><th>SID</th><th>Name</th><th class="ov-num">N</th><th class="ov-num">Net</th><th class="ov-num">WR %</th><th class="ov-num">PF</th><th>Tier</th><th>Letzter Trade</th></tr></thead>
+            <tbody><tr><td colspan="8">lade…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--s-4)">
+        <div class="ov-card" id="shadow-decay"><h3>Decay-Monitor</h3></div>
+        <div class="ov-card" id="shadow-challenges"><h3>Aktive Challenges</h3></div>
+      </div>
+    </div>
+    <div class="ov-card" style="margin-bottom:var(--s-6)">
+      <h3>Rotation</h3>
+      <div class="ov-table-wrap">
+        <table class="ov-table" id="shadow-rotation">
+          <thead><tr><th>Bot</th><th>Slot</th><th>SID</th><th>Holder</th><th>State</th></tr></thead>
+          <tbody><tr><td colspan="5">lade…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Lab -->
+  <p class="ov-section-title">Strategy Lab</p>
+  <div id="lab-block" class="ov-subgrid">
+    <div class="ov-card" id="lab-worker"><h3>Worker</h3></div>
+    <div class="ov-card" id="lab-queue"><h3>Queue</h3></div>
+    <div class="ov-card" id="lab-7d"><h3>Strategien 7 d</h3></div>
+  </div>
+
+  <!-- 7. Charts-Platzhalter (E3) -->
+  <p class="ov-section-title">Kurven &amp; Analysen</p>
+  <div id="charts-block" class="ov-charts-grid">
+    <div class="ov-chart-ph" id="chart-equity" data-status="pending">Equity-Kurven — folgt in Etappe E3</div>
+    <div class="ov-chart-ph" id="chart-monthly" data-status="pending">Monats-P&amp;L — folgt in Etappe E3</div>
+    <div class="ov-chart-ph" id="chart-corr" data-status="pending">Korrelations-Matrix — folgt in Etappe E3</div>
+    <div class="ov-chart-ph" id="chart-tca" data-status="pending">TCA-Gruppen — folgt in Etappe E3</div>
+    <div class="ov-chart-ph" id="chart-exposure" data-status="pending">Exposure — folgt in Etappe E3</div>
+  </div>
+
+  <!-- 8. Quellen -->
+  <p class="ov-section-title">Datenquellen</p>
+  <div id="sources">
+    <div class="ov-table-wrap">
+      <table class="ov-table">
+        <thead><tr><th>ID</th><th>Status</th><th>Alter</th><th>Notiz</th></tr></thead>
+        <tbody id="sources-tbody"><tr><td colspan="4">lade…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="ov-sources-foot" id="sources-foot">Datenstand: —</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var API = window.location.origin + '/api/overview/overview.json';
+
+  // ── Helpers ────────────────────────────────────────────────
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function dash(v) { return (v === null || v === undefined || v === '') ? '—' : v; }
+
+  function fmtEur(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    var neg = v < 0, abs = Math.abs(v);
+    var parts = abs.toFixed(2).split('.');
+    var int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (neg ? '−' : '') + int + ',' + parts[1] + ' €';
+  }
+  function fmtEurCls(v) {
+    if (v === null || v === undefined || isNaN(v)) return '';
+    return v > 0 ? 'pos' : (v < 0 ? 'neg' : '');
+  }
+  function fmtPct(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    return v.toFixed(1) + ' %';
+  }
+  function fmtInt(v) { return (v === null || v === undefined || isNaN(v)) ? '—' : String(v); }
+
+  function fmtAge(s) {
+    if (s === null || s === undefined || isNaN(s)) return '—';
+    if (s < 60) return Math.round(s) + ' s';
+    if (s < 3600) return Math.round(s / 60) + ' min';
+    if (s < 86400) return (s / 3600).toFixed(s / 3600 < 10 ? 1 : 0) + ' h';
+    return Math.round(s / 86400) + ' d';
+  }
+  function fmtTsHuman(iso) {
+    if (!iso) return '—';
+    var t = Date.parse(iso);
+    if (isNaN(t)) return esc(String(iso));
+    var d = (Date.now() - t) / 1000;
+    if (d < 0) d = 0;
+    return 'vor ' + fmtAge(d);
+  }
+
+  function amp(status) {
+    var s = ['green', 'yellow', 'red'].indexOf(status) >= 0 ? status : '';
+    return '<span class="ov-amp ' + (s ? 'status-' + s : '') + '"></span>';
+  }
+
+  function whyList(why) {
+    if (!why || !why.length) return '<ul class="ov-why ov-empty"><li style="color:var(--c-ok)">keine Auffälligkeiten</li></ul>';
+    return '<ul class="ov-why">' + why.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
+  }
+
+  function metricsChips(metrics) {
+    var keys = Object.keys(metrics || {});
+    if (!keys.length) return '<div class="ov-chips"><span class="ov-chip">keine Metriken</span></div>';
+    return '<div class="ov-chips">' + keys.map(function (k) {
+      var v = metrics[k];
+      var val = (typeof v === 'number' && k.indexOf('_s') === k.length - 2) ? fmtAge(v) : dash(v);
+      return '<span class="ov-chip">' + esc(k) + ': <b>' + esc(val) + '</b></span>';
+    }).join('') + '</div>';
+  }
+
+  // ── 1. Hero ────────────────────────────────────────────────
+  function renderHero(d) {
+    var overall = (d.verdict && d.verdict.overall) || {};
+    var status = overall.status || '';
+    var ampEl = document.getElementById('hero-amp');
+    ampEl.className = 'ov-amp ' + (['green','yellow','red'].indexOf(status) >= 0 ? 'status-' + status : '');
+    document.getElementById('hero-headline').textContent = overall.headline || 'System-Kommandocenter';
+    document.getElementById('hero-why').innerHTML = whyList(overall.why);
+  }
+
+  function setDataAge(text, isError) {
+    var el = document.getElementById('data-age');
+    el.textContent = text;
+    el.className = isError ? 'ov-fetch-error' : '';
+  }
+
+  // ── 2. Komponenten ─────────────────────────────────────────
+  var COMP_LABELS = { lab: 'Strategy Lab', shadow: 'Shadow Trader', demo_live: 'Demo / Live', risk: 'Risk', data: 'Data Pipeline' };
+  function renderComponents(d) {
+    var comps = (d.verdict && d.verdict.components) || {};
+    ['lab', 'shadow', 'demo_live', 'risk', 'data'].forEach(function (key) {
+      var el = document.getElementById('comp-' + key);
+      if (!el) return;
+      var c = comps[key] || {};
+      var head = el.querySelector('.ov-comp-head');
+      var ampEl = head ? head.querySelector('.ov-amp') : null;
+      var status = c.status || '';
+      if (ampEl) ampEl.className = 'ov-amp ' + (['green','yellow','red'].indexOf(status) >= 0 ? 'status-' + status : '');
+      var label = el.querySelector('h3');
+      if (label) label.textContent = COMP_LABELS[key] || key;
+      // everything below the head is rendered data
+      Array.prototype.slice.call(el.querySelectorAll('.ov-why, .ov-chips')).forEach(function (n) { n.remove(); });
+      el.insertAdjacentHTML('beforeend', whyList(c.why) + metricsChips(c.metrics));
+    });
+  }
+
+  // ── 3. Findings ────────────────────────────────────────────
+  function renderFindings(d) {
+    var el = document.getElementById('findings');
+    var items = d.findings || [];
+    if (!items.length) {
+      el.innerHTML = '<div class="ov-findings-empty">Keine Auffälligkeiten 🟢</div>';
+      return;
+    }
+    el.innerHTML = items.map(function (f) {
+      var sev = ['red', 'yellow', 'info'].indexOf(f.severity) >= 0 ? f.severity : 'info';
+      var title = esc(f.title || '—');
+      if (f.link) title = '<a href="' + esc(f.link) + '" target="_blank" rel="noopener">' + title + '</a>';
+      return '<div class="ov-finding sev-' + sev + '">' +
+        '<span class="ov-badge sev-' + sev + '">' + esc(sev) + '</span>' +
+        '<span class="ov-badge sev-info">' + esc(f.component || '—') + '</span>' +
+        '<span>' + title + '</span>' +
+        '<span class="ov-detail">' + esc(dash(f.detail)) + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  // ── 4. Live/Demo ───────────────────────────────────────────
+  var KPI_DEFS = [
+    ['equity_demo', 'Equity Demo', 'eur'],
+    ['equity_live', 'Equity Live', 'eur'],
+    ['equity_total', 'Equity Total', 'eur'],
+    ['pnl_7d', 'P&L 7 d', 'eur_cls'],
+    ['pnl_30d', 'P&L 30 d', 'eur_cls'],
+    ['open_positions', 'Offene Positionen', 'int']
+  ];
+  function renderLive(d) {
+    var live = d.live || {};
+    var kpis = live.kpis || {};
+    document.getElementById('live-kpis').innerHTML = KPI_DEFS.map(function (def) {
+      var v = kpis[def[0]];
+      var val;
+      if (def[2] === 'eur') val = '<span class="' + fmtEurCls(v) + '">' + fmtEur(v) + '</span>';
+      else if (def[2] === 'eur_cls') val = '<span class="' + fmtEurCls(v) + '">' + fmtEur(v) + '</span>';
+      else val = fmtInt(v);
+      return '<div class="ov-kpi"><div class="ov-kpi-value">' + val + '</div><div class="ov-kpi-label">' + esc(def[1]) + '</div></div>';
+    }).join('');
+
+    var tbody = document.querySelector('#fleet-table tbody');
+    var fleet = live.fleet || [];
+    if (!fleet.length) {
+      tbody.innerHTML = '<tr><td colspan="12">keine Bot-Daten</td></tr>';
+      return;
+    }
+    tbody.innerHTML = fleet.map(function (b) {
+      var mode = '';
+      if (b.is_live) mode += '<span class="ov-badge mode-live">LIVE</span> ';
+      if (b.multi) mode += '<span class="ov-badge mode-multi">MULTI</span>';
+      if (!mode) mode = '—';
+      var slots = (b.slots || []).map(function (s) {
+        return esc(s.slot_id || '—') + (s.sid !== null && s.sid !== undefined ? '·#' + esc(s.sid) : '');
+      }).join(', ');
+      var ddLevel = (b.dd_level === null || b.dd_level === undefined) ? '—'
+        : '<span class="ov-badge lv' + esc(b.dd_level) + '">L' + esc(b.dd_level) + '</span>';
+      return '<tr>' +
+        '<td><b>' + esc(b.bot || '—') + '</b></td>' +
+        '<td>' + mode + '</td>' +
+        '<td class="ov-num">' + fmtEur(b.equity) + '</td>' +
+        '<td class="ov-num">' + fmtEur(b.balance) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.pnl_30d) + '">' + fmtEur(b.pnl_30d) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.dd_pct) + '">' + fmtPct(b.dd_pct) + '</td>' +
+        '<td>' + ddLevel + '</td>' +
+        '<td>' + (b.blocked ? '🔴' : '—') + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.daily_pnl_pct) + '">' + fmtPct(b.daily_pnl_pct) + '</td>' +
+        '<td class="ov-num">' + fmtInt(b.open_positions) + '</td>' +
+        '<td>' + (slots || '—') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  // ── 5. Shadow ──────────────────────────────────────────────
+  function renderShadow(d) {
+    var sh = d.shadow || {};
+    var k = sh.kpis || {};
+    document.getElementById('shadow-kpis').innerHTML =
+      '<div class="ov-kpi"><div class="ov-kpi-value">' + fmtInt(k.n_trades_30d) + '</div><div class="ov-kpi-label">Trades 30 d</div></div>' +
+      '<div class="ov-kpi"><div class="ov-kpi-value"><span class="' + fmtEurCls(k.net_30d) + '">' + fmtEur(k.net_30d) + '</span></div><div class="ov-kpi-label">Net 30 d</div></div>' +
+      '<div class="ov-kpi"><div class="ov-kpi-value">' + fmtInt(k.n_deployed) + '</div><div class="ov-kpi-label">Deployed</div></div>';
+
+    // Ranking (Top 15)
+    var rk = (sh.ranking || []).slice(0, 15);
+    document.querySelector('#shadow-ranking tbody').innerHTML = rk.length ? rk.map(function (r) {
+      return '<tr>' +
+        '<td>#' + esc(dash(r.sid)) + '</td>' +
+        '<td style="white-space:normal;min-width:200px">' + esc(dash(r.name)) + '</td>' +
+        '<td class="ov-num">' + fmtInt(r.n) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(r.net) + '">' + fmtEur(r.net) + '</td>' +
+        '<td class="ov-num">' + fmtPct(r.wr_pct) + '</td>' +
+        '<td class="ov-num">' + dash(r.pf === null || r.pf === undefined ? null : (Math.round(r.pf * 100) / 100)) + '</td>' +
+        '<td>' + esc(dash(r.tier)) + '</td>' +
+        '<td>' + esc(fmtTsHuman(r.last_ts)) + '</td>' +
+        '</tr>';
+    }).join('') : '<tr><td colspan="8">keine Daten</td></tr>';
+
+    // Decay
+    var dec = sh.decay || {};
+    var counts = dec.counts || {};
+    var order = ['total', 'tableau', 'demote', 'watch', 'ok', 'insufficient'];
+    var countsHtml = '<div class="ov-chips" style="margin-bottom:var(--s-2)">' + order.map(function (key) {
+      return '<span class="ov-chip">' + esc(key) + ': <b>' + fmtInt(counts[key]) + '</b></span>';
+    }).join('') + '</div>';
+    var rows = dec.rows || [];
+    var rowsHtml = rows.length ?
+      '<div class="ov-table-wrap"><table class="ov-table">' +
+      '<thead><tr><th>Bot</th><th>SID</th><th class="ov-num">Ratio</th><th>Status</th><th>Gründe</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr>' +
+          '<td>' + esc(dash(r.bot)) + '</td>' +
+          '<td>#' + esc(dash(r.sid)) + '</td>' +
+          '<td class="ov-num">' + dash(r.ratio === null || r.ratio === undefined ? null : (Math.round(r.ratio * 100) / 100)) + '</td>' +
+          '<td>' + esc(dash(r.status_label || r.status)) + '</td>' +
+          '<td style="white-space:normal">' + esc((r.reasons || []).join(', ') || '—') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table></div>'
+      : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine Zeilen</div>';
+    document.getElementById('shadow-decay').innerHTML = '<h3>Decay-Monitor</h3>' + countsHtml + rowsHtml;
+
+    // Challenges
+    var ch = sh.challenges || [];
+    document.getElementById('shadow-challenges').innerHTML = '<h3>Aktive Challenges</h3>' + (ch.length ?
+      '<div class="ov-chips">' + ch.map(function (c) {
+        return '<span class="ov-chip">' + esc(c.bot) + ' / ' + esc(c.slot_id) + ' · #' + esc(dash(c.sid)) + ' · <b>' + fmtInt(c.days) + ' d</b></span>';
+      }).join('') + '</div>'
+      : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine aktiven Challenges</div>');
+
+    // Rotation
+    var rot = sh.rotation || [];
+    document.querySelector('#shadow-rotation tbody').innerHTML = rot.length ? rot.map(function (r) {
+      return '<tr>' +
+        '<td>' + esc(dash(r.bot)) + '</td>' +
+        '<td>' + esc(dash(r.slot_id)) + '</td>' +
+        '<td>#' + esc(dash(r.sid)) + '</td>' +
+        '<td>' + (r.holder ? '✓' : '—') + '</td>' +
+        '<td><span class="ov-badge ' + (r.state === 'held' ? 'mode-live' : 'sev-info') + '">' + esc(dash(r.state)) + '</span></td>' +
+        '</tr>';
+    }).join('') : '<tr><td colspan="5">keine Daten</td></tr>';
+  }
+
+  // ── 6. Lab ─────────────────────────────────────────────────
+  function renderLab(d) {
+    var lab = d.lab || {};
+    var w = lab.worker || {};
+    var wStatus = w.status || '';
+    var statusMap = { recipe_running: 'green', running: 'green', idle: 'yellow', stopped: 'red', error: 'red', offline: 'red' };
+    var ampCls = statusMap[wStatus] ? 'status-' + statusMap[wStatus] : 'status-yellow';
+    document.getElementById('lab-worker').innerHTML = '<h3>Worker</h3>' +
+      '<div class="ov-comp-head">' + amp(ampCls === 'status-green' ? 'green' : (ampCls === 'status-red' ? 'red' : 'yellow')) +
+      '<span style="font-size:var(--text-sm);font-weight:600">' + esc(wStatus || '—') + '</span></div>' +
+      '<div class="ov-chips">' +
+      '<span class="ov-chip">Typ: <b>' + esc(dash(w.strategy_type)) + '</b></span>' +
+      '<span class="ov-chip">Laufzeit: <b>' + fmtAge(w.elapsed_s) + '</b></span>' +
+      '<span class="ov-chip">Alter: <b>' + fmtAge(w.age_s) + '</b></span>' +
+      '</div>' +
+      (w.message ? '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">' + esc(w.message) + '</div>' : '');
+
+    var qc = lab.queue_counts || {};
+    var qcKeys = Object.keys(qc);
+    document.getElementById('lab-queue').innerHTML = '<h3>Queue</h3>' + (qcKeys.length ?
+      '<div class="ov-chips">' + qcKeys.map(function (key) {
+        return '<span class="ov-chip">' + esc(key) + ': <b>' + fmtInt(qc[key]) + '</b></span>';
+      }).join('') + '</div>' : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine Queue-Daten</div>');
+
+    var s7 = lab.strategies_7d || {};
+    var tiers = s7.by_tier || {};
+    document.getElementById('lab-7d').innerHTML = '<h3>Strategien 7 d</h3>' +
+      '<div class="ov-kpi-value" style="margin-bottom:var(--s-2)">' + fmtInt(s7.total) + '</div>' +
+      '<div class="ov-chips">' + Object.keys(tiers).map(function (t) {
+        return '<span class="ov-chip">Tier ' + esc(t) + ': <b>' + fmtInt(tiers[t]) + '</b></span>';
+      }).join('') + '</div>';
+  }
+
+  // ── 8. Quellen ─────────────────────────────────────────────
+  function renderSources(d) {
+    var src = d.sources || [];
+    document.getElementById('sources-tbody').innerHTML = src.length ? src.map(function (s) {
+      var st = ['fresh', 'old', 'stale', 'missing'].indexOf(s.status) >= 0 ? s.status : 'missing';
+      return '<tr>' +
+        '<td><b>' + esc(s.id || '—') + '</b></td>' +
+        '<td><span class="ov-dot ' + st + '"></span>' + esc(s.status || '—') + '</td>' +
+        '<td>' + fmtAge(s.age_s) + '</td>' +
+        '<td style="white-space:normal;color:var(--c-text-dim)">' + esc(dash(s.note)) + '</td>' +
+        '</tr>';
+    }).join('') : '<tr><td colspan="4">keine Quellen</td></tr>';
+    document.getElementById('sources-foot').textContent = 'Datenstand: ' + (d.generated_at_bz || '—');
+  }
+
+  // ── Render + Polling ───────────────────────────────────────
+  function render(d) {
+    renderHero(d);
+    renderComponents(d);
+    renderFindings(d);
+    renderLive(d);
+    renderShadow(d);
+    renderLab(d);
+    renderSources(d);
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function load() {
+    fetch(API, { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        render(data);
+        setDataAge('Datenstand: ' + (data.generated_at_bz || '—') + ' · aktualisiert automatisch alle 60 s', false);
+      })
+      .catch(function (err) {
+        setDataAge('⚠ Datenquelle nicht erreichbar (' + err.message + ') — Seite zeigt zuletzt geladene Daten, erneuter Versuch in 60 s.', true);
+      });
+  }
+
+  load();
+  setInterval(load, 60000);
+})();
+</script>
+<!--/BODY-->
