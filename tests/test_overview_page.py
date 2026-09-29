@@ -81,8 +81,9 @@ def main():
         "shadow-challenges", "shadow-rotation",
         # lab
         "lab-block", "lab-worker", "lab-queue", "lab-7d",
-        # charts
-        "charts-block", "chart-equity", "chart-monthly", "chart-corr", "chart-tca", "chart-exposure",
+        # charts (6 Container: 5 bestehende + neuer Tages-PnL-Chart)
+        "charts-block", "chart-equity", "chart-pnl-daily", "chart-monthly",
+        "chart-corr", "chart-tca", "chart-exposure",
         # quellen
         "sources",
     ]
@@ -90,19 +91,32 @@ def main():
     check(f"pflicht-ids ({len(required)} stueck, alle statisch)", not missing,
           f"fehlend: {missing}")
 
-    # ── 2. Charts: genau 5 pending-Container, keine Chart-Lib ──
+    # ── 2. Charts: 0 pending, 6 Container, genau 1 CDN-Script im HEAD ──
     pending = re.findall(r'data-status="pending"', raw)
-    check("genau 5 data-status='pending'-Container", len(pending) == 5, f"gefunden: {len(pending)}")
+    check("0 data-status='pending' uebrig (Platzhalter ersetzt)", len(pending) == 0, f"gefunden: {len(pending)}")
 
-    chart_libs = [
-        "lightweight-charts", "lightweightcharts", "apexcharts", "chart.js",
-        "chartjs", "highcharts", "echarts", "plotly", "d3js", "cdn.jsdelivr",
-        "unpkg.com", "cdnjs.cloudflare",
-    ]
+    head = extract_blocks(raw, "<!--HEAD-->", "<!--/HEAD-->")[0]
+    body_block = extract_blocks(raw, "<!--BODY-->", "<!--/BODY-->")[0]
+
+    # Genau EIN <script src> im HEAD-Block, mit exakter LWCharts-4.2.1-URL
+    LW_URL = "https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"
+    head_srcs = re.findall(r'<script\s+src="([^"]+)"', head)
+    check("genau 1 <script src> im HEAD-Block", len(head_srcs) == 1, f"gefunden: {head_srcs}")
+    check("exakte LWCharts-4.2.1-URL im HEAD", head_srcs == [LW_URL], f"ist: {head_srcs}")
+    check("kein <script src> im BODY (nur inline)", "<script src" not in body_block.lower())
     low = raw.lower()
-    hit = [c for c in chart_libs if c in low]
-    check("keine Chart-Bibliothek / kein CDN", not hit, f"treffer: {hit}")
-    check("kein <script src", "<script src" not in low)
+
+    # E3-Chart-Verhalten im Inline-Script
+    check("renderCharts(d) definiert und in render()-Kette aufgerufen",
+          "function renderCharts" in raw and "renderCharts(d);" in raw)
+    check("LWCharts-Guard mit Hinweistext vorhanden",
+          "window.LightweightCharts" in raw and "Chart-Bibliothek nicht geladen" in raw)
+    check("Chart-Instanzen in Modulvariablen (Refresh ohne Neuerzeugen)",
+          "_eqChart" in raw and "_pnlSeries" in raw and "applyOptions({ width:" in raw)
+    check("Fleet-Tabelle: Spalte Verlauf + colspan 13 (ohne colspan 12)",
+          ">Verlauf</th>" in raw and 'colspan="13"' in raw and 'colspan="12"' not in raw)
+    check("Sparkline-Helper (Inline-SVG polyline, ≤40 Punkte)",
+          "function sparklineSVG" in raw and "polyline" in raw and "/ 40" in raw)
 
     # ── 3. Jeder inline <script>-Block: node --check ───────────
     scripts = extract_blocks(raw, "<script", "</script>")

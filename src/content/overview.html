@@ -1,5 +1,6 @@
 <!--TITLE:System-Kommandocenter — Hermes-->
 <!--HEAD-->
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   /* ── System-Kommandocenter (/overview) — nur Design-System-Variablen ── */
   #overview-page { max-width: 1400px; margin: 0 auto; }
@@ -107,16 +108,52 @@
   @media (max-width: 980px) { #overview-page .ov-subgrid { grid-template-columns: 1fr; } }
   #overview-page .ov-card h3 { margin: 0 0 var(--s-3); font-size: var(--text-sm); font-weight: 600; }
 
-  #overview-page .ov-chart-ph {
-    border: 1px dashed var(--c-border); border-radius: var(--r-lg);
-    padding: var(--s-6); text-align: center; color: var(--c-text-dim);
-    font-size: var(--text-sm); background: var(--c-surface);
-    display: flex; align-items: center; justify-content: center; min-height: 90px;
-  }
   #overview-page .ov-charts-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: var(--s-4); margin-bottom: var(--s-6);
   }
+  #overview-page .ov-chart-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4); min-width: 0;
+  }
+  #overview-page .ov-chart-card h3 { margin: 0 0 var(--s-2); font-size: var(--text-sm); font-weight: 600; }
+  #overview-page .ov-chart-card.ov-span { grid-column: 1 / -1; }
+  #overview-page .ov-legend { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--s-2); }
+  #overview-page .ov-legend-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; padding: 1px 7px; border-radius: var(--r-sm);
+    background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-dim);
+  }
+  #overview-page .ov-legend-chip .swatch { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+  #overview-page .ov-legend-chip.total { color: var(--c-text); font-weight: 700; border-color: var(--c-accent); }
+  #overview-page #chart-equity { height: 320px; }
+  #overview-page #chart-pnl-daily { height: 160px; }
+  #overview-page .ov-chart-empty {
+    display: flex; align-items: center; justify-content: center; height: 100%; min-height: 80px;
+    color: var(--c-text-dim); font-size: var(--text-sm);
+  }
+  #overview-page .ov-chart-empty.ov-chart-error { color: var(--c-warn); }
+  #overview-page .corr-grid { display: grid; gap: 2px; font-size: 9px; overflow-x: auto; }
+  #overview-page .corr-grid .corr-h {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--c-text-dim); padding: 2px; min-height: 18px;
+  }
+  #overview-page .corr-grid .corr-rl { justify-content: flex-end; padding-right: 6px; }
+  #overview-page .corr-cell {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 22px; border-radius: 2px; color: var(--c-text-dim);
+  }
+  #overview-page .corr-cell.corr-diag { box-shadow: inset 0 0 0 1px var(--c-accent); }
+  #overview-page .tca-svg text { fill: var(--c-text-dim); }
+  #overview-page .tca-thresh { fill: var(--c-warn); }
+  #overview-page .exp-row {
+    display: grid; grid-template-columns: 64px 1fr auto 92px; gap: var(--s-2);
+    align-items: center; font-size: var(--text-xs); margin-bottom: 6px;
+  }
+  #overview-page .exp-bar-track { display: block; height: 10px; border-radius: var(--r-sm); background: var(--c-surface-2); overflow: hidden; }
+  #overview-page .exp-bar { display: block; height: 100%; border-radius: var(--r-sm); background: var(--c-accent); }
+  #overview-page .exp-val { color: var(--c-text-dim); text-align: right; white-space: nowrap; }
+  #overview-page table.ov-table td.spark-td { line-height: 0; }
 
   #overview-page .ov-dot {
     display: inline-block; width: 9px; height: 9px; border-radius: 50%;
@@ -167,10 +204,10 @@
             <th>Bot</th><th>Modus</th><th class="ov-num">Equity</th><th class="ov-num">Balance</th>
             <th class="ov-num">P&amp;L 7d</th><th class="ov-num">P&amp;L 30d</th>
             <th class="ov-num">DD %</th><th>DD-Level</th><th>Blocked</th>
-            <th class="ov-num">Tag %</th><th class="ov-num">Pos.</th><th>Slots</th>
+            <th class="ov-num">Tag %</th><th class="ov-num">Pos.</th><th>Slots</th><th>Verlauf</th>
           </tr>
         </thead>
-        <tbody><tr><td colspan="12">lade…</td></tr></tbody>
+        <tbody><tr><td colspan="13">lade…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -213,14 +250,34 @@
     <div class="ov-card" id="lab-7d"><h3>Strategien 7 d</h3></div>
   </div>
 
-  <!-- 7. Charts-Platzhalter (E3) -->
+  <!-- 7. Charts (E3) -->
   <p class="ov-section-title">Kurven &amp; Analysen</p>
   <div id="charts-block" class="ov-charts-grid">
-    <div class="ov-chart-ph" id="chart-equity" data-status="pending">Equity-Kurven — folgt in Etappe E3</div>
-    <div class="ov-chart-ph" id="chart-monthly" data-status="pending">Monats-P&amp;L — folgt in Etappe E3</div>
-    <div class="ov-chart-ph" id="chart-corr" data-status="pending">Korrelations-Matrix — folgt in Etappe E3</div>
-    <div class="ov-chart-ph" id="chart-tca" data-status="pending">TCA-Gruppen — folgt in Etappe E3</div>
-    <div class="ov-chart-ph" id="chart-exposure" data-status="pending">Exposure — folgt in Etappe E3</div>
+    <div class="ov-chart-card ov-span">
+      <h3>Equity-Kurven</h3>
+      <div class="ov-legend" id="chart-equity-legend"></div>
+      <div id="chart-equity"></div>
+    </div>
+    <div class="ov-chart-card ov-span">
+      <h3>Tages-P&amp;L (30 d)</h3>
+      <div id="chart-pnl-daily"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>Monats-P&amp;L (Demo / Live / Shadow)</h3>
+      <div id="chart-monthly"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>Korrelations-Matrix (Slot-SIDs)</h3>
+      <div id="chart-corr"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>TCA-Gruppen (bps)</h3>
+      <div id="chart-tca"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>Exposure je Asset-Klasse</h3>
+      <div id="chart-exposure"></div>
+    </div>
   </div>
 
   <!-- 8. Quellen -->
@@ -242,6 +299,21 @@
   'use strict';
 
   var API = window.location.origin + '/api/overview/overview.json';
+
+  // ── Chart-Konstanten (E3, Optik wie Bot-Seiten) ────────────
+  var CHART_TXT = '#8b8b9e';                 // Achsen-Text (bot-components.js:977)
+  var CHART_GRID = 'rgba(255,255,255,0.04)'; // Grid (bot-components.js:978)
+  var C_TOTAL = '#58a6ff';                   // Equity „Gesamt"
+  var C_POS = '#3fb950';                     // Gewinn / Live
+  var C_NEG = '#f85149';                     // Verlust
+  var C_SHADOW = '#a78bfa';                  // Shadow
+  var PALETTE10 = ['#58a6ff', '#3fb950', '#f85149', '#a78bfa', '#f0b940', '#39c5cf', '#ff7b72', '#7ee787', '#d2a8ff', '#ffa657'];
+  var TCA_THRESHOLD_BPS = 2.0;               // markierte Schwelle im TCA-Chart
+  var LIB_MISSING_MSG = 'Chart-Bibliothek nicht geladen — Internetverbindung prüfen';
+
+  // Chart-Instanzen (60-s-Refresh: nur setData, NICHT neu erzeugen)
+  var _eqChart = null, _eqBox = null, _eqTotalSeries = null, _eqBotSeries = {};
+  var _pnlChart = null, _pnlBox = null, _pnlSeries = null;
 
   // ── Helpers ────────────────────────────────────────────────
   function esc(s) {
@@ -385,7 +457,7 @@
     var tbody = document.querySelector('#fleet-table tbody');
     var fleet = live.fleet || [];
     if (!fleet.length) {
-      tbody.innerHTML = '<tr><td colspan="12">keine Bot-Daten</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13">keine Bot-Daten</td></tr>';
       return;
     }
     tbody.innerHTML = fleet.map(function (b) {
@@ -411,6 +483,7 @@
         '<td class="ov-num ' + fmtEurCls(b.daily_pnl_pct) + '">' + fmtPct(b.daily_pnl_pct) + '</td>' +
         '<td class="ov-num">' + fmtInt(b.open_positions) + '</td>' +
         '<td>' + (slots || '—') + '</td>' +
+        '<td class="spark-td">' + sparklineSVG(b.equity_curve) + '</td>' +
         '</tr>';
     }).join('');
   }
@@ -531,6 +604,301 @@
     document.getElementById('sources-foot').textContent = 'Datenstand: ' + (d.generated_at_bz || '—');
   }
 
+  // ── 7. Charts (E3) ─────────────────────────────────────────
+  function curveToPoints(curve) {
+    return (curve || [])
+      .filter(function (p) { return p && p.length >= 2 && !isNaN(p[0]) && !isNaN(p[1]); })
+      .map(function (p) { return { time: p[0], value: p[1] }; })
+      .sort(function (a, b) { return a.time - b.time; });
+  }
+  function dayToEpoch(s) {
+    var t = Date.parse(String(s) + 'T00:00:00Z');
+    return isNaN(t) ? null : Math.floor(t / 1000);
+  }
+  function emptyHint(msg, isError) {
+    return '<div class="ov-chart-empty' + (isError ? ' ov-chart-error' : '') + '">' + esc(msg) + '</div>';
+  }
+  function fmtNum(v, digits, suffix) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    return Number(v).toFixed(digits === undefined ? 2 : digits) + (suffix || '');
+  }
+  function chartBaseOpts(width, height) {
+    // Muster: src/templates/bot-components.js Z.974–981
+    return {
+      width: width, height: height,
+      layout: { background: { type: 'solid', color: 'transparent' }, textColor: CHART_TXT },
+      grid: { vertLines: { color: CHART_GRID }, horzLines: { color: CHART_GRID } },
+      crosshair: { mode: 0 },
+      timeScale: { timeVisible: false },
+    };
+  }
+
+  function renderEquity(live) {
+    var box = document.getElementById('chart-equity');
+    var legend = document.getElementById('chart-equity-legend');
+    if (!box) return;
+    var totalPts = curveToPoints(live.total_equity_curve);
+    var bots = [];
+    (live.fleet || []).forEach(function (b, i) {
+      var pts = curveToPoints(b.equity_curve);
+      if (pts.length >= 2) bots.push({ name: b.bot || 'bot' + (i + 1), pts: pts });
+    });
+    if (totalPts.length < 2 && !bots.length) {
+      box.innerHTML = emptyHint('keine Equity-Kurven vorhanden');
+      if (legend) legend.innerHTML = '';
+      return;
+    }
+    if (!_eqChart) {
+      _eqBox = box;
+      _eqChart = LightweightCharts.createChart(box, chartBaseOpts(box.clientWidth, 320));
+      _eqTotalSeries = _eqChart.addLineSeries({ color: C_TOTAL, lineWidth: 3, priceLineVisible: false });
+    }
+    _eqTotalSeries.setData(totalPts.length >= 2 ? totalPts : []);
+
+    // Bot-Serien: pro Name eine Instanz (Farbe bleibt beim Refresh stabil)
+    var seen = {};
+    bots.forEach(function (b) {
+      seen[b.name] = true;
+      if (!_eqBotSeries[b.name]) {
+        var idx = Object.keys(_eqBotSeries).length % PALETTE10.length;
+        _eqBotSeries[b.name] = { color: PALETTE10[idx], series: _eqChart.addLineSeries({ color: PALETTE10[idx], lineWidth: 1, priceLineVisible: false }) };
+      }
+      _eqBotSeries[b.name].series.setData(b.pts);
+    });
+    Object.keys(_eqBotSeries).forEach(function (k) {
+      if (!seen[k]) _eqBotSeries[k].series.setData([]); // Bot verschwunden → Serie leeren
+    });
+
+    // Legende als Chips ÜBER dem Chart
+    if (legend) {
+      var chips = ['<span class="ov-legend-chip total"><span class="swatch" style="background:' + C_TOTAL + '"></span>Gesamt</span>'];
+      bots.forEach(function (b) {
+        chips.push('<span class="ov-legend-chip"><span class="swatch" style="background:' + _eqBotSeries[b.name].color + '"></span>' + esc(b.name) + '</span>');
+      });
+      legend.innerHTML = chips.join('');
+    }
+  }
+
+  function renderPnlDaily(charts) {
+    var box = document.getElementById('chart-pnl-daily');
+    if (!box) return;
+    var rows = charts.pnl_daily_30d || [];
+    if (!rows.length) { box.innerHTML = emptyHint('keine Tages-P&L-Daten'); return; }
+    var pts = [];
+    rows.forEach(function (r) {
+      var t = r && r.length >= 2 ? dayToEpoch(r[0]) : null;
+      if (t !== null && !isNaN(r[1])) pts.push({ time: t, value: Number(r[1]), color: Number(r[1]) >= 0 ? C_POS : C_NEG });
+    });
+    if (!pts.length) { box.innerHTML = emptyHint('keine Tages-P&L-Daten'); return; }
+    if (!_pnlChart) {
+      _pnlBox = box;
+      _pnlChart = LightweightCharts.createChart(box, chartBaseOpts(box.clientWidth, 160));
+      _pnlSeries = _pnlChart.addHistogramSeries({ priceFormat: { type: 'price', precision: 2, minMove: 0.01 }, priceLineVisible: false });
+    }
+    _pnlSeries.setData(pts.sort(function (a, b) { return a.time - b.time; }));
+  }
+
+  function renderMonthly(charts) {
+    var box = document.getElementById('chart-monthly');
+    if (!box) return;
+    var rows = charts.monthly_pnl || [];
+    if (!rows.length) { box.innerHTML = emptyHint('keine Monatsdaten'); return; }
+    var series = [['demo_eur', 'Demo', C_TOTAL], ['live_eur', 'Live', C_POS], ['shadow_eur', 'Shadow', C_SHADOW]];
+    var maxAbs = 0;
+    rows.forEach(function (m) {
+      series.forEach(function (s) { var v = Math.abs(Number(m[s[0]]) || 0); if (v > maxAbs) maxAbs = v; });
+    });
+    if (!maxAbs) maxAbs = 1;
+    var W = 600, H = 200, padL = 6, padR = 6, padT = 6, padB = 20;
+    var plotH = H - padT - padB, zeroY = padT + plotH / 2, halfH = plotH / 2;
+    var groupW = (W - padL - padR) / rows.length;
+    var barW = Math.min(10, groupW / 4), gap = 2;
+    var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" data-bars="' + (rows.length * series.length) + '">'];
+    svg.push('<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="rgba(139,139,158,0.4)" stroke-width="1"/>');
+    rows.forEach(function (m, i) {
+      var x0 = padL + i * groupW + (groupW - series.length * barW - (series.length - 1) * gap) / 2;
+      series.forEach(function (s, j) {
+        var v = Number(m[s[0]]) || 0;
+        var h = Math.abs(v) / maxAbs * halfH;
+        var y = v >= 0 ? zeroY - h : zeroY;
+        var tip = esc(m.month) + ' ' + s[1] + ': ' + fmtEur(v);
+        svg.push('<rect class="bar" data-month="' + esc(m.month) + '" x="' + (x0 + j * (barW + gap)).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + s[2] + '"><title>' + tip + '</title></rect>');
+      });
+      svg.push('<text x="' + (padL + i * groupW + groupW / 2).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="9" fill="' + CHART_TXT + '">' + esc(m.month.slice(5)) + '</text>');
+    });
+    svg.push('</svg>');
+    var legendHtml = '<div class="ov-legend">' + series.map(function (s) {
+      return '<span class="ov-legend-chip"><span class="swatch" style="background:' + s[2] + '"></span>' + s[1] + '</span>';
+    }).join('') + '</div>';
+    box.innerHTML = legendHtml + svg.join('');
+  }
+
+  function corrColor(v) {
+    if (v === null || v === undefined || isNaN(v)) return 'var(--c-surface-2)';
+    var a = 0.12 + Math.min(1, Math.abs(v)) * 0.55;
+    return v >= 0 ? 'rgba(63,185,80,' + a.toFixed(3) + ')' : 'rgba(248,81,73,' + a.toFixed(3) + ')';
+  }
+  function renderCorr(charts) {
+    var box = document.getElementById('chart-corr');
+    if (!box) return;
+    var c = charts.corr || {};
+    var labels = c.labels || [], matrix = c.matrix || [];
+    if (!labels.length || !matrix.length) { box.innerHTML = emptyHint('keine Korrelationsdaten'); return; }
+    var n = labels.length, showVals = n <= 10;
+    var html = ['<div class="corr-grid" style="grid-template-columns:auto repeat(' + n + ',1fr)">'];
+    html.push('<div class="corr-h"></div>');
+    labels.forEach(function (l) { html.push('<div class="corr-h">' + esc(l) + '</div>'); });
+    labels.forEach(function (rl, i) {
+      html.push('<div class="corr-h corr-rl">' + esc(rl) + '</div>');
+      for (var j = 0; j < n; j++) {
+        var v = (matrix[i] || [])[j];
+        var num = (v !== null && v !== undefined && !isNaN(v));
+        var txt = showVals && num ? '<span>' + Math.round(v * 100) + '</span>' : (num ? '' : '·');
+        var tip = esc(rl) + '↔' + esc(labels[j]) + ': ' + (num ? (v > 0 ? '+' : '') + Number(v).toFixed(2) : '—');
+        html.push('<div class="corr-cell' + (i === j ? ' corr-diag' : '') + '" style="background:' + corrColor(num ? v : null) + '" title="' + tip + '">' + txt + '</div>');
+      }
+    });
+    html.push('</div>');
+    box.innerHTML = html.join('');
+  }
+
+  function groupTable(label, data) {
+    // by_symbol/by_session/by_month sind Objekte (oder Arrays) — Spalten generisch aus den Daten
+    var rows = [];
+    if (Array.isArray(data)) {
+      rows = data.filter(function (r) { return r && typeof r === 'object'; })
+        .map(function (r, i) { r = Object.assign({}, r); if (r._key === undefined) r._key = r.symbol || r.session || r.month || ('#' + (i + 1)); return r; });
+    } else if (data && typeof data === 'object') {
+      Object.keys(data).forEach(function (k) {
+        var v = data[k];
+        rows.push(v && typeof v === 'object' ? Object.assign({ _key: k }, v) : { _key: k, value: v });
+      });
+    }
+    if (!rows.length) return '';
+    var cols = Object.keys(rows[0]).filter(function (k) { return k !== '_key'; });
+    var thead = '<thead><tr><th>' + esc(label) + '</th>' + cols.map(function (c) { return '<th class="ov-num">' + esc(c) + '</th>'; }).join('') + '</tr></thead>';
+    var tbody = '<tbody>' + rows.map(function (r) {
+      return '<tr><td><b>' + esc(r._key) + '</b></td>' + cols.map(function (c) {
+        var v = r[c];
+        var txt = (v === null || v === undefined) ? '—' : (typeof v === 'number' ? String(Math.round(v * 100) / 100) : esc(v));
+        return '<td class="ov-num">' + txt + '</td>';
+      }).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    return '<div class="ov-table-wrap" style="margin-top:var(--s-3)"><table class="ov-table">' + thead + tbody + '</table></div>';
+  }
+
+  function renderTca(charts) {
+    var box = document.getElementById('chart-tca');
+    if (!box) return;
+    var g = charts.tca_groups || {};
+    var o = g.overall || {};
+    var defs = [['mean_bps', 'Mean'], ['median_bps', 'Median'], ['p90_bps', 'P90']];
+    var vals = defs.map(function (d) { var v = o[d[0]]; return (v === null || v === undefined || isNaN(v)) ? null : Number(v); });
+    var html = '';
+    if (!vals.some(function (v) { return v !== null; })) {
+      html += emptyHint('noch keine TCA-Daten');
+    } else {
+      var W = 520, labelW = 58, rightPad = 72, rowH = 30, padT = 20;
+      var barMax = W - labelW - rightPad;
+      var H = padT + defs.length * rowH + 8;
+      var mags = vals.map(function (v) { return v === null ? 0 : Math.abs(v); });
+      var scaleMax = Math.max(Math.max.apply(null, mags), TCA_THRESHOLD_BPS) * 1.15 || 1;
+      var thrX = labelW + (TCA_THRESHOLD_BPS / scaleMax) * barMax;
+      var svg = ['<svg class="tca-svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img">'];
+      defs.forEach(function (d, i) {
+        var v = vals[i], y = padT + i * rowH;
+        svg.push('<text x="0" y="' + (y + 14) + '" font-size="10">' + esc(d[1]) + '</text>');
+        if (v !== null) {
+          var w = Math.max(1, Math.abs(v) / scaleMax * barMax);
+          svg.push('<rect x="' + labelW + '" y="' + (y + 3) + '" width="' + w.toFixed(1) + '" height="14" rx="2" fill="' + (v > TCA_THRESHOLD_BPS ? C_NEG : C_TOTAL) + '"><title>' + esc(d[1]) + ': ' + v.toFixed(2) + ' bps</title></rect>');
+          svg.push('<text x="' + (labelW + w + 6).toFixed(1) + '" y="' + (y + 14) + '" font-size="10">' + v.toFixed(2) + '</text>');
+        } else {
+          svg.push('<text x="' + labelW + '" y="' + (y + 14) + '" font-size="10">—</text>');
+        }
+      });
+      svg.push('<line x1="' + thrX.toFixed(1) + '" y1="' + (padT - 8) + '" x2="' + thrX.toFixed(1) + '" y2="' + (H - 6) + '" stroke="#f0b940" stroke-width="1" stroke-dasharray="4 3"/>');
+      svg.push('<text class="tca-thresh" x="' + (thrX + 4).toFixed(1) + '" y="' + (padT - 10) + '" font-size="9">Schwelle ' + TCA_THRESHOLD_BPS.toFixed(1) + ' bps</text>');
+      svg.push('</svg>');
+      html += svg.join('');
+    }
+    html += '<div class="ov-chips" style="margin-top:var(--s-2)">' +
+      '<span class="ov-chip">n: <b>' + fmtInt(o.n) + '</b></span>' +
+      '<span class="ov-chip">Adverse: <b>' + fmtNum(o.adverse_pct, 1, ' %') + '</b></span>' +
+      '<span class="ov-chip">Drift: <b>' + fmtNum(o.mean_drift_pips, 2, ' pips') + '</b></span>' +
+      '<span class="ov-chip">Slip: <b>' + fmtNum(o.mean_exec_slip_pips, 2, ' pips') + '</b></span>' +
+      '</div>';
+    var anyGroup = false;
+    [['Symbol', 'by_symbol'], ['Session', 'by_session'], ['Monat', 'by_month']].forEach(function (spec) {
+      var t = groupTable(spec[0], g[spec[1]]);
+      if (t) { anyGroup = true; html += t; }
+    });
+    if (!anyGroup) html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">noch keine Gruppen</div>';
+    box.innerHTML = html;
+  }
+
+  function renderExposure(charts) {
+    var box = document.getElementById('chart-exposure');
+    if (!box) return;
+    var rows = charts.exposure || [];
+    if (!rows.length) { box.innerHTML = emptyHint('keine Exposure-Daten'); return; }
+    var maxSlots = 1;
+    rows.forEach(function (r) { var s = Number(r.slots) || 0; if (s > maxSlots) maxSlots = s; });
+    box.innerHTML = rows.map(function (r) {
+      var slots = Number(r.slots) || 0;
+      var risk = (r.open_risk_eur === null || r.open_risk_eur === undefined) ? '—' : fmtEur(r.open_risk_eur);
+      return '<div class="exp-row">' +
+        '<span>' + esc(r.class || '—') + '</span>' +
+        '<span class="exp-bar-track"><span class="exp-bar" style="width:' + (slots / maxSlots * 100).toFixed(1) + '%"></span></span>' +
+        '<span class="exp-val">' + fmtInt(r.open_positions) + '/' + slots + ' Pos</span>' +
+        '<span class="exp-val">' + risk + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function sparklineSVG(curve) {
+    var pts = curveToPoints(curve);
+    if (pts.length < 2) return '—';
+    var step = Math.max(1, Math.ceil(pts.length / 40)); // Downsample ≤40 Punkte
+    var samp = pts.filter(function (_, i) { return i % step === 0 || i === pts.length - 1; });
+    var vs = samp.map(function (p) { return p.value; });
+    var min = Math.min.apply(null, vs), max = Math.max.apply(null, vs);
+    var range = (max - min) || 1;
+    var W = 64, H = 16, pad = 1.5;
+    var poly = samp.map(function (p, i) {
+      var x = pad + i / (samp.length - 1) * (W - 2 * pad);
+      var y = pad + (1 - (p.value - min) / range) * (H - 2 * pad);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    var color = vs[vs.length - 1] >= vs[0] ? C_POS : C_NEG;
+    return '<svg class="spark" width="64" height="16" viewBox="0 0 64 16" aria-hidden="true"><polyline points="' + poly + '" fill="none" stroke="' + color + '" stroke-width="1.5"/></svg>';
+  }
+
+  function renderCharts(d) {
+    var charts = d.charts || {};
+    if (!window.LightweightCharts) {
+      // Guard: LWCharts fehlt → Hinweis, SVG-Charts trotzdem rendern
+      ['chart-equity', 'chart-pnl-daily'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = emptyHint(LIB_MISSING_MSG, true);
+      });
+    } else {
+      try {
+        renderEquity(d.live || {});
+        renderPnlDaily(charts);
+      } catch (e) {
+        console.warn('overview: Chart-Fehler', e);
+        ['chart-equity', 'chart-pnl-daily'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && !el.innerHTML) el.innerHTML = emptyHint('Chartfehler: ' + e.message, true);
+        });
+      }
+    }
+    renderMonthly(charts);
+    renderCorr(charts);
+    renderTca(charts);
+    renderExposure(charts);
+  }
+
   // ── Render + Polling ───────────────────────────────────────
   function render(d) {
     renderHero(d);
@@ -540,6 +908,7 @@
     renderShadow(d);
     renderLab(d);
     renderSources(d);
+    renderCharts(d);
     if (window.lucide) lucide.createIcons();
   }
 
@@ -560,6 +929,12 @@
 
   load();
   setInterval(load, 60000);
+
+  // window.resize → Chartbreite anpassen (Instanzen bleiben bestehen)
+  window.addEventListener('resize', function () {
+    if (_eqChart && _eqBox) _eqChart.applyOptions({ width: _eqBox.clientWidth });
+    if (_pnlChart && _pnlBox) _pnlChart.applyOptions({ width: _pnlBox.clientWidth });
+  });
 })();
 </script>
 <!--/BODY-->
