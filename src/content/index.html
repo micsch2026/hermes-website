@@ -1,145 +1,940 @@
-<!--TITLE:Dashboard — Hermes-->
+<!--TITLE:System-Kommandocenter — Hermes-->
 <!--HEAD-->
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>
-    .hero { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-8) 0 var(--s-6); }
-    .logo {
-      width: 48px; height: 48px;
-      background: var(--c-surface-2);
-      border: 1px solid var(--c-border-2);
-      border-radius: var(--r-lg);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .logo svg { color: var(--c-text-2); }
-    .stat-value { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.01em; }
-    .stat-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.07em; color: var(--c-text-dim); font-weight: 500; margin-bottom: var(--s-2); display: flex; align-items: center; gap: var(--s-2); }
-    .stat-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-5); }
-    .inline-badge { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--c-ok); font-size: var(--text-sm); font-weight: 500; }
-    .inline-badge .dot { animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-8); }
-    .quick-link {
-      display: flex; flex-direction: column; align-items: center; gap: var(--s-3);
-      background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl);
-      padding: var(--s-6) var(--s-4); text-decoration: none; color: var(--c-text-muted);
-      transition: border-color var(--t), color var(--t), background var(--t);
-      text-align: center;
-    }
-    .quick-link:hover { border-color: var(--c-accent); color: var(--c-text); background: var(--c-surface-2); text-decoration: none; }
-    .quick-link-icon { color: var(--c-accent); }
-    .quick-link-label { font-size: var(--text-sm); font-weight: 600; letter-spacing: 0.01em; }
-    .quick-link-desc { font-size: var(--text-xs); color: var(--c-text-dim); }
-    .section-title { font-size: var(--text-sm); font-weight: 600; color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: var(--s-4); display: flex; align-items: center; gap: var(--s-2); }
-  </style>
+  /* ── System-Kommandocenter (/overview) — nur Design-System-Variablen ── */
+  #overview-page { max-width: 1400px; margin: 0 auto; }
+
+  #overview-page .ov-hero {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-xl); padding: var(--s-6); margin-bottom: var(--s-6);
+  }
+  #overview-page .ov-hero-top { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; }
+  #overview-page .ov-amp {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    display: inline-block; border: 2px solid var(--c-border); background: var(--c-text-dim);
+  }
+  #overview-page .ov-amp.status-green { background: var(--c-ok); box-shadow: 0 0 8px var(--c-ok); border-color: var(--c-ok); }
+  #overview-page .ov-amp.status-yellow { background: var(--c-warn); box-shadow: 0 0 8px var(--c-warn); border-color: var(--c-warn); }
+  #overview-page .ov-amp.status-red { background: var(--c-err); box-shadow: 0 0 8px var(--c-err); border-color: var(--c-err); }
+  #overview-page #hero-headline { margin: 0; font-size: var(--text-2xl); font-weight: 700; }
+  #overview-page #hero-why { margin: var(--s-3) 0 0; padding-left: 1.2em; color: var(--c-text-dim); font-size: var(--text-sm); }
+  #overview-page #hero-why li { margin: 2px 0; }
+  #overview-page #data-age { margin-top: var(--s-3); font-size: var(--text-xs); color: var(--c-text-muted); }
+  #overview-page #data-age.ov-fetch-error { color: var(--c-err); font-weight: 600; }
+
+  #overview-page .ov-section-title {
+    font-size: var(--text-sm); font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--c-text-dim); margin: 0 0 var(--s-3);
+  }
+  #overview-page .ov-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4);
+  }
+  #overview-page .ov-comp-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--s-4); margin-bottom: var(--s-6);
+  }
+  #overview-page .ov-comp-head { display: flex; align-items: center; gap: 8px; margin-bottom: var(--s-2); }
+  #overview-page .ov-comp-head .ov-amp { width: 12px; height: 12px; }
+  #overview-page .ov-comp-head h3 { margin: 0; font-size: var(--text-sm); font-weight: 600; }
+  #overview-page .ov-why { margin: 0 0 var(--s-2); padding-left: 1.1em; font-size: var(--text-xs); color: var(--c-text-dim); }
+  #overview-page .ov-why li { margin: 1px 0; }
+  #overview-page .ov-why.ov-empty { list-style: none; padding-left: 0; }
+  #overview-page .ov-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  #overview-page .ov-chip {
+    font-size: 10px; padding: 1px 7px; border-radius: var(--r-sm);
+    background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-dim);
+  }
+  #overview-page .ov-chip b { color: var(--c-text); font-weight: 600; }
+
+  #overview-page .ov-badge {
+    display: inline-block; padding: 1px 8px; border-radius: var(--r-sm);
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  #overview-page .ov-badge.sev-red { background: var(--c-err-bg); color: var(--c-err); }
+  #overview-page .ov-badge.sev-yellow { background: var(--c-warn-bg); color: var(--c-warn); }
+  #overview-page .ov-badge.sev-info { background: var(--c-surface-2); color: var(--c-text-dim); }
+  #overview-page .ov-badge.lv0 { background: var(--c-surface-2); color: var(--c-text-dim); }
+  #overview-page .ov-badge.lv1 { background: var(--c-warn-bg); color: var(--c-warn); }
+  #overview-page .ov-badge.lv2 { background: var(--c-warn-bg); color: var(--c-err); }
+  #overview-page .ov-badge.lv3 { background: var(--c-err-bg); color: var(--c-err); }
+  #overview-page .ov-badge.mode-live { background: var(--c-ok-bg); color: var(--c-ok); }
+  #overview-page .ov-badge.mode-multi { background: var(--c-surface-2); color: var(--c-accent); }
+
+  #overview-page .ov-findings { display: flex; flex-direction: column; gap: var(--s-2); margin-bottom: var(--s-6); }
+  #overview-page .ov-finding {
+    display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap;
+    padding: var(--s-3) var(--s-4); border-radius: var(--r-lg);
+    background: var(--c-surface); border: 1px solid var(--c-border); font-size: var(--text-sm);
+  }
+  #overview-page .ov-finding.sev-red { border-left: 3px solid var(--c-err); }
+  #overview-page .ov-finding.sev-yellow { border-left: 3px solid var(--c-warn); }
+  #overview-page .ov-finding.sev-info { border-left: 3px solid var(--c-accent); }
+  #overview-page .ov-finding a { color: var(--c-accent); }
+  #overview-page .ov-finding .ov-detail { color: var(--c-text-dim); font-size: var(--text-xs); }
+  #overview-page .ov-findings-empty { color: var(--c-ok); font-size: var(--text-sm); }
+
+  #overview-page .ov-kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--s-3); margin-bottom: var(--s-5);
+  }
+  #overview-page .ov-kpi {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); text-align: center;
+  }
+  #overview-page .ov-kpi-value { font-size: var(--text-xl); font-weight: 700; }
+  #overview-page .ov-kpi-label { font-size: 10px; color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  #overview-page .pos { color: var(--c-ok); }
+  #overview-page .neg { color: var(--c-err); }
+
+  #overview-page .ov-table-wrap {
+    overflow-x: auto; border: 1px solid var(--c-border); border-radius: var(--r-lg);
+    background: var(--c-surface); margin-bottom: var(--s-3);
+  }
+  #overview-page table.ov-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  #overview-page table.ov-table th {
+    padding: var(--s-2) var(--s-3); text-align: left; font-size: 10px; font-weight: 600;
+    color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--c-border); position: sticky; top: 0; background: var(--c-surface);
+  }
+  #overview-page table.ov-table td {
+    padding: var(--s-2) var(--s-3); font-size: var(--text-xs); border-bottom: 1px solid var(--c-border);
+  }
+  #overview-page table.ov-table td.ov-num { text-align: right; font-variant-numeric: tabular-nums; }
+  #overview-page table.ov-table th.ov-num { text-align: right; }
+
+  #overview-page .ov-subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); margin-bottom: var(--s-6); }
+  @media (max-width: 980px) { #overview-page .ov-subgrid { grid-template-columns: 1fr; } }
+  #overview-page .ov-card h3 { margin: 0 0 var(--s-3); font-size: var(--text-sm); font-weight: 600; }
+
+  #overview-page .ov-charts-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--s-4); margin-bottom: var(--s-6);
+  }
+  #overview-page .ov-chart-card {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-4); min-width: 0;
+  }
+  #overview-page .ov-chart-card h3 { margin: 0 0 var(--s-2); font-size: var(--text-sm); font-weight: 600; }
+  #overview-page .ov-chart-card.ov-span { grid-column: 1 / -1; }
+  #overview-page .ov-legend { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--s-2); }
+  #overview-page .ov-legend-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; padding: 1px 7px; border-radius: var(--r-sm);
+    background: var(--c-surface-2); border: 1px solid var(--c-border); color: var(--c-text-dim);
+  }
+  #overview-page .ov-legend-chip .swatch { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+  #overview-page .ov-legend-chip.total { color: var(--c-text); font-weight: 700; border-color: var(--c-accent); }
+  #overview-page #chart-equity { height: 320px; }
+  #overview-page #chart-pnl-daily { height: 160px; }
+  #overview-page .ov-chart-empty {
+    display: flex; align-items: center; justify-content: center; height: 100%; min-height: 80px;
+    color: var(--c-text-dim); font-size: var(--text-sm);
+  }
+  #overview-page .ov-chart-empty.ov-chart-error { color: var(--c-warn); }
+  #overview-page .corr-grid { display: grid; gap: 2px; font-size: 9px; overflow-x: auto; }
+  #overview-page .corr-grid .corr-h {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--c-text-dim); padding: 2px; min-height: 18px;
+  }
+  #overview-page .corr-grid .corr-rl { justify-content: flex-end; padding-right: 6px; }
+  #overview-page .corr-cell {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 22px; border-radius: 2px; color: var(--c-text-dim);
+  }
+  #overview-page .corr-cell.corr-diag { box-shadow: inset 0 0 0 1px var(--c-accent); }
+  #overview-page .tca-svg text { fill: var(--c-text-dim); }
+  #overview-page .tca-thresh { fill: var(--c-warn); }
+  #overview-page .exp-row {
+    display: grid; grid-template-columns: 64px 1fr auto 92px; gap: var(--s-2);
+    align-items: center; font-size: var(--text-xs); margin-bottom: 6px;
+  }
+  #overview-page .exp-bar-track { display: block; height: 10px; border-radius: var(--r-sm); background: var(--c-surface-2); overflow: hidden; }
+  #overview-page .exp-bar { display: block; height: 100%; border-radius: var(--r-sm); background: var(--c-accent); }
+  #overview-page .exp-val { color: var(--c-text-dim); text-align: right; white-space: nowrap; }
+  #overview-page table.ov-table td.spark-td { line-height: 0; }
+
+  #overview-page .ov-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    vertical-align: middle; margin-right: 6px; background: var(--c-text-dim);
+  }
+  #overview-page .ov-dot.fresh { background: var(--c-ok); }
+  #overview-page .ov-dot.old { background: var(--c-warn); }
+  #overview-page .ov-dot.stale { background: var(--c-err); }
+  #overview-page .ov-dot.missing { background: var(--c-text-dim); }
+  #overview-page .ov-sources-foot { font-size: var(--text-xs); color: var(--c-text-muted); margin-top: var(--s-2); }
+</style>
 <!--/HEAD-->
 <!--BODY-->
+<div id="overview-page">
 
-    <div class="container">
-
-      <section class="hero" aria-label="Willkommen">
-        <div class="logo" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-        </div>
-        <div>
-          <h1 class="page-title">Hermes</h1>
-          <p class="page-subtitle">hermes.nexusfortis.org</p>
-        </div>
-      </section>
-
-      <!-- Bot-Fleet (GENERIERT von tools/generate_home_sidebar.py — nicht handeditieren) -->
-      <section aria-label="Bot-Fleet">
-        <div class="section-title"><i data-lucide="radio" style="width:14px;height:14px"></i> Bot-Fleet</div>
-        <div class="section-grid">
-          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.05em;color:var(--dim,#8892a8);margin:0.35rem 0 0.2rem">🔴 ECHTGELD (MESSKONTEN)</div>
-          <a href="/bot4" class="quick-link">
-            <i data-lucide="shield" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #4 <span style="color:#ff6b6b;font-weight:700">●</span></span>
-            <span class="quick-link-desc">#317 · Trend-Pullback Gold (H1) · LIVE</span>
-          </a>
-          <a href="/bot9" class="quick-link">
-            <i data-lucide="shield" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #9 <span style="color:#ff6b6b;font-weight:700">●</span></span>
-            <span class="quick-link-desc">#534 · AUDCAD MACD-Regime (H1) · LIVE</span>
-          </a>
-          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.05em;color:var(--dim,#8892a8);margin:0.35rem 0 0.2rem">🧪 DEMO (ANSATZ-MATRIX)</div>
-          <a href="/bot1" class="quick-link">
-            <i data-lucide="trending-up" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #1</span>
-            <span class="quick-link-desc">#724 · Trend- & Momentum-Strategie · Demo</span>
-          </a>
-          <a href="/bot2" class="quick-link">
-            <i data-lucide="trending-up" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #2</span>
-            <span class="quick-link-desc">#663 · Ichimoku Kijun-Pullback (JPY, H1) · Demo</span>
-          </a>
-          <a href="/bot3" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #3 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s372 #372 + s534 #534 + srot → #663 · Demo</span>
-          </a>
-          <a href="/bot5" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #5 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s775 #775 + irot · Demo</span>
-          </a>
-          <a href="/bot6" class="quick-link">
-            <i data-lucide="trending-up" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #6</span>
-            <span class="quick-link-desc">#689 · Metalle Trend-Pullback (H1, Gold+Silber) · Demo</span>
-          </a>
-          <a href="/bot7" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #7 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s672 #672 + mrot → #676 · Demo</span>
-          </a>
-          <a href="/bot8" class="quick-link">
-            <i data-lucide="trending-up" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #8</span>
-            <span class="quick-link-desc">#317 · Trend-Pullback Gold (H1) · Demo</span>
-          </a>
-          <a href="/bot10" class="quick-link">
-            <i data-lucide="trending-up" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #10</span>
-            <span class="quick-link-desc">#676 · Ichimoku-Trend (XAGUSD, H1) · Demo</span>
-          </a>
-        </div>
-      </section>
-
-      <!-- Tools -->
-      <section aria-label="Tools">
-        <div class="section-title"><i data-lucide="wrench" style="width:14px;height:14px"></i> Tools</div>
-        <div class="section-grid">
-          <a href="/data" class="quick-link">
-            <i data-lucide="database" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Data Pipeline</span>
-            <span class="quick-link-desc">Marktdaten, Qualität, Gaps</span>
-          </a>
-        </div>
-      </section>
-
-      <!-- System -->
-      <section aria-label="Status">
-        <div class="section-title"><i data-lucide="server" style="width:14px;height:14px"></i> System</div>
-        <div class="section-grid">
-          <div class="stat-card">
-            <p class="stat-label"><i data-lucide="activity" style="width:12px;height:12px"></i> Status</p>
-            <p class="stat-value"><span class="inline-badge"><span class="dot dot-green dot-pulse"></span> Online</span></p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label"><i data-lucide="bot" style="width:12px;height:12px"></i> Hermes</p>
-            <p class="stat-value">v0.16.0</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label"><i data-lucide="brain" style="width:12px;height:12px"></i> Modell</p>
-            <p class="stat-value" style="font-size:var(--text-md)">mimo-v2.5-pro</p>
-          </div>
-        </div>
-      </section>
-
+  <!-- 1. Hero -->
+  <div class="ov-hero" id="hero">
+    <div class="ov-hero-top">
+      <span class="ov-amp" id="hero-amp" title="Gesamt-Status"></span>
+      <h1 id="hero-headline">System-Kommandocenter</h1>
     </div>
+    <ul id="hero-why"><li>lade…</li></ul>
+    <div id="data-age">Datenstand wird geladen…</div>
+  </div>
 
-  <footer class="footer">
-    Hermes · hermes.nexusfortis.org
-  </footer>
+  <!-- 2. Komponenten-Ampeln -->
+  <p class="ov-section-title">Komponenten</p>
+  <div class="ov-comp-grid" id="verdict-components">
+    <div class="ov-card" id="comp-lab"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Strategy Lab</h3></div></div>
+    <div class="ov-card" id="comp-shadow"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Shadow Trader</h3></div></div>
+    <div class="ov-card" id="comp-demo_live"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Demo / Live</h3></div></div>
+    <div class="ov-card" id="comp-risk"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Risk</h3></div></div>
+    <div class="ov-card" id="comp-data"><div class="ov-comp-head"><span class="ov-amp"></span><h3>Data Pipeline</h3></div></div>
+  </div>
 
+  <!-- 3. Findings -->
+  <p class="ov-section-title">Findings</p>
+  <div class="ov-findings" id="findings"></div>
+
+  <!-- 4. Live/Demo -->
+  <p class="ov-section-title">Live / Demo</p>
+  <div id="live-block">
+    <div class="ov-kpi-grid" id="live-kpis"></div>
+    <div class="ov-table-wrap">
+      <table class="ov-table" id="fleet-table">
+        <thead>
+          <tr>
+            <th>Bot</th><th>Modus</th><th class="ov-num">Equity</th><th class="ov-num">Balance</th>
+            <th class="ov-num">P&amp;L 7d</th><th class="ov-num">P&amp;L 30d</th>
+            <th class="ov-num">DD %</th><th>DD-Level</th><th>Blocked</th>
+            <th class="ov-num">Tag %</th><th class="ov-num">Pos.</th><th>Slots</th><th>Verlauf</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="13">lade…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. Shadow -->
+  <p class="ov-section-title">Shadow Trader</p>
+  <div id="shadow-block">
+    <div class="ov-kpi-grid" id="shadow-kpis"></div>
+    <div class="ov-subgrid">
+      <div class="ov-card">
+        <h3>Top-Strategien (30 d)</h3>
+        <div class="ov-table-wrap">
+          <table class="ov-table" id="shadow-ranking">
+            <thead><tr><th>SID</th><th>Name</th><th class="ov-num">N</th><th class="ov-num">Net</th><th class="ov-num">WR %</th><th class="ov-num">PF</th><th>Tier</th><th>Letzter Trade</th></tr></thead>
+            <tbody><tr><td colspan="8">lade…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--s-4)">
+        <div class="ov-card" id="shadow-decay"><h3>Decay-Monitor</h3></div>
+        <div class="ov-card" id="shadow-challenges"><h3>Aktive Challenges</h3></div>
+      </div>
+    </div>
+    <div class="ov-card" style="margin-bottom:var(--s-6)">
+      <h3>Rotation</h3>
+      <div class="ov-table-wrap">
+        <table class="ov-table" id="shadow-rotation">
+          <thead><tr><th>Bot</th><th>Slot</th><th>SID</th><th>Holder</th><th>State</th></tr></thead>
+          <tbody><tr><td colspan="5">lade…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Lab -->
+  <p class="ov-section-title">Strategy Lab</p>
+  <div id="lab-block" class="ov-subgrid">
+    <div class="ov-card" id="lab-worker"><h3>Worker</h3></div>
+    <div class="ov-card" id="lab-queue"><h3>Queue</h3></div>
+    <div class="ov-card" id="lab-7d"><h3>Strategien 7 d</h3></div>
+  </div>
+
+  <!-- 7. Charts (E3) -->
+  <p class="ov-section-title">Kurven &amp; Analysen</p>
+  <div id="charts-block" class="ov-charts-grid">
+    <div class="ov-chart-card ov-span">
+      <h3>Equity-Kurven</h3>
+      <div class="ov-legend" id="chart-equity-legend"></div>
+      <div id="chart-equity"></div>
+    </div>
+    <div class="ov-chart-card ov-span">
+      <h3>Tages-P&amp;L (30 d)</h3>
+      <div id="chart-pnl-daily"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>Monats-P&amp;L (Demo / Live / Shadow)</h3>
+      <div id="chart-monthly"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>Korrelations-Matrix (Slot-SIDs)</h3>
+      <div id="chart-corr"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>TCA-Gruppen (bps)</h3>
+      <div id="chart-tca"></div>
+    </div>
+    <div class="ov-chart-card">
+      <h3>Exposure je Asset-Klasse</h3>
+      <div id="chart-exposure"></div>
+    </div>
+  </div>
+
+  <!-- 8. Quellen -->
+  <p class="ov-section-title">Datenquellen</p>
+  <div id="sources">
+    <div class="ov-table-wrap">
+      <table class="ov-table">
+        <thead><tr><th>ID</th><th>Status</th><th>Alter</th><th>Notiz</th></tr></thead>
+        <tbody id="sources-tbody"><tr><td colspan="4">lade…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="ov-sources-foot" id="sources-foot">Datenstand: —</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var API = window.location.origin + '/api/overview/overview.json';
+
+  // ── Chart-Konstanten (E3, Optik wie Bot-Seiten) ────────────
+  var CHART_TXT = '#8b8b9e';                 // Achsen-Text (bot-components.js:977)
+  var CHART_GRID = 'rgba(255,255,255,0.04)'; // Grid (bot-components.js:978)
+  var C_TOTAL = '#58a6ff';                   // Equity „Gesamt"
+  var C_POS = '#3fb950';                     // Gewinn / Live
+  var C_NEG = '#f85149';                     // Verlust
+  var C_SHADOW = '#a78bfa';                  // Shadow
+  var PALETTE10 = ['#58a6ff', '#3fb950', '#f85149', '#a78bfa', '#f0b940', '#39c5cf', '#ff7b72', '#7ee787', '#d2a8ff', '#ffa657'];
+  var TCA_THRESHOLD_BPS = 2.0;               // markierte Schwelle im TCA-Chart
+  var LIB_MISSING_MSG = 'Chart-Bibliothek nicht geladen — Internetverbindung prüfen';
+
+  // Chart-Instanzen (60-s-Refresh: nur setData, NICHT neu erzeugen)
+  var _eqChart = null, _eqBox = null, _eqTotalSeries = null, _eqBotSeries = {};
+  var _pnlChart = null, _pnlBox = null, _pnlSeries = null;
+
+  // ── Helpers ────────────────────────────────────────────────
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function dash(v) { return (v === null || v === undefined || v === '') ? '—' : v; }
+
+  function fmtEur(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    var neg = v < 0, abs = Math.abs(v);
+    var parts = abs.toFixed(2).split('.');
+    var int = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (neg ? '−' : '') + int + ',' + parts[1] + ' €';
+  }
+  function fmtEurCls(v) {
+    if (v === null || v === undefined || isNaN(v)) return '';
+    return v > 0 ? 'pos' : (v < 0 ? 'neg' : '');
+  }
+  function fmtPct(v) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    return v.toFixed(1) + ' %';
+  }
+  function fmtInt(v) { return (v === null || v === undefined || isNaN(v)) ? '—' : String(v); }
+
+  function fmtAge(s) {
+    if (s === null || s === undefined || isNaN(s)) return '—';
+    if (s < 60) return Math.round(s) + ' s';
+    if (s < 3600) return Math.round(s / 60) + ' min';
+    if (s < 86400) return (s / 3600).toFixed(s / 3600 < 10 ? 1 : 0) + ' h';
+    return Math.round(s / 86400) + ' d';
+  }
+  function fmtTsHuman(iso) {
+    if (!iso) return '—';
+    var t = Date.parse(iso);
+    if (isNaN(t)) return esc(String(iso));
+    var d = (Date.now() - t) / 1000;
+    if (d < 0) d = 0;
+    return 'vor ' + fmtAge(d);
+  }
+
+  function amp(status) {
+    var s = ['green', 'yellow', 'red'].indexOf(status) >= 0 ? status : '';
+    return '<span class="ov-amp ' + (s ? 'status-' + s : '') + '"></span>';
+  }
+
+  function whyList(why) {
+    if (!why || !why.length) return '<ul class="ov-why ov-empty"><li style="color:var(--c-ok)">keine Auffälligkeiten</li></ul>';
+    return '<ul class="ov-why">' + why.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
+  }
+
+  function metricsChips(metrics) {
+    var keys = Object.keys(metrics || {});
+    if (!keys.length) return '<div class="ov-chips"><span class="ov-chip">keine Metriken</span></div>';
+    return '<div class="ov-chips">' + keys.map(function (k) {
+      var v = metrics[k];
+      var val = (typeof v === 'number' && k.indexOf('_s') === k.length - 2) ? fmtAge(v) : dash(v);
+      return '<span class="ov-chip">' + esc(k) + ': <b>' + esc(val) + '</b></span>';
+    }).join('') + '</div>';
+  }
+
+  // ── 1. Hero ────────────────────────────────────────────────
+  function renderHero(d) {
+    var overall = (d.verdict && d.verdict.overall) || {};
+    var status = overall.status || '';
+    var ampEl = document.getElementById('hero-amp');
+    ampEl.className = 'ov-amp ' + (['green','yellow','red'].indexOf(status) >= 0 ? 'status-' + status : '');
+    document.getElementById('hero-headline').textContent = overall.headline || 'System-Kommandocenter';
+    document.getElementById('hero-why').innerHTML = whyList(overall.why);
+  }
+
+  function setDataAge(text, isError) {
+    var el = document.getElementById('data-age');
+    el.textContent = text;
+    el.className = isError ? 'ov-fetch-error' : '';
+  }
+
+  // ── 2. Komponenten ─────────────────────────────────────────
+  var COMP_LABELS = { lab: 'Strategy Lab', shadow: 'Shadow Trader', demo_live: 'Demo / Live', risk: 'Risk', data: 'Data Pipeline' };
+  function renderComponents(d) {
+    var comps = (d.verdict && d.verdict.components) || {};
+    ['lab', 'shadow', 'demo_live', 'risk', 'data'].forEach(function (key) {
+      var el = document.getElementById('comp-' + key);
+      if (!el) return;
+      var c = comps[key] || {};
+      var head = el.querySelector('.ov-comp-head');
+      var ampEl = head ? head.querySelector('.ov-amp') : null;
+      var status = c.status || '';
+      if (ampEl) ampEl.className = 'ov-amp ' + (['green','yellow','red'].indexOf(status) >= 0 ? 'status-' + status : '');
+      var label = el.querySelector('h3');
+      if (label) label.textContent = COMP_LABELS[key] || key;
+      // everything below the head is rendered data
+      Array.prototype.slice.call(el.querySelectorAll('.ov-why, .ov-chips')).forEach(function (n) { n.remove(); });
+      el.insertAdjacentHTML('beforeend', whyList(c.why) + metricsChips(c.metrics));
+    });
+  }
+
+  // ── 3. Findings ────────────────────────────────────────────
+  function renderFindings(d) {
+    var el = document.getElementById('findings');
+    var items = d.findings || [];
+    if (!items.length) {
+      el.innerHTML = '<div class="ov-findings-empty">Keine Auffälligkeiten 🟢</div>';
+      return;
+    }
+    el.innerHTML = items.map(function (f) {
+      var sev = ['red', 'yellow', 'info'].indexOf(f.severity) >= 0 ? f.severity : 'info';
+      var title = esc(f.title || '—');
+      if (f.link) title = '<a href="' + esc(f.link) + '" target="_blank" rel="noopener">' + title + '</a>';
+      return '<div class="ov-finding sev-' + sev + '">' +
+        '<span class="ov-badge sev-' + sev + '">' + esc(sev) + '</span>' +
+        '<span class="ov-badge sev-info">' + esc(f.component || '—') + '</span>' +
+        '<span>' + title + '</span>' +
+        '<span class="ov-detail">' + esc(dash(f.detail)) + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  // ── 4. Live/Demo ───────────────────────────────────────────
+  var KPI_DEFS = [
+    ['equity_demo', 'Equity Demo', 'eur'],
+    ['equity_live', 'Equity Live', 'eur'],
+    ['equity_total', 'Equity Total', 'eur'],
+    ['pnl_7d', 'P&L 7 d', 'eur_cls'],
+    ['pnl_30d', 'P&L 30 d', 'eur_cls'],
+    ['open_positions', 'Offene Positionen', 'int']
+  ];
+  function renderLive(d) {
+    var live = d.live || {};
+    var kpis = live.kpis || {};
+    document.getElementById('live-kpis').innerHTML = KPI_DEFS.map(function (def) {
+      var v = kpis[def[0]];
+      var val;
+      if (def[2] === 'eur') val = '<span class="' + fmtEurCls(v) + '">' + fmtEur(v) + '</span>';
+      else if (def[2] === 'eur_cls') val = '<span class="' + fmtEurCls(v) + '">' + fmtEur(v) + '</span>';
+      else val = fmtInt(v);
+      return '<div class="ov-kpi"><div class="ov-kpi-value">' + val + '</div><div class="ov-kpi-label">' + esc(def[1]) + '</div></div>';
+    }).join('');
+
+    var tbody = document.querySelector('#fleet-table tbody');
+    var fleet = live.fleet || [];
+    if (!fleet.length) {
+      tbody.innerHTML = '<tr><td colspan="13">keine Bot-Daten</td></tr>';
+      return;
+    }
+    tbody.innerHTML = fleet.map(function (b) {
+      var mode = '';
+      if (b.is_live) mode += '<span class="ov-badge mode-live">LIVE</span> ';
+      if (b.multi) mode += '<span class="ov-badge mode-multi">MULTI</span>';
+      if (!mode) mode = '—';
+      var slots = (b.slots || []).map(function (s) {
+        return esc(s.slot_id || '—') + (s.sid !== null && s.sid !== undefined ? '·#' + esc(s.sid) : '');
+      }).join(', ');
+      var ddLevel = (b.dd_level === null || b.dd_level === undefined) ? '—'
+        : '<span class="ov-badge lv' + esc(b.dd_level) + '">L' + esc(b.dd_level) + '</span>';
+      return '<tr>' +
+        '<td><b>' + esc(b.bot || '—') + '</b></td>' +
+        '<td>' + mode + '</td>' +
+        '<td class="ov-num">' + fmtEur(b.equity) + '</td>' +
+        '<td class="ov-num">' + fmtEur(b.balance) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.pnl_30d) + '">' + fmtEur(b.pnl_30d) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.dd_pct) + '">' + fmtPct(b.dd_pct) + '</td>' +
+        '<td>' + ddLevel + '</td>' +
+        '<td>' + (b.blocked ? '🔴' : '—') + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(b.daily_pnl_pct) + '">' + fmtPct(b.daily_pnl_pct) + '</td>' +
+        '<td class="ov-num">' + fmtInt(b.open_positions) + '</td>' +
+        '<td>' + (slots || '—') + '</td>' +
+        '<td class="spark-td">' + sparklineSVG(b.equity_curve) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  // ── 5. Shadow ──────────────────────────────────────────────
+  function renderShadow(d) {
+    var sh = d.shadow || {};
+    var k = sh.kpis || {};
+    document.getElementById('shadow-kpis').innerHTML =
+      '<div class="ov-kpi"><div class="ov-kpi-value">' + fmtInt(k.n_trades_30d) + '</div><div class="ov-kpi-label">Trades 30 d</div></div>' +
+      '<div class="ov-kpi"><div class="ov-kpi-value"><span class="' + fmtEurCls(k.net_30d) + '">' + fmtEur(k.net_30d) + '</span></div><div class="ov-kpi-label">Net 30 d</div></div>' +
+      '<div class="ov-kpi"><div class="ov-kpi-value">' + fmtInt(k.n_deployed) + '</div><div class="ov-kpi-label">Deployed</div></div>';
+
+    // Ranking (Top 15)
+    var rk = (sh.ranking || []).slice(0, 15);
+    document.querySelector('#shadow-ranking tbody').innerHTML = rk.length ? rk.map(function (r) {
+      return '<tr>' +
+        '<td>#' + esc(dash(r.sid)) + '</td>' +
+        '<td style="white-space:normal;min-width:200px">' + esc(dash(r.name)) + '</td>' +
+        '<td class="ov-num">' + fmtInt(r.n) + '</td>' +
+        '<td class="ov-num ' + fmtEurCls(r.net) + '">' + fmtEur(r.net) + '</td>' +
+        '<td class="ov-num">' + fmtPct(r.wr_pct) + '</td>' +
+        '<td class="ov-num">' + dash(r.pf === null || r.pf === undefined ? null : (Math.round(r.pf * 100) / 100)) + '</td>' +
+        '<td>' + esc(dash(r.tier)) + '</td>' +
+        '<td>' + esc(fmtTsHuman(r.last_ts)) + '</td>' +
+        '</tr>';
+    }).join('') : '<tr><td colspan="8">keine Daten</td></tr>';
+
+    // Decay
+    var dec = sh.decay || {};
+    var counts = dec.counts || {};
+    var order = ['total', 'tableau', 'demote', 'watch', 'ok', 'insufficient'];
+    var countsHtml = '<div class="ov-chips" style="margin-bottom:var(--s-2)">' + order.map(function (key) {
+      return '<span class="ov-chip">' + esc(key) + ': <b>' + fmtInt(counts[key]) + '</b></span>';
+    }).join('') + '</div>';
+    var rows = dec.rows || [];
+    var rowsHtml = rows.length ?
+      '<div class="ov-table-wrap"><table class="ov-table">' +
+      '<thead><tr><th>Bot</th><th>SID</th><th class="ov-num">Ratio</th><th>Status</th><th>Gründe</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr>' +
+          '<td>' + esc(dash(r.bot)) + '</td>' +
+          '<td>#' + esc(dash(r.sid)) + '</td>' +
+          '<td class="ov-num">' + dash(r.ratio === null || r.ratio === undefined ? null : (Math.round(r.ratio * 100) / 100)) + '</td>' +
+          '<td>' + esc(dash(r.status_label || r.status)) + '</td>' +
+          '<td style="white-space:normal">' + esc((r.reasons || []).join(', ') || '—') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table></div>'
+      : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine Zeilen</div>';
+    document.getElementById('shadow-decay').innerHTML = '<h3>Decay-Monitor</h3>' + countsHtml + rowsHtml;
+
+    // Challenges
+    var ch = sh.challenges || [];
+    document.getElementById('shadow-challenges').innerHTML = '<h3>Aktive Challenges</h3>' + (ch.length ?
+      '<div class="ov-chips">' + ch.map(function (c) {
+        return '<span class="ov-chip">' + esc(c.bot) + ' / ' + esc(c.slot_id) + ' · #' + esc(dash(c.sid)) + ' · <b>' + fmtInt(c.days) + ' d</b></span>';
+      }).join('') + '</div>'
+      : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine aktiven Challenges</div>');
+
+    // Rotation
+    var rot = sh.rotation || [];
+    document.querySelector('#shadow-rotation tbody').innerHTML = rot.length ? rot.map(function (r) {
+      return '<tr>' +
+        '<td>' + esc(dash(r.bot)) + '</td>' +
+        '<td>' + esc(dash(r.slot_id)) + '</td>' +
+        '<td>#' + esc(dash(r.sid)) + '</td>' +
+        '<td>' + (r.holder ? '✓' : '—') + '</td>' +
+        '<td><span class="ov-badge ' + (r.state === 'held' ? 'mode-live' : 'sev-info') + '">' + esc(dash(r.state)) + '</span></td>' +
+        '</tr>';
+    }).join('') : '<tr><td colspan="5">keine Daten</td></tr>';
+  }
+
+  // ── 6. Lab ─────────────────────────────────────────────────
+  function renderLab(d) {
+    var lab = d.lab || {};
+    var w = lab.worker || {};
+    var wStatus = w.status || '';
+    var statusMap = { recipe_running: 'green', running: 'green', idle: 'yellow', stopped: 'red', error: 'red', offline: 'red' };
+    var ampCls = statusMap[wStatus] ? 'status-' + statusMap[wStatus] : 'status-yellow';
+    document.getElementById('lab-worker').innerHTML = '<h3>Worker</h3>' +
+      '<div class="ov-comp-head">' + amp(ampCls === 'status-green' ? 'green' : (ampCls === 'status-red' ? 'red' : 'yellow')) +
+      '<span style="font-size:var(--text-sm);font-weight:600">' + esc(wStatus || '—') + '</span></div>' +
+      '<div class="ov-chips">' +
+      '<span class="ov-chip">Typ: <b>' + esc(dash(w.strategy_type)) + '</b></span>' +
+      '<span class="ov-chip">Laufzeit: <b>' + fmtAge(w.elapsed_s) + '</b></span>' +
+      '<span class="ov-chip">Alter: <b>' + fmtAge(w.age_s) + '</b></span>' +
+      '</div>' +
+      (w.message ? '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">' + esc(w.message) + '</div>' : '');
+
+    var qc = lab.queue_counts || {};
+    var qcKeys = Object.keys(qc);
+    document.getElementById('lab-queue').innerHTML = '<h3>Queue</h3>' + (qcKeys.length ?
+      '<div class="ov-chips">' + qcKeys.map(function (key) {
+        return '<span class="ov-chip">' + esc(key) + ': <b>' + fmtInt(qc[key]) + '</b></span>';
+      }).join('') + '</div>' : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine Queue-Daten</div>');
+
+    var s7 = lab.strategies_7d || {};
+    var tiers = s7.by_tier || {};
+    document.getElementById('lab-7d').innerHTML = '<h3>Strategien 7 d</h3>' +
+      '<div class="ov-kpi-value" style="margin-bottom:var(--s-2)">' + fmtInt(s7.total) + '</div>' +
+      '<div class="ov-chips">' + Object.keys(tiers).map(function (t) {
+        return '<span class="ov-chip">Tier ' + esc(t) + ': <b>' + fmtInt(tiers[t]) + '</b></span>';
+      }).join('') + '</div>';
+  }
+
+  // ── 8. Quellen ─────────────────────────────────────────────
+  function renderSources(d) {
+    var src = d.sources || [];
+    document.getElementById('sources-tbody').innerHTML = src.length ? src.map(function (s) {
+      var st = ['fresh', 'old', 'stale', 'missing'].indexOf(s.status) >= 0 ? s.status : 'missing';
+      return '<tr>' +
+        '<td><b>' + esc(s.id || '—') + '</b></td>' +
+        '<td><span class="ov-dot ' + st + '"></span>' + esc(s.status || '—') + '</td>' +
+        '<td>' + fmtAge(s.age_s) + '</td>' +
+        '<td style="white-space:normal;color:var(--c-text-dim)">' + esc(dash(s.note)) + '</td>' +
+        '</tr>';
+    }).join('') : '<tr><td colspan="4">keine Quellen</td></tr>';
+    document.getElementById('sources-foot').textContent = 'Datenstand: ' + (d.generated_at_bz || '—');
+  }
+
+  // ── 7. Charts (E3) ─────────────────────────────────────────
+  function curveToPoints(curve) {
+    return (curve || [])
+      .filter(function (p) { return p && p.length >= 2 && !isNaN(p[0]) && !isNaN(p[1]); })
+      .map(function (p) { return { time: p[0], value: p[1] }; })
+      .sort(function (a, b) { return a.time - b.time; });
+  }
+  function dayToEpoch(s) {
+    var t = Date.parse(String(s) + 'T00:00:00Z');
+    return isNaN(t) ? null : Math.floor(t / 1000);
+  }
+  function emptyHint(msg, isError) {
+    return '<div class="ov-chart-empty' + (isError ? ' ov-chart-error' : '') + '">' + esc(msg) + '</div>';
+  }
+  function fmtNum(v, digits, suffix) {
+    if (v === null || v === undefined || isNaN(v)) return '—';
+    return Number(v).toFixed(digits === undefined ? 2 : digits) + (suffix || '');
+  }
+  function chartBaseOpts(width, height) {
+    // Muster: src/templates/bot-components.js Z.974–981
+    return {
+      width: width, height: height,
+      layout: { background: { type: 'solid', color: 'transparent' }, textColor: CHART_TXT },
+      grid: { vertLines: { color: CHART_GRID }, horzLines: { color: CHART_GRID } },
+      crosshair: { mode: 0 },
+      timeScale: { timeVisible: false },
+    };
+  }
+
+  function renderEquity(live) {
+    var box = document.getElementById('chart-equity');
+    var legend = document.getElementById('chart-equity-legend');
+    if (!box) return;
+    var totalPts = curveToPoints(live.total_equity_curve);
+    var bots = [];
+    (live.fleet || []).forEach(function (b, i) {
+      var pts = curveToPoints(b.equity_curve);
+      if (pts.length >= 2) bots.push({ name: b.bot || 'bot' + (i + 1), pts: pts });
+    });
+    if (totalPts.length < 2 && !bots.length) {
+      box.innerHTML = emptyHint('keine Equity-Kurven vorhanden');
+      if (legend) legend.innerHTML = '';
+      return;
+    }
+    if (!_eqChart) {
+      _eqBox = box;
+      _eqChart = LightweightCharts.createChart(box, chartBaseOpts(box.clientWidth, 320));
+      _eqTotalSeries = _eqChart.addLineSeries({ color: C_TOTAL, lineWidth: 3, priceLineVisible: false });
+    }
+    _eqTotalSeries.setData(totalPts.length >= 2 ? totalPts : []);
+
+    // Bot-Serien: pro Name eine Instanz (Farbe bleibt beim Refresh stabil)
+    var seen = {};
+    bots.forEach(function (b) {
+      seen[b.name] = true;
+      if (!_eqBotSeries[b.name]) {
+        var idx = Object.keys(_eqBotSeries).length % PALETTE10.length;
+        _eqBotSeries[b.name] = { color: PALETTE10[idx], series: _eqChart.addLineSeries({ color: PALETTE10[idx], lineWidth: 1, priceLineVisible: false }) };
+      }
+      _eqBotSeries[b.name].series.setData(b.pts);
+    });
+    Object.keys(_eqBotSeries).forEach(function (k) {
+      if (!seen[k]) _eqBotSeries[k].series.setData([]); // Bot verschwunden → Serie leeren
+    });
+
+    // Legende als Chips ÜBER dem Chart
+    if (legend) {
+      var chips = ['<span class="ov-legend-chip total"><span class="swatch" style="background:' + C_TOTAL + '"></span>Gesamt</span>'];
+      bots.forEach(function (b) {
+        chips.push('<span class="ov-legend-chip"><span class="swatch" style="background:' + _eqBotSeries[b.name].color + '"></span>' + esc(b.name) + '</span>');
+      });
+      legend.innerHTML = chips.join('');
+    }
+  }
+
+  function renderPnlDaily(charts) {
+    var box = document.getElementById('chart-pnl-daily');
+    if (!box) return;
+    var rows = charts.pnl_daily_30d || [];
+    if (!rows.length) { box.innerHTML = emptyHint('keine Tages-P&L-Daten'); return; }
+    var pts = [];
+    rows.forEach(function (r) {
+      var t = r && r.length >= 2 ? dayToEpoch(r[0]) : null;
+      if (t !== null && !isNaN(r[1])) pts.push({ time: t, value: Number(r[1]), color: Number(r[1]) >= 0 ? C_POS : C_NEG });
+    });
+    if (!pts.length) { box.innerHTML = emptyHint('keine Tages-P&L-Daten'); return; }
+    if (!_pnlChart) {
+      _pnlBox = box;
+      _pnlChart = LightweightCharts.createChart(box, chartBaseOpts(box.clientWidth, 160));
+      _pnlSeries = _pnlChart.addHistogramSeries({ priceFormat: { type: 'price', precision: 2, minMove: 0.01 }, priceLineVisible: false });
+    }
+    _pnlSeries.setData(pts.sort(function (a, b) { return a.time - b.time; }));
+  }
+
+  function renderMonthly(charts) {
+    var box = document.getElementById('chart-monthly');
+    if (!box) return;
+    var rows = charts.monthly_pnl || [];
+    if (!rows.length) { box.innerHTML = emptyHint('keine Monatsdaten'); return; }
+    var series = [['demo_eur', 'Demo', C_TOTAL], ['live_eur', 'Live', C_POS], ['shadow_eur', 'Shadow', C_SHADOW]];
+    var maxAbs = 0;
+    rows.forEach(function (m) {
+      series.forEach(function (s) { var v = Math.abs(Number(m[s[0]]) || 0); if (v > maxAbs) maxAbs = v; });
+    });
+    if (!maxAbs) maxAbs = 1;
+    var W = 600, H = 200, padL = 6, padR = 6, padT = 6, padB = 20;
+    var plotH = H - padT - padB, zeroY = padT + plotH / 2, halfH = plotH / 2;
+    var groupW = (W - padL - padR) / rows.length;
+    var barW = Math.min(10, groupW / 4), gap = 2;
+    var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" data-bars="' + (rows.length * series.length) + '">'];
+    svg.push('<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="rgba(139,139,158,0.4)" stroke-width="1"/>');
+    rows.forEach(function (m, i) {
+      var x0 = padL + i * groupW + (groupW - series.length * barW - (series.length - 1) * gap) / 2;
+      series.forEach(function (s, j) {
+        var v = Number(m[s[0]]) || 0;
+        var h = Math.abs(v) / maxAbs * halfH;
+        var y = v >= 0 ? zeroY - h : zeroY;
+        var tip = esc(m.month) + ' ' + s[1] + ': ' + fmtEur(v);
+        svg.push('<rect class="bar" data-month="' + esc(m.month) + '" x="' + (x0 + j * (barW + gap)).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + s[2] + '"><title>' + tip + '</title></rect>');
+      });
+      svg.push('<text x="' + (padL + i * groupW + groupW / 2).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="9" fill="' + CHART_TXT + '">' + esc(m.month.slice(5)) + '</text>');
+    });
+    svg.push('</svg>');
+    var legendHtml = '<div class="ov-legend">' + series.map(function (s) {
+      return '<span class="ov-legend-chip"><span class="swatch" style="background:' + s[2] + '"></span>' + s[1] + '</span>';
+    }).join('') + '</div>';
+    box.innerHTML = legendHtml + svg.join('');
+  }
+
+  function corrColor(v) {
+    if (v === null || v === undefined || isNaN(v)) return 'var(--c-surface-2)';
+    var a = 0.12 + Math.min(1, Math.abs(v)) * 0.55;
+    return v >= 0 ? 'rgba(63,185,80,' + a.toFixed(3) + ')' : 'rgba(248,81,73,' + a.toFixed(3) + ')';
+  }
+  function renderCorr(charts) {
+    var box = document.getElementById('chart-corr');
+    if (!box) return;
+    var c = charts.corr || {};
+    var labels = c.labels || [], matrix = c.matrix || [];
+    if (!labels.length || !matrix.length) { box.innerHTML = emptyHint('keine Korrelationsdaten'); return; }
+    var n = labels.length, showVals = n <= 10;
+    var html = ['<div class="corr-grid" style="grid-template-columns:auto repeat(' + n + ',1fr)">'];
+    html.push('<div class="corr-h"></div>');
+    labels.forEach(function (l) { html.push('<div class="corr-h">' + esc(l) + '</div>'); });
+    labels.forEach(function (rl, i) {
+      html.push('<div class="corr-h corr-rl">' + esc(rl) + '</div>');
+      for (var j = 0; j < n; j++) {
+        var v = (matrix[i] || [])[j];
+        var num = (v !== null && v !== undefined && !isNaN(v));
+        var txt = showVals && num ? '<span>' + Math.round(v * 100) + '</span>' : (num ? '' : '·');
+        var tip = esc(rl) + '↔' + esc(labels[j]) + ': ' + (num ? (v > 0 ? '+' : '') + Number(v).toFixed(2) : '—');
+        html.push('<div class="corr-cell' + (i === j ? ' corr-diag' : '') + '" style="background:' + corrColor(num ? v : null) + '" title="' + tip + '">' + txt + '</div>');
+      }
+    });
+    html.push('</div>');
+    box.innerHTML = html.join('');
+  }
+
+  function groupTable(label, data) {
+    // by_symbol/by_session/by_month sind Objekte (oder Arrays) — Spalten generisch aus den Daten
+    var rows = [];
+    if (Array.isArray(data)) {
+      rows = data.filter(function (r) { return r && typeof r === 'object'; })
+        .map(function (r, i) { r = Object.assign({}, r); if (r._key === undefined) r._key = r.symbol || r.session || r.month || ('#' + (i + 1)); return r; });
+    } else if (data && typeof data === 'object') {
+      Object.keys(data).forEach(function (k) {
+        var v = data[k];
+        rows.push(v && typeof v === 'object' ? Object.assign({ _key: k }, v) : { _key: k, value: v });
+      });
+    }
+    if (!rows.length) return '';
+    var cols = Object.keys(rows[0]).filter(function (k) { return k !== '_key'; });
+    var thead = '<thead><tr><th>' + esc(label) + '</th>' + cols.map(function (c) { return '<th class="ov-num">' + esc(c) + '</th>'; }).join('') + '</tr></thead>';
+    var tbody = '<tbody>' + rows.map(function (r) {
+      return '<tr><td><b>' + esc(r._key) + '</b></td>' + cols.map(function (c) {
+        var v = r[c];
+        var txt = (v === null || v === undefined) ? '—' : (typeof v === 'number' ? String(Math.round(v * 100) / 100) : esc(v));
+        return '<td class="ov-num">' + txt + '</td>';
+      }).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    return '<div class="ov-table-wrap" style="margin-top:var(--s-3)"><table class="ov-table">' + thead + tbody + '</table></div>';
+  }
+
+  function renderTca(charts) {
+    var box = document.getElementById('chart-tca');
+    if (!box) return;
+    var g = charts.tca_groups || {};
+    var o = g.overall || {};
+    var defs = [['mean_bps', 'Mean'], ['median_bps', 'Median'], ['p90_bps', 'P90']];
+    var vals = defs.map(function (d) { var v = o[d[0]]; return (v === null || v === undefined || isNaN(v)) ? null : Number(v); });
+    var html = '';
+    if (!vals.some(function (v) { return v !== null; })) {
+      html += emptyHint('noch keine TCA-Daten');
+    } else {
+      var W = 520, labelW = 58, rightPad = 72, rowH = 30, padT = 20;
+      var barMax = W - labelW - rightPad;
+      var H = padT + defs.length * rowH + 8;
+      var mags = vals.map(function (v) { return v === null ? 0 : Math.abs(v); });
+      var scaleMax = Math.max(Math.max.apply(null, mags), TCA_THRESHOLD_BPS) * 1.15 || 1;
+      var thrX = labelW + (TCA_THRESHOLD_BPS / scaleMax) * barMax;
+      var svg = ['<svg class="tca-svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img">'];
+      defs.forEach(function (d, i) {
+        var v = vals[i], y = padT + i * rowH;
+        svg.push('<text x="0" y="' + (y + 14) + '" font-size="10">' + esc(d[1]) + '</text>');
+        if (v !== null) {
+          var w = Math.max(1, Math.abs(v) / scaleMax * barMax);
+          svg.push('<rect x="' + labelW + '" y="' + (y + 3) + '" width="' + w.toFixed(1) + '" height="14" rx="2" fill="' + (v > TCA_THRESHOLD_BPS ? C_NEG : C_TOTAL) + '"><title>' + esc(d[1]) + ': ' + v.toFixed(2) + ' bps</title></rect>');
+          svg.push('<text x="' + (labelW + w + 6).toFixed(1) + '" y="' + (y + 14) + '" font-size="10">' + v.toFixed(2) + '</text>');
+        } else {
+          svg.push('<text x="' + labelW + '" y="' + (y + 14) + '" font-size="10">—</text>');
+        }
+      });
+      svg.push('<line x1="' + thrX.toFixed(1) + '" y1="' + (padT - 8) + '" x2="' + thrX.toFixed(1) + '" y2="' + (H - 6) + '" stroke="#f0b940" stroke-width="1" stroke-dasharray="4 3"/>');
+      svg.push('<text class="tca-thresh" x="' + (thrX + 4).toFixed(1) + '" y="' + (padT - 10) + '" font-size="9">Schwelle ' + TCA_THRESHOLD_BPS.toFixed(1) + ' bps</text>');
+      svg.push('</svg>');
+      html += svg.join('');
+    }
+    html += '<div class="ov-chips" style="margin-top:var(--s-2)">' +
+      '<span class="ov-chip">n: <b>' + fmtInt(o.n) + '</b></span>' +
+      '<span class="ov-chip">Adverse: <b>' + fmtNum(o.adverse_pct, 1, ' %') + '</b></span>' +
+      '<span class="ov-chip">Drift: <b>' + fmtNum(o.mean_drift_pips, 2, ' pips') + '</b></span>' +
+      '<span class="ov-chip">Slip: <b>' + fmtNum(o.mean_exec_slip_pips, 2, ' pips') + '</b></span>' +
+      '</div>';
+    var anyGroup = false;
+    [['Symbol', 'by_symbol'], ['Session', 'by_session'], ['Monat', 'by_month']].forEach(function (spec) {
+      var t = groupTable(spec[0], g[spec[1]]);
+      if (t) { anyGroup = true; html += t; }
+    });
+    if (!anyGroup) html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-top:var(--s-2)">noch keine Gruppen</div>';
+    box.innerHTML = html;
+  }
+
+  function renderExposure(charts) {
+    var box = document.getElementById('chart-exposure');
+    if (!box) return;
+    var rows = charts.exposure || [];
+    if (!rows.length) { box.innerHTML = emptyHint('keine Exposure-Daten'); return; }
+    var maxSlots = 1;
+    rows.forEach(function (r) { var s = Number(r.slots) || 0; if (s > maxSlots) maxSlots = s; });
+    box.innerHTML = rows.map(function (r) {
+      var slots = Number(r.slots) || 0;
+      var risk = (r.open_risk_eur === null || r.open_risk_eur === undefined) ? '—' : fmtEur(r.open_risk_eur);
+      return '<div class="exp-row">' +
+        '<span>' + esc(r.class || '—') + '</span>' +
+        '<span class="exp-bar-track"><span class="exp-bar" style="width:' + (slots / maxSlots * 100).toFixed(1) + '%"></span></span>' +
+        '<span class="exp-val">' + fmtInt(r.open_positions) + '/' + slots + ' Pos</span>' +
+        '<span class="exp-val">' + risk + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function sparklineSVG(curve) {
+    var pts = curveToPoints(curve);
+    if (pts.length < 2) return '—';
+    var step = Math.max(1, Math.ceil(pts.length / 40)); // Downsample ≤40 Punkte
+    var samp = pts.filter(function (_, i) { return i % step === 0 || i === pts.length - 1; });
+    var vs = samp.map(function (p) { return p.value; });
+    var min = Math.min.apply(null, vs), max = Math.max.apply(null, vs);
+    var range = (max - min) || 1;
+    var W = 64, H = 16, pad = 1.5;
+    var poly = samp.map(function (p, i) {
+      var x = pad + i / (samp.length - 1) * (W - 2 * pad);
+      var y = pad + (1 - (p.value - min) / range) * (H - 2 * pad);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    var color = vs[vs.length - 1] >= vs[0] ? C_POS : C_NEG;
+    return '<svg class="spark" width="64" height="16" viewBox="0 0 64 16" aria-hidden="true"><polyline points="' + poly + '" fill="none" stroke="' + color + '" stroke-width="1.5"/></svg>';
+  }
+
+  function renderCharts(d) {
+    var charts = d.charts || {};
+    if (!window.LightweightCharts) {
+      // Guard: LWCharts fehlt → Hinweis, SVG-Charts trotzdem rendern
+      ['chart-equity', 'chart-pnl-daily'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = emptyHint(LIB_MISSING_MSG, true);
+      });
+    } else {
+      try {
+        renderEquity(d.live || {});
+        renderPnlDaily(charts);
+      } catch (e) {
+        console.warn('overview: Chart-Fehler', e);
+        ['chart-equity', 'chart-pnl-daily'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && !el.innerHTML) el.innerHTML = emptyHint('Chartfehler: ' + e.message, true);
+        });
+      }
+    }
+    renderMonthly(charts);
+    renderCorr(charts);
+    renderTca(charts);
+    renderExposure(charts);
+  }
+
+  // ── Render + Polling ───────────────────────────────────────
+  function render(d) {
+    renderHero(d);
+    renderComponents(d);
+    renderFindings(d);
+    renderLive(d);
+    renderShadow(d);
+    renderLab(d);
+    renderSources(d);
+    renderCharts(d);
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function load() {
+    fetch(API, { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        render(data);
+        setDataAge('Datenstand: ' + (data.generated_at_bz || '—') + ' · aktualisiert automatisch alle 60 s', false);
+      })
+      .catch(function (err) {
+        setDataAge('⚠ Datenquelle nicht erreichbar (' + err.message + ') — Seite zeigt zuletzt geladene Daten, erneuter Versuch in 60 s.', true);
+      });
+  }
+
+  load();
+  setInterval(load, 60000);
+
+  // window.resize → Chartbreite anpassen (Instanzen bleiben bestehen)
+  window.addEventListener('resize', function () {
+    if (_eqChart && _eqBox) _eqChart.applyOptions({ width: _eqBox.clientWidth });
+    if (_pnlChart && _pnlBox) _pnlChart.applyOptions({ width: _pnlBox.clientWidth });
+  });
+})();
+</script>
 <!--/BODY-->

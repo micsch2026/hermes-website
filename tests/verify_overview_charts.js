@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * verify_overview_charts.js — ad-hoc-Verifikation (Node, kein npm):
- * Führt den Seiten-<script>-Block aus src/content/overview.html in node:vm
+ * Führt den Seiten-<script>-Block aus src/content/index.html in node:vm
  * mit Stubs aus und prüft, dass die E3-Charts gegen
  * tests/fixtures/overview_small.json rendern.
  *
@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const SRC = path.join(__dirname, '..', 'src', 'content', 'overview.html');
+const SRC = path.join(__dirname, '..', 'src', 'content', 'index.html');
 const FIXTURE = path.join(__dirname, 'fixtures', 'overview_small.json');
 
 let PASS = 0, FAIL = 0;
@@ -123,7 +123,7 @@ const sandbox = {
 vm.createContext(sandbox);
 let threw = null;
 try {
-  vm.runInContext(pageBlocks[0].body, sandbox, { filename: 'overview.html:inline' });
+  vm.runInContext(pageBlocks[0].body, sandbox, { filename: 'index.html:inline' });
 } catch (e) {
   threw = e;
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-test_overview_page.py — Struktur-/Build-Tests fuer src/content/overview.html
-(System-Kommandocenter, /overview). Rein stdlib.
+test_overview_page.py — Struktur-/Build-Tests fuer src/content/index.html
+(System-Kommandocenter, Startseite seit E4-Swap). Rein stdlib.
 
 Run:  python3 tests/test_overview_page.py   → alle PASS / exit 1 bei FAIL
 """
@@ -16,7 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.dirname(HERE)
 sys.path.insert(0, SITE)
 
-SRC = os.path.join(SITE, "src", "content", "overview.html")
+SRC = os.path.join(SITE, "src", "content", "index.html")
 
 PASS = 0
 FAIL = 0
@@ -144,7 +144,7 @@ def main():
     import build  # site/build.py
 
     with tempfile.TemporaryDirectory() as td:
-        out = os.path.join(td, "overview.html")
+        out = os.path.join(td, "index.html")
         import io
         import contextlib
         buf = io.StringIO()
@@ -154,7 +154,7 @@ def main():
         built = open(out, encoding="utf-8").read()
 
     check("build_page rc 0 + 'Built ...' auf stdout",
-          f"overview.html" in stdout and "Built" in stdout, stdout.strip()[:200])
+          f"index.html" in stdout and "Built" in stdout, stdout.strip()[:200])
     check("Build-Output enthaelt id=\"hero-amp\"", 'id="hero-amp"' in built)
     check("Build-Output enthaelt overview.json", "overview.json" in built)
     check("Build-Output ohne unersetzte '{{'", "{{" not in built)
