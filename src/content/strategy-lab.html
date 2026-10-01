@@ -277,7 +277,7 @@ function render() {
     `;
   }
   if (boardData && boardData.available) {
-    document.getElementById('badge-stratege').textContent = (boardData.wochenfokus || []).length;
+    document.getElementById('badge-stratege').textContent = (boardData.decisions || []).length;
   }
   renderTable();
 }
@@ -1887,14 +1887,55 @@ function renderStrategeBoard() {
     return;
   }
   var b = boardData;
-  var stTxt = b.status === 'applied' ? '✅ übernommen' : (b.status === 'partial' ? '🟡 teilweise übernommen' : '⏳ offen — wartet auf Freigabe');
-  var stCls = b.status === 'applied' ? 'sb-st-ok' : (b.status === 'partial' ? 'sb-st-part' : 'sb-st-pending');
+  var stTxt = b.status === 'applied' ? '✅ autonom angewandt' : (b.status === 'noop' ? '✅ autonom geprüft — nichts zu ändern' : (b.status === 'partial' ? '🟡 teilweise übernommen' : '⏳ wartet auf Freigabe'));
+  var stCls = (b.status === 'applied' || b.status === 'noop') ? 'sb-st-ok' : (b.status === 'partial' ? 'sb-st-part' : 'sb-st-pending');
   var html = '';
   html += '<div class="sb-head">';
   html += '<div class="sb-week">🧠 R&D Stratege — Wochen-Review <span class="sb-chip">' + esc(b.week || '') + '</span> <span class="sb-st ' + stCls + '">' + stTxt + '</span></div>';
   html += '<div class="sb-meta">Modell: ' + esc(b.model || '—') + ' · Erstellt: ' + (b.generated_at ? new Date(b.generated_at).toLocaleString('de-DE') : '—') + '</div>';
   if (b.summary_de) html += '<div class="sb-summary">' + esc(b.summary_de) + '</div>';
   html += '</div>';
+
+  // 🙋 Entscheidungen, die der Stratege bewusst NICHT selbst trifft
+  var dec = b.decisions || [];
+  if (dec.length) {
+    html += '<div class="sb-sec" style="border-left:3px solid #f0883e;padding-left:0.6rem">';
+    html += '<div class="sb-sec-title">🙋 Braucht deine Entscheidung (' + dec.length + ')</div><ul class="sb-list">';
+    for (var di = 0; di < dec.length; di++) {
+      var d = dec[di];
+      var dIcon = d.kind === 'anpassung' ? '🔧' : (d.kind === 'shadow' ? '👻' : '💡');
+      html += '<li>' + dIcon + ' <strong>' + esc(d.title || '') + '</strong>' + (d.detail ? ': ' + esc(d.detail) : '') + (d.reason ? ' <span class="sb-dim">(' + esc(d.reason) + ')</span>' : '') + '</li>';
+    }
+    html += '</ul><div class="sb-card-sub">Bewusst nicht autonom: betrifft Retires, Gates, Blacklist oder Bot-/Shadow-nahe Eingriffe.</div></div>';
+  }
+
+  // ✅ Was der Stratege in dieser Woche selbst umgestellt hat
+  var ap = b.applied;
+  if (ap && (ap.at || (ap.changed || []).length)) {
+    html += '<div class="sb-sec"><div class="sb-sec-title">✅ Autonom angewandt' + (ap.at ? ' — ' + new Date(ap.at).toLocaleString('de-DE') : '') + '</div>';
+    if (ap.scope) html += '<div class="sb-summary">' + esc(ap.scope) + '</div>';
+    html += '<ul class="sb-list">';
+    if ((ap.seeds_new || []).length) html += '<li>🌱 Seeds übernommen: ' + esc(ap.seeds_new.join(', ')) + '</li>';
+    var ce = ap.cluster_edits || [];
+    for (var ci = 0; ci < ce.length; ci++) {
+      html += '<li>🧩 ' + esc(ce[ci][0] || '') + ' :: ' + esc(ce[ci][1] || '') + ' += ' + esc(ce[ci][2] || '') + '</li>';
+    }
+    if ((ap.tiers_added || []).length) html += '<li>🎯 tier1 neu: ' + esc(ap.tiers_added.join(', ')) + '</li>';
+    if (ap.focus && ap.focus.cluster) html += '<li>🎯 Fokus gesetzt: ' + esc(ap.focus.cluster) + (ap.focus.window_end ? ' (bis ' + esc(String(ap.focus.window_end).slice(0, 16)) + ' UTC)' : '') + '</li>';
+    if ((ap.cooldowns_reset || []).length) html += '<li>♻️ Cooldown gelöst: ' + esc(ap.cooldowns_reset.join(', ')) + '</li>';
+    var aa = ap.assets_added || [];
+    for (var ai = 0; ai < aa.length; ai++) {
+      html += '<li>➕ Assets ' + esc(aa[ai][0] || '') + ' += ' + esc((aa[ai][1] || []).join(', ')) + '</li>';
+    }
+    if (ap.tier_promoted) html += '<li>⬆️ tier1-Förderung: ' + esc(ap.tier_promoted) + '</li>';
+    var sk = ap.seeds_skipped || [];
+    if (sk.length) {
+      html += '<li class="sb-dim">⏭ Nicht angewandt: ' + esc(sk.map(function (x) { return x[0] + ' (' + x[1] + ')'; }).join('; ')) + '</li>';
+    }
+    html += '</ul>';
+    if (ap.manifest) html += '<div class="sb-card-sub">Beleg: ' + esc(ap.manifest) + '</div>';
+    html += '</div>';
+  }
 
   var foc = b.wochenfokus || [];
   if (foc.length) {
@@ -1985,7 +2026,7 @@ function renderStrategeBoard() {
     html += '<table class="sl4-table"><thead><tr><th>Woche</th><th>Status</th><th class="num">Fokus</th><th class="num">Seeds</th><th>Kurzfassung</th></tr></thead><tbody>';
     for (var r = 0; r < hist.length; r++) {
       var h = hist[r];
-      var hs = h.status === 'applied' ? '✅' : (h.status === 'partial' ? '🟡' : '⏳');
+      var hs = (h.status === 'applied' || h.status === 'noop') ? '✅' : (h.status === 'partial' ? '🟡' : '⏳');
       html += '<tr><td>' + esc(h.week || '') + '</td><td>' + hs + ' ' + esc(h.status || '') + '</td><td class="num">' + (h.focus_count || 0) + '</td><td class="num">' + (h.seed_count || 0) + (h.seeds_validated ? ' (' + h.seeds_validated + ' ✓)' : '') + '</td><td class="sb-rat">' + esc(h.summary_de || '') + '</td></tr>';
     }
     html += '</tbody></table></div>';

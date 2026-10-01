@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-01T09:52:38.946456+00:00",
+ "updated_at": "2026-10-01T14:35:35.323077+00:00",
  "available": true,
  "week": "2026-W40",
  "status": "partial",
@@ -717,6 +717,100 @@
    "focus_count": 5,
    "seed_count": 5,
    "seeds_validated": 3
+  }
+ ],
+ "applied": {
+  "at": "2026-10-01T07:25:05.435650+00:00",
+  "scope": "Seeds 3/5 (2x zu selten, verworfen); Approaches in TF_WAVE + breite Config verdrahtet; offen: Anpassungen/Retires/Debug (separate Freigabe)",
+  "seeds_new": [],
+  "seeds_skipped": [],
+  "cluster_edits": [],
+  "tiers_added": [],
+  "focus": null,
+  "cooldowns_reset": [],
+  "assets_added": [],
+  "tier_promoted": null,
+  "changed": [],
+  "manifest": null
+ },
+ "decisions": [
+  {
+   "kind": "anpassung",
+   "title": "h4_swing_fx (Saves 749/752 live)",
+   "detail": "per-Asset-WFO-Pass als Deploy-Gate erzwingen, sonst Asset aus dem Cluster-Paar-Set entfernen",
+   "reason": "gate_fails fuehrt 'no asset survived per-asset WFO' mit 190 Faellen an; Shadow 752 -44.3 EUR und 749 -43.9 EUR bei 0% WR trotz Tier-A-Validierung."
+  },
+  {
+   "kind": "anpassung",
+   "title": "m15_metals_fade / Shadow 730 razor_metals_sweep_reclaim_m15_tom",
+   "detail": "H4-Kontext-Gate (ema_slope 4h) vor jedem m15-Entry, sonst pausieren",
+   "reason": "Shadow 730 -81.7 EUR bei 0% WR und 4 Trades; m15-Metalle ohne Trendkontext sind der schwaechste Block im Fenster."
+  },
+  {
+   "kind": "anpassung",
+   "title": "idx_w3_eustx50 / Shadow 783 auto_eustx50_london_sweep",
+   "detail": "Spread-Kosten im Backtest explizit modellieren und risk_pct auf 0.5 senken",
+   "reason": "Shadow 783 -40.7 EUR bei 0% WR; Indizes tragen Spread, der im Cluster-PF 1.31/1.44 offenbar nicht ausreichend abgebildet ist."
+  },
+  {
+   "kind": "anpassung",
+   "title": "near_miss_gate (PF 1.04-1.12)",
+   "detail": "Schwellen-Sweep fuer die groessten Baender (77, 54, 50, 46, 43 Faelle) mit gelockerten Entry-Regeln fahren",
+   "reason": "near_miss_gate zeigt 18 Baender knapp unter der Gate-Schwelle; das ist der guenstigste Hebel fuer neue Kandidaten ohne neue Archetypen."
+  },
+  {
+   "kind": "anpassung",
+   "title": "Zero-Trade-Strategien (731, 743, 744, 762, 764, 766, 785, 789, 802, 804, 805)",
+   "detail": "Signal-Logging aktivieren und Entry-Bedingungen auf Frequenz pruefen",
+   "reason": "11 Shadow-Strategien ohne einen einzigen Trade, darunter die frisch validierte 805 (Tier A, PF 1.4) und die neuen 802/804."
+  },
+  {
+   "kind": "anpassung",
+   "title": "Shadow 672 fx1_4h_trend_pullback",
+   "detail": "Asset-Set sortenrein splitten (FX-Block und XAUUSD-Block getrennt fuehren)",
+   "reason": "+231.9 EUR / 48.1 EUR pro Woche, aber Assets gemischt (AUDCAD, EURUSD, XAUUSD) \u2014 verstoesst gegen die Cluster-Reinheit und verwaessert die Zuordnung."
+  },
+  {
+   "kind": "shadow",
+   "title": "#730 \u2014 retire_vorschlag",
+   "detail": "",
+   "reason": "-81.7 EUR, 0% WR, 4 Trades, m15-Metalle ohne Kontext \u2014 schlechtester Shadow-Eintrag."
+  },
+  {
+   "kind": "shadow",
+   "title": "#705 \u2014 retire_vorschlag",
+   "detail": "",
+   "reason": "-83.5 EUR, 0% WR, 4 Trades auf XAU/XAG \u2014 botr22_metals_regime_trio traegt nicht."
+  },
+  {
+   "kind": "shadow",
+   "title": "#735 \u2014 retire_vorschlag",
+   "detail": "",
+   "reason": "-64.5 EUR, 0% WR, 3 Trades auf GBPCHF \u2014 auto_razor_bb_rsi_mr ohne Bestaetigung."
+  },
+  {
+   "kind": "shadow",
+   "title": "#805 \u2014 debug",
+   "detail": "",
+   "reason": "Frisch validiert (Tier A, PF 1.4, 104 Trades), aber 0 Trades seit 2026-10-01 \u2014 Entry-Bedingungen pruefen."
+  },
+  {
+   "kind": "shadow",
+   "title": "#802 \u2014 debug",
+   "detail": "",
+   "reason": "0 Trades seit 2026-10-01 trotz Kandidatenstatus PF 1.26 \u2014 Signal-Logging noetig."
+  },
+  {
+   "kind": "shadow",
+   "title": "#804 \u2014 debug",
+   "detail": "",
+   "reason": "0 Trades seit 2026-10-01, PF 1.2 bei 272 Backtest-Trades \u2014 Live-Trigger greift nicht."
+  },
+  {
+   "kind": "ansatz",
+   "title": "per_asset_wfo_prefilter",
+   "detail": "Vor jedem Cluster-Backtest wird pro Asset ein schneller Walk-Forward-Check gefahren. Nur Assets mit positivem WFO-Pass kommen in das Cluster-Paar-Set; findet sich kein einziges Asset, wird der Seed verworfen, bevor der volle Cluster-Lauf startet.",
+   "reason": "'no asset survived per-asset WFO' ist mit 190 Faellen der mit Abstand haeufigste Gate-Fail und verbrennt Rechenzeit in Zyklen, die nie ein Ergebnis liefern koennen. Der Prefilter verschiebt dieselbe Entscheidung an den Anfang und macht die 534 near_dup_skips und 500 no_cluster_results produktiv nutzbar."
   }
  ]
 }
