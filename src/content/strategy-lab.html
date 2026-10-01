@@ -733,8 +733,9 @@ function renderShadowDashboard() {
     const demoKeys = botKeys.filter(k => !botsData[k].is_live);
     const ordered = liveKeys.map(k=>['live',k]).concat(demoKeys.map(k=>['demo',k]));
 
-  // Multibot-Kennzeichnung (2026-09-28): fixe Slots aus strategies[].deployed_bots
-  // + Rotationsslots aus bot_rotation_slots (Challenge/Status). Kein Hardcode.
+  // Multibot-Kennzeichnung (2026-09-28; erweitert 01.10.26: auch >=2 fixe
+  // Slots = MULTI, 'max N Slots' aus bots[].slots_target): fixe Slots aus
+  // strategies[].deployed_bots + Rotationsslots aus bot_rotation_slots. Kein Hardcode.
   const rotMap = sd.bot_rotation_slots || {};
   const slotAgg = {};
   for (const s of strats) {
@@ -754,6 +755,7 @@ function renderShadowDashboard() {
       else t += ' (frei)';
       parts.push(t);
     }
+    if (botsData[bk] && botsData[bk].slots_target) parts.push('max ' + botsData[bk].slots_target + ' Slots');
     return parts.join(' · ');
   }
 
@@ -767,7 +769,7 @@ function renderShadowDashboard() {
     }
     const b = botsData[bk];
       const _rotSlots = rotMap[bk] || [];
-      const _isMulti = _rotSlots.length > 0;
+      const _isMulti = _rotSlots.length > 0 || (slotAgg[bk] || []).length >= 2;
       const pnl = b.pnl || 0;
       const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
       const pnlSign = pnl >= 0 ? '+' : '';

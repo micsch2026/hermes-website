@@ -23,16 +23,27 @@ with open(os.path.join(DATA_DIR, 'nav.json'), 'r') as f:
 
 
 def _load_multi_bots():
-    """Bots mit Rotations-Slots (= Multibots) aus shadow_portfolio.json.
+    """Bots mit mehreren Strategie-Slots (= Multibots) aus shadow_portfolio.json.
 
     Single Source of Truth: shadow_portfolio.json → bot_rotation_slots
-    (vom shadow_portfolio_builder im 15-Min-Takt aus der Rotation-Policy gebaut).
-    Fail-soft: fehlt/kaputt → keine Kennzeichnung, kein Build-Abbruch.
+    (Rotations-Doors) UNION bots[].slots_filled >= 2 (materialisierte Slots,
+    Erweiterung 01.10.26 — sonst fallen Multibots mit komplett belegten
+    Slots aus der Kennzeichnung). Vom shadow_portfolio_builder im 5-Min-Takt
+    aus der Rotation-Policy gebaut. Fail-soft: fehlt/kaputt → keine
+    Kennzeichnung, kein Build-Abbruch.
     """
     try:
         with open(os.path.join(SITE_DIR, 'api', 'strategy-lab', 'shadow_portfolio.json'), 'r') as f:
-            rot = json.load(f).get('bot_rotation_slots') or {}
-        return {b for b, slots in rot.items() if slots}
+            sp = json.load(f)
+        rot = sp.get('bot_rotation_slots') or {}
+        multi = {b for b, slots in rot.items() if slots}
+        for b, meta in (sp.get('bots') or {}).items():
+            try:
+                if int((meta or {}).get('slots_filled') or 0) >= 2:
+                    multi.add(b)
+            except (TypeError, ValueError):
+                pass
+        return multi
     except Exception:
         return set()
 

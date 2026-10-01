@@ -3,9 +3,10 @@
 shadow_portfolio.json (strategy_id, desc.tag, is_live/role) statt der
 hardcoded Juli-Karten (fix 2026-09-17: bot9/bot10 fehlten, Labels stale).
 
-Multibot-Kennzeichnung (2026-09-28): Bots mit Rotations-Slots
-(bot_rotation_slots nicht leer) bekommen ein MULTI-Chip + Slot-Zeile
-(z.B. "s372 #372 + s534 #534 + srot → #663"). Quelle bleibt
+Multibot-Kennzeichnung (2026-09-28; erweitert 2026-10-01): Bots mit
+Rotations-Doors (bot_rotation_slots) ODER >=2 fixen Slots (deployed_bots)
+bekommen ein MULTI-Chip + Slot-Zeile (z.B. "s372 #372 + s534 #534 + srot → #663"),
+inkl. "max N Slots" aus bots[bot].slots_target. Quelle bleibt
 shadow_portfolio.json — kein Hardcode, keine Extra-Config.
 
 Läuft manuell oder vor dem Site-Build:  python3 generate_home_sidebar.py
@@ -65,13 +66,14 @@ def card(k, b):
     sid = b.get("strategy_id") or "?"
     tag = (b.get("desc") or {}).get("tag") or (b.get("strategy_name") or "")[:34]
     role = "LIVE" if b.get("is_live") else "Demo"
-    is_multi = bool(rot_map.get(k))
+    is_multi = bool(rot_map.get(k)) or len(fixed_slots.get(k, [])) >= 2
     icon = "shield" if b.get("is_live") else ("layers" if is_multi else "trending-up")
     dot = ' <span style="color:#ff6b6b;font-weight:700">●</span>' if b.get("is_live") else ""
     chip = (' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span>'
             if is_multi else "")
     if is_multi:
-        desc = f"{slot_line(k)} · {role}"
+        mt = b.get("slots_target")
+        desc = f"{slot_line(k)}" + (f" · max {mt} Slots" if mt else "") + f" · {role}"
     else:
         desc = f"#{sid} · {tag} · {role}"
     return (f'          <a href="/{k}" class="quick-link">\n'
@@ -103,6 +105,6 @@ if n != 1:
 if n != 1:
     raise SystemExit("❌ Sidebar-Block nicht gefunden!")
 open(INDEX, "w").write(new_html)
-multi = [k for k in order if rot_map.get(k)]
+multi = [k for k in order if rot_map.get(k) or len(fixed_slots.get(k, [])) >= 2]
 print(f"✓ Sidebar generiert: {len(live)} LIVE + {len(demo)} DEMO Bots ({', '.join(order)})")
 print(f"  MULTI markiert: {', '.join(multi) if multi else '—'}")

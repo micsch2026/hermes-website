@@ -667,9 +667,17 @@ function _renderSlotsInner(d, sp) {
 
   var sub = el(C.prefix + '-slots-sub');
   var nRot = 0;
-  for (var j = 0; j < slots.length; j++) if (slots[j].kind === 'rotation') nRot++;
-  if (sub) sub.textContent = slots.length + ' Slot' + (slots.length === 1 ? '' : 's') +
-    (nRot ? ' · ' + nRot + ' Rotationsslot' : '') + ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)';
+  var nFilled = 0;
+  for (var j = 0; j < slots.length; j++) {
+    if (slots[j].kind === 'rotation') nRot++;
+    if (slots[j].strategy_id != null || slots[j].holder != null) nFilled++;
+  }
+  if (sub) {
+    var _tgt = (typeof d.slots_target === 'number') ? d.slots_target : null;
+    sub.textContent = (_tgt ? nFilled + '/' + _tgt + ' Strategien belegt (max. ' + _tgt + ' vorgesehen)'
+                            : slots.length + ' Slot' + (slots.length === 1 ? '' : 's')) +
+      (nRot ? ' · ' + nRot + ' Rotationsslot' : '') + ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)';
+  }
 
   var html = '';
   for (var k = 0; k < slots.length; k++) {
