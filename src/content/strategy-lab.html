@@ -1906,7 +1906,7 @@ function renderStrategeBoard() {
       var dIcon = d.kind === 'anpassung' ? '🔧' : (d.kind === 'shadow' ? '👻' : '💡');
       html += '<li>' + dIcon + ' <strong>' + esc(d.title || '') + '</strong>' + (d.detail ? ': ' + esc(d.detail) : '') + (d.reason ? ' <span class="sb-dim">(' + esc(d.reason) + ')</span>' : '') + '</li>';
     }
-    html += '</ul><div class="sb-card-sub">Bewusst nicht autonom: betrifft Retires, Gates, Blacklist oder Bot-/Shadow-nahe Eingriffe.</div></div>';
+    html += '</ul><div class="sb-card-sub">Bewusst nicht autonom: Bot-/Deploy-nahe Eingriffe (Gates, Deploy-Registry) und Concept-Prosa, die eine menschliche Bewertung braucht. Shadow-Retires laufen automatisch über das Evidenz-Gate.</div></div>';
   }
 
   // ✅ Was der Stratege in dieser Woche selbst umgestellt hat
@@ -1928,6 +1928,17 @@ function renderStrategeBoard() {
       html += '<li>➕ Assets ' + esc(aa[ai][0] || '') + ' += ' + esc((aa[ai][1] || []).join(', ')) + '</li>';
     }
     if (ap.tier_promoted) html += '<li>⬆️ tier1-Förderung: ' + esc(ap.tier_promoted) + '</li>';
+    var ra = ap.retires_applied || [];
+    for (var ri = 0; ri < ra.length; ri++) {
+      var rev = ra[ri].evidence || {};
+      html += '<li>🛑 Retire umgesetzt: #' + esc(String(ra[ri].sid)) + ' (n=' + esc(String(rev.n != null ? rev.n : '?')) + ', PF=' + esc(String(rev.pf != null ? Math.round(rev.pf * 100) / 100 : '?')) + ')</li>';
+    }
+    var rk = ap.retires_skipped || [];
+    if (rk.length) html += '<li class="sb-dim">⏭ Retire übersprungen (bereits retired): ' + esc(rk.map(function (x) { return '#' + x.sid; }).join(', ')) + '</li>';
+    var wa2 = ap.watches_added || [];
+    if (wa2.length) html += '<li>🔭 WATCH neu: ' + esc(wa2.map(function (x) { return '#' + x.sid + ' [' + x.kind + ']'; }).join(', ')) + '</li>';
+    var wc2 = ap.watches_closed || [];
+    if (wc2.length) html += '<li>🔭 WATCH geschlossen: ' + esc(wc2.map(function (x) { return '#' + x.sid + ' (' + x.reason + ')'; }).join('; ')) + '</li>';
     var sk = ap.seeds_skipped || [];
     if (sk.length) {
       html += '<li class="sb-dim">⏭ Nicht angewandt: ' + esc(sk.map(function (x) { return x[0] + ' (' + x[1] + ')'; }).join('; ')) + '</li>';
@@ -1935,6 +1946,31 @@ function renderStrategeBoard() {
     html += '</ul>';
     if (ap.manifest) html += '<div class="sb-card-sub">Beleg: ' + esc(ap.manifest) + '</div>';
     html += '</div>';
+  }
+
+  // 🤖 Stufe 3: Shadow-Empfehlungen laufen AUTOMATISCH (Retire-Gate/WATCH)
+  var aak = b.auto_aktionen || [];
+  var wlx = b.watchlist || [];
+  if (aak.length || wlx.length) {
+    var stMap = { retired: '✅ erledigt (retired)', watched: '🔭 beobachtet (Evidenz-Gate)', seed: '🌱 Seed-Variante (autonom)', auto: '🔜 nächste Prüfung automatisch' };
+    html += '<div class="sb-sec" style="border-left:3px solid #58a6ff;padding-left:0.6rem">';
+    html += '<div class="sb-sec-title">🤖 Automatisch abgearbeitet — kein Handlungsbedarf</div><ul class="sb-list">';
+    for (var qi = 0; qi < aak.length; qi++) {
+      var q = aak[qi];
+      html += '<li><strong>#' + esc(String(q.sid)) + '</strong> ' + esc(q.action || '') + ' → ' + esc(stMap[q.status] || q.status || '');
+      if (q.reason) html += ' <span class="sb-dim">(' + esc(q.reason) + ')</span>';
+      html += '</li>';
+    }
+    html += '</ul>';
+    if (wlx.length) {
+      html += '<div class="sb-card-sub" style="margin-top:0.4rem">🔭 Watchlist (' + wlx.length + ') — wöchentliche Re-Evaluation; Retire automatisch sobald n&ge;20 &amp; PF&lt;0.80:</div><ul class="sb-list">';
+      for (var wi = 0; wi < wlx.length; wi++) {
+        var w2 = wlx[wi];
+        html += '<li>#' + esc(String(w2.sid)) + ' [' + esc(w2.kind || '') + ']' + (w2.n != null ? ' n=' + esc(String(w2.n)) : '') + (w2.pf != null ? ' PF=' + esc(String(Math.round(w2.pf * 100) / 100)) : '') + (w2.reason ? ' <span class="sb-dim">(' + esc(w2.reason) + ')</span>' : '') + '</li>';
+      }
+      html += '</ul>';
+    }
+    html += '<div class="sb-card-sub">Retires laufen über das Evidenz-Gate (decay-Konvention: &ge;20 Trades &amp; PF&lt;0.80); ohne Evidenz automatisch WATCH statt Entscheidungsfrage.</div></div>';
   }
 
   var foc = b.wochenfokus || [];
