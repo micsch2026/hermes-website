@@ -50,6 +50,32 @@
   font-size: 0.65rem; font-weight: 600; background: var(--green-dim); color: var(--green); }
 
 /* Search + filter bar */
+.sb-empty { padding: 2rem; text-align: center; }
+.sb-head { margin-bottom: 1rem; }
+.sb-week { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.25rem; }
+.sb-chip { background: var(--blue-dim); color: var(--blue); border-radius: 8px; padding: 1px 8px; font-size: 0.8rem; margin-left: 6px; }
+.sb-st { font-size: 0.75rem; border-radius: 8px; padding: 1px 8px; margin-left: 6px; }
+.sb-st-pending { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.sb-st-ok { background: var(--green-dim); color: var(--green); }
+.sb-st-part { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.sb-meta { color: var(--dim); font-size: 0.8rem; margin-bottom: 0.5rem; }
+.sb-summary { background: rgba(88,166,255,0.06); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; white-space: pre-line; font-size: 0.85rem; line-height: 1.45; }
+.sb-sec { margin-top: 1.25rem; }
+.sb-sec-title { font-weight: 600; margin-bottom: 0.5rem; }
+.sb-cards { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.sb-card { border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; min-width: 240px; max-width: 400px; background: rgba(22,27,34,0.5); }
+.sb-card-hl { border-color: rgba(188,140,255,0.5); background: rgba(188,140,255,0.06); max-width: 680px; }
+.sb-card-head { margin-bottom: 0.3rem; }
+.sb-card-line { font-size: 0.85rem; margin-bottom: 0.3rem; line-height: 1.4; }
+.sb-card-sub { color: var(--dim); font-size: 0.78rem; line-height: 1.35; }
+.sb-prio { background: var(--blue-dim); color: var(--blue); border-radius: 6px; padding: 0 6px; font-size: 0.72rem; }
+.sb-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.3rem; }
+.sb-tag { background: rgba(125,133,144,0.12); color: var(--dim); border-radius: 6px; padding: 0 6px; font-size: 0.7rem; }
+.sb-list { margin: 0; padding-left: 1.2rem; font-size: 0.85rem; line-height: 1.45; }
+.sb-list li { margin-bottom: 0.25rem; }
+.sb-dim { color: var(--dim); }
+.sb-rat { color: var(--dim); max-width: 420px; }
+.sb-outcome { font-size: 0.85rem; margin-bottom: 0.5rem; }
 .sl4-toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; align-items: center; flex-wrap: wrap; }
 .sl4-search { flex: 1; min-width: 200px; padding: 0.4rem 0.6rem; background: var(--surface);
   border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.85rem; }
@@ -138,6 +164,7 @@
     <button class="sl4-tab active" data-tab="deploy">🚀 Strategien <span class="badge" id="badge-deploy">0</span></button>
     <button class="sl4-tab" data-tab="rdlive">🔬 R&D Live <span class="badge" id="badge-rdlive">0</span></button>
     <button class="sl4-tab" data-tab="shadow">👻 Shadow <span class="badge" id="badge-shadow">0</span></button>
+    <button class="sl4-tab" data-tab="stratege">🧠 R&D Stratege <span class="badge" id="badge-stratege">0</span></button>
   </div>
   <div class="sl4-toolbar" id="sl4-toolbar">
     <input class="sl4-search" id="sl4-search" placeholder="Suche nach Name, Asset, Typ..." type="text">
@@ -159,6 +186,7 @@ let catalogData = null;
 let shadowData = null;
 let pipelineStatus = null;
 let rdData = null;
+let boardData = null;
 let currentTab = 'deploy';
 let currentFilter = 'all';
 let sortCol = 'score';
@@ -187,6 +215,11 @@ async function loadData() {
     const rr = await fetch('/api/strategy-lab/rd_live.json?_=' + Date.now());
     rdData = await rr.json();
   } catch(e) { rdData = null; }
+  // Load Strategy Board (weekly review)
+  try {
+    const br = await fetch('/api/strategy-lab/strategy_board.json?_=' + Date.now());
+    boardData = await br.json();
+  } catch(e) { boardData = null; }
   render();
 }
 
@@ -244,12 +277,16 @@ function render() {
       <div class="stat"><div class="stat-value" style="color:var(--yellow)">${openPos}</div><div class="stat-label">Offen</div></div>
     `;
   }
+  if (boardData && boardData.available) {
+    document.getElementById('badge-stratege').textContent = (boardData.wochenfokus || []).length;
+  }
   renderTable();
 }
 
 function renderTable() {
   if (currentTab === 'rdlive') { renderRdLive(); return; }
   if (currentTab === 'shadow') { renderShadowDashboard(); return; }
+  if (currentTab === 'stratege') { renderStrategeBoard(); return; }
   let data = [];
   let columns = [];
   if (currentTab === 'deploy') { data = catalogData.deploy; columns = deployCols; }
@@ -1842,6 +1879,120 @@ function renderRdLive() {
       [{ label: 'Neue Strategien', data: dp.map(d => d.count), backgroundColor: 'rgba(88,166,255,0.6)', borderRadius: 3 }]
     );
   }
+}
+
+function renderStrategeBoard() {
+  var el = document.getElementById('sl4-content');
+  if (!boardData || !boardData.available) {
+    el.innerHTML = '<div class="sb-empty"><div style="font-size:1.2rem;margin-bottom:0.5rem">🧠 Noch kein Wochen-Review vorhanden</div><span style="color:var(--dim)">Der Strategie-Spezialist läuft jeden Sonntag 03:00 (Berlin) und liefert den Wochen-Fokus per Telegram. Danach erscheint hier der Bericht.</span></div>';
+    return;
+  }
+  var b = boardData;
+  var stTxt = b.status === 'applied' ? '✅ übernommen' : (b.status === 'partial' ? '🟡 teilweise übernommen' : '⏳ offen — wartet auf Freigabe');
+  var stCls = b.status === 'applied' ? 'sb-st-ok' : (b.status === 'partial' ? 'sb-st-part' : 'sb-st-pending');
+  var html = '';
+  html += '<div class="sb-head">';
+  html += '<div class="sb-week">🧠 R&D Stratege — Wochen-Review <span class="sb-chip">' + esc(b.week || '') + '</span> <span class="sb-st ' + stCls + '">' + stTxt + '</span></div>';
+  html += '<div class="sb-meta">Modell: ' + esc(b.model || '—') + ' · Erstellt: ' + (b.generated_at ? new Date(b.generated_at).toLocaleString('de-DE') : '—') + '</div>';
+  if (b.summary_de) html += '<div class="sb-summary">' + esc(b.summary_de) + '</div>';
+  html += '</div>';
+
+  var foc = b.wochenfokus || [];
+  if (foc.length) {
+    html += '<div class="sb-sec"><div class="sb-sec-title">🎯 Wochenfokus</div><div class="sb-cards">';
+    for (var i = 0; i < foc.length; i++) {
+      var f = foc[i];
+      html += '<div class="sb-card">';
+      html += '<div class="sb-card-head"><strong>' + esc(f.cluster || '?') + '</strong> <span class="sb-prio">P' + esc(String(f.priority == null ? '-' : f.priority)) + '</span></div>';
+      if (f.reason) html += '<div class="sb-card-line">' + esc(f.reason) + '</div>';
+      var lev = f.levers || [];
+      if (lev.length) {
+        html += '<div class="sb-tags">';
+        for (var j = 0; j < lev.length; j++) html += '<span class="sb-tag">' + esc(lev[j]) + '</span>';
+        html += '</div>';
+      }
+      var ah = f.assets_hint || [];
+      if (ah.length) html += '<div class="sb-card-sub">Assets: ' + esc(ah.join(', ')) + '</div>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  var seeds = b.neue_seeds || [];
+  if (seeds.length) {
+    html += '<div class="sb-sec"><div class="sb-sec-title">🌱 Neue Seed-Vorschläge (' + seeds.length + ')</div>';
+    html += '<table class="sl4-table"><thead><tr><th>Name</th><th>Cluster</th><th>TF</th><th>Assets</th><th>Validierung</th><th>Begründung</th></tr></thead><tbody>';
+    for (var k = 0; k < seeds.length; k++) {
+      var s = seeds[k];
+      var v = s.validation || {};
+      var vTxt = v.ok === true ? ('✅ ' + (v.signals != null ? v.signals + ' Signale' : 'validiert')) : (v.ok === false ? ('❌ ' + esc(v.note || 'fehlgeschlagen')) : '—');
+      html += '<tr><td><strong>' + esc(s.name || '') + '</strong></td><td>' + esc(s.cluster || '') + '</td><td>' + esc(s.timeframe || '') + '</td><td>' + esc((s.assets || []).join(', ')) + '</td><td>' + vTxt + '</td><td class="sb-rat">' + esc(s.rationale || '') + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+
+  var anp = b.anpassungen || [];
+  if (anp.length) {
+    html += '<div class="sb-sec"><div class="sb-sec-title">🔧 Anpassungen</div><ul class="sb-list">';
+    for (var m = 0; m < anp.length; m++) {
+      var a = anp[m];
+      html += '<li><strong>' + esc(a.target || '') + '</strong>: ' + esc(a.change || '') + (a.reason ? ' <span class="sb-dim">(' + esc(a.reason) + ')</span>' : '') + '</li>';
+    }
+    html += '</ul></div>';
+  }
+
+  var sh = b.shadow_empfehlungen || [];
+  if (sh.length) {
+    html += '<div class="sb-sec"><div class="sb-sec-title">👻 Shadow-Empfehlungen</div><ul class="sb-list">';
+    for (var n = 0; n < sh.length; n++) {
+      var e = sh[n];
+      var act = e.action === 'variant' ? '🧬 Variante' : (e.action === 'retire_vorschlag' ? '🛑 Retire-Vorschlag' : (e.action === 'debug' ? '🔍 Debug' : esc(e.action || '')));
+      html += '<li>#' + esc(String(e.strategy_id == null ? '?' : e.strategy_id)) + ' — ' + act + (e.reason ? ': <span class="sb-dim">' + esc(e.reason) + '</span>' : '') + '</li>';
+    }
+    html += '</ul></div>';
+  }
+
+  if (b.neuer_ansatz && (b.neuer_ansatz.name || b.neuer_ansatz.mechanism)) {
+    var na = b.neuer_ansatz;
+    html += '<div class="sb-sec"><div class="sb-sec-title">💡 Neuer Ansatz</div><div class="sb-card sb-card-hl">';
+    html += '<div class="sb-card-head"><strong>' + esc(na.name || '') + '</strong></div>';
+    if (na.mechanism) html += '<div class="sb-card-line">' + esc(na.mechanism) + '</div>';
+    if (na.rationale) html += '<div class="sb-card-sub">' + esc(na.rationale) + '</div>';
+    if (na.data_check) html += '<div class="sb-card-sub">Datenlage: ' + esc(na.data_check) + '</div>';
+    html += '</div></div>';
+  }
+
+  if (b.outcome) {
+    var o = b.outcome;
+    html += '<div class="sb-sec"><div class="sb-sec-title">📈 Wirkung der letzten Empfehlung (' + esc(o.week || '') + ')</div>';
+    html += '<div class="sb-outcome">Saves seitdem: <strong>' + (o.saves_since == null ? '—' : o.saves_since) + '</strong> · Shadow-Promotions: <strong>' + (o.promotions_since == null ? '—' : o.promotions_since) + '</strong> · Tage seit Empfehlung: ' + (o.days_since == null ? '—' : o.days_since) + '</div>';
+    var per = o.per_recommendation || [];
+    if (per.length) {
+      html += '<table class="sl4-table"><thead><tr><th>Typ</th><th>Ziel</th><th class="num">Δ Runs</th><th class="num">Δ profitabel</th><th class="num">Δ Tier A</th><th class="num">Δ PnL</th></tr></thead><tbody>';
+      for (var q = 0; q < per.length; q++) {
+        var p = per[q];
+        var yd = p.yield_delta || {};
+        var pnlD = p.net_pnl_delta == null ? '—' : ((p.net_pnl_delta > 0 ? '+' : '') + p.net_pnl_delta + '€');
+        html += '<tr><td>' + esc(p.type || '') + '</td><td>' + esc(String(p.target == null ? '' : p.target)) + '</td><td class="num">' + (yd.runs == null ? '—' : yd.runs) + '</td><td class="num">' + (yd.profitable == null ? '—' : yd.profitable) + '</td><td class="num">' + (yd.tier_a == null ? '—' : yd.tier_a) + '</td><td class="num">' + pnlD + '</td></tr>';
+      }
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+  }
+
+  var hist = b.history || [];
+  if (hist.length) {
+    html += '<div class="sb-sec"><div class="sb-sec-title">🗓 Verlauf</div>';
+    html += '<table class="sl4-table"><thead><tr><th>Woche</th><th>Status</th><th class="num">Fokus</th><th class="num">Seeds</th><th>Kurzfassung</th></tr></thead><tbody>';
+    for (var r = 0; r < hist.length; r++) {
+      var h = hist[r];
+      var hs = h.status === 'applied' ? '✅' : (h.status === 'partial' ? '🟡' : '⏳');
+      html += '<tr><td>' + esc(h.week || '') + '</td><td>' + hs + ' ' + esc(h.status || '') + '</td><td class="num">' + (h.focus_count || 0) + '</td><td class="num">' + (h.seed_count || 0) + (h.seeds_validated ? ' (' + h.seeds_validated + ' ✓)' : '') + '</td><td class="sb-rat">' + esc(h.summary_de || '') + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+
+  el.innerHTML = html;
 }
 
 // Tab switching
