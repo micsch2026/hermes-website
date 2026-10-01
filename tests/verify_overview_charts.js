@@ -209,6 +209,23 @@ setTimeout(() => {
   check('fetch wurde mit overview.json aufgerufen',
     fetchCalls.length >= 1 && fetchCalls[0].url.includes('/api/overview/overview.json'));
 
+  // (g) Gates-Strip (A+B, 2026-10-01): Markt + Release + Nächster Block + Skips
+  const mktHtml = byId.has('gate-market') ? byId.get('gate-market').innerHTML : '';
+  const relHtml = byId.has('gate-release') ? byId.get('gate-release').innerHTML : '';
+  const nxtHtml = byId.has('gate-next') ? byId.get('gate-next').innerHTML : '';
+  const blkHtml = byId.has('gate-blocks') ? byId.get('gate-blocks').innerHTML : '';
+  check('(g) gate-market: grüner Dot + "offen" (market_open=true)',
+    mktHtml.includes('ov-dot fresh') && mktHtml.includes('offen'), mktHtml.slice(0, 90));
+  check('(g) gate-release: "an" + Klassen (FX + Indizes, Metalle aus)',
+    relHtml.includes('<b>an</b>') && relHtml.includes('FX + Indizes') && relHtml.includes('Metalle aus'),
+    relHtml.slice(0, 120));
+  check('(g) gate-next: NFP-Fenster 02.10. 14:00–14:30 BZ',
+    nxtHtml.includes('Non-Farm') && nxtHtml.includes('02.10. 14:00–14:30') && nxtHtml.includes('30 min vor'),
+    nxtHtml.slice(0, 140));
+  check('(g) gate-blocks: 2 Skips (executor 1, shadow 1)',
+    blkHtml.includes('<b>2</b>') && blkHtml.includes('executor 1') && blkHtml.includes('shadow 1'),
+    blkHtml.slice(0, 140));
+
   console.log('\n' + '='.repeat(60));
   console.log(`RESULT: ${PASS} PASS, ${FAIL} FAIL`);
   console.log('='.repeat(60));

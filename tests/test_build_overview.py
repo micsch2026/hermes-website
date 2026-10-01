@@ -51,7 +51,7 @@ def _touch(path, age_s):
 # Fixture-Builder
 # ══════════════════════════════════════════════════════════════════════════════
 
-def make_fixture(base, with_empty_bot=True, feed_age_s=60.0):
+def make_fixture(base, with_empty_bot=True, feed_age_s=60.0, gates_active=False):
     fx = os.path.join(base, "fx")
     sl = os.path.join(base, "sl")
     td = os.path.join(base, "td")
@@ -205,6 +205,33 @@ def make_fixture(base, with_empty_bot=True, feed_age_s=60.0):
        {"summary": {"total_assets": 10, "ok": 8, "warn": 2, "stale": 0,
                     "generated_at": space_ts(NOW_DT)}})
 
+    # ── Trading-Gates (2026-10-01): release_gate.json + gate_skips.jsonl ──
+    _gate_first_off = 20 if gates_active else 90
+    _w(os.path.join(td, "release_gate.json"),
+       {"built_utc": iso(NOW_DT - timedelta(hours=8)), "horizon_days": 3,
+        "pre_min": 30, "rule": "top_releases_pre_window", "n_events": 3,
+        "events": [
+            {"ts_utc": (NOW_DT + timedelta(minutes=_gate_first_off)).timestamp(),
+             "ts_berlin": "29.09. 14:30", "ccy": "USD",
+             "title": "Non-Farm Employment Change"},
+            {"ts_utc": (NOW_DT + timedelta(hours=26)).timestamp(),
+             "ts_berlin": "30.09. 16:00", "ccy": "EUR",
+             "title": "ECB Rate Decision"},
+            {"ts_utc": (NOW_DT - timedelta(minutes=45)).timestamp(),
+             "ts_berlin": "29.09. 11:15", "ccy": "USD", "title": "Altes Event"},
+        ]})
+    with open(os.path.join(fx, "data", "gate_skips.jsonl"), "w",
+              encoding="utf-8") as fh:
+        # Chronologisch (append-only-Realität): alt → neu; >7d zählt nicht
+        for _age_d, _src, _bot, _sid, _sym in [
+                (9, "shadow", None, 1, "XAUUSD"),
+                (2, "executor", "bot3", 372, "EURUSD"),
+                (1, "shadow", None, 596, "AUDJPY")]:
+            fh.write(json.dumps(
+                {"ts_utc": iso_z(NOW_DT - timedelta(days=_age_d)),
+                 "gate": "release", "source": _src, "bot": _bot, "sid": _sid,
+                 "symbol": _sym, "reason": f"Release-Blackout {_sym}"}) + "\n")
+
     for p in (os.path.join(fx, "data", "bot1_balance.json"),
               os.path.join(fx, "data", "bot1_balance_history.json"),
               os.path.join(fx, "data", "bot1_risk_state.json"),
@@ -265,7 +292,7 @@ def run_build(base, decay_rows=None, tca_p90=1.2, **fixture_kw):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Tests (18 asserts)
+# Tests (20 asserts)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
@@ -287,7 +314,8 @@ def main():
         doc = DOCS["base"]
         assert doc["schema"] == "overview_v1" and set(doc.keys()) == {
             "schema", "generated_at_utc", "generated_at_bz", "market_open",
-            "verdict", "findings", "live", "shadow", "lab", "charts", "sources",
+            "gates", "verdict", "findings", "live", "shadow", "lab", "charts",
+            "sources",
         }, f"schema/top-keys falsch: {doc.get('schema')} / {sorted(doc.keys())}"
 
     def t_fleet():
@@ -425,6 +453,36 @@ def main():
             and st["sl.catalog_db"] == "missing", \
             f"missing-root falsch: fleet={fleet} overall={doc['verdict']['overall']['status']}"
 
+    def t_gates_section():
+        g = DOCS["base"]["gates"]
+        r = g["release"]
+        b = g["blocks_7d"]
+        assert r["enabled"] is None and r["classes"] == {} \
+            and (r["pre_min"], r["stale"], r["active_now"]) == (30, False, False) \
+            and [e["ccy"] for e in r["next"]] == ["USD", "EUR"] \
+            and r["next"][0]["event_bz"] == "29.09. 15:30" \
+            and r["next"][0]["window_bz"] == "29.09. 15:00–15:30" \
+            and (b["total"], b["by_source"], b["by_gate"]) == \
+                (2, {"shadow": 1, "executor": 1}, {"release": 2}) \
+            and len(b["recent"]) == 2 and b["recent"][0]["sid"] == 596 \
+            and b["recent"][0]["ts_bz"] == "28.09. 14:00", \
+            f"gates falsch: r={r} b={b}"
+
+    def t_gates_active_classes():
+        orig = m._gate_classes
+        try:
+            m._gate_classes = lambda fx_root: (
+                True, {"fx": True, "indices": True, "metals": False})
+            doc = run_build(os.path.join(base, "v_gates"), gates_active=True)
+            r = doc["gates"]["release"]
+            assert (r["enabled"], r["active_now"], r["active_until_bz"]) == \
+                (True, True, "14:20") \
+                and r["classes"] == {"fx": True, "indices": True, "metals": False} \
+                and [e["ccy"] for e in r["next"]] == ["EUR"], \
+                f"gates-aktiv/Klassen falsch: {r}"
+        finally:
+            m._gate_classes = orig
+
     # Ausführung
     DOCS = {}
     DOCS["base"] = run_build(base)                                   # bot4 leer → yellow
@@ -454,11 +512,13 @@ def main():
         ("verdict GREEN (healthy)", t_verdict_green),
         ("feed-rule red@market_open", t_feed_red),
         ("missing-root: kein Crash", t_missing_root),
+        ("gates: Sektion fail-soft + Blocks 7d", t_gates_section),
+        ("gates: aktiv + Klassen (monkeypatch)", t_gates_active_classes),
     ]:
         check(name, fn)
 
     shutil.rmtree(base, ignore_errors=True)
-    print(f"\n{18 - len(failures)}/18 PASS, {len(failures)} FAIL")
+    print(f"\n{20 - len(failures)}/20 PASS, {len(failures)} FAIL")
     if failures:
         print("FAILS:", failures)
         sys.exit(1)

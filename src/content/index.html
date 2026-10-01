@@ -23,6 +23,18 @@
   #overview-page #data-age { margin-top: var(--s-3); font-size: var(--text-xs); color: var(--c-text-muted); }
   #overview-page #data-age.ov-fetch-error { color: var(--c-err); font-weight: 600; }
 
+  #overview-page .ov-gates {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5);
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-lg); padding: var(--s-3) var(--s-4);
+    margin-bottom: var(--s-6); font-size: var(--text-sm);
+  }
+  #overview-page .ov-gates .ov-gate-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #overview-page .ov-gates .ov-gate-label { color: var(--c-text-dim); }
+  #overview-page .ov-gates .ov-gate-dim { color: var(--c-text-dim); }
+  #overview-page .ov-gates .ov-gate-item.gate-hot { color: var(--c-err); font-weight: 600; }
+  #overview-page .ov-gates .ov-gate-item.gate-warn b { color: var(--c-warn); }
+
   #overview-page .ov-section-title {
     font-size: var(--text-sm); font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.05em; color: var(--c-text-dim); margin: 0 0 var(--s-3);
@@ -177,6 +189,14 @@
     </div>
     <ul id="hero-why"><li>lade…</li></ul>
     <div id="data-age">Datenstand wird geladen…</div>
+  </div>
+
+  <!-- 1b. Markt & Trading-Gates (2026-10-01) -->
+  <div class="ov-gates" id="gates-strip">
+    <span class="ov-gate-item" id="gate-market"><span class="ov-dot"></span><span class="ov-gate-label">Markt:</span><b>lade…</b></span>
+    <span class="ov-gate-item" id="gate-release"><span class="ov-gate-label">Release-Gate:</span><b>lade…</b></span>
+    <span class="ov-gate-item" id="gate-next"><span class="ov-gate-label">Nächster Block:</span><b>—</b></span>
+    <span class="ov-gate-item" id="gate-blocks"><span class="ov-gate-label">Gate-Skips 7 d:</span><b>—</b></span>
   </div>
 
   <!-- 2. Komponenten-Ampeln -->
@@ -391,6 +411,56 @@
     var el = document.getElementById('data-age');
     el.textContent = text;
     el.className = isError ? 'ov-fetch-error' : '';
+  }
+
+  // ── 1b. Markt & Gates (A+B, 2026-10-01) ────────────────────
+  // Daten: d.market_open + d.gates (build_overview_status.release_gate_section).
+  // Alles null-sicher: fehlende Gates-Daten → „—", nie ein Fehler.
+  function renderGates(d) {
+    var el = document.getElementById('gate-market');
+    if (el) {
+      var open = !!d.market_open;
+      el.innerHTML = '<span class="ov-dot ' + (open ? 'fresh' : 'stale') + '"></span>' +
+        '<span class="ov-gate-label">Markt:</span><b>' + (open ? 'offen' : 'geschlossen') + '</b>';
+    }
+    var g = d.gates || {};
+    var rel = g.release || {};
+    el = document.getElementById('gate-release');
+    if (el) {
+      if (rel.enabled === null || rel.enabled === undefined) {
+        el.innerHTML = '<span class="ov-gate-label">Release-Gate:</span><b>—</b>';
+        el.className = 'ov-gate-item';
+      } else {
+        var cls = [];
+        if (rel.classes && rel.classes.fx) cls.push('FX');
+        if (rel.classes && rel.classes.indices) cls.push('Indizes');
+        var txt = '<b>' + (rel.enabled ? 'an' : 'aus') + '</b>' +
+          '<span class="ov-gate-dim">(' + (cls.length ? cls.join(' + ') : 'keine Klassen') +
+          (rel.classes && !rel.classes.metals ? ' · Metalle aus' : '') + ')</span>';
+        if (rel.active_now) txt += '<span class="ov-badge sev-red">JETZT aktiv bis ' + esc(rel.active_until_bz || '—') + ' BZ</span>';
+        if (rel.stale) txt += '<span class="ov-badge sev-yellow">Daten alt' +
+          (rel.data_age_h === null || rel.data_age_h === undefined ? '' : ' · ' + fmtInt(rel.data_age_h) + ' h') + '</span>';
+        el.innerHTML = '<span class="ov-gate-label">Release-Gate:</span>' + txt;
+        el.className = 'ov-gate-item' + (rel.active_now ? ' gate-hot' : (rel.stale ? ' gate-warn' : ''));
+      }
+    }
+    el = document.getElementById('gate-next');
+    if (el) {
+      var nx = (rel.next || [])[0];
+      el.innerHTML = '<span class="ov-gate-label">Nächster Block:</span>' + (nx
+        ? '<b>' + esc(nx.title || '—') + '</b><span class="ov-gate-dim">' + esc(nx.window_bz || '') + ' BZ' +
+          (rel.pre_min ? ' · ' + fmtInt(rel.pre_min) + ' min vor' : '') + '</span>' +
+          ((rel.next || []).length > 1 ? '<span class="ov-gate-dim">+' + fmtInt(rel.next.length - 1) + '</span>' : '')
+        : '<b>—</b>');
+    }
+    el = document.getElementById('gate-blocks');
+    if (el) {
+      var b = g.blocks_7d || {};
+      var srcTxt = Object.keys(b.by_source || {}).map(function (k) { return k + ' ' + b.by_source[k]; }).join(', ');
+      el.innerHTML = '<span class="ov-gate-label">Gate-Skips 7 d:</span><b>' + fmtInt(b.total) + '</b>' +
+        (srcTxt ? '<span class="ov-gate-dim">(' + esc(srcTxt) + ')</span>' : '');
+      el.className = 'ov-gate-item' + ((b.total || 0) > 0 ? ' gate-warn' : '');
+    }
   }
 
   // ── 2. Komponenten ─────────────────────────────────────────
@@ -923,6 +993,7 @@
   // ── Render + Polling ───────────────────────────────────────
   function render(d) {
     renderHero(d);
+    renderGates(d);
     renderComponents(d);
     renderFindings(d);
     renderLive(d);

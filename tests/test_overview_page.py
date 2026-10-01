@@ -70,6 +70,8 @@ def main():
     required = [
         # container + hero
         "overview-page", "hero", "hero-amp", "hero-headline", "hero-why", "data-age",
+        # markt + trading-gates (A+B, 2026-10-01)
+        "gates-strip", "gate-market", "gate-release", "gate-next", "gate-blocks",
         # komponenten
         "verdict-components", "comp-lab", "comp-shadow", "comp-demo_live", "comp-risk", "comp-data",
         # findings

@@ -70,6 +70,8 @@ THRESH_TCA_P90_BPS = 2.0       # TCA p90-Slippage (bps) darüber → yellow
 THRESH_CHALLENGE_INFO_DAYS = 7 # Challenge-Tag >= → info-Finding
 THRESH_RISK_RED_LEVEL = 2      # risk_state.level >= → red (L2-Block-Ladder)
 THRESH_RISK_YELLOW_LEVEL = 1   # level == 1 → yellow
+THRESH_GATE_STALE_S = 48 * 3600  # release_gate.json > 48h → stale (Gate fail-open)
+GATE_BLOCKS_WINDOW_S = 7 * 86400  # Blocks-Zählfenster (7 Tage)
 THRESH_SUBPROC_TIMEOUT_S = 90  # Timeout decay/tca-Subprozess
 THRESH_CURVE_MAX_POINTS = 1500  # equity_curve / total_equity_curve ≤ 1500 Punkte
                                 # (2026-10-01: 400→1500 — 400 straffte 15 Tage auf ~80-min-
@@ -262,6 +264,123 @@ def market_open(now_dt):
     if wd == 4 and hour >= 21:      # Freitag ab 21:00 UTC
         return False
     return True
+
+
+# ── Trading-Gates (2026-10-01, A+B): Release-Gate-Status + Blocks-Transparenz ─
+# Quellen: {td}/release_gate.json (Daily-Timer 04:17 UTC) + {fx}/data/
+# gate_skips.jsonl (gate_skip_log.py, append-only; Konsumenten: diese Sektion,
+# Shadow-Tab-Badge, Doku). Fail-soft — fehlt/kaputt → null/0, NIE Crash.
+
+def _bz_fmt(epoch, fmt="%d.%m. %H:%M"):
+    """Epoch → Berlin-Strftime (Anzeige)."""
+    return datetime.fromtimestamp(float(epoch), BERLIN_TZ).strftime(fmt)
+
+
+def _bz_from_iso(value):
+    """ISO/space-UTC-String → 'DD.MM. HH:MM' (Berlin) oder None."""
+    dt = _parse_dt(value)
+    return dt.astimezone(BERLIN_TZ).strftime("%d.%m. %H:%M") if dt else None
+
+
+def _gate_classes(fx_root):
+    """Release-Gate-Klassen aus market_hours (SSOT fx-bot) → (enabled, classes).
+
+    Import-/Lesefehler → (None, {}) — Tests monkeypatchen diese Funktion."""
+    try:
+        src = os.path.join(str(fx_root), "src")
+        if src not in sys.path:
+            sys.path.insert(0, src)
+        import importlib
+        _mh = importlib.import_module("market_hours")  # bewusst lazy: fail-soft
+        return (bool(getattr(_mh, "RELEASE_GATE_ENABLED", False)),
+                {k: bool(v) for k, v in
+                 (getattr(_mh, "_GATE_CLASSES", {}) or {}).items()})
+    except Exception:
+        return None, {}
+
+
+def release_gate_section(fx_root, trading_data, now_dt):
+    """Gates-Datenlayer: Release-Gate-Status + Event-Fenster + Blocks (7 Tage).
+
+    release.next: nur NOCH NICHT gestartete Fenster (max 3), Berlin-Anzeige;
+    aktiv-jetzt → active_now + active_until_bz. blocks_7d: aus gate_skips.jsonl
+    (Stream), recent = neueste zuerst (≤5)."""
+    out = {
+        "schema": 1,
+        "release": {
+            "enabled": None, "classes": {}, "pre_min": None,
+            "built_utc": None, "data_age_h": None, "stale": None,
+            "active_now": False, "active_until_bz": None, "next": [],
+        },
+        "blocks_7d": {"total": 0, "by_source": {}, "by_gate": {}, "recent": []},
+    }
+    enabled, classes = _gate_classes(fx_root)
+    out["release"]["enabled"] = enabled
+    out["release"]["classes"] = classes
+
+    rg_path = os.path.join(str(trading_data), "release_gate.json")
+    rg, err = _read_json(rg_path)
+    if rg and err is None:
+        pre = _i(rg.get("pre_min")) or 30
+        out["release"]["pre_min"] = pre
+        out["release"]["built_utc"] = rg.get("built_utc")
+        age_s = _mtime_age_s(rg_path, now_dt)
+        if age_s is not None:
+            out["release"]["data_age_h"] = round(age_s / 3600.0, 1)
+            out["release"]["stale"] = age_s > THRESH_GATE_STALE_S
+        now_ts = now_dt.timestamp()
+        pre_sec = float(pre) * 60.0
+        events = []
+        for e in (rg.get("events") or []):
+            if not isinstance(e, dict):
+                continue
+            ts = _epoch(e.get("ts_utc"))
+            if ts is not None:
+                events.append((ts, e))
+        events.sort(key=lambda it: it[0])
+        for ts, e in events:
+            w_start = ts - pre_sec
+            if w_start <= now_ts < ts:
+                out["release"]["active_now"] = True
+                out["release"]["active_until_bz"] = _bz_fmt(ts, "%H:%M")
+            if w_start > now_ts and len(out["release"]["next"]) < 3:
+                out["release"]["next"].append({
+                    "ccy": e.get("ccy") or "",
+                    "title": e.get("title") or "",
+                    "ts_utc": ts,
+                    "event_bz": _bz_fmt(ts),
+                    "window_bz": f"{_bz_fmt(w_start)}–{_bz_fmt(ts, '%H:%M')}",
+                })
+
+    skip_path = os.path.join(str(fx_root), "data", "gate_skips.jsonl")
+    if os.path.exists(skip_path):
+        cutoff = now_dt.timestamp() - GATE_BLOCKS_WINDOW_S
+        by_source, by_gate, recent = {}, {}, []
+        try:
+            with open(skip_path, encoding="utf-8") as fh:  # Stream (Log wächst)
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except ValueError:
+                        continue
+                    ts = _epoch((rec or {}).get("ts_utc"))
+                    if ts is None or ts < cutoff:
+                        continue
+                    out["blocks_7d"]["total"] += 1
+                    for key, bucket in (("source", by_source), ("gate", by_gate)):
+                        val = (rec or {}).get(key)
+                        if val:
+                            bucket[val] = bucket.get(val, 0) + 1
+                    recent.append({**rec, "ts_bz": _bz_from_iso(rec.get("ts_utc"))})
+        except OSError:
+            pass
+        out["blocks_7d"]["by_source"] = by_source
+        out["blocks_7d"]["by_gate"] = by_gate
+        out["blocks_7d"]["recent"] = recent[-5:][::-1]  # neueste zuerst
+    return out
 
 
 # ══ Subprozess-Wrapper (Tests monkeypatchen DIESE beiden Funktionen) ═════════
@@ -1421,11 +1540,20 @@ def build(root, fx_root, sl_root, trading_data, now=None):
     overall_why = [f["title"] for f in findings.sorted()
                    if f["severity"] in ("red", "yellow")]
 
+    # ── Trading-Gates (2026-10-01): Release-Status + Blocks (fail-soft) ──────
+    try:
+        gates = release_gate_section(fx_root, trading_data, now_dt)
+    except Exception as exc:  # noqa: BLE001 — Datenlayer darf nie crashen
+        gates = None
+        print(f"[build_overview_status] WARN gates: "
+              f"{exc.__class__.__name__}: {exc}")
+
     doc = {
         "schema": SCHEMA,
         "generated_at_utc": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "generated_at_bz": now_dt.astimezone(BERLIN_TZ).isoformat(timespec="seconds"),
         "market_open": mkt_open,
+        "gates": gates,
         "verdict": {
             "overall": {"status": overall_status, "headline": headline,
                         "why": overall_why},
