@@ -651,7 +651,18 @@
     if (!_eqChart) {
       _eqBox = box;
       _eqChart = LightweightCharts.createChart(box, chartBaseOpts(box.clientWidth, 320));
-      _eqTotalSeries = _eqChart.addLineSeries({ color: C_TOTAL, lineWidth: 3, priceLineVisible: false });
+      // Zwei Maßstäbe (User 2026-10-01): Die Gesamtkurve ist die SUMME aller Bots
+      // und hat eine viel größere Größenordnung — auf gemeinsamer Achse plättet sie
+      // die Einzelkurven. Deshalb: Gesamt auf eigener linker Achse (blau), Bots
+      // bleiben rechts und skalieren unabhängig (autoscale je Skala).
+      _eqChart.applyOptions({
+        leftPriceScale: { visible: true, borderColor: 'rgba(88,166,255,0.45)' },
+        rightPriceScale: { borderColor: 'rgba(139,139,158,0.35)' },
+      });
+      _eqTotalSeries = _eqChart.addLineSeries({
+        color: C_TOTAL, lineWidth: 3, priceLineVisible: false, priceScaleId: 'left',
+      });
+      _eqChart.priceScale('left').applyOptions({ textColor: C_TOTAL });
     }
     _eqTotalSeries.setData(totalPts.length >= 2 ? totalPts : []);
 
@@ -671,7 +682,7 @@
 
     // Legende als Chips ÜBER dem Chart
     if (legend) {
-      var chips = ['<span class="ov-legend-chip total"><span class="swatch" style="background:' + C_TOTAL + '"></span>Gesamt</span>'];
+      var chips = ['<span class="ov-legend-chip total"><span class="swatch" style="background:' + C_TOTAL + '"></span>Gesamt (linke Achse)</span>'];
       bots.forEach(function (b) {
         chips.push('<span class="ov-legend-chip"><span class="swatch" style="background:' + _eqBotSeries[b.name].color + '"></span>' + esc(b.name) + '</span>');
       });
