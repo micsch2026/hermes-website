@@ -1,17 +1,722 @@
 {
- "updated_at": "2026-10-01T06:38:40.796773+00:00",
- "available": false,
- "week": null,
- "status": null,
- "generated_at": null,
+ "updated_at": "2026-10-01T07:16:25.495717+00:00",
+ "available": true,
+ "week": "2026-W40",
+ "status": "pending",
+ "generated_at": "2026-10-01T07:01:19.239938+00:00",
  "model": null,
- "summary_de": "",
- "wochenfokus": [],
- "neue_seeds": [],
- "anpassungen": [],
- "shadow_empfehlungen": [],
- "neuer_ansatz": null,
- "monitoring": [],
+ "summary_de": "Woche 2026-W40: 10 validierte Saves, 54 Kandidaten, 5 rejected, Katalog bis id 805.\nDominanter Gate-Fail: 'no asset survived per-asset WFO' (190x) \u2014 Seeds sterben vor dem Cluster-Test.\nShadow: 71 Strategien, netto +956 EUR, aber 11 Zero-Trade-Strategien und 28 Verlierer.\nStaerkste Evidenz: Metals-Trend-Pullback (317 +242.3 EUR, 194 +137.9 EUR) und H4-Swing-FX (751-756 validiert).\nSchwaechste Evidenz: m15-Metalle (730 -81.7 EUR, 0% WR) und Index-London-Sweep (783 -40.7 EUR, 0% WR).\nFokus: H4-Saeule FX/Metals ausbauen, JPY-Carry H1 skalieren, Indizes nur konservativ mit Spread-Puffer.",
+ "wochenfokus": [
+  {
+   "cluster": "h4_swing_fx",
+   "priority": 1,
+   "reason": "Sechs validierte Tier-A-Saves im Fenster (751 PF1.24/782 Trades, 752 PF1.38/330, 753 PF1.82/109, 754 PF1.49/288, 755 PF1.43/298, 756 PF1.20/540) und yield_recent h4_swing_fx-Familien durchgehend profitabel; gleichzeitig Shadow-Verluste bei 752 (-44.3 EUR) und 749 (-43.9 EUR) mit 0% WR -> Ausbau nur mit per-Asset-WFO-Gate.",
+   "levers": [
+    "seeds",
+    "tier1"
+   ],
+   "assets_hint": [
+    "EURUSD",
+    "GBPUSD",
+    "AUDCAD"
+   ]
+  },
+  {
+   "cluster": "expand_metals_trend",
+   "priority": 1,
+   "reason": "Shadow-Top 317 kimi_metals_trend_pullback +242.3 EUR (20 Trades, WR 55%, XAUUSD 1h) und 194 kimi-trend Metals Trend-Pullback H1 +137.9 EUR (41 Trades); yield_recent fx_swing_h4_trend_pullback_metals 5212 Runs / 5212 profitabel. Metalle ohne Kommission -> enger ATR-SL und R:R >= 2.0 vertretbar.",
+   "levers": [
+    "seeds",
+    "tier1"
+   ],
+   "assets_hint": [
+    "XAUUSD",
+    "XAGUSD"
+   ]
+  },
+  {
+   "cluster": "jpy_carry_basket",
+   "priority": 1,
+   "reason": "Save 800 jpy_carry_basket validated Tier A PF 1.41 / 135 Trades; Shadow 737 auto_jpy_carry_sweep_reclaim +73.3 EUR bei nur 4 Trades (62.1 EUR/Woche, WR 75%); yield jpy_carry_basket/1h 145 Runs profitabel. FX-Kommission erfordert H1/H4 und weiteren SL.",
+   "levers": [
+    "seeds",
+    "tier1"
+   ],
+   "assets_hint": [
+    "EURJPY",
+    "USDJPY",
+    "AUDJPY"
+   ]
+  },
+  {
+   "cluster": "idx_w3_gap",
+   "priority": 2,
+   "reason": "Shadow 782 +51.9 EUR (77.2 EUR/Woche, WR 100%) und 790 +46.2 EUR; Saves 790/782 PF 1.21 mit 540 bzw. 368 Trades, yield idx_w3_gap 51 Runs profitabel. Indizes tragen Spread -> konservative risk_pct und TP 1.5R.",
+   "levers": [
+    "seeds",
+    "tier1"
+   ],
+   "assets_hint": [
+    "US500",
+    "NAS100",
+    "GER40"
+   ]
+  },
+  {
+   "cluster": "m15_metals_fade",
+   "priority": 2,
+   "reason": "Aktive Config TF-Fokus-Welle fuehrt m15_metals_fade (XAU/XAG) als Schritt 2; Evidenz aber negativ: Shadow 730 razor_metals_sweep_reclaim_m15_tom -81.7 EUR bei 0% WR. Nur als kontrollierte Bestaetigung mit H4-Kontext-Gate und Debug-Logging.",
+   "levers": [
+    "seeds",
+    "tier1"
+   ],
+   "assets_hint": [
+    "XAUUSD",
+    "XAGUSD"
+   ]
+  }
+ ],
+ "neue_seeds": [
+  {
+   "name": "sb_metals_trend_pullback_h4",
+   "cluster": "expand_metals_trend",
+   "timeframe": "4h",
+   "assets": [
+    "XAUUSD",
+    "XAGUSD"
+   ],
+   "rationale": "Uebertraegt die Shadow-Gewinner 317 (+242.3 EUR, XAUUSD 1h) und 194 (+137.9 EUR, XAU/XAG 1h) auf H4, wo laut yield_recent fx_swing_h4_trend_pullback_metals 5212/5212 Runs profitabel waren. Metalle ohne Kommission -> ATR-SL 1.5 und 2.0R.",
+   "seed": {
+    "enter": {
+     "signals": [
+      {
+       "id": "sig_long",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "ema_slope",
+         "timeframe": "4h",
+         "params": {
+          "period": 50
+         },
+         "op": ">",
+         "value": 0
+        },
+        {
+         "indicator": "rsi",
+         "timeframe": "4h",
+         "params": {
+          "period": 14
+         },
+         "op": "<",
+         "value": 45
+        },
+        {
+         "indicator": "price_vs_ema",
+         "timeframe": "4h",
+         "params": {
+          "period": 50
+         },
+         "op": ">",
+         "value": 0
+        }
+       ],
+       "direction": "long",
+       "base_score": 55
+      }
+     ],
+     "gates": [],
+     "min_score": 50
+    },
+    "exit": {
+     "mode": "timeout",
+     "max_hold_hours": 96
+    },
+    "sl": {
+     "mode": "atr",
+     "period": 14,
+     "mult": 1.5
+    },
+    "tp": {
+     "mode": "r_multiple",
+     "value": 2.0
+    },
+    "pairs": [
+     "XAUUSD",
+     "XAGUSD"
+    ],
+    "risk_pct": 1.0
+   },
+   "validation": {
+    "ok": true,
+    "signals": 32,
+    "asset_tested": "XAUUSD",
+    "note": ""
+   }
+  },
+  {
+   "name": "sb_fx_h4_liq_sweep_reclaim",
+   "cluster": "h4_swing_fx",
+   "timeframe": "4h",
+   "assets": [
+    "EURUSD",
+    "GBPUSD",
+    "AUDCAD"
+   ],
+   "rationale": "Konsolidiert die validierten Tier-A-Sweep-Saves 752 (PF1.38/330), 754 (PF1.49/288) und 756 (PF1.20/540) zu einem symmetrischen Sweep-Reclaim mit gelockerten RSI-Schwellen (40/60) fuer ausreichende Signalfrequenz. FX-Kommission -> H4 und ATR-SL 1.5.",
+   "seed": {
+    "enter": {
+     "signals": [
+      {
+       "id": "sig_long",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "liquidity_sweep",
+         "timeframe": "4h",
+         "params": {
+          "lookback": 20
+         },
+         "op": "==",
+         "value": 1
+        },
+        {
+         "indicator": "rsi",
+         "timeframe": "4h",
+         "params": {
+          "period": 14
+         },
+         "op": "<",
+         "value": 40
+        },
+        {
+         "indicator": "body_ratio",
+         "timeframe": "4h",
+         "params": {},
+         "op": ">",
+         "value": 0.3
+        }
+       ],
+       "direction": "long",
+       "base_score": 55
+      },
+      {
+       "id": "sig_short",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "liquidity_sweep",
+         "timeframe": "4h",
+         "params": {
+          "lookback": 20
+         },
+         "op": "==",
+         "value": 1
+        },
+        {
+         "indicator": "rsi",
+         "timeframe": "4h",
+         "params": {
+          "period": 14
+         },
+         "op": ">",
+         "value": 60
+        },
+        {
+         "indicator": "body_ratio",
+         "timeframe": "4h",
+         "params": {},
+         "op": ">",
+         "value": 0.3
+        }
+       ],
+       "direction": "short",
+       "base_score": 55
+      }
+     ],
+     "gates": [],
+     "min_score": 50
+    },
+    "exit": {
+     "mode": "timeout",
+     "max_hold_hours": 72
+    },
+    "sl": {
+     "mode": "atr",
+     "period": 14,
+     "mult": 1.5
+    },
+    "tp": {
+     "mode": "r_multiple",
+     "value": 2.0
+    },
+    "pairs": [
+     "EURUSD",
+     "GBPUSD",
+     "AUDCAD"
+    ],
+    "risk_pct": 1.0
+   },
+   "validation": {
+    "ok": true,
+    "signals": 76,
+    "asset_tested": "EURUSD",
+    "note": ""
+   }
+  },
+  {
+   "name": "sb_jpy_carry_sweep_reclaim_h1",
+   "cluster": "jpy_carry_basket",
+   "timeframe": "1h",
+   "assets": [
+    "EURJPY",
+    "USDJPY",
+    "AUDJPY"
+   ],
+   "rationale": "Basiert auf Save 800 jpy_carry_basket (validated, PF 1.41, 135 Trades) und Shadow 737 (+73.3 EUR, 62.1 EUR/Woche, WR 75%). H1 wegen FX-Kommission, Trendfilter ueber ema_slope haelt nur Carry-Richtung.",
+   "seed": {
+    "enter": {
+     "signals": [
+      {
+       "id": "sig_long",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "liquidity_sweep",
+         "timeframe": "1h",
+         "params": {
+          "lookback": 24
+         },
+         "op": "==",
+         "value": 1
+        },
+        {
+         "indicator": "rsi",
+         "timeframe": "1h",
+         "params": {
+          "period": 14
+         },
+         "op": "<",
+         "value": 40
+        },
+        {
+         "indicator": "ema_slope",
+         "timeframe": "1h",
+         "params": {
+          "period": 50
+         },
+         "op": ">",
+         "value": 0
+        }
+       ],
+       "direction": "long",
+       "base_score": 55
+      },
+      {
+       "id": "sig_short",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "liquidity_sweep",
+         "timeframe": "1h",
+         "params": {
+          "lookback": 24
+         },
+         "op": "==",
+         "value": 1
+        },
+        {
+         "indicator": "rsi",
+         "timeframe": "1h",
+         "params": {
+          "period": 14
+         },
+         "op": ">",
+         "value": 60
+        },
+        {
+         "indicator": "ema_slope",
+         "timeframe": "1h",
+         "params": {
+          "period": 50
+         },
+         "op": "<",
+         "value": 0
+        }
+       ],
+       "direction": "short",
+       "base_score": 55
+      }
+     ],
+     "gates": [],
+     "min_score": 50
+    },
+    "exit": {
+     "mode": "timeout",
+     "max_hold_hours": 48
+    },
+    "sl": {
+     "mode": "atr",
+     "period": 14,
+     "mult": 1.5
+    },
+    "tp": {
+     "mode": "r_multiple",
+     "value": 2.0
+    },
+    "pairs": [
+     "EURJPY",
+     "USDJPY",
+     "AUDJPY"
+    ],
+    "risk_pct": 1.0
+   },
+   "validation": {
+    "ok": false,
+    "signals": 1,
+    "asset_tested": "EURJPY",
+    "note": "nur 1 Signale (min 50) \u2014 zu selten f\u00fcr WFO"
+   }
+  },
+  {
+   "name": "sb_idx_weekend_gap_cont_h1",
+   "cluster": "idx_w3_gap",
+   "timeframe": "1h",
+   "assets": [
+    "US500",
+    "NAS100",
+    "GER40"
+   ],
+   "rationale": "Direkt aus Save 790/782 idx_weekend_gap_cont_h1 (PF 1.21, 540 bzw. 368 Trades) und Shadow 782 (+51.9 EUR) / 790 (+46.2 EUR). Indizes tragen Spread -> risk_pct 0.5 und TP 1.5R, nur Montags-Gap mit Trendbestaetigung.",
+   "seed": {
+    "enter": {
+     "signals": [
+      {
+       "id": "sig_long",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "gap",
+         "timeframe": "1h",
+         "params": {
+          "min_atr": 0.25
+         },
+         "op": ">",
+         "value": 0
+        },
+        {
+         "indicator": "day_of_week",
+         "timeframe": "1h",
+         "params": {},
+         "op": "==",
+         "value": 1
+        },
+        {
+         "indicator": "price_vs_daily_sma",
+         "timeframe": "1h",
+         "params": {
+          "period": 20
+         },
+         "op": ">",
+         "value": 0
+        }
+       ],
+       "direction": "long",
+       "base_score": 50
+      },
+      {
+       "id": "sig_short",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "gap",
+         "timeframe": "1h",
+         "params": {
+          "min_atr": 0.25
+         },
+         "op": "<",
+         "value": 0
+        },
+        {
+         "indicator": "day_of_week",
+         "timeframe": "1h",
+         "params": {},
+         "op": "==",
+         "value": 1
+        },
+        {
+         "indicator": "price_vs_daily_sma",
+         "timeframe": "1h",
+         "params": {
+          "period": 20
+         },
+         "op": "<",
+         "value": 0
+        }
+       ],
+       "direction": "short",
+       "base_score": 50
+      }
+     ],
+     "gates": [],
+     "min_score": 50
+    },
+    "exit": {
+     "mode": "timeout",
+     "max_hold_hours": 24
+    },
+    "sl": {
+     "mode": "atr",
+     "period": 14,
+     "mult": 1.5
+    },
+    "tp": {
+     "mode": "r_multiple",
+     "value": 1.5
+    },
+    "pairs": [
+     "US500",
+     "NAS100",
+     "GER40"
+    ],
+    "risk_pct": 0.5
+   },
+   "validation": {
+    "ok": false,
+    "signals": 4,
+    "asset_tested": "US500",
+    "note": "nur 4 Signale (min 50) \u2014 zu selten f\u00fcr WFO"
+   }
+  },
+  {
+   "name": "sb_fx_h4_donchian_cont",
+   "cluster": "universal_fx_swing_10",
+   "timeframe": "4h",
+   "assets": [
+    "EURUSD",
+    "GBPUSD",
+    "USDCHF"
+   ],
+   "rationale": "Save 738 fx_swing_h4_donchian_breakout (PF 1.40, 75 Trades) und yield universal_fx_swing_10/4h/fx_swing_h4_donchian_breakout mit 704/704 profitablen Runs. Breakout-Continuation ueber range_position statt Donchian-Vergleich, damit die Regel maschinenlesbar bleibt.",
+   "seed": {
+    "enter": {
+     "signals": [
+      {
+       "id": "sig_long",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "range_position",
+         "timeframe": "4h",
+         "params": {
+          "period": 20
+         },
+         "op": ">",
+         "value": 0.85
+        },
+        {
+         "indicator": "adx",
+         "timeframe": "4h",
+         "params": {
+          "period": 14
+         },
+         "op": ">",
+         "value": 20
+        },
+        {
+         "indicator": "ema_slope",
+         "timeframe": "4h",
+         "params": {
+          "period": 50
+         },
+         "op": ">",
+         "value": 0
+        }
+       ],
+       "direction": "long",
+       "base_score": 55
+      },
+      {
+       "id": "sig_short",
+       "condition": "AND",
+       "rules": [
+        {
+         "indicator": "range_position",
+         "timeframe": "4h",
+         "params": {
+          "period": 20
+         },
+         "op": "<",
+         "value": 0.15
+        },
+        {
+         "indicator": "adx",
+         "timeframe": "4h",
+         "params": {
+          "period": 14
+         },
+         "op": ">",
+         "value": 20
+        },
+        {
+         "indicator": "ema_slope",
+         "timeframe": "4h",
+         "params": {
+          "period": 50
+         },
+         "op": "<",
+         "value": 0
+        }
+       ],
+       "direction": "short",
+       "base_score": 55
+      }
+     ],
+     "gates": [],
+     "min_score": 50
+    },
+    "exit": {
+     "mode": "timeout",
+     "max_hold_hours": 72
+    },
+    "sl": {
+     "mode": "atr",
+     "period": 14,
+     "mult": 1.5
+    },
+    "tp": {
+     "mode": "r_multiple",
+     "value": 2.0
+    },
+    "pairs": [
+     "EURUSD",
+     "GBPUSD",
+     "USDCHF"
+    ],
+    "risk_pct": 1.0
+   },
+   "validation": {
+    "ok": true,
+    "signals": 454,
+    "asset_tested": "EURUSD",
+    "note": ""
+   }
+  }
+ ],
+ "anpassungen": [
+  {
+   "target": "h4_swing_fx (Saves 749/752 live)",
+   "change": "per-Asset-WFO-Pass als Deploy-Gate erzwingen, sonst Asset aus dem Cluster-Paar-Set entfernen",
+   "reason": "gate_fails fuehrt 'no asset survived per-asset WFO' mit 190 Faellen an; Shadow 752 -44.3 EUR und 749 -43.9 EUR bei 0% WR trotz Tier-A-Validierung."
+  },
+  {
+   "target": "m15_metals_fade / Shadow 730 razor_metals_sweep_reclaim_m15_tom",
+   "change": "H4-Kontext-Gate (ema_slope 4h) vor jedem m15-Entry, sonst pausieren",
+   "reason": "Shadow 730 -81.7 EUR bei 0% WR und 4 Trades; m15-Metalle ohne Trendkontext sind der schwaechste Block im Fenster."
+  },
+  {
+   "target": "idx_w3_eustx50 / Shadow 783 auto_eustx50_london_sweep",
+   "change": "Spread-Kosten im Backtest explizit modellieren und risk_pct auf 0.5 senken",
+   "reason": "Shadow 783 -40.7 EUR bei 0% WR; Indizes tragen Spread, der im Cluster-PF 1.31/1.44 offenbar nicht ausreichend abgebildet ist."
+  },
+  {
+   "target": "near_miss_gate (PF 1.04-1.12)",
+   "change": "Schwellen-Sweep fuer die groessten Baender (77, 54, 50, 46, 43 Faelle) mit gelockerten Entry-Regeln fahren",
+   "reason": "near_miss_gate zeigt 18 Baender knapp unter der Gate-Schwelle; das ist der guenstigste Hebel fuer neue Kandidaten ohne neue Archetypen."
+  },
+  {
+   "target": "Zero-Trade-Strategien (731, 743, 744, 762, 764, 766, 785, 789, 802, 804, 805)",
+   "change": "Signal-Logging aktivieren und Entry-Bedingungen auf Frequenz pruefen",
+   "reason": "11 Shadow-Strategien ohne einen einzigen Trade, darunter die frisch validierte 805 (Tier A, PF 1.4) und die neuen 802/804."
+  },
+  {
+   "target": "Shadow 672 fx1_4h_trend_pullback",
+   "change": "Asset-Set sortenrein splitten (FX-Block und XAUUSD-Block getrennt fuehren)",
+   "reason": "+231.9 EUR / 48.1 EUR pro Woche, aber Assets gemischt (AUDCAD, EURUSD, XAUUSD) \u2014 verstoesst gegen die Cluster-Reinheit und verwaessert die Zuordnung."
+  }
+ ],
+ "shadow_empfehlungen": [
+  {
+   "strategy_id": 317,
+   "action": "variant",
+   "reason": "+242.3 EUR, 20 Trades, WR 55% auf XAUUSD 1h \u2014 als H4-Variante (sb_metals_trend_pullback_h4) seedn."
+  },
+  {
+   "strategy_id": 194,
+   "action": "variant",
+   "reason": "+137.9 EUR, 41 Trades, XAU/XAG 1h \u2014 bestaetigt den Metals-Trend-Pullback als zweite Evidenzquelle."
+  },
+  {
+   "strategy_id": 672,
+   "action": "variant",
+   "reason": "+231.9 EUR, 48.1 EUR/Woche, aber gemischte Assets (AUDCAD/EURUSD/XAUUSD) \u2014 sortenrein splitten statt 1:1 weiterlaufen."
+  },
+  {
+   "strategy_id": 737,
+   "action": "variant",
+   "reason": "+73.3 EUR bei nur 4 Trades, 62.1 EUR/Woche, WR 75% \u2014 JPY-Carry H1 auf mehr Paare skalieren."
+  },
+  {
+   "strategy_id": 782,
+   "action": "variant",
+   "reason": "+51.9 EUR, 77.2 EUR/Woche, WR 100% (US500/NAS100) \u2014 Gap-Continuation auf GER40 erweitern."
+  },
+  {
+   "strategy_id": 730,
+   "action": "retire_vorschlag",
+   "reason": "-81.7 EUR, 0% WR, 4 Trades, m15-Metalle ohne Kontext \u2014 schlechtester Shadow-Eintrag."
+  },
+  {
+   "strategy_id": 705,
+   "action": "retire_vorschlag",
+   "reason": "-83.5 EUR, 0% WR, 4 Trades auf XAU/XAG \u2014 botr22_metals_regime_trio traegt nicht."
+  },
+  {
+   "strategy_id": 735,
+   "action": "retire_vorschlag",
+   "reason": "-64.5 EUR, 0% WR, 3 Trades auf GBPCHF \u2014 auto_razor_bb_rsi_mr ohne Bestaetigung."
+  },
+  {
+   "strategy_id": 805,
+   "action": "debug",
+   "reason": "Frisch validiert (Tier A, PF 1.4, 104 Trades), aber 0 Trades seit 2026-10-01 \u2014 Entry-Bedingungen pruefen."
+  },
+  {
+   "strategy_id": 802,
+   "action": "debug",
+   "reason": "0 Trades seit 2026-10-01 trotz Kandidatenstatus PF 1.26 \u2014 Signal-Logging noetig."
+  },
+  {
+   "strategy_id": 804,
+   "action": "debug",
+   "reason": "0 Trades seit 2026-10-01, PF 1.2 bei 272 Backtest-Trades \u2014 Live-Trigger greift nicht."
+  }
+ ],
+ "neuer_ansatz": {
+  "name": "per_asset_wfo_prefilter",
+  "mechanism": "Vor jedem Cluster-Backtest wird pro Asset ein schneller Walk-Forward-Check gefahren. Nur Assets mit positivem WFO-Pass kommen in das Cluster-Paar-Set; findet sich kein einziges Asset, wird der Seed verworfen, bevor der volle Cluster-Lauf startet.",
+  "rationale": "'no asset survived per-asset WFO' ist mit 190 Faellen der mit Abstand haeufigste Gate-Fail und verbrennt Rechenzeit in Zyklen, die nie ein Ergebnis liefern koennen. Der Prefilter verschiebt dieselbe Entscheidung an den Anfang und macht die 534 near_dup_skips und 500 no_cluster_results produktiv nutzbar.",
+  "data_check": "gate_fails[0] = 'no asset survived per-asset WFO', count 190; cycles.finished 742 vs. cycles.no_cluster_results 500; near_dup_skips 534; auto_seed_lines 874."
+ },
+ "monitoring": [
+  "Shadow 752 und 749 (h4_swing_fx) taeglich auf WR und PnL pruefen \u2014 beide aktuell 0% WR bei -44.3 EUR / -43.9 EUR.",
+  "Zero-Trade-Liste (731, 743, 744, 762, 764, 766, 785, 789, 802, 804, 805) nach Signal-Logging-Deploy erneut auswerten.",
+  "Neue Seeds sb_metals_trend_pullback_h4 und sb_fx_h4_liq_sweep_reclaim auf Signalfrequenz >= 50 Signale pro Asset ueber die volle Historie pruefen.",
+  "idx_w3_gap und idx_w3_eustx50 mit realen Spread-Kosten nachrechnen, bevor risk_pct erhoeht wird.",
+  "jpy_carry_basket (Save 800, PF 1.41) und Shadow 737 weiter beobachten \u2014 737 hat erst 4 Trades, Stichprobe ist noch duenn.",
+  "near_miss_gate-Baender mit count >= 40 (PF 1.04-1.12) nach dem Schwellen-Sweep erneut gegen das Gate laufen lassen.",
+  "Metalle bleiben kommissionsfrei, aber R:R >= 2.0 und ATR-SL <= 1.5 beibehalten; kein FX+Metall-Mix in einem Cluster."
+ ],
  "outcome": null,
- "history": []
+ "history": [
+  {
+   "week": "2026-W40",
+   "status": "pending",
+   "generated_at": "2026-10-01T07:01:19.239938+00:00",
+   "summary_de": "Woche 2026-W40: 10 validierte Saves, 54 Kandidaten, 5 rejected, Katalog bis id 805.\nDominanter Gate-Fail: 'no asset survived per-asset WFO' (190x) \u2014 Seeds sterben vor dem Cluster-Test.\nShadow: 71 Strategien, netto +956 EUR, aber 11 Zero-Tra",
+   "focus_count": 5,
+   "seed_count": 5,
+   "seeds_validated": 3
+  }
+ ]
 }
