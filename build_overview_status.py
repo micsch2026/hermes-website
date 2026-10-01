@@ -71,7 +71,11 @@ THRESH_CHALLENGE_INFO_DAYS = 7 # Challenge-Tag >= → info-Finding
 THRESH_RISK_RED_LEVEL = 2      # risk_state.level >= → red (L2-Block-Ladder)
 THRESH_RISK_YELLOW_LEVEL = 1   # level == 1 → yellow
 THRESH_SUBPROC_TIMEOUT_S = 90  # Timeout decay/tca-Subprozess
-THRESH_CURVE_MAX_POINTS = 400  # equity_curve / total_equity_curve ≤ 400 Punkte
+THRESH_CURVE_MAX_POINTS = 1500  # equity_curve / total_equity_curve ≤ 1500 Punkte
+                                # (2026-10-01: 400→1500 — 400 straffte 15 Tage auf ~80-min-
+                                #  Raster und ließ die Zeitachse grob wirken; 1500 ≈ volle
+                                #  15-min-Quellauflösung der balance_history, ~14k Punkte
+                                #  Gesamt-JSON bleibt für Browser/Chart unkritisch.)
 THRESH_CORR_MAX_SIDS = 8       # corr.labels ≤ 8 SIDs
 THRESH_RANKING_TOP = 15        # shadow ranking Top 15
 THRESH_MONTHS = 12             # monthly_pnl Fenster
@@ -1009,8 +1013,8 @@ def build(root, fx_root, sl_root, trading_data, now=None):
     kpi_30d = _kpi_sum(lambda b: True, "pnl_30d")
     total_equity = _kpi_sum(lambda b: True, "equity")
 
-    # total_equity_curve: Union-TS, Forward-Fill, ≤400 Punkte.
-    # Basis: je-Bot-Curves (bereits auf ≤400 Punkte gestrafft) — Union der
+    # total_equity_curve: Union-TS, Forward-Fill, ≤1500 Punkte.
+    # Basis: je-Bot-Curves (bereits auf ≤1500 Punkte gestrafft) — Union der
     # Timestamps, je Bot Forward-Fill (Werte erst ab erstem Bot-Punkt), Summe.
     curves_ds = {b: _downsample(curves_by_bot.get(b) or [],
                                 THRESH_CURVE_MAX_POINTS) for b in bots}

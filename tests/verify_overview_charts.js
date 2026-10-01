@@ -86,7 +86,16 @@ function fetchStub(url, opts) {
 // LightweightCharts-Stub: createChart zählen, Serien + setData sammeln
 const charts = [];
 function makeChart(container, opts) {
-  const chart = { container, opts, series: [], applyOptions() {}, remove() {} };
+  const priceScales = {};
+  const chart = { container, opts, series: [], priceScales,
+    applyOptions(o) { Object.assign(chart.opts, o || {}); },
+    remove() {} };
+  chart.priceScale = (id) => {
+    if (!priceScales[id]) {
+      priceScales[id] = { id, opts: {}, applyOptions(o) { Object.assign(this.opts, o || {}); } };
+    }
+    return priceScales[id];
+  };
   const addSeries = (kind) => (sopts) => {
     const s = { kind, opts: sopts, data: [] };
     s.setData = (d) => { s.data = d; };
@@ -158,6 +167,19 @@ setTimeout(() => {
   const total = lineSeries.length ? lineSeries[0] : null;
   check('(b) Gesamt-Serie nutzt total_equity_curve (4 Punkte)', !!total && total.data.length === 4,
     total ? 'ist: ' + total.data.length : 'keine Serie');
+
+  // (b2) Zwei Maßstäbe (Fix 2026-10-01): Gesamt auf eigener linker Achse,
+  //      Bot-Serien bleiben auf der Standard-Achse (rechts).
+  check('(b2) Gesamt-Serie nutzt priceScaleId "left"', !!total && total.opts.priceScaleId === 'left',
+    total ? 'ist: ' + total.opts.priceScaleId : 'keine Serie');
+  const eqChart = charts.length ? charts[0] : null;
+  check('(b2) Equity-Chart: linke Preisachse sichtbar konfiguriert',
+    !!eqChart && eqChart.opts.leftPriceScale && eqChart.opts.leftPriceScale.visible === true,
+    eqChart ? JSON.stringify(eqChart.opts.leftPriceScale) : 'kein Chart');
+  check('(b2) Bot-Serien ohne eigene Skala (rechts, Default)',
+    lineSeries.length === 3 && lineSeries.slice(1).every((s) => s.opts.priceScaleId === undefined));
+  check('(b2) priceScale("left") gestylt (textColor gesetzt)',
+    !!eqChart && !!eqChart.priceScales['left'] && eqChart.priceScales['left'].opts.textColor !== undefined);
 
   // (c) #chart-corr: 3×3 Zellen
   const corrCells = (corrHtml.match(/class="corr-cell/g) || []).length;

@@ -342,7 +342,7 @@ def main():
         b1 = doc["live"]["fleet"][0]
         tec = doc["live"]["total_equity_curve"]
         assert (len(b1["equity_curve"]), len(tec), tec[-1]) == (5, 5, tec[-1]) \
-            and tec[-1][1] == 985.0 and len(tec) <= 400, \
+            and tec[-1][1] == 985.0 and len(tec) <= m.THRESH_CURVE_MAX_POINTS, \
             f"curves falsch: fleet={len(b1['equity_curve'])} total={tec[-1]}"
 
     def t_monthly():
