@@ -1,120 +1,96 @@
 {
   "id": 1,
-  "name": "IT: GEN_Seed_2396",
-  "strategy_type": "unified",
-  "timeframe": "1h",
-  "status": "rejected",
-  "readiness": "rejected",
-  "rejection_reason": "Keine Enrichment-Daten",
-  "overall_score": -999.0,
-  "iteration_count": 0,
-  "source": "iterative_discovery",
-  "source_url": null,
-  "source_ref": null,
-  "created_at": "2026-06-28 11:32:51",
-  "updated_at": "2026-06-28 11:32:51",
-  "notes": "{\"history\": [], \"iterations\": 0, \"holdout\": null, \"anti_overfit\": null}",
-  "concept": {
-    "name": "IT: GEN_Seed_2396",
-    "strategy_type": "unified",
-    "timeframe": "1H",
-    "assets_candidate": [
-      "GBPCHF",
-      "GBPAUD",
-      "XAUUSD",
-      "NAS100",
-      "CADCHF",
-      "EURAUD"
-    ],
-    "tree": {
-      "enter": {
-        "signals": [
-          {
-            "id": "gen_long",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "ema_slope",
-                "timeframe": "1h",
-                "params": {
-                  "period": 50
-                },
-                "op": ">",
-                "value": 0
-              }
-            ],
-            "direction": "long",
-            "base_score": 40
-          },
-          {
-            "id": "gen_short",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "ema_slope",
-                "timeframe": "1h",
-                "params": {
-                  "period": 100
-                },
-                "op": "<",
-                "value": 0
-              }
-            ],
-            "direction": "short",
-            "base_score": 40
-          }
-        ],
-        "boosts": [],
-        "gates": [],
-        "min_score": 0,
-        "merge_mode": "highest_score"
-      },
-      "exit": {
-        "mode": "timeout",
-        "max_hold_hours": 48
-      },
-      "sl": {
-        "mode": "atr",
-        "period": 14,
-        "mult": 1.5
-      },
-      "tp": {
-        "mode": "r_multiple",
-        "value": 2.5
-      },
-      "risk_pct": 2.0,
-      "pairs": [
-        "GBPCHF",
-        "GBPAUD",
-        "XAUUSD",
-        "NAS100",
-        "CADCHF",
-        "EURAUD"
-      ]
-    },
-    "params": {
-      "layers": {
-        "data": {
-          "timeframes": [
-            "m15"
-          ]
-        }
-      }
-    },
-    "risk": {
-      "risk_per_trade_pct": 2.0,
-      "max_positions": 1
-    },
-    "exit": {
-      "max_hold_hours": 72
-    },
-    "description": "Data-driven: triggers=[ema_slope]"
+  "name": "London Session Liquidity Sweep",
+  "slug": "london-session-liquidity-sweep",
+  "category": "session_based",
+  "sub_category": "london_open",
+  "status": "active",
+  "source": "kb",
+  "source_ref": "Knowledge Base (1 sources)",
+  "overall_score": 11.5,
+  "score_breakdown": {
+    "platform": 2.0,
+    "crowd_strength": 0,
+    "completeness": 7.0,
+    "anti_hunt": 3.0,
+    "vulnerability": -0.5
   },
-  "screening_result": null,
-  "wfo_result": null,
-  "enrichment_result": null,
-  "asset_results": [],
-  "correlations": [],
-  "iterations": [],
-  "strategy_tree": null
+  "score_reasons": {
+    "platform": [
+      "youtube (+2.0)"
+    ],
+    "crowd_strength": [],
+    "completeness": [
+      "3 Entry-Bedingungen",
+      "WR=58%, R:R=1.8",
+      "Hypothese (155 chars)",
+      "Edge-Begründung (92 chars)",
+      "SL + TP Logik definiert"
+    ],
+    "anti_hunt": [
+      "ATR-Stops → dynamisch, schwer jagbar",
+      "Re-Entry nach Hunt → nutzt Hunt als Signal"
+    ],
+    "vulnerability": [
+      "Keine Volumen-Bestätigung"
+    ]
+  },
+  "timeframe": "M15",
+  "asset_classes": [
+    "forex",
+    "indices"
+  ],
+  "preferred_assets": [
+    "EURUSD",
+    "GBPUSD",
+    "NAS100",
+    "DE40"
+  ],
+  "entry_direction": "both",
+  "indicators": [
+    "session_range",
+    "candlestick_patterns"
+  ],
+  "reported_wr": 58.0,
+  "reported_rr": 1.8,
+  "reported_pf": null,
+  "reported_trades_per_week": 8.0,
+  "lab_strategy_type": "london_breakout",
+  "lab_signal_generator": null,
+  "created_at": "2026-06-24 05:44:34",
+  "iteration_count": 1,
+  "asset_count": 4,
+  "tier_counts": {},
+  "hypothesis": "Die London Session erzeugt Liquiditäts-Sweeps um 08:00-09:00 UTC. Institutionelle Trader jagen Stop-Losses der Asian Session, bevor der wahre Move startet.",
+  "edge_rationale": "Stop-Hunt → Liquidity Grab → Reversal. Der Sweep fängt Retail-Trader auf der falschen Seite.",
+  "best_when": "Asian Range war eng (<50% ATR), kein NFP/CPI Tag",
+  "worst_when": "NFP/CPI Tag, starke Trendtage, News-driven Märkte",
+  "market_condition": "ranging",
+  "session": "london",
+  "entry_conditions": [
+    "Asian Range definieren (00:00-07:00 UTC High/Low)",
+    "Sweep: Price überschreitet Asian High/Low um 3-10 Pips",
+    "Reversal-Close zurück INS Range (Pin Bar oder Engulfing)"
+  ],
+  "exit_tp_type": "structural",
+  "exit_tp_logic": "Opposite Asian Range Boundary",
+  "exit_sl_type": "structural",
+  "exit_sl_logic": "Beyond Sweep High/Low + ATR buffer",
+  "max_hold_hours": 8,
+  "trailing_stop": false,
+  "reported_sample_size": "200 trades",
+  "reported_period": null,
+  "reported_note": null,
+  "lab_params_to_optimize": [],
+  "notes": null,
+  "confidence_score": 0.65,
+  "sources": [
+    {
+      "platform": "youtube",
+      "url": null,
+      "author": "ICT",
+      "title": "London Kill Zone Strategy"
+    }
+  ],
+  "score_explanation": "Gesamt-Score: 11.5\n\n📊 Platform (+2.0):\n  • youtube (+2.0)\n\n✅ Vollständigkeit (+7.0):\n  • 3 Entry-Bedingungen (+2.0)\n  • WR=58%, R:R=1.8 (+2.0)\n  • Hypothese (155 chars) (+1.0)\n  • Edge-Begründung (92 chars) (+1.0)\n  • SL + TP Logik definiert (+1.0)\n\n🛡️ Anti-Hunt (+3.0):\n  • ATR-Stops → dynamisch, schwer jagbar (+1.5)\n  • Re-Entry nach Hunt → nutzt Hunt als Signal (+1.5)\n\n⚠️ Vulnerability (-0.5):\n  • Keine Volumen-Bestätigung (-0.5)\n\n📚 Bewertung: Sehr gut dokumentiert"
 }

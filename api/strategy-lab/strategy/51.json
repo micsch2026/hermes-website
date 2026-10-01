@@ -1,238 +1,99 @@
 {
   "id": 51,
-  "name": "IT: Master_MR_M5_VWAP_Scalp",
-  "strategy_type": "unified",
-  "timeframe": "M5",
-  "status": "rejected",
-  "readiness": "rejected",
-  "rejection_reason": "Keine Enrichment-Daten",
-  "overall_score": 99.0,
-  "iteration_count": 0,
-  "source": "cluster_synthesis",
-  "source_url": null,
-  "source_ref": null,
-  "created_at": "2026-06-29T09:03:23.361454+00:00",
-  "updated_at": "2026-06-29T09:03:23.361454+00:00",
-  "notes": "Rejected: superseded by updated cluster masters",
-  "concept": {
-    "name": "Master_MR_M5_VWAP_Scalp",
-    "description": "M5 Scalping: VWAP+Stochastic+London Session Gate. 28 pairs.",
-    "strategy_type": "mean_reversion",
-    "timeframe": "M5",
-    "assets_candidate": [
-      "AUDCAD",
-      "AUDCHF",
-      "AUDJPY",
-      "AUDNZD",
-      "AUDUSD",
-      "CADCHF",
-      "CADJPY",
-      "CHFJPY",
-      "EURAUD",
-      "EURCAD",
-      "EURCHF",
-      "EURGBP",
-      "EURJPY",
-      "EURNZD",
-      "EURUSD",
-      "GBPAUD",
-      "GBPCAD",
-      "GBPCHF",
-      "GBPJPY",
-      "GBPNZD",
-      "GBPUSD",
-      "NZDCAD",
-      "NZDCHF",
-      "NZDJPY",
-      "NZDUSD",
-      "USDCAD",
-      "USDCHF",
-      "USDJPY"
-    ],
-    "tree": {
-      "enter": {
-        "signals": [
-          {
-            "id": "vwap_long",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "vwap",
-                "timeframe": "m5",
-                "params": {},
-                "op": "<",
-                "value": -1.0
-              },
-              {
-                "indicator": "stoch_k",
-                "timeframe": "m5",
-                "params": {
-                  "k_period": 14,
-                  "smooth": 3
-                },
-                "op": "<",
-                "value": 20
-              },
-              {
-                "indicator": "body_ratio",
-                "timeframe": "m5",
-                "params": {},
-                "op": ">",
-                "value": 0.15
-              }
-            ],
-            "direction": "long",
-            "base_score": 40
-          },
-          {
-            "id": "vwap_short",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "vwap",
-                "timeframe": "m5",
-                "params": {},
-                "op": ">",
-                "value": 1.0
-              },
-              {
-                "indicator": "stoch_k",
-                "timeframe": "m5",
-                "params": {
-                  "k_period": 14,
-                  "smooth": 3
-                },
-                "op": ">",
-                "value": 80
-              },
-              {
-                "indicator": "body_ratio",
-                "timeframe": "m5",
-                "params": {},
-                "op": ">",
-                "value": 0.15
-              }
-            ],
-            "direction": "short",
-            "base_score": 40
-          }
-        ],
-        "boosts": [
-          {
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "stoch_d",
-                "timeframe": "m5",
-                "params": {
-                  "k_period": 14,
-                  "d_period": 3,
-                  "smooth": 3
-                },
-                "op": "<",
-                "value": 20
-              }
-            ],
-            "points": 15
-          },
-          {
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "bb_position",
-                "timeframe": "m5",
-                "params": {
-                  "period": 10,
-                  "mult": 1.5
-                },
-                "op": "<",
-                "value": 0.1
-              }
-            ],
-            "points": 10
-          }
-        ],
-        "gates": [
-          {
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "session_london",
-                "timeframe": "m5",
-                "params": {},
-                "op": "==",
-                "value": 1
-              }
-            ]
-          }
-        ],
-        "min_score": 40,
-        "merge_mode": "flat_and"
-      },
-      "exit": {
-        "mode": "timeout",
-        "max_hold_hours": 3
-      },
-      "sl": {
-        "mode": "atr",
-        "period": 14,
-        "mult": 1.0
-      },
-      "tp": {
-        "mode": "r_multiple",
-        "value": 1.0
-      },
-      "risk_pct": 2.0,
-      "pairs": [
-        "AUDCAD",
-        "AUDCHF",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDUSD",
-        "CADCHF",
-        "CADJPY",
-        "CHFJPY",
-        "EURAUD",
-        "EURCAD",
-        "EURCHF",
-        "EURGBP",
-        "EURJPY",
-        "EURNZD",
-        "EURUSD",
-        "GBPAUD",
-        "GBPCAD",
-        "GBPCHF",
-        "GBPJPY",
-        "GBPNZD",
-        "GBPUSD",
-        "NZDCAD",
-        "NZDCHF",
-        "NZDJPY",
-        "NZDUSD",
-        "USDCAD",
-        "USDCHF",
-        "USDJPY"
-      ]
-    },
-    "params": {
-      "layers": {
-        "data": {
-          "timeframes": [
-            "m5"
-          ]
-        }
-      }
-    },
-    "risk": {
-      "risk_per_trade_pct": 2.0,
-      "max_positions": 5
-    }
+  "name": "NY Reversal / London Sweep Strategy",
+  "slug": "ny-reversal-london-sweep-strategy",
+  "category": "session_based",
+  "sub_category": "ny_reversal",
+  "status": "active",
+  "source": "kb",
+  "source_ref": "Knowledge Base (1 sources)",
+  "overall_score": 8.5,
+  "score_breakdown": {
+    "platform": 1.0,
+    "crowd_strength": 0,
+    "completeness": 7.0,
+    "anti_hunt": 2.0,
+    "vulnerability": -1.5
   },
-  "screening_result": null,
-  "wfo_result": null,
-  "enrichment_result": null,
-  "asset_results": [],
-  "correlations": [],
-  "iterations": [],
-  "strategy_tree": null
+  "score_reasons": {
+    "platform": [
+      "blog (+1.0)"
+    ],
+    "crowd_strength": [],
+    "completeness": [
+      "4 Entry-Bedingungen",
+      "WR=59%, R:R=2.0",
+      "Hypothese (162 chars)",
+      "Edge-Begründung (107 chars)",
+      "SL + TP Logik definiert"
+    ],
+    "anti_hunt": [
+      "Session-Filter → nur hohe Liquidität",
+      "Re-Entry nach Hunt → nutzt Hunt als Signal"
+    ],
+    "vulnerability": [
+      "Fester Pip-Stop → vorhersagbar für MM",
+      "Keine Volumen-Bestätigung"
+    ]
+  },
+  "timeframe": "M15",
+  "asset_classes": [
+    "indices",
+    "forex"
+  ],
+  "preferred_assets": [
+    "NAS100",
+    "US30",
+    "EURUSD",
+    "GBPUSD"
+  ],
+  "entry_direction": "both",
+  "indicators": [
+    "session_range",
+    "session_time",
+    "candlestick_patterns"
+  ],
+  "reported_wr": 59.0,
+  "reported_rr": 2.0,
+  "reported_pf": null,
+  "reported_trades_per_week": 5.0,
+  "lab_strategy_type": "london_breakout",
+  "lab_signal_generator": null,
+  "created_at": "2026-06-24 06:07:37",
+  "iteration_count": 1,
+  "asset_count": 4,
+  "tier_counts": {},
+  "hypothesis": "Die NY Session (13:30 EST) jagt oft die London Highs/Lows bevor sie in die entgegengesetzte Richtung dreht. Der Sweep ist der Fake, die Umkehr ist der echte Move.",
+  "edge_rationale": "London Range als Liquidity Pool → NY Sweep → Reversal. Dokumentiert in Prop Firm Communities mit 55-63% WR.",
+  "best_when": "Klares London High/Low, NY Open, keine News",
+  "worst_when": "Kein klares London Extreme, News-Events, Trend-Tag",
+  "market_condition": "volatile",
+  "session": "ny",
+  "entry_conditions": [
+    "London Session High/Low identifizieren",
+    "NY Open (13:30 EST): Price swept London Extreme",
+    "Reversal Candle (Rejection Wick) in entgegengesetzter Richtung",
+    "Entry am Reversal, SL beyond Sweep Wick"
+  ],
+  "exit_tp_type": "structural",
+  "exit_tp_logic": "Opposite London Extreme oder VWAP",
+  "exit_sl_type": "fixed",
+  "exit_sl_logic": "10-20 Pips Beyond Sweep Wick",
+  "max_hold_hours": 4,
+  "trailing_stop": false,
+  "reported_sample_size": "Prop Firm Community",
+  "reported_period": null,
+  "reported_note": "NY Reversal: 0.5-1% Risk, max 1-2 Trades/Tag. Kein Trading an FOMC/CPI/NFP.",
+  "lab_params_to_optimize": [],
+  "notes": null,
+  "confidence_score": 0.65,
+  "sources": [
+    {
+      "platform": "blog",
+      "url": null,
+      "author": "Prop Firm Community",
+      "title": "NY Reversal Strategy"
+    }
+  ],
+  "score_explanation": "Gesamt-Score: 8.5\n\n📊 Platform (+1.0):\n  • blog (+1.0)\n\n✅ Vollständigkeit (+7.0):\n  • 4 Entry-Bedingungen (+2.0)\n  • WR=59%, R:R=2.0 (+2.0)\n  • Hypothese (162 chars) (+1.0)\n  • Edge-Begründung (107 chars) (+1.0)\n  • SL + TP Logik definiert (+1.0)\n\n🛡️ Anti-Hunt (+2.0):\n  • Session-Filter → nur hohe Liquidität (+0.5)\n  • Re-Entry nach Hunt → nutzt Hunt als Signal (+1.5)\n\n⚠️ Vulnerability (-1.5):\n  • Fester Pip-Stop → vorhersagbar für MM (-1.0)\n  • Keine Volumen-Bestätigung (-0.5)\n\n⚡ Bewertung: Vulnerable ABER starke Anti-Hunt Features"
 }

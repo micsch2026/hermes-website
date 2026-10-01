@@ -1,318 +1,103 @@
 {
   "id": 63,
-  "name": "IT: Master_MR_v2_Pairs_ADX_Score",
-  "strategy_type": "unified",
-  "timeframe": "1h",
-  "status": "rejected",
-  "readiness": "rejected",
-  "rejection_reason": "Keine Enrichment-Daten",
-  "overall_score": -76.9,
-  "iteration_count": 4,
-  "source": "iterative_discovery",
-  "source_url": null,
-  "source_ref": null,
-  "created_at": "2026-06-29 13:30:00",
-  "updated_at": "2026-06-29 14:01:27",
-  "notes": "{\"history\": [{\"iter\": 1, \"change\": \"initial: 8r/1g/3b enter, exit=timeout\", \"pnl\": -453.8, \"trades\": 553, \"score\": -91.2}, {\"iter\": 2, \"change\": \"adjust_threshold: 8r/1g/3b enter, exit=timeout\", \"pnl\": -801.01, \"trades\": 218, \"score\": -84.9}, {\"iter\": 3, \"change\": \"sl_tp_change: 8r/1g/3b enter, exit=timeout\", \"pnl\": -659.23, \"trades\": 216, \"score\": -76.9}, {\"iter\": 4, \"change\": \"remove_gate: 8r/0g/3b enter, exit=timeout\", \"pnl\": -560.53, \"trades\": 360, \"score\": -78.3}], \"iterations\": 4, \"holdout\": null, \"anti_overfit\": null}",
-  "concept": {
-    "name": "IT: Master_MR_v2_Pairs_ADX_Score",
-    "strategy_type": "unified",
-    "timeframe": "1H",
-    "assets_candidate": [
-      "AUDCAD",
-      "AUDCHF",
-      "EURAUD",
-      "EURCAD",
-      "EURCHF",
-      "EURJPY",
-      "EURNZD",
-      "GBPAUD",
-      "GBPCAD",
-      "GBPNZD",
-      "NZDCAD",
-      "NZDUSD"
-    ],
-    "tree": {
-      "enter": {
-        "signals": [
-          {
-            "id": "mr_oversold_long",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "rsi",
-                "timeframe": "1h",
-                "params": {
-                  "period": 7
-                },
-                "op": "<",
-                "value": 20
-              },
-              {
-                "indicator": "bb_position",
-                "timeframe": "1h",
-                "params": {
-                  "period": 20,
-                  "mult": 2.0
-                },
-                "op": "<",
-                "value": 0.05
-              },
-              {
-                "indicator": "kc_position",
-                "timeframe": "1h",
-                "params": {
-                  "period": 14,
-                  "mult": 2.0
-                },
-                "op": "<",
-                "value": 0.1
-              },
-              {
-                "indicator": "body_ratio",
-                "timeframe": "1h",
-                "params": {},
-                "op": ">",
-                "value": 0.5
-              }
-            ],
-            "direction": "long",
-            "base_score": 40
-          },
-          {
-            "id": "mr_overbought_short",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "rsi",
-                "timeframe": "1h",
-                "params": {
-                  "period": 7
-                },
-                "op": ">",
-                "value": 80
-              },
-              {
-                "indicator": "bb_position",
-                "timeframe": "1h",
-                "params": {
-                  "period": 20,
-                  "mult": 2.0
-                },
-                "op": ">",
-                "value": 0.95
-              },
-              {
-                "indicator": "kc_position",
-                "timeframe": "1h",
-                "params": {
-                  "period": 14,
-                  "mult": 2.0
-                },
-                "op": ">",
-                "value": 0.9
-              },
-              {
-                "indicator": "body_ratio",
-                "timeframe": "1h",
-                "params": {},
-                "op": ">",
-                "value": 0.5
-              }
-            ],
-            "direction": "short",
-            "base_score": 40
-          }
-        ],
-        "boosts": [
-          {
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "williams_r",
-                "timeframe": "1h",
-                "params": {
-                  "period": 14
-                },
-                "op": "<",
-                "value": -80
-              }
-            ],
-            "points": 15
-          },
-          {
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "vwap",
-                "timeframe": "1h",
-                "params": {},
-                "op": "<",
-                "value": -1.0
-              }
-            ],
-            "points": 15
-          },
-          {
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "session_london",
-                "timeframe": "1h",
-                "params": {},
-                "op": "==",
-                "value": 1
-              }
-            ],
-            "points": 10
-          }
-        ],
-        "gates": [
-          {
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "adx",
-                "timeframe": "1h",
-                "params": {
-                  "period": 14
-                },
-                "op": "<",
-                "value": 25
-              }
-            ]
-          }
-        ],
-        "min_score": 50,
-        "merge_mode": "flat_and"
-      },
-      "exit": {
-        "mode": "timeout",
-        "max_hold_hours": 72
-      },
-      "sl": {
-        "mode": "atr",
-        "period": 14,
-        "mult": 1.5
-      },
-      "tp": {
-        "mode": "r_multiple",
-        "value": 2.5
-      },
-      "risk_pct": 2.0,
-      "pairs": [
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "EURCAD",
-        "EURCHF",
-        "EURJPY",
-        "EURNZD",
-        "GBPAUD",
-        "GBPCAD",
-        "GBPNZD",
-        "NZDCAD",
-        "NZDUSD"
-      ]
-    },
-    "params": {
-      "layers": {
-        "data": {
-          "timeframes": [
-            "m15"
-          ]
-        }
-      }
-    },
-    "risk": {
-      "risk_per_trade_pct": 2.0,
-      "max_positions": 1
-    },
-    "exit": {
-      "max_hold_hours": 72
-    },
-    "description": "Mutation C: Winner-Pairs + ADX<25 + min_score=50. Max selectivity."
+  "name": "Order Flow Delta Divergence",
+  "slug": "order-flow-delta-divergence",
+  "category": "advanced",
+  "sub_category": "order_flow",
+  "status": "active",
+  "source": "kb",
+  "source_ref": "Knowledge Base (1 sources)",
+  "overall_score": 9.0,
+  "score_breakdown": {
+    "platform": 2.5,
+    "crowd_strength": 0,
+    "completeness": 7.0,
+    "anti_hunt": 1.0,
+    "vulnerability": -1.5
   },
-  "screening_result": null,
-  "wfo_result": {
-    "tier": "C",
-    "oos_score": -78.3,
-    "oos_pnl": -560.53,
-    "oos_trades": 360,
-    "oos_pass_rate": 0.283,
-    "iteration": 4,
-    "decay_detected": false,
-    "degradation": 0,
-    "n_splits": 0,
-    "splits": [],
-    "asset_results": {}
-  },
-  "enrichment_result": null,
-  "asset_results": [],
-  "correlations": [],
-  "iterations": [],
-  "strategy_tree": {
-    "tree": {
-      "change": "Iteration 1: initial: 8r/1g/3b enter, exit=timeout",
-      "oos_pnl": -453.8,
-      "oos_pf": 0,
-      "tier": "C",
-      "tested": true,
-      "strategy_id": null,
-      "is_new_root": false,
-      "win_rate": null,
-      "trades": 553,
-      "children": [
-        {
-          "change": "Iteration 2: adjust_threshold: 8r/1g/3b enter, exit=timeout",
-          "oos_pnl": -801.01,
-          "oos_pf": 0,
-          "tier": "C",
-          "tested": true,
-          "strategy_id": null,
-          "is_new_root": false,
-          "win_rate": null,
-          "trades": 218,
-          "children": [
-            {
-              "change": "Iteration 3: sl_tp_change: 8r/1g/3b enter, exit=timeout",
-              "oos_pnl": -659.23,
-              "oos_pf": 0,
-              "tier": "C",
-              "tested": true,
-              "strategy_id": 63,
-              "is_new_root": false,
-              "win_rate": null,
-              "trades": 216,
-              "children": [
-                {
-                  "change": "Iteration 4: remove_gate: 8r/0g/3b enter, exit=timeout",
-                  "oos_pnl": -560.53,
-                  "oos_pf": 0,
-                  "tier": "C",
-                  "tested": true,
-                  "strategy_id": null,
-                  "is_new_root": false,
-                  "win_rate": null,
-                  "trades": 360,
-                  "children": []
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "best_path_ids": [
-      63
+  "score_reasons": {
+    "platform": [
+      "book (+2.5)"
     ],
-    "stats": {
-      "total_variants": 4,
-      "new_trees": 0,
-      "best_pnl": -659.23,
-      "base_pnl": -453.8,
-      "improvement": -205.43,
-      "runtime_seconds": 1887.0
+    "crowd_strength": [],
+    "completeness": [
+      "4 Entry-Bedingungen",
+      "WR=60%, R:R=2.5",
+      "Hypothese (132 chars)",
+      "Edge-Begründung (132 chars)",
+      "SL + TP Logik definiert"
+    ],
+    "anti_hunt": [
+      "Trailing Stop → entfernt sich vom Hunt"
+    ],
+    "vulnerability": [
+      "Stops an S/R Struktur → MM kennt die Levels"
+    ]
+  },
+  "timeframe": "1M,5M,15M",
+  "asset_classes": [
+    "Indizes",
+    "Rohstoffe",
+    "Krypto"
+  ],
+  "preferred_assets": [
+    "ES",
+    "NQ",
+    "CL",
+    "6E",
+    "BTCUSD"
+  ],
+  "entry_direction": "both",
+  "indicators": [
+    "cumulative_delta",
+    "volume_profile",
+    "order_book"
+  ],
+  "reported_wr": 60.0,
+  "reported_rr": 2.5,
+  "reported_pf": null,
+  "reported_trades_per_week": 15.0,
+  "lab_strategy_type": "custom_order_flow",
+  "lab_signal_generator": "order_flow_delta",
+  "created_at": "2026-06-24 06:24:06",
+  "iteration_count": 1,
+  "asset_count": 5,
+  "tier_counts": {},
+  "hypothesis": "When price makes new highs/lows but cumulative delta does NOT confirm, institutional absorption is occurring and reversal is likely.",
+  "edge_rationale": "Delta divergence reveals hidden institutional activity. Works best on centralized exchanges with real volume data (futures, crypto).",
+  "best_when": "Trending or range-bound markets with clear volume patterns. US session 9:30-11:30 / 14:00-16:00 ET.",
+  "worst_when": "Choppy/whipsaw markets, low volume, news-driven moves, forex spot (no real volume).",
+  "market_condition": null,
+  "session": null,
+  "entry_conditions": [
+    "Price makes new low + cumulative delta makes HIGHER low = bullish divergence -> buy",
+    "Price makes new high + cumulative delta makes LOWER high = bearish divergence -> sell",
+    "Confirmation: engulfing candle OR swing break",
+    "Optional: bid/ask stacking in order book"
+  ],
+  "exit_tp_type": "structural",
+  "exit_tp_logic": "TP at opposite swing. Trail using delta shifts. 50% at 1R, trail rest.",
+  "exit_sl_type": "structural",
+  "exit_sl_logic": "Below/above divergence swing low/high",
+  "max_hold_hours": 4,
+  "trailing_stop": true,
+  "reported_sample_size": null,
+  "reported_period": null,
+  "reported_note": "~55-65% WR, 1:1.5-1:3 R:R, PF 1.5-2.5. Professional futures traders methodology.",
+  "lab_params_to_optimize": [
+    "delta_lookback",
+    "volume_imbalance_threshold",
+    "confirmation_type"
+  ],
+  "notes": "REQUIRES real volume data (CME futures, crypto). NOT for forex spot.",
+  "confidence_score": 0.65,
+  "sources": [
+    {
+      "platform": "book",
+      "url": null,
+      "author": "Bookmap/ATAS/Jigsaw community",
+      "title": "Order Flow Trading Methodology"
     }
-  }
+  ],
+  "score_explanation": "Gesamt-Score: 9.0\n\n📊 Platform (+2.5):\n  • book (+2.5)\n\n✅ Vollständigkeit (+7.0):\n  • 4 Entry-Bedingungen (+2.0)\n  • WR=60%, R:R=2.5 (+2.0)\n  • Hypothese (132 chars) (+1.0)\n  • Edge-Begründung (132 chars) (+1.0)\n  • SL + TP Logik definiert (+1.0)\n\n🛡️ Anti-Hunt (+1.0):\n  • Trailing Stop → entfernt sich vom Hunt (+1.0)\n\n⚠️ Vulnerability (-1.5):\n  • Stops an S/R Struktur → MM kennt die Levels (-1.5)\n\n📚 Bewertung: Sehr gut dokumentiert"
 }

@@ -1,0 +1,81 @@
+{
+  "id": "p428",
+  "name": "RCP-RECIPE: Regime_Switch_v1 (EURUSD+GBPUSD)",
+  "category": "regime_switch",
+  "sub_category": "",
+  "status": "rejected",
+  "source": "llm",
+  "source_ref": null,
+  "strategy_type": "regime_switch",
+  "overall_score": 692.15,
+  "score_breakdown": null,
+  "score_reasons": null,
+  "timeframe": "1h",
+  "asset_classes": [],
+  "preferred_assets": [],
+  "entry_direction": "both",
+  "indicators": [],
+  "reported_wr": null,
+  "reported_rr": null,
+  "reported_pf": null,
+  "reported_trades_per_week": null,
+  "lab_strategy_type": "regime_switch",
+  "lab_signal_generator": "",
+  "created_at": "2026-07-17T08:53:43.997930+00:00",
+  "iteration_count": 1,
+  "asset_count": 0,
+  "tier_counts": {},
+  "readiness": "unknown",
+  "best_oos_pnl": 692.15,
+  "best_pf": null,
+  "best_tier": "B",
+  "rejection_reason": null,
+  "wfo_result": {
+    "tier": "B",
+    "oos_pnl": 692.15,
+    "oos_pf": 1.31,
+    "oos_wr": 34.6,
+    "oos_trades": 344,
+    "oos_pass_rate": 0.875,
+    "mode": "recipe_v1",
+    "tier_v2": "C",
+    "hold_out": {
+      "pnl": 298.1,
+      "trades": 82,
+      "pf": 1.51
+    },
+    "tier_v2_gates": {
+      "g1_data": false,
+      "g2_splits": null,
+      "g3_ho": true,
+      "g4_pf": true,
+      "g5_pass": true,
+      "evaluated_at": "2026-08-19T10:42:52.131356+00:00"
+    },
+    "stat_gates": {
+      "dsr": null,
+      "dsr_pass": null,
+      "dsr_band": null,
+      "pbo": "n/a",
+      "pbo_pass": "n/a",
+      "pbo_band": "n/a",
+      "trial_count": 5,
+      "trial_count_source": "window_heuristic",
+      "n_obs": 0,
+      "sigma_source": "fallback",
+      "method_version": "1.0",
+      "computed_at": "2026-09-29T07:02:00+00:00"
+    }
+  },
+  "concept": "{\"name\": \"Regime_Switch\", \"strategy_type\": \"unified\", \"timeframe\": \"1h\", \"assets_candidate\": [\"EURUSD\", \"GBPUSD\"], \"tree\": {\"name\": \"Regime Switch Meta Strategy\", \"archetype\": \"regime_switch\", \"description\": \"Folgt dem Trend und steigt in Rücksetzern ein. Gehandelt werden die Märkte im 1-Stunden-Takt. Der Setup greift, wenn der Supertrend nach oben dreht und der Trend-Durchschnitt steigt. Nach unten das Spiegelbild. Gilt nur bei ausreichender Trendstärke (ADX). Stop 1.5×ATR, Ziel 3× Risiko, spätestens nach 2 Tagen glatt.\", \"timeframe\": \"1h\", \"assets_candidate\": [\"EURUSD\", \"GBPUSD\", \"US30\"], \"enter\": {\"signals\": [{\"id\": \"regime_trend_long\", \"condition\": \"AND\", \"direction\": \"long\", \"base_score\": 50, \"rules\": [{\"indicator\": \"adx\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \">\", \"value\": 25}, {\"indicator\": \"supertrend\", \"timeframe\": \"1h\", \"params\": {\"period\": 10, \"mult\": 3.0}, \"op\": \"==\", \"value\": 1}, {\"indicator\": \"ema_slope\", \"timeframe\": \"1h\", \"params\": {\"period\": 20}, \"op\": \">\", \"value\": 0}]}, {\"id\": \"regime_trend_short\", \"condition\": \"AND\", \"direction\": \"short\", \"base_score\": 50, \"rules\": [{\"indicator\": \"adx\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \">\", \"value\": 25}, {\"indicator\": \"supertrend\", \"timeframe\": \"1h\", \"params\": {\"period\": 10, \"mult\": 3.0}, \"op\": \"==\", \"value\": -1}, {\"indicator\": \"ema_slope\", \"timeframe\": \"1h\", \"params\": {\"period\": 20}, \"op\": \"<\", \"value\": 0}]}, {\"id\": \"regime_mr_long\", \"condition\": \"AND\", \"direction\": \"long\", \"base_score\": 50, \"rules\": [{\"indicator\": \"adx\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \"<\", \"value\": 20}, {\"indicator\": \"rsi\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \"<\", \"value\": 30}, {\"indicator\": \"stoch_k\", \"timeframe\": \"1h\", \"params\": {\"k_period\": 14, \"smooth\": 3}, \"op\": \"<\", \"value\": 25}]}, {\"id\": \"regime_mr_short\", \"condition\": \"AND\", \"direction\": \"short\", \"base_score\": 50, \"rules\": [{\"indicator\": \"adx\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \"<\", \"value\": 20}, {\"indicator\": \"rsi\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \">\", \"value\": 70}, {\"indicator\": \"stoch_k\", \"timeframe\": \"1h\", \"params\": {\"k_period\": 14, \"smooth\": 3}, \"op\": \">\", \"value\": 75}]}, {\"id\": \"regime_breakout_long\", \"condition\": \"AND\", \"direction\": \"long\", \"base_score\": 50, \"rules\": [{\"indicator\": \"adx\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \">\", \"value\": 20}, {\"indicator\": \"atr_percentile\", \"timeframe\": \"1h\", \"params\": {\"period\": 14, \"lookback\": 100}, \"op\": \">\", \"value\": 0.85}, {\"indicator\": \"close\", \"timeframe\": \"1h\", \"op\": \">\", \"value_ref\": {\"indicator\": \"donchian_upper\", \"timeframe\": \"1h\", \"params\": {\"period\": 20}}}]}, {\"id\": \"regime_breakout_short\", \"condition\": \"AND\", \"direction\": \"short\", \"base_score\": 50, \"rules\": [{\"indicator\": \"adx\", \"timeframe\": \"1h\", \"params\": {\"period\": 14}, \"op\": \">\", \"value\": 20}, {\"indicator\": \"atr_percentile\", \"timeframe\": \"1h\", \"params\": {\"period\": 14, \"lookback\": 100}, \"op\": \">\", \"value\": 0.85}, {\"indicator\": \"close\", \"timeframe\": \"1h\", \"op\": \"<\", \"value_ref\": {\"indicator\": \"donchian_lower\", \"timeframe\": \"1h\", \"params\": {\"period\": 20}}}]}]}, \"exit\": {\"mode\": \"timeout\", \"max_hold_hours\": 48}, \"sl\": {\"mode\": \"atr\", \"mult\": 1.5, \"period\": 14}, \"tp\": {\"mode\": \"r_multiple\", \"value\": 3.0}, \"notes\": \"Archetype 8: Regime-Switch. 3 modes in one strategy. Each signal has ADX check embedded so regimes don't overlap. Trend=ADX>25+Supertrend. MR=ADX<20+RSI+Stoch. Breakout=ATR>85%ile+Donchian.\"}}",
+  "strategy_tree": {
+    "tree": {
+      "change": "v1: {\"adx_trend_threshold\": 25, \"adx_mr_threshold\": 20, \"sl_mult\": 1.5, \"tp_r\": 3.0}",
+      "oos_pnl": 692.15,
+      "oos_pf": 1.31,
+      "tier": "B",
+      "tested": true
+    }
+  },
+  "notes": " [shadow_busted 2026-08-19: 15 T, net -62.1 EUR]"
+}

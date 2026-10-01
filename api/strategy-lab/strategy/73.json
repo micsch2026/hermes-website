@@ -1,100 +1,101 @@
 {
   "id": 73,
-  "name": "IT: KB_46_break_retest",
-  "strategy_type": "unified",
-  "timeframe": "1h",
-  "status": "rejected",
-  "readiness": "rejected",
-  "rejection_reason": "Keine Enrichment-Daten",
-  "overall_score": 0.0,
-  "iteration_count": 0,
-  "source": "iterative_discovery",
-  "source_url": null,
-  "source_ref": null,
-  "created_at": "2026-06-29 23:53:29",
-  "updated_at": "2026-06-29 23:53:29",
-  "notes": "Rejected: old entry",
-  "concept": {
-    "tree": {
-      "enter": {
-        "signals": [
-          {
-            "id": "kb_break_retest_long",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "fvg",
-                "params": {
-                  "lookback": 20
-                },
-                "op": "==",
-                "value": 1,
-                "timeframe": "1h"
-              }
-            ],
-            "direction": "long",
-            "base_score": 45
-          },
-          {
-            "id": "kb_break_retest_short",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "fvg",
-                "params": {
-                  "lookback": 20
-                },
-                "op": "==",
-                "value": -1,
-                "timeframe": "1h"
-              }
-            ],
-            "direction": "short",
-            "base_score": 45
-          }
-        ],
-        "boosts": [],
-        "gates": [],
-        "min_score": 0,
-        "merge_mode": "flat_and"
-      },
-      "exit": {
-        "mode": "timeout",
-        "max_hold_hours": 8
-      },
-      "sl": {
-        "mode": "atr",
-        "period": 14,
-        "mult": 1.5
-      },
-      "tp": {
-        "mode": "r_multiple",
-        "value": 2.5
-      },
-      "risk_pct": 2.0,
-      "pairs": [
-        "EURUSD",
-        "GBPUSD",
-        "NAS100",
-        "US500"
-      ]
-    },
-    "name": "KB_46_break_retest",
-    "description": "Prop Firm Challenges erfordern konsistentes Risikomanagement. 1% Risiko pro Trade, maximal 3 Trades pro Tag, nur A+ Setups. Der Edge ist Disziplin, nicht eine spezifische Strategie.",
-    "strategy_type": "unified",
-    "timeframe": "1h",
-    "assets_candidate": [
-      "EURUSD",
-      "GBPUSD",
-      "NAS100",
-      "US500"
+  "name": "Fair Value Gap (FVG) Retest Entry",
+  "slug": "fair-value-gap-fvg-retest-entry",
+  "category": "structure",
+  "sub_category": "Smart Money Concepts (SMC)",
+  "status": "active",
+  "source": "kb",
+  "source_ref": "Knowledge Base (1 sources)",
+  "overall_score": 9.0,
+  "score_breakdown": {
+    "platform": 0.5,
+    "crowd_strength": 0,
+    "completeness": 7.0,
+    "anti_hunt": 2.0,
+    "vulnerability": -0.5
+  },
+  "score_reasons": {
+    "platform": [
+      "literatur (+0.5)"
+    ],
+    "crowd_strength": [],
+    "completeness": [
+      "4 Entry-Bedingungen",
+      "WR=50%, R:R=2.8",
+      "Hypothese (231 chars)",
+      "Edge-Begründung (108 chars)",
+      "SL + TP Logik definiert"
+    ],
+    "anti_hunt": [
+      "ATR-Stops → dynamisch, schwer jagbar",
+      "Weite Stops → schwer zu jagen"
+    ],
+    "vulnerability": [
+      "Keine Volumen-Bestätigung"
     ]
   },
-  "screening_result": null,
-  "wfo_result": null,
-  "enrichment_result": null,
-  "asset_results": [],
-  "correlations": [],
-  "iterations": [],
-  "strategy_tree": null
+  "timeframe": "M15/1H",
+  "asset_classes": [
+    "forex",
+    "metals",
+    "indices"
+  ],
+  "preferred_assets": [
+    "EURUSD",
+    "XAUUSD",
+    "GBPUSD"
+  ],
+  "entry_direction": "both",
+  "indicators": [
+    "ema",
+    "atr"
+  ],
+  "reported_wr": 50.0,
+  "reported_rr": 2.8,
+  "reported_pf": null,
+  "reported_trades_per_week": 3.0,
+  "lab_strategy_type": "supply_demand",
+  "lab_signal_generator": null,
+  "created_at": "2026-08-06T05:22:38.185331+00:00",
+  "iteration_count": 1,
+  "asset_count": 3,
+  "tier_counts": {},
+  "hypothesis": "Impulsive Bewegungen lassen Ungleichgewichte (FVG) zurueck; der erste Retest fuellt oft nur einen Teil der Luecke, bevor die Bewegung fortgesetzt wird. Einstieg am Retest der Luecke = praeziser Entry mit engem SL hinter der Luecke.",
+  "edge_rationale": "Einstieg an dokumentierter Ungleichgewicht-Zone statt subjektiver Levels; SL exakt definiert (Lueckengrenze)",
+  "best_when": "Klarer 1H-Trend, M15-Pullback fuellt das FVG",
+  "worst_when": "Seitwaertsmarkt, Luecken werden komplett gefuellt",
+  "market_condition": "trending",
+  "session": "any",
+  "entry_conditions": [
+    "1H-Trend/Regime bestimmen (EMA-Alignment oder Struktur-Swings)",
+    "M15: Impulsbewegung identifizieren, die ein FVG (3-Kerzen-Luecke) hinterlaesst",
+    "Warten bis Preis ins FVG zurueckkehrt (Retest)",
+    "Einstieg bei Reaktion an der Lueckengrenze (Pinbar/Engulfing)"
+  ],
+  "exit_tp_type": "structural",
+  "exit_tp_logic": "Vorheriger Swing-High/Low oder naechster Liquiditaetspool",
+  "exit_sl_type": "structural",
+  "exit_sl_logic": "Hinter dem FVG (gegenueberliegende Lueckengrenze), ca. 1.2x ATR max",
+  "max_hold_hours": 24,
+  "trailing_stop": false,
+  "reported_sample_size": "300+ trades",
+  "reported_period": "2022-2025",
+  "reported_note": "ICT 2022 Mentorship (Inner Circle Trader)",
+  "lab_params_to_optimize": [
+    "fvg_min_gap_pips",
+    "fvg_retest_zone_pct",
+    "sl_mult"
+  ],
+  "notes": "Razor-Entry-Kernkonzept: HTF-Bias + LTF-FVG-Retest, SL eng an Struktur",
+  "confidence_score": 0.85,
+  "sources": [
+    {
+      "platform": "literatur",
+      "url": "",
+      "author": "ICT 2022 Mentorship (Inner Circle Trader)",
+      "title": "ICT 2022 Mentorship (Inner Circle Trader)"
+    }
+  ],
+  "score_explanation": "Gesamt-Score: 9.0\n\n📊 Platform (+0.5):\n  • literatur (+0.5)\n\n✅ Vollständigkeit (+7.0):\n  • 4 Entry-Bedingungen (+2.0)\n  • WR=50%, R:R=2.8 (+2.0)\n  • Hypothese (231 chars) (+1.0)\n  • Edge-Begründung (108 chars) (+1.0)\n  • SL + TP Logik definiert (+1.0)\n\n🛡️ Anti-Hunt (+2.0):\n  • ATR-Stops → dynamisch, schwer jagbar (+1.5)\n  • Weite Stops → schwer zu jagen (+0.5)\n\n⚠️ Vulnerability (-0.5):\n  • Keine Volumen-Bestätigung (-0.5)\n\n📚 Bewertung: Sehr gut dokumentiert"
 }

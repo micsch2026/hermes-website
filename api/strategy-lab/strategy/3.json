@@ -1,128 +1,98 @@
 {
   "id": 3,
-  "name": "IT: KB_30_trend",
-  "strategy_type": "unified",
-  "timeframe": "1h",
-  "status": "candidate",
-  "readiness": "unknown",
-  "rejection_reason": null,
-  "overall_score": -72.1,
-  "iteration_count": 1,
-  "source": "iterative_discovery",
-  "source_url": null,
-  "source_ref": null,
-  "created_at": "2026-06-28 11:56:55",
-  "updated_at": "2026-06-28 12:14:50",
-  "notes": null,
-  "concept": {
-    "tree": {
-      "enter": {
-        "signals": [
-          {
-            "id": "kb_30_long",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "ema_slope",
-                "timeframe": "1h",
-                "params": {
-                  "period": 100
-                },
-                "op": ">",
-                "value": 0
-              },
-              {
-                "indicator": "adx",
-                "timeframe": "1h",
-                "params": {
-                  "period": 14
-                },
-                "op": "<",
-                "value": 25
-              }
-            ],
-            "direction": "long",
-            "base_score": 45
-          },
-          {
-            "id": "kb_30_short",
-            "condition": "AND",
-            "rules": [
-              {
-                "indicator": "ema_slope",
-                "timeframe": "1h",
-                "params": {
-                  "period": 100
-                },
-                "op": "<",
-                "value": 0
-              },
-              {
-                "indicator": "adx",
-                "timeframe": "1h",
-                "params": {
-                  "period": 14
-                },
-                "op": "<",
-                "value": 25
-              }
-            ],
-            "direction": "short",
-            "base_score": 45
-          }
-        ],
-        "boosts": [],
-        "gates": [],
-        "min_score": 0,
-        "merge_mode": "highest_score"
-      },
-      "exit": {
-        "mode": "timeout",
-        "max_hold_hours": 48
-      },
-      "sl": {
-        "mode": "atr",
-        "period": 14,
-        "mult": 1.5
-      },
-      "tp": {
-        "mode": "r_multiple",
-        "value": 3.0
-      },
-      "risk_pct": 2.0,
-      "pairs": [
-        "EURUSD",
-        "GBPUSD",
-        "NAS100"
-      ]
-    },
-    "name": "KB_30_trend",
-    "description": "Alexander Elder's Triple Screen: HTF bestimmt Trendrichtung, MTF bestimmt Entry-Zone, LTF bestimmt exakten Entry. Nur Trades in Richtung des HTF-Trends.",
-    "strategy_type": "unified",
-    "timeframe": "1h",
-    "assets_candidate": [
-      "EURUSD",
-      "GBPUSD",
-      "NAS100"
+  "name": "EMA Pullback Trend Continuation",
+  "slug": "ema-pullback-trend-continuation",
+  "category": "trend_following",
+  "sub_category": "ema_crossover",
+  "status": "active",
+  "source": "kb",
+  "source_ref": "Knowledge Base (1 sources)",
+  "overall_score": 11.0,
+  "score_breakdown": {
+    "platform": 1.5,
+    "crowd_strength": 0,
+    "completeness": 7.0,
+    "anti_hunt": 3.0,
+    "vulnerability": -0.5
+  },
+  "score_reasons": {
+    "platform": [
+      "forexfactory (+1.5)"
+    ],
+    "crowd_strength": [],
+    "completeness": [
+      "3 Entry-Bedingungen",
+      "WR=52%, R:R=2.0",
+      "Hypothese (107 chars)",
+      "Edge-Begründung (46 chars)",
+      "SL + TP Logik definiert"
+    ],
+    "anti_hunt": [
+      "ATR-Stops → dynamisch, schwer jagbar",
+      "Trailing Stop → entfernt sich vom Hunt",
+      "Weite Stops → schwer zu jagen"
+    ],
+    "vulnerability": [
+      "Keine Volumen-Bestätigung"
     ]
   },
-  "screening_result": null,
-  "wfo_result": {
-    "tier": "C",
-    "oos_score": -72.1,
-    "oos_pnl": -124.9,
-    "oos_trades": 86,
-    "oos_pass_rate": 0.221,
-    "iteration": 1,
-    "decay_detected": false,
-    "degradation": 0,
-    "n_splits": 0,
-    "splits": [],
-    "asset_results": {}
-  },
-  "enrichment_result": null,
-  "asset_results": [],
-  "correlations": [],
-  "iterations": [],
-  "strategy_tree": null
+  "timeframe": "1H",
+  "asset_classes": [
+    "forex",
+    "indices"
+  ],
+  "preferred_assets": [
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "NAS100"
+  ],
+  "entry_direction": "both",
+  "indicators": [
+    "EMA",
+    "ADX",
+    "ATR"
+  ],
+  "reported_wr": 52.0,
+  "reported_rr": 2.0,
+  "reported_pf": null,
+  "reported_trades_per_week": 5.0,
+  "lab_strategy_type": "trend",
+  "lab_signal_generator": null,
+  "created_at": "2026-06-24 05:44:34",
+  "iteration_count": 1,
+  "asset_count": 4,
+  "tier_counts": {},
+  "hypothesis": "In Trends machen Pullbacks zur EMA die profitabelsten Entries. Der Trend setzt sich nach dem Pullback fort.",
+  "edge_rationale": "Trend Continuation nach Mean Reversion zur EMA",
+  "best_when": "Starker Trend (ADX > 25), klare EMA als Support/Resistance",
+  "worst_when": "Seitwärtsmarkt, EMA flach, niedriger ADX",
+  "market_condition": "trending",
+  "session": "any",
+  "entry_conditions": [
+    "EMA20/EMA50 als dynamische S/R identifizieren",
+    "Pullback zur EMA (Price berührt/überkreuzt EMA)",
+    "Confirmation Candle in Trendrichtung an der EMA"
+  ],
+  "exit_tp_type": "atr",
+  "exit_tp_logic": "2x ATR oder nächstes Swing High/Low",
+  "exit_sl_type": "atr",
+  "exit_sl_logic": "1.5x ATR unter/über Entry",
+  "max_hold_hours": 48,
+  "trailing_stop": true,
+  "reported_sample_size": null,
+  "reported_period": null,
+  "reported_note": null,
+  "lab_params_to_optimize": [],
+  "notes": null,
+  "confidence_score": 0.65,
+  "sources": [
+    {
+      "platform": "forexfactory",
+      "url": null,
+      "author": "trader_dante",
+      "title": "EMA Pullback System"
+    }
+  ],
+  "score_explanation": "Gesamt-Score: 11.0\n\n📊 Platform (+1.5):\n  • forexfactory (+1.5)\n\n✅ Vollständigkeit (+7.0):\n  • 3 Entry-Bedingungen (+2.0)\n  • WR=52%, R:R=2.0 (+2.0)\n  • Hypothese (107 chars) (+1.0)\n  • Edge-Begründung (46 chars) (+1.0)\n  • SL + TP Logik definiert (+1.0)\n\n🛡️ Anti-Hunt (+3.0):\n  • ATR-Stops → dynamisch, schwer jagbar (+1.5)\n  • Trailing Stop → entfernt sich vom Hunt (+1.0)\n  • Weite Stops → schwer zu jagen (+0.5)\n\n⚠️ Vulnerability (-0.5):\n  • Keine Volumen-Bestätigung (-0.5)\n\n📚 Bewertung: Sehr gut dokumentiert"
 }

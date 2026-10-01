@@ -1,0 +1,143 @@
+{
+  "id": "p762",
+  "name": "MM Sweep Continuation Gold 4h",
+  "category": "unified",
+  "sub_category": "",
+  "status": "candidate",
+  "source": "llm",
+  "source_ref": null,
+  "strategy_type": "unified",
+  "overall_score": 0.0,
+  "score_breakdown": null,
+  "score_reasons": null,
+  "timeframe": "4h",
+  "asset_classes": [],
+  "preferred_assets": [],
+  "entry_direction": "both",
+  "indicators": [],
+  "reported_wr": null,
+  "reported_rr": null,
+  "reported_pf": null,
+  "reported_trades_per_week": null,
+  "lab_strategy_type": "unified",
+  "lab_signal_generator": "",
+  "created_at": "2026-09-24 07:09:55",
+  "iteration_count": 0,
+  "asset_count": 0,
+  "tier_counts": {},
+  "readiness": "unknown",
+  "best_oos_pnl": 365.89,
+  "best_pf": null,
+  "best_tier": "B",
+  "rejection_reason": null,
+  "wfo_result": {
+    "oos_pnl": 365.89,
+    "oos_pf": 1.12,
+    "oos_trades": 533,
+    "oos_wr": 49.07222222222222,
+    "oos_pass_rate": 0.667,
+    "splits_count": 18,
+    "splits_pos": 12,
+    "hold_out": {
+      "pnl": 20.04,
+      "trades": 41,
+      "pf": 1.05,
+      "proxy": "last_oos_split"
+    },
+    "tier": "B",
+    "tier_v2": "B",
+    "tier_v2_gates": {
+      "G1_data": true,
+      "G2_splits": true,
+      "G3_ho": true,
+      "G4_pf": true,
+      "G5_pass": true
+    },
+    "best_sl_mult": 4.8,
+    "best_tp_val": 2.1,
+    "research": "docs/mm_invariant_research (6/6 Jahre, +467 Pip/Trade XAU)",
+    "window": "6M/3M gate window; 4M/2M recipe window = +5639",
+    "stat_gates": {
+      "dsr": null,
+      "dsr_pass": null,
+      "dsr_band": null,
+      "pbo": "n/a",
+      "pbo_pass": "n/a",
+      "pbo_band": "n/a",
+      "trial_count": 1,
+      "trial_count_source": "window_heuristic",
+      "n_obs": 0,
+      "sigma_source": "fallback",
+      "method_version": "1.0",
+      "computed_at": "2026-09-29T07:02:00+00:00"
+    }
+  },
+  "concept": "{\"name\": \"MM Sweep Continuation Gold 4h\", \"description\": \"MM-Invariante E2: Liquidity-Sweep-Continuation auf XAUUSD 4h (up-sweep -> long). Exit Timeout 16h, Schutz-SL 3.0 ATR. Evidenz: 6/6 Jahre positiv (eigene Studien 1-5).\", \"timeframe\": \"4h\", \"assets_candidate\": [\"XAUUSD\"], \"tree\": {\"name\": \"MM Sweep Continuation Gold 4h\", \"archetype\": \"mm_sweep_continuation\", \"description\": \"Setzt auf die Spuren großer Marktteilnehmer (Liquiditäts-Sweeps). Gehandelt werden Gold im 4-Stunden-Takt. Der Setup greift, wenn der Kurs kurz unter ein Tief sticht und sofort zurückschnappt. Nach unten das Spiegelbild. Stop 3×ATR, Ziel 3.5× Risiko, Timeout 16 Stunden.\", \"timeframe\": \"4h\", \"assets_candidate\": [\"XAUUSD\", \"XAGUSD\"], \"enter\": {\"signals\": [{\"id\": \"sweep_up_long\", \"condition\": \"AND\", \"direction\": \"long\", \"base_score\": 50, \"rules\": [{\"indicator\": \"liquidity_sweep\", \"timeframe\": \"4h\", \"params\": {\"lookback\": 10}, \"op\": \"==\", \"value\": -1}]}, {\"id\": \"sweep_dn_short\", \"condition\": \"AND\", \"direction\": \"short\", \"base_score\": 50, \"rules\": [{\"indicator\": \"liquidity_sweep\", \"timeframe\": \"4h\", \"params\": {\"lookback\": 10}, \"op\": \"==\", \"value\": 1}]}]}, \"exit\": {\"mode\": \"timeout\", \"max_hold_hours\": 16}, \"sl\": {\"mode\": \"atr\", \"mult\": 3.0, \"period\": 14}, \"tp\": {\"mode\": \"r_multiple\", \"value\": 3.5}, \"notes\": \"Research: /root/strategy-lab/docs/mm_invariant_research/ (study1-5.py + results*.json). Richtungsmapping V1 empirisch verifiziert (study5: V1 6/6 J, V2 0/6 J). SL/TP nur als Schutz — Exit traegt der Timeout.\", \"risk_pct\": 2.0, \"pairs\": [\"XAUUSD\"]}, \"risk_pct\": 2.0}",
+  "strategy_tree": {
+    "name": "MM Sweep Continuation Gold 4h",
+    "archetype": "mm_sweep_continuation",
+    "description": "MM-Invariante E2/M2: Liquidity-Sweep (Wick durch Rolling-Extrem, Close zurueck) auf 4h. Evidenz (Studie 1-5, 2021-2026, XAUUSD 4h): up-sweep (liquidity_sweep==-1) -> LONG 6/6 Jahre positiv, netto +467 Pip/Trade (0.01); dn-sweep (==+1) -> SHORT 4/6 Jahre, schwaecher. V2-Mapping (SMC-Fade) ist 0/6 und wird NICHT verwendet. Exit Fix-Timeout 16h (SL/TP-Exits waren 2026 negativ). Schutz-SL 3.0 ATR kostet kaum (Studie 4 R2).",
+    "timeframe": "4h",
+    "assets_candidate": [
+      "XAUUSD",
+      "XAGUSD"
+    ],
+    "enter": {
+      "signals": [
+        {
+          "id": "sweep_up_long",
+          "condition": "AND",
+          "direction": "long",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "liquidity_sweep",
+              "timeframe": "4h",
+              "params": {
+                "lookback": 10
+              },
+              "op": "==",
+              "value": -1
+            }
+          ]
+        },
+        {
+          "id": "sweep_dn_short",
+          "condition": "AND",
+          "direction": "short",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "liquidity_sweep",
+              "timeframe": "4h",
+              "params": {
+                "lookback": 10
+              },
+              "op": "==",
+              "value": 1
+            }
+          ]
+        }
+      ]
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 16
+    },
+    "sl": {
+      "mode": "atr",
+      "mult": 3.0,
+      "period": 14
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 3.5
+    },
+    "notes": "Research: /root/strategy-lab/docs/mm_invariant_research/ (study1-5.py + results*.json). Richtungsmapping V1 empirisch verifiziert (study5: V1 6/6 J, V2 0/6 J). SL/TP nur als Schutz — Exit traegt der Timeout.",
+    "risk_pct": 2.0,
+    "pairs": [
+      "XAUUSD"
+    ]
+  },
+  "notes": "[mm_sweep_promote 2026-09-24] User-Freigabe Shadow. Pipeline-SKIP war TightSL-Mutante, Original-Seed besteht 6M/3M."
+}
