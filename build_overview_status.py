@@ -76,6 +76,8 @@ THRESH_CURVE_MAX_POINTS = 1500  # equity_curve / total_equity_curve ≤ 1500 Pun
                                 #  Raster und ließ die Zeitachse grob wirken; 1500 ≈ volle
                                 #  15-min-Quellauflösung der balance_history, ~14k Punkte
                                 #  Gesamt-JSON bleibt für Browser/Chart unkritisch.)
+CURVE_GRID_MIN_S = 900          # feinstes gemeinsames Zeitraster der Equity-Kurven
+                                # (15 min) — siehe _align_grid/_grid_bucket_s
 THRESH_CORR_MAX_SIDS = 8       # corr.labels ≤ 8 SIDs
 THRESH_RANKING_TOP = 15        # shadow ranking Top 15
 THRESH_MONTHS = 12             # monthly_pnl Fenster
@@ -188,6 +190,35 @@ def _downsample(points, max_points=THRESH_CURVE_MAX_POINTS):
     if kept and kept[-1][0] != points[-1][0]:
         kept.append(points[-1])
     return kept
+
+
+def _grid_bucket_s(curves, target=THRESH_CURVE_MAX_POINTS, min_s=CURVE_GRID_MIN_S):
+    """Gemeinsames Zeitraster (Sekunden) über ALLE Kurven: span/target, auf 5 min
+    aufgerundet, mindestens min_s. Grund (User-Feedback 01.10.2026): Die Chart-
+    Zeitachse ist die UNION der Zeitstempel aller Serien (~11× so viele Zeiten wie
+    Punkte je Serie) — dann kann selbst fitContent() bei minimalem barSpacing
+    (0.5 px) nicht die volle Spanne zeigen und die Achse startet faktisch bei
+    „vor ein paar Stunden“. Mit Raster: eine gemeinsame Zeitbasis, volle Range."""
+    ts_all = [p[0] for c in curves for p in (c or [])]
+    if len(ts_all) < 2:
+        return min_s
+    step = max(min_s, (max(ts_all) - min(ts_all)) / float(target))
+    return int(-(-step // 300.0) * 300)
+
+
+def _align_grid(points, bucket_s):
+    """[(ts, val)] auf das gemeinsame Zeitraster legen — je Bucket der LETZTE Wert
+    (Punkte sind zeitlich sortiert). Alle Serien erhalten identische Zeitstempel."""
+    if not points or not bucket_s or bucket_s <= 0:
+        return list(points)
+    out = []
+    for ts, v in points:
+        b = int(ts // bucket_s) * bucket_s
+        if out and out[-1][0] == b:
+            out[-1][1] = v
+        else:
+            out.append([b, v])
+    return out
 
 
 def _pearson(xs, ys):
@@ -816,6 +847,18 @@ def build(root, fx_root, sl_root, trading_data, now=None):
     pos_family_age = None
     curves_by_bot = {}
 
+    # ── Gemeinsames Zeitraster ALLER Equity-Kurven (User-Feedback 01.10.2026) ──
+    # Vorab-Load + einmaliges Rastern (Cache): alle Serien bekommen dieselben
+    # Zeitstempel → Chart-Zeitachse zeigt via fitContent die VOLLE Spanne.
+    hist_cache = {}
+    for bot in bots:
+        hist_cache[bot] = _load_curve(
+            os.path.join(fx_root, "data", f"{bot}_balance_history.json"), now_dt)
+    curve_bucket_s = _grid_bucket_s([t[0] for t in hist_cache.values()])
+    for bot in bots:
+        pts, lb, age, err = hist_cache[bot]
+        hist_cache[bot] = (_align_grid(pts, curve_bucket_s), lb, age, err)
+
     for bot in bots:
         bdir = os.path.join(fx_root, "data")
         bal_path = os.path.join(bdir, f"{bot}_balance.json")
@@ -831,7 +874,7 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         else:
             bal_family_missing.append(bot)
 
-        curve, hist_last_bal, hist_age, hist_err = _load_curve(hist_path, now_dt)
+        curve, hist_last_bal, hist_age, hist_err = hist_cache[bot]
         curves_by_bot[bot] = curve
         if hist_age is not None:
             hist_family_age = hist_age if hist_family_age is None \

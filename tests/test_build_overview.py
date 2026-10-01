@@ -89,7 +89,9 @@ def make_fixture(base, with_empty_bot=True, feed_age_s=60.0):
     snaps = []
     eq_vals = [980.0, 981.5, 983.0, 984.5, 985.0]
     for k, eq in enumerate(eq_vals):
-        ts = NOW_DT - timedelta(seconds=3600 - k * 750)
+        # 900-s-Abstand: Fixture-Zeiten liegen exakt auf dem 15-min-Grid des
+        # _align_grid-Rasters (keine Bucket-Kollisionen in der Erwartung (5,5)).
+        ts = NOW_DT - timedelta(seconds=3600 - k * 900)
         snaps.append({"timestamp": iso_z(ts), "balance": 982.34,
                       "equity": eq, "open_pnl": 0.0, "positions": 1, "margin": 10.0})
     _w(os.path.join(fx, "data", "bot1_balance_history.json"), {"snapshots": snaps})
