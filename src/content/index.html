@@ -313,6 +313,7 @@
 
   // Chart-Instanzen (60-s-Refresh: nur setData, NICHT neu erzeugen)
   var _eqChart = null, _eqBox = null, _eqTotalSeries = null, _eqBotSeries = {};
+  var _eqFitDone = false;   // fitContent nur beim ersten Daten-Render (Zoom des Users bleibt)
   var _pnlChart = null, _pnlBox = null, _pnlSeries = null;
 
   // ── Helpers ────────────────────────────────────────────────
@@ -687,6 +688,15 @@
         chips.push('<span class="ov-legend-chip"><span class="swatch" style="background:' + _eqBotSeries[b.name].color + '"></span>' + esc(b.name) + '</span>');
       });
       legend.innerHTML = chips.join('');
+    }
+
+    // Zeitachse (User-Feedback 01.10.2026): LWCharts startet mit Default-Zoom und
+    // zeigt nur die letzten ~clientWidth/barSpacing Bars (~90 min!) — hier einmalig
+    // die VOLLE Daten-Range zeigen. Der 60-s-Refresh ruft setData ohne erneutes
+    // fitContent auf, damit ein manueller Zoom/Scroll des Users erhalten bleibt.
+    if (!_eqFitDone && box.clientWidth > 0) {
+      _eqChart.timeScale().fitContent();
+      _eqFitDone = true;
     }
   }
 

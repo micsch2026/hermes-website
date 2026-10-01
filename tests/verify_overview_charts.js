@@ -96,6 +96,7 @@ function makeChart(container, opts) {
     }
     return priceScales[id];
   };
+  chart.timeScale = () => ({ fitContent() { chart._fitContentCalls = (chart._fitContentCalls || 0) + 1; } });
   const addSeries = (kind) => (sopts) => {
     const s = { kind, opts: sopts, data: [] };
     s.setData = (d) => { s.data = d; };
@@ -180,6 +181,11 @@ setTimeout(() => {
     lineSeries.length === 3 && lineSeries.slice(1).every((s) => s.opts.priceScaleId === undefined));
   check('(b2) priceScale("left") gestylt (textColor gesetzt)',
     !!eqChart && !!eqChart.priceScales['left'] && eqChart.priceScales['left'].opts.textColor !== undefined);
+
+  // (b3) Zeitachse (Feedback 01.10.): genau EIN fitContent beim ersten Render
+  check('(b3) fitContent genau 1× beim ersten Render (volle Zeitachse)',
+    !!eqChart && eqChart._fitContentCalls === 1,
+    eqChart ? 'calls: ' + (eqChart._fitContentCalls || 0) : 'kein Chart');
 
   // (c) #chart-corr: 3×3 Zellen
   const corrCells = (corrHtml.match(/class="corr-cell/g) || []).length;
