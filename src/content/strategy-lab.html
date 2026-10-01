@@ -933,6 +933,35 @@ function renderShadowDashboard() {
     html += '</div></div>';
   }
 
+  // ── Gate-Blocks (7 d) — Trading-Gate-Transparenz (B, 2026-10-01) ──
+  // Quelle: shadow_portfolio.json → gate_skips_7d (gate_skips.jsonl, 7-Tage-
+  // Fenster, Berlin-Zeiten). Gates blocken nur NEUE Entries (Release-/Markt-
+  // Gates), nie Exits — deshalb erscheinen hier nur verworfene Entry-Signale.
+  const gs = sd.gate_skips_7d;
+  if (gs) {
+    html += '<div class="rd-section-title">🚧 Gate-Blocks (7 d) — geblockte Entry-Signale</div>';
+    html += '<div class="rd-card" style="margin-bottom:1rem;padding:0.65rem 0.9rem">';
+    const gsTotal = gs.total || 0;
+    const gsSrc = Object.keys(gs.by_source || {}).map(k => k + ': ' + gs.by_source[k]).join(' · ');
+    if (gsTotal === 0) {
+      html += '<div style="font-size:0.78rem;color:var(--green)">🟢 0 Blocks in 7 d — kein Entry-Signal wurde von Trading-Gates verworfen.</div>';
+    } else {
+      html += '<div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">⚠️ <strong>' + gsTotal + '</strong> blockierte Entry-Signale in 7 d';
+      if (gsSrc) html += ' · ' + esc(gsSrc);
+      html += ' — Gates blocken nur neue Entries, nie Exits.</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.4rem">';
+      for (const e of (gs.per_sid || []).slice(0, 8)) {
+        html += '<div style="font-size:0.75rem;background:rgba(255,255,255,0.03);padding:0.3rem 0.5rem;border-radius:4px">';
+        html += '🚧 <strong>#' + esc(e.sid) + '</strong> × ' + (e.n || 0);
+        if (e.top_symbol) html += ' <span style="color:var(--dim)">(' + esc(e.top_symbol) + ')</span>';
+        html += '<div style="color:var(--dim);font-size:0.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(e.last_reason || '') + '">zuletzt: ' + esc(e.last_ts_bz || '—') + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
   // ── Offene Positionen ──
   if (openPos.length > 0) {
     const fmtDur = sec => {
