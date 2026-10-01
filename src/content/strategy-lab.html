@@ -1933,7 +1933,7 @@ function renderStrategeBoard() {
     for (var di = 0; di < dec.length; di++) {
       var d = dec[di];
       var dIcon = d.kind === 'anpassung' ? '🔧' : (d.kind === 'shadow' ? '👻' : '💡');
-      html += '<li>' + dIcon + ' <strong>' + esc(d.title || '') + '</strong>' + (d.detail ? ': ' + esc(d.detail) : '') + (d.reason ? ' <span class="sb-dim">(' + esc(d.reason) + ')</span>' : '') + '</li>';
+      html += '<li>' + dIcon + ' <strong>' + esc(d.title || '') + '</strong>' + (d.detail ? ': ' + esc(d.detail) : '') + (d.reason ? ' <span class="sb-dim">(' + esc(d.reason) + ')</span>' : '') + (d.data_check ? ' <span class="sb-dim">· Datenlage: ' + esc(d.data_check) + '</span>' : '') + '</li>';
     }
     html += '</ul><div class="sb-card-sub">Bewusst nicht autonom: Bot-/Deploy-nahe Eingriffe (Gates, Deploy-Registry) und Concept-Prosa, die eine menschliche Bewertung braucht. Shadow-Retires laufen automatisch über das Evidenz-Gate.</div></div>';
   }
@@ -2036,35 +2036,16 @@ function renderStrategeBoard() {
     html += '</tbody></table></div>';
   }
 
-  var anp = b.anpassungen || [];
-  if (anp.length) {
-    html += '<div class="sb-sec"><div class="sb-sec-title">🔧 Anpassungen</div><ul class="sb-list">';
-    for (var m = 0; m < anp.length; m++) {
-      var a = anp[m];
-      html += '<li><strong>' + esc(a.target || '') + '</strong>: ' + esc(a.change || '') + (a.reason ? ' <span class="sb-dim">(' + esc(a.reason) + ')</span>' : '') + '</li>';
+  // 🔍 Kontrollpunkte — Daten lagen vor, wurden aber nirgends gerendert (Audit 01.10.)
+  var mons = b.monitoring || [];
+  if (mons.length) {
+    html += '<div class="sb-sec"><div class="sb-sec-title">🔍 Kontrollpunkte (' + mons.length + ')</div><ul class="sb-list">';
+    for (var mi = 0; mi < mons.length; mi++) {
+      var mo = mons[mi];
+      var moTxt = typeof mo === 'string' ? mo : String((mo && (mo.task || mo.text)) || JSON.stringify(mo));
+      html += '<li>' + esc(moTxt) + '</li>';
     }
     html += '</ul></div>';
-  }
-
-  var sh = b.shadow_empfehlungen || [];
-  if (sh.length) {
-    html += '<div class="sb-sec"><div class="sb-sec-title">👻 Shadow-Empfehlungen</div><ul class="sb-list">';
-    for (var n = 0; n < sh.length; n++) {
-      var e = sh[n];
-      var act = e.action === 'variant' ? '🧬 Variante' : (e.action === 'retire_vorschlag' ? '🛑 Retire-Vorschlag' : (e.action === 'debug' ? '🔍 Debug' : esc(e.action || '')));
-      html += '<li>#' + esc(String(e.strategy_id == null ? '?' : e.strategy_id)) + ' — ' + act + (e.reason ? ': <span class="sb-dim">' + esc(e.reason) + '</span>' : '') + '</li>';
-    }
-    html += '</ul></div>';
-  }
-
-  if (b.neuer_ansatz && (b.neuer_ansatz.name || b.neuer_ansatz.mechanism)) {
-    var na = b.neuer_ansatz;
-    html += '<div class="sb-sec"><div class="sb-sec-title">💡 Neuer Ansatz</div><div class="sb-card sb-card-hl">';
-    html += '<div class="sb-card-head"><strong>' + esc(na.name || '') + '</strong></div>';
-    if (na.mechanism) html += '<div class="sb-card-line">' + esc(na.mechanism) + '</div>';
-    if (na.rationale) html += '<div class="sb-card-sub">' + esc(na.rationale) + '</div>';
-    if (na.data_check) html += '<div class="sb-card-sub">Datenlage: ' + esc(na.data_check) + '</div>';
-    html += '</div></div>';
   }
 
   if (b.outcome) {
