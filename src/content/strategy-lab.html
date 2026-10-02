@@ -962,6 +962,45 @@ function renderShadowDashboard() {
     html += '</div>';
   }
 
+  // ── 🔍 Paritäts-Report (konsolidiert, Daily-Timer) ──
+  if (sd.parity_report && sd.parity_report.bots) {
+    const pr = sd.parity_report;
+    const _pc = {slippage_guard:'🛡 Slippage-Schutz (by design)', slot_heat:'🔥 Slot-Heat',
+      stale_signal:'⏳ stale Signal', market_closed:'🏁 Marktschluss', feed_luecke:'🔌 Feed-Lücke',
+      occupancy:'🔄 Occupancy (intrabar vs bar-close)', capacity:'🚧 Kapazität',
+      shadow_margin:'📉 Shadow-Margin', us2000_offen:'❗ US2000 (bekannt offen)', unklar:'❓ unklar'};
+    const _prDays = ((pr._meta && pr._meta.days) || 14);
+    html += '<div class="rd-section-title">🔍 PARITÄTS-REPORT (' + _prDays + ' T)' + (pr.stale ? ' — ⚫ Daten >48h alt' : '') + '</div>';
+    html += '<div class="rd-card" style="padding:0.6rem 0.8rem;margin-bottom:1rem">';
+    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">Stand: ' + esc((pr._meta && pr._meta.updated_bz) || '—') + ' · trade-für-trade, klassen-getaggt · „vor Umstellung“ = Strategie-Wechsel-Artefakte (ausgeblendet) · Tool: parity_report.py</div>';
+    for (const en of Object.entries(pr.bots || {})) {
+      const bk = en[0], bs2 = en[1];
+      const akt = (bs2.bot_only_aktuell || 0) + (bs2.missed_aktuell || 0);
+      const schutz = (bs2.klassen && bs2.klassen.slippage_guard) || 0;
+      const ernst = akt - schutz;
+      const amp = ernst <= 0 ? '🟢' : (ernst <= 2 ? '🟡' : '🔴');
+      const chips = Object.entries(bs2.klassen || {}).filter(en2 => ['alt_strategie','vor_materialisierung'].indexOf(en2[0]) === -1).map(en2 => '<span style="background:rgba(128,128,128,0.15);border-radius:4px;padding:0 0.35rem;margin-left:0.25rem;font-size:0.65rem">' + (_pc[en2[0]] || ('❓ ' + esc(en2[0]))) + ' ×' + en2[1] + '</span>').join('');
+      html += '<div style="font-size:0.75rem;margin:0.15rem 0">' + amp + ' <strong>' + esc(bk) + '</strong> · aktuell ' + akt + ' Divergenz' + (akt === 1 ? '' : 'en') + ' (bot-only ' + (bs2.bot_only_aktuell || 0) + ' / missed ' + (bs2.missed_aktuell || 0) + ')' + (ernst <= 0 && akt > 0 ? ' — nur Schutz-Klasse ✅' : '') + chips + '</div>';
+    }
+    const divs = (pr.divergences || []).slice(0, 10);
+    if (divs.length) {
+      html += '<div style="font-size:0.72rem;margin-top:0.5rem;border-top:1px solid rgba(128,128,128,0.25);padding-top:0.35rem"><strong>Letzte Divergenzen:</strong></div>';
+      for (const dv of divs) {
+        const _pnl = (dv.pnl != null ? ' · ' + (dv.pnl >= 0 ? '+' : '') + dv.pnl.toFixed(2) + '€' : '');
+        html += '<div style="font-size:0.7rem;color:var(--dim);margin:0.1rem 0">' + esc(dv.ts_bz || '') + ' · ' + (dv.kind === 'bot_only' ? '🤖 ' + esc(dv.bot) : '👻 Shadow') + ' · <strong>' + esc(dv.symbol || '') + '</strong> · ' + (_pc[dv.cls] || esc(dv.cls)) + _pnl + '</div>';
+      }
+    }
+    const waves = (((pr.fix_history || {}).waves) || []).slice(-5);
+    if (waves.length) {
+      html += '<div style="font-size:0.72rem;margin-top:0.5rem;border-top:1px solid rgba(128,128,128,0.25);padding-top:0.35rem"><strong>Umstellungs-Timeline:</strong> ' + waves.map(w => esc(w.date) + ' ' + esc(w.title)).join(' · ') + '</div>';
+    }
+    const oi = ((((pr.fix_history || {}).open_items) || [])).filter(x => x.status !== 'geloest');
+    if (oi.length) {
+      html += '<div style="font-size:0.72rem;margin-top:0.3rem"><strong>Offen:</strong> ' + oi.slice(0, 6).map(x => esc(x.title) + ' <span style="color:var(--dim)">(' + esc(x.status) + ')</span>').join(' · ') + '</div>';
+    }
+    html += '</div>';
+  }
+
   // ── Offene Positionen ──
   const botOnly = sd.bot_only_positions || [];
   if (openPos.length > 0 || botOnly.length > 0) {
