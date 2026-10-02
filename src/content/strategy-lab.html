@@ -963,7 +963,8 @@ function renderShadowDashboard() {
   }
 
   // ── Offene Positionen ──
-  if (openPos.length > 0) {
+  const botOnly = sd.bot_only_positions || [];
+  if (openPos.length > 0 || botOnly.length > 0) {
     const fmtDur = sec => {
       if (!sec || sec < 60) return '< 1m';
       const m = Math.floor(sec / 60);
@@ -973,8 +974,8 @@ function renderShadowDashboard() {
       if (h > 0) return h + 'h ' + (m % 60) + 'm';
       return m + 'm';
     };
-    html += '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ')</div>';
-    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Zeile mit GLEICHEN Spalten wie Shadow (Broker-Fill) — direkt vergleichbar. Ampel im ID-Feld: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min (Details: Hover). Toleranz: FX 3p / Metalle 50p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung).</div>';
+    html += '<div class="rd-section-title">📍 Offene Positionen (' + (openPos.length + botOnly.length) + ')</div>';
+    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Zeile mit GLEICHEN Spalten wie Shadow (Broker-Fill) — direkt vergleichbar. Ampel im ID-Feld: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min (Details: Hover). Toleranz: FX 3p / Metalle 50p / Indizes 30p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung). ⚠️-Zeilen am Tabellenende = Bot-Positionen OHNE Shadow-Pendant.</div>';
     html += '<div class="rd-card" style="overflow-x:auto;margin-bottom:1rem">';
     html += '<table class="sl4-table"><thead><tr>';
     html += '<th># ID</th><th>Symbol</th><th>Richtung</th><th>Dauer</th><th class="num">Margin</th><th class="num">SL (ATR)</th><th class="num">TP (ATR)</th><th class="num">R:R</th><th class="num">Unrealized PnL</th>';
@@ -1004,8 +1005,8 @@ function renderShadowDashboard() {
       html += '<td class="num">'+rrStr+'</td>';
       html += '<td class="num"><strong class="'+pnlCls+'">'+pnlSign+pnl.toFixed(2)+'€ ('+pipsSign+(p.unrealized_pips||0)+'p)</strong></td>';
       html += '</tr>';
-      const bm = p.bot;
-      if (bm) {
+      const bms = (p.bots && p.bots.length) ? p.bots : (p.bot ? [p.bot] : []);
+      for (const bm of bms) {
         const bIcon = bm.sync === 'sync' ? '🟢' : (bm.sync === 'drift' ? '🟡' : (bm.sync === 'missing' ? '🔴' : '⚫'));
         const bTxt = bm.sync === 'sync' ? 'Sync' : (bm.sync === 'drift' ? 'Drift' : (bm.sync === 'missing' ? 'fehlt' : 'stale'));
         const bTitle = '🤖 Bot-Spiegel (' + bTxt + (bm.diff_pips != null ? ', ' + bm.diff_pips + 'p' : '') + (bm.gap_h != null ? ', Fill +' + bm.gap_h + 'h' : '') + ')';
@@ -1038,12 +1039,38 @@ function renderShadowDashboard() {
         }
       }
     }
-    html += '</tbody></table></div>';
-    const botOnly = sd.bot_only_positions || [];
+    // Bot-Positionen OHNE Shadow-Pendant — eigene VOLLE Zeilen am Tabellenende
+    // (User-Regel: Vergleichszeilen mit denselben Spalten wie die Referenz).
+    // SL/TP (ATR) bleiben '—' (kein Shadow-ATR-Bezug); Dauer/Margin/R:R/PnL
+    // liefert der Builder (shadow_portfolio_builder.py) aus positions_live.
     if (botOnly.length > 0) {
-      html += '<div style="font-size:0.78rem;color:var(--yellow);margin-top:-0.6rem;margin-bottom:1rem">⚠️ Bot-only (kein Shadow-Pendant): ' +
-        botOnly.map(b => '🤖' + esc(b.bot) + ' ' + esc(b.symbol) + ' ' + esc(b.direction) + ' @' + esc(b.entry)).join(' · ') + '</div>';
+      html += '<tr><td colspan="9" style="color:var(--yellow);font-size:0.75rem;border-top:2px solid var(--yellow);padding-top:0.4rem">⚠️ Bot-Positionen ohne Shadow-Pendant (' + botOnly.length + ') — Bot handelt, Shadow hat (noch) keine Position:</td></tr>';
+      for (const bo of botOnly) {
+        const boDir = (bo.direction||'').toLowerCase();
+        const boDirColor = boDir === 'long' ? 'var(--green)' : 'var(--red)';
+        const boDirIcon = boDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
+        const boPnl = bo.unrealized_pnl || 0;
+        const boPnlCls = boPnl >= 0 ? 'pos' : 'neg';
+        const boPnlSign = boPnl >= 0 ? '+' : '';
+        const boPipsSign = (bo.unrealized_pips || 0) >= 0 ? '+' : '';
+        const boTitle = '🤖 ' + bo.bot + ' — Bot-Position ohne Shadow-Spiegel'
+          + (bo.stale ? ' (positions_live >30min stale)' : '')
+          + (bo.entry != null ? ', Entry @' + bo.entry : '')
+          + ' — Broker-Sicht (positions_live)';
+        html += '<tr style="font-size:0.8rem" title="' + esc(boTitle) + '">';
+        html += '<td style="color:var(--yellow)">🤖 <strong>' + esc(bo.bot) + '</strong> ⚠️</td>';
+        html += '<td style="color:var(--dim)">' + esc(bo.symbol) + '</td>';
+        html += '<td style="color:' + boDirColor + ';font-weight:700">' + boDirIcon + '</td>';
+        html += '<td>' + fmtDur(bo.hold_seconds) + '</td>';
+        html += '<td class="num" style="color:var(--dim)">' + (bo.margin_eur != null ? bo.margin_eur.toFixed(1) + '€' : '—') + '</td>';
+        html += '<td class="num" style="color:var(--dim)">—</td>';
+        html += '<td class="num" style="color:var(--dim)">—</td>';
+        html += '<td class="num">' + (bo.rr != null ? bo.rr.toFixed(1) : '—') + '</td>';
+        html += '<td class="num"><strong class="' + boPnlCls + '">' + boPnlSign + boPnl.toFixed(2) + '€ (' + boPipsSign + (bo.unrealized_pips||0) + 'p)</strong></td>';
+        html += '</tr>';
+      }
     }
+    html += '</tbody></table></div>';
   }
 
   // ── KPI Row ──
