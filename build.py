@@ -310,12 +310,30 @@ def _metric_grid_js(widget):
 
 
 def build_nav(current_path):
-    """Build navigation HTML with active link highlighted."""
+    """Build navigation HTML with active link highlighted.
+
+    Unterstuetzt einstufige Dropdown-Menues ueber link['children']
+    (Bots-Menue seit 2026-10-05). Multibot-/Live-Badges gelten auch fuer Kind-Links.
+    """
     current = current_path.replace('.html', '')
     if current.endswith('/index'):
         current = current[:-5] or '/'
     if current == 'index':
         current = '/'
+
+    def _is_active(href):
+        if href == '/':
+            return current == '/'
+        return current == href or current.startswith(href + '/')
+
+    def _badges(href, badge):
+        out = ''
+        if badge == 'live':
+            out += ' <span class="nav-live-dot" title="Live-Handel aktiv"></span>'
+        # Multibot-Kennzeichnung — datengetrieben (bot_rotation_slots), kein Hardcode
+        if href.startswith('/bot') and href[1:] in MULTI_BOTS:
+            out += ' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">MULTI</span>'
+        return out
 
     parts = ['<nav class="nav" aria-label="Hauptnavigation">']
     for link in NAV_DATA['links']:
@@ -323,27 +341,29 @@ def build_nav(current_path):
         label = link['label']
         icon = link.get('icon')
         badge = link.get('badge')
+        children = link.get('children') or []
 
-        is_active = False
-        if href == '/' and current == '/':
-            is_active = True
-        elif href != '/' and (current == href or current.startswith(href + '/')):
-            is_active = True
-
+        is_active = _is_active(href) or any(_is_active(c['href']) for c in children)
         attrs = ' aria-current="page"' if is_active else ''
 
-        badge_html = ''
-        if badge == 'live':
-            badge_html = ' <span class="nav-live-dot" title="Live-Handel aktiv"></span>'
-        # Multibot-Kennzeichnung — datengetrieben (bot_rotation_slots), kein Hardcode
-        if href.startswith('/bot') and href[1:] in MULTI_BOTS:
-            badge_html += ' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">MULTI</span>'
-
-        if icon and icon in ICONS:
+        if children:
+            sub = ['  <div class="nav-drop-menu">']
+            for child in children:
+                ch_href = child['href']
+                ch_label = child['label']
+                ch_attrs = ' aria-current="page"' if _is_active(ch_href) else ''
+                sub.append('    <a href="' + ch_href + '"' + ch_attrs + '>' + ch_label + _badges(ch_href, child.get('badge')) + '</a>')
+            sub.append('  </div>')
+            parts.append(
+                '  <div class="nav-drop">\n'
+                '    <a href="' + href + '"' + attrs + '>' + label + '<span class="nav-caret" aria-hidden="true">\u25be</span></a>\n'
+                + '\n'.join(sub) + '\n  </div>'
+            )
+        elif icon and icon in ICONS:
             svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">{ICONS[icon]}</svg>'
-            parts.append(f'  <a href="{href}"{attrs}>{svg}\n    {label}{badge_html}\n  </a>')
+            parts.append(f'  <a href="{href}"{attrs}>{svg}\n    {label}{_badges(href, badge)}\n  </a>')
         else:
-            parts.append(f'  <a href="{href}"{attrs}>{label}{badge_html}</a>')
+            parts.append(f'  <a href="{href}"{attrs}>{label}{_badges(href, badge)}</a>')
 
     if len(parts) > 1:
         parts.insert(2, '  <span class="sep" aria-hidden="true">\u00b7</span>')
@@ -626,12 +646,6 @@ def main():
         if os.path.exists(src):
             import shutil
             shutil.copy2(src, dst)
-
-    # 0b. Generate backtest API data
-    bt_script = os.path.join(SITE_DIR, 'build_backtest_status.py')
-    if os.path.exists(bt_script):
-        print('  Generating backtest API...')
-        subprocess.run([sys.executable, bt_script], check=False)
 
     # 0b. Generate bot dashboard pages from template
     bot_pages_script = os.path.join(SITE_DIR, 'build_bot_pages.py')

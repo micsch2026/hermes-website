@@ -10,8 +10,10 @@ Output: /root/.hermes/site/api/data/pipeline_status.json
 Run via cron or manually: python3 build_data_status.py
 """
 
+import glob
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -36,6 +38,7 @@ TIMEFRAMES = {
     "4h": {
         "dir": "/root/trading/data/history_4h",
         "suffix": "_4h.json",
+        "legacy": True,      # JSON-Export Alt-Pfad — Live läuft über market.db (4H aus 1H resampled)
         "max_age_hours": 10,
         "expected_gap_hours": 4,
         "weekend_gap_hours": 96,
@@ -43,6 +46,7 @@ TIMEFRAMES = {
     "1d": {
         "dir": "/root/trading/data/history_1d",
         "suffix": "_1d.json",
+        "legacy": True,      # JSON-Export Alt-Pfad (seit ~25.06. eingefroren)
         "max_age_hours": 30,
         "expected_gap_hours": 24,
         "weekend_gap_hours": 168,
@@ -56,8 +60,6 @@ TF_ORDER = ["m15", "1h", "4h", "1d"]
 FETCH_LOG = "/root/fx-bot/logs/fetch.log"
 FX_DASHBOARD = "/root/.hermes/site/api/fx/dashboard.json"
 OUTPUT = "/root/.hermes/site/api/data/pipeline_status.json"
-ASSETS_TOML = "/root/fx-bot/config/assets.toml"
-BOT2_ASSETS_TOML = "/root/fx-bot/config/bot2_m15_mr.toml"
 
 
 def _load_json(path, default=None):
@@ -141,6 +143,10 @@ def _scan_bars(directory, suffix, tf_cfg):
             status = "WARN"
         else:
             status = "STALE"
+
+        # Legacy-TF (4h/1d JSON-Export, seit 2026-10-05): nicht als STALE werten
+        if tf_cfg.get("legacy"):
+            status = "LEGACY"
 
         # Quality Score (0-100): freshness 50pts, gaps 30pts, bar count 20pts
         freshness = max(0, 50 * (1 - age_hours / (max_age * 4)))
@@ -256,6 +262,8 @@ def _compute_summary(all_data):
     total_bars = 0
 
     for tf, assets in all_data.items():
+        if TIMEFRAMES.get(tf, {}).get("legacy"):
+            continue  # Alt-Export (4h/1d): nicht in Health-Score werten (2026-10-05)
         for symbol, info in assets.items():
             total_assets += 1
             total_bars += info.get("bars", 0)
@@ -287,7 +295,7 @@ def _compute_summary(all_data):
 def _get_asset_type(symbol):
     """Classify asset as FX, Stock, Index, Commodity."""
     fx_majors = {"EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD"}
-    indices = {"DE40", "NAS100", "US30", "US500", "UK100", "JP225", "AUS200", "CN50", "FRA40", "HK50", "US2000"}
+    indices = {"DE40", "GER40", "JPN225", "EUSTX50", "SPA35", "NAS100", "US30", "US500", "UK100", "JP225", "AUS200", "CN50", "FRA40", "HK50", "US2000"}  # +GER40/JPN225/EUSTX50/SPA35 (2026-10-05)
     commodities = {"XAUUSD", "XAGUSD", "XAUEUR"}
 
     if symbol in fx_majors:
@@ -302,22 +310,44 @@ def _get_asset_type(symbol):
 
 
 def _get_active_pairs():
-    """Get list of pairs active in any FX bot from config files."""
+    """Aktuell gehandelte Symbole aus den AKTIVEN Bot-Configs + Deploy-Registry.
+
+    Vorher: assets.toml + bot2_m15_mr.toml (beide stale bzw. entfernt) — seit
+    2026-10-05 werden die echten Bot-TOMLs (bot*_lab*.toml, bot*_multi.toml)
+    plus deploy_registry.symbols gelesen.
+    """
     import tomllib
     active = set()
-    for toml_path in [ASSETS_TOML, BOT2_ASSETS_TOML]:
-        try:
-            with open(toml_path, "rb") as f:
-                config = tomllib.load(f)
+    cfg_dir = "/root/fx-bot/config"
+    patterns = [
+        os.path.join(cfg_dir, "bot*_lab*.toml"),
+        os.path.join(cfg_dir, "bot*_multi.toml"),
+    ]
+    sym_re = re.compile(r"[A-Z]{2,6}[0-9]{0,4}")
+    for pattern in patterns:
+        for toml_path in sorted(glob.glob(pattern)):
+            if "_risk" in os.path.basename(toml_path):
+                continue
+            try:
+                with open(toml_path, "rb") as f:
+                    config = tomllib.load(f)
+            except Exception:
+                continue
             for section, vals in config.items():
-                if section == "DEFAULT":
+                if not isinstance(vals, dict):
                     continue
-                if isinstance(vals, dict) and vals.get("enabled", True):
-                    direction = vals.get("direction", "both")
-                    if direction != "none":
-                        active.add(section)
-        except Exception:
-            pass
+                if not sym_re.fullmatch(section):
+                    continue
+                if vals.get("enabled", True) and vals.get("direction", "both") != "none":
+                    active.add(section)
+    try:
+        with open(os.path.join(cfg_dir, "deploy_registry.json")) as f:
+            reg = json.load(f)
+        for meta in (reg.get("bots") or {}).values():
+            for sym in (meta.get("symbols") or []):
+                active.add(sym)
+    except Exception:
+        pass
     return sorted(active)
 
 
@@ -347,6 +377,8 @@ def build():
         for tf_key in TF_ORDER:
             tf_data = all_data[tf_key].get(symbol, missing_tpl)
             asset_info[tf_key] = tf_data
+            if TIMEFRAMES.get(tf_key, {}).get("legacy"):
+                continue  # Alt-Export (4h/1d): zählt nicht in Rollup/Health (2026-10-05)
             tf_statuses.append(tf_data.get("status", "MISSING"))
             tf_scores.append(tf_data.get("quality_score", 0))
 
@@ -376,7 +408,7 @@ def build():
     # Compute summaries
     summary = _compute_summary(all_data)
     summary["unique_symbols"] = len(all_symbols)
-    summary["fx_active_pairs"] = len(active_pairs)
+    summary["active_symbols"] = len(active_pairs)
     summary["timeframes"] = {tf: {"count": len(all_data[tf])} for tf in TF_ORDER}
     summary["tf_order"] = TF_ORDER  # tell frontend the column order
 

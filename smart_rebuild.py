@@ -7,15 +7,11 @@ Nur bei Aenderung wird neu gebaut (mtime-Vergleich).
 Verhindert parallele Ausfuehrungen via PID-File.
 
 Targets:
-  backtest     — build_backtest_status.py (alle 30 Min)
-  optimization — build_optimization_status.py (alle 60 Min)
   data         — build_data_status.py (alle 60 Min)
   site         — build.py HTML rebuild (alle 6h)
   all          — Alle Targets mit Change-Detection
 
 Usage:
-    python3 smart_rebuild.py backtest              # Nur Backtest rebuilden
-    python3 smart_rebuild.py optimization          # Nur Optimization rebuilden
     python3 smart_rebuild.py data                  # Nur Data-Pipeline rebuilden
     python3 smart_rebuild.py site                  # Full Site rebuild
     python3 smart_rebuild.py all                   # Alles (mit Change-Detection)
@@ -56,42 +52,6 @@ log = logging.getLogger("smart_rebuild")
 # ── Target Definitions ───────────────────────────────────────
 
 TARGETS = {
-    "backtest": {
-        "watch_dirs": [
-            "/root/fx-bot/data/backtest_v3",
-            "/root/fx-bot/data/backtest_v2",
-        ],
-        "watch_files": [
-            "/root/fx-bot/data/combined_backtest_report.json",
-            "/root/fx-bot/data/realistic_backtest_report.json",
-            "/root/fx-bot/data/bot2_full_backtest.json",
-            "/root/fx-bot/data/deep_backtest_results.json",
-            "/root/fx-bot/data/variant_backtest_results.json",
-        ],
-        "build_cmd": [sys.executable, "build_backtest_status.py"],
-        "build_cwd": SITE_DIR,
-        "output": "/root/.hermes/site/api/backtest/index.json",
-        "timeout": 120,
-        "max_staleness_hours": 6,  # Alert if output older than this
-    },
-    "optimization": {
-        "watch_dirs": [
-            "/root/fx-bot/data/optimizer",
-        ],
-        "watch_files": [
-            "/root/fx-bot/data/bot2_grid_results.json",
-            "/root/fx-bot/data/portfolio_grid_search.json",
-            "/root/fx-bot/data/grid_optimize_v2_results.json",
-            "/root/fx-bot/data/balanced_optimization.json",
-            "/root/fx-bot/data/walk_forward_revived.json",
-            "/root/fx-bot/data/wf_reopt_results.json",
-        ],
-        "build_cmd": [sys.executable, "build_optimization_status.py"],
-        "build_cwd": SITE_DIR,
-        "output": "/root/.hermes/site/src/data/optimization.json",
-        "timeout": 120,
-        "max_staleness_hours": 6,
-    },
     "data": {
         "watch_dirs": [
             "/root/trading/data",
