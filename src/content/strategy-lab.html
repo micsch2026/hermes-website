@@ -770,7 +770,9 @@ function _renderAdvisorSection(adv) {
         let line = '<div style="font-size:0.8rem;margin:0.15rem 0">' + ic + ' <strong>' + esc(s.slot_id) + '</strong>';
         if (s.holder != null) line += ' · Halter #' + esc(String(s.holder));
         if (s.challenge && s.challenge.candidate != null) line += ' · Challenge #' + esc(String(s.challenge.candidate)) + ' (Tag ' + (s.challenge.day || 1) + '/' + (s.challenge.of || 14) + ')';
-        line += ' · ' + esc(AA_LABELS[rec.action] || rec.action || '') + (rec.priority === 'high' ? ' · <strong style="color:#e05252">HIGH</strong>' : '') + '</div>';
+        line += ' · ' + esc(AA_LABELS[rec.action] || rec.action || '');
+        if (rec.summary) line += ' <span style="color:var(--dim)">— ' + esc(rec.summary) + '</span>';
+        line += (rec.priority === 'high' ? ' · <strong style="color:#e05252">HIGH</strong>' : '') + '</div>';
         html += line;
       }
       html += '<details style="margin-top:0.25rem"><summary style="cursor:pointer;font-size:0.75rem;color:var(--dim)">Begründungen &amp; Kandidaten</summary>';
@@ -782,6 +784,17 @@ function _renderAdvisorSection(adv) {
         html += '<div>📊 ' + esc(rr.evidence || '—') + '</div>';
         html += '<div>🧩 ' + esc(rr.diversification || '—') + '</div>';
         html += '<div>⚖️ ' + esc(rr.risk || '—') + '</div>';
+        if (s.parity && s.parity.status) {
+          html += '<div>🔗 Parität: ' + esc(s.parity.status) + ' — ' + (s.parity.matched || 0) + '/' + (s.parity.confirmed || 0) + ' Paare sauber';
+          if (s.parity.missed_count) html += ' · ' + s.parity.missed_count + '× Shadow ohne Bot-Gegenstück';
+          html += '</div>';
+          for (const m of (s.parity.missed || [])) {
+            html += '<div style="font-size:0.72rem;color:var(--dim);margin-left:0.9rem">• ' + esc(m.symbol || '') + ' ' + esc(m.direction || '') + (m.ts_bz ? ', ' + esc(m.ts_bz) : '') + ' — ohne Bot-Gegenstück' + (m.exit_reason ? ' (Shadow: ' + esc(m.exit_reason) + ')' : '') + '</div>';
+          }
+          const _kl = Object.entries(s.parity.klassen || {});
+          if (_kl.length) html += '<div style="font-size:0.72rem;color:var(--dim);margin-left:0.9rem">Klasse (14-T-Report): ' + esc(_kl.map(function(kv){return kv[0] + ' (' + kv[1] + ')';}).join(', ')) + '</div>';
+          if (s.parity.diagnosis) html += '<div style="font-size:0.72rem;color:var(--dim);margin-left:0.9rem">' + esc(s.parity.diagnosis) + '</div>';
+        }
         html += '<div>🚫 ' + esc(rr.countercheck || '—') + '</div>';
         html += '<div>🎯 ' + esc(rr.action || '—') + '</div>';
         html += '</div>';
