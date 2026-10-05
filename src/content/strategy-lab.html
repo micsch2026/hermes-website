@@ -47,6 +47,8 @@
   font-size: 0.7rem; font-weight: 600; background: var(--blue-dim); color: var(--blue); }
 .sl4-table .new-badge { display: inline-block; padding: 1px 5px; border-radius: 8px;
   font-size: 0.65rem; font-weight: 600; background: var(--green-dim); color: var(--green); }
+.sl4-table td.spark-td { line-height: 0; }
+.sl4-table .sl-spark { vertical-align: middle; }
 
 /* Search + filter bar */
 .sb-empty { padding: 2rem; text-align: center; }
@@ -661,6 +663,23 @@ function showDetail(row) {
 let shadowSortCol = 'net_pnl';
 let shadowSortDir = 'desc';
 
+function _sparkSVG(curve) {
+  if (!Array.isArray(curve) || curve.length < 2) return '—';
+  const step = Math.max(1, Math.ceil(curve.length / 40));
+  const samp = curve.filter((_, i) => i % step === 0 || i === curve.length - 1);
+  const vs = samp.map(p => p[1]);
+  const min = Math.min(...vs), max = Math.max(...vs), range = (max - min) || 1;
+  const W = 64, H = 16, pad = 1.5;
+  const poly = samp.map((p, i) => {
+    const x = pad + i / (samp.length - 1) * (W - 2 * pad);
+    const y = pad + (1 - (p[1] - min) / range) * (H - 2 * pad);
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  const color = vs[vs.length - 1] >= vs[0] ? 'var(--green)' : 'var(--red)';
+  const t0 = Math.round(vs[0]), t1 = Math.round(vs[vs.length - 1]);
+  return '<svg class="sl-spark" width="64" height="16" viewBox="0 0 64 16" aria-hidden="true"><title>' + t0 + '€ → ' + t1 + '€</title><polyline points="' + poly + '" fill="none" stroke="' + color + '" stroke-width="1.5"/></svg>';
+}
+
 function setShadowSort(col) {
   if (shadowSortCol === col) {
     shadowSortDir = shadowSortDir === 'asc' ? 'desc' : 'asc';
@@ -703,12 +722,17 @@ function _updateShadowTableOnly() {
       {k:'pnl_per_week', l:'€/Wk', num:true},
       {k:'oos_pf', l:'OOS PF', num:true},
       {k:'gap_pct', l:'Gap', num:true},
-      {k:'bot_health', l:'Health'}
+      {k:'bot_health', l:'Health'},
+      {k:'spark', l:'Verlauf', nosort:true}
     ];
     let thHtml = '<tr>';
     for (const c of cols) {
       const cls = (c.num ? 'num ' : '') + (shadowSortCol === c.k ? 'sorted-' + shadowSortDir : '');
-      thHtml += `<th class="${cls.trim()}" onclick="setShadowSort('${c.k}')">${c.l}</th>`;
+      if (c.nosort) {
+        thHtml += `<th class="${cls.trim()}">${c.l}</th>`;
+      } else {
+        thHtml += `<th class="${cls.trim()}" onclick="setShadowSort('${c.k}')">${c.l}</th>`;
+      }
     }
     thHtml += '</tr>';
     thead.innerHTML = thHtml;
@@ -732,6 +756,7 @@ function _updateShadowTableOnly() {
     rowsHtml += '<td class="num" style="color:var(--dim)">'+(s.oos_pf!=null?s.oos_pf.toFixed(2):'—')+'</td>';
     rowsHtml += '<td class="num"><span class="'+gapCls+'">'+(s.gap_pct!=null?((s.gap_pct>=0)?'+':'')+s.gap_pct+'%':'—')+'</span></td>';
     rowsHtml += '<td>'+(bhMap[s.bot_health]||'—')+'</td>';
+    rowsHtml += '<td class="spark-td">'+_sparkSVG(s.equity_curve)+'</td>';
     rowsHtml += '</tr>';
   }
   tbody.innerHTML = rowsHtml;
@@ -1226,12 +1251,17 @@ function renderShadowDashboard() {
     {k:'pnl_per_week', l:'€/Wk', num:true},
     {k:'oos_pf', l:'OOS PF', num:true},
     {k:'gap_pct', l:'Gap', num:true},
-    {k:'bot_health', l:'Health'}
+    {k:'bot_health', l:'Health'},
+    {k:'spark', l:'Verlauf', nosort:true}
   ];
   html += '<tr>';
   for (const c of sCols) {
     const cls = (c.num ? 'num ' : '') + (shadowSortCol === c.k ? 'sorted-' + shadowSortDir : '');
-    html += `<th class="${cls.trim()}" onclick="setShadowSort('${c.k}')">${c.l}</th>`;
+    if (c.nosort) {
+      html += `<th class="${cls.trim()}">${c.l}</th>`;
+    } else {
+      html += `<th class="${cls.trim()}" onclick="setShadowSort('${c.k}')">${c.l}</th>`;
+    }
   }
   html += '</tr></thead><tbody id="sl4-shadow-tbody">';
   for (const s of strats) {
@@ -1257,6 +1287,7 @@ function renderShadowDashboard() {
     html += '<td class="num" style="color:var(--dim)">'+(s.oos_pf!=null?s.oos_pf.toFixed(2):'—')+'</td>';
     html += '<td class="num"><span class="'+gapCls+'">'+(s.gap_pct!=null?((s.gap_pct>=0)?'+':'')+s.gap_pct+'%':'—')+'</span></td>';
     html += '<td>'+(bhMap[s.bot_health]||'—')+'</td>';
+    html += '<td class="spark-td">'+_sparkSVG(s.equity_curve)+'</td>';
     html += '</tr>';
   }
   html += '</tbody></table></div>';
