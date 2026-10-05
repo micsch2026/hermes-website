@@ -737,6 +737,69 @@ function _updateShadowTableOnly() {
   tbody.innerHTML = rowsHtml;
 }
 
+// ── Belegungs-Empfehlungen (Allocation Advisor; Embed: sd.advisor) ──
+function _renderAdvisorSection(adv) {
+  if (!adv || !adv.fleet) return '';
+  const AA_ICONS = {keep:'🟢', watch:'🟡', challenge_running:'⚔️', empty:'🎯', pull_candidate:'🟠', live_ok:'🟢', live_blocked:'🔴', observe:'🏆', parity_report:'🔍'};
+  const AA_LABELS = {keep:'behalten', watch:'beobachten', challenge_running:'Challenge läuft', empty:'unbesetzt', pull_candidate:'Rückstufen prüfen', live_ok:'live_ok', live_blocked:'live_blocked', observe:'beobachten (fest)', parity_report:'Paritäts-Report'};
+  let ts = '';
+  try { ts = new Date(adv.generated_at).toLocaleString('de-DE', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); } catch (e) { ts = adv.generated_at || ''; }
+  let html = '<div class="rd-section-title">🎯 Belegungs-Empfehlungen — Fleet Allocation Advisor</div>';
+  html += '<div class="rd-card" style="margin-bottom:0.9rem">';
+  html += '<div style="font-size:0.75rem;color:var(--dim);margin-bottom:0.55rem">Stand: ' + esc(ts) + ' Uhr' + (adv.stale ? ' · <strong>⚫ Daten älter als 30 h</strong>' : '') + ' · read-only, keine automatische Aktion</div>';
+  const _bots = Object.keys(adv.fleet).sort((a, b) => parseInt(a.slice(3)) - parseInt(b.slice(3)));
+  const _groups = {live: [], multi: [], single: [], champ: []};
+  for (const bk of _bots) {
+    const it = adv.fleet[bk] || {};
+    const g = it.role === 'live' ? 'live' : (it.type === 'multibot' ? 'multi' : (it.role === 'champion' ? 'champ' : 'single'));
+    _groups[g].push(bk);
+  }
+  const _gdefs = [['live', '🔴 LIVE — ECHTGELD'], ['multi', '🧩 MULTIBOTS (sortenrein)'], ['single', '🎯 EINZELBOTS (Pipeline)'], ['champ', '🏆 CHAMPIONS (fest)']];
+  for (const [gk, glabel] of _gdefs) {
+    if (!_groups[gk].length) continue;
+    html += '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin:0.5rem 0 0.3rem">' + glabel + '</div>';
+    for (const bk of _groups[gk]) {
+      const it = adv.fleet[bk];
+      const slots = it.slots || [];
+      const _high = slots.some(s => ((s.recommendation || {}).priority === 'high'));
+      html += '<div style="border:1px solid rgba(128,128,128,0.25);border-radius:6px;padding:0.45rem 0.6rem;margin-bottom:0.4rem' + (_high ? ';border-left:3px solid #e05252' : '') + '">';
+      html += '<div style="font-weight:700;font-size:0.85rem">' + esc(bk) + ' <span style="color:var(--dim);font-weight:400">· ' + esc(it.asset_class || '') + ' · ' + (it.type === 'multibot' ? 'Multibot' : 'Einzelbot') + '</span></div>';
+      for (const s of slots) {
+        const rec = s.recommendation || {};
+        const ic = AA_ICONS[rec.action] || '⚪';
+        let line = '<div style="font-size:0.8rem;margin:0.15rem 0">' + ic + ' <strong>' + esc(s.slot_id) + '</strong>';
+        if (s.holder != null) line += ' · Halter #' + esc(String(s.holder));
+        if (s.challenge && s.challenge.candidate != null) line += ' · Challenge #' + esc(String(s.challenge.candidate)) + ' (Tag ' + (s.challenge.day || 1) + '/' + (s.challenge.of || 14) + ')';
+        line += ' · ' + esc(AA_LABELS[rec.action] || rec.action || '') + (rec.priority === 'high' ? ' · <strong style="color:#e05252">HIGH</strong>' : '') + '</div>';
+        html += line;
+      }
+      html += '<details style="margin-top:0.25rem"><summary style="cursor:pointer;font-size:0.75rem;color:var(--dim)">Begründungen &amp; Kandidaten</summary>';
+      for (const s of slots) {
+        const rec = s.recommendation || {};
+        const rr = s.reasons || {};
+        html += '<div style="font-size:0.78rem;margin:0.45rem 0 0.2rem;font-weight:600">' + (AA_ICONS[rec.action] || '⚪') + ' ' + esc(s.slot_id) + ' — ' + esc(AA_LABELS[rec.action] || rec.action || '') + '</div>';
+        html += '<div style="font-size:0.76rem;line-height:1.45">';
+        html += '<div>📊 ' + esc(rr.evidence || '—') + '</div>';
+        html += '<div>🧩 ' + esc(rr.diversification || '—') + '</div>';
+        html += '<div>⚖️ ' + esc(rr.risk || '—') + '</div>';
+        html += '<div>🚫 ' + esc(rr.countercheck || '—') + '</div>';
+        html += '<div>🎯 ' + esc(rr.action || '—') + '</div>';
+        html += '</div>';
+        const cands = s.candidates || [];
+        if (cands.length) {
+          html += '<div style="font-size:0.74rem;color:var(--dim);margin:0.2rem 0 0.3rem">Kandidaten: ';
+          html += cands.map(c => '#' + esc(String(c.sid)) + ' — ' + esc(c.why || '') + (c.ko ? ' (KO: ' + esc(c.ko) + ')' : '')).join(' · ');
+          html += '</div>';
+        }
+      }
+      html += '</details>';
+      html += '</div>';
+    }
+  }
+  html += '</div>';
+  return html;
+}
+
 // ── Shadow Dashboard ──
 function renderShadowDashboard() {
   try {
@@ -760,6 +823,10 @@ function renderShadowDashboard() {
   const openPos = shadowData.open_positions || [];
   const sd = shadowData;
   let html = '';
+
+  // ── Belegungs-Empfehlungen (Allocation Advisor, 2026-10-05) ──
+  // Ganz oben: Entscheidungs-Sicht VOR den Diagnose-Sektionen (User-Vorgabe).
+  html += _renderAdvisorSection(sd.advisor);
 
   // ── Demo-Bots Übersicht (Kopfzeile) ──
   const botsData = sd.bots || {};
