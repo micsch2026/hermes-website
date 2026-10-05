@@ -562,11 +562,13 @@ def _load_curve(path, now_dt):
     return points, last_balance, age_s, err
 
 
-def _sum_trades(path, now_dt):
+def _sum_trades(path, now_dt, sids=None):
     """botN_trades.jsonl streamen → (sums{7,30}, daily{date:pnl}, monthly{ym:pnl}).
 
     PnL-Regel: cTrader_profit, Fallback pnl; nur Trades mit parsablem
-    closed_at (ISO oder 'YYYY-MM-DD HH:MM:SS'). Fenster: 0 <= now-ep <= d*86400."""
+    closed_at (ISO oder 'YYYY-MM-DD HH:MM:SS'). Fenster: 0 <= now-ep <= d*86400.
+    sids: Menge aktueller Strategie-IDs (Strings) — wenn gesetzt, zählen NUR
+    Trades dieser Strategien (Alt-Strategie-Trades nie mitbewerten, User 05.10.2026)."""
     sums = {d: 0.0 for d in THRESH_PNL_WINDOW_DAYS}
     daily = {}
     monthly = {}
@@ -584,6 +586,10 @@ def _sum_trades(path, now_dt):
                     continue
                 if not isinstance(rec, dict):
                     continue
+                if sids is not None:
+                    _sid = _i(rec.get("strategy_id"))
+                    if _sid is None or str(_sid) not in sids:
+                        continue
                 dt = _parse_dt(rec.get("closed_at"))
                 if dt is None:
                     continue
@@ -1020,8 +1026,27 @@ def build(root, fx_root, sl_root, trading_data, now=None):
             if cls:
                 pos_class_counts[cls] += 1
 
+        reg_entry = {}
+        if isinstance(registry, dict) and isinstance(registry.get("bots"), dict):
+            reg_entry = registry["bots"].get(bot) or {}
+
+        sid_list_raw = reg_entry.get("strategy_id")
+        sids = sid_list_raw if isinstance(sid_list_raw, list) else [sid_list_raw]
+
+        slots, multi = _bot_slots(bot, fx_root, policy or {}, rot_state or {})
+        if not multi and len([s for s in sids if _i(s) is not None]) > 1:
+            multi = True  # Registry-Liste > 1 Strategie → multi
+
+        # Aktuelle Strategie-IDs (Registry + [[slots]]/Rotation) — Alt-Strategie-
+        # Trades NIE in den PnL-Summen mitbewerten (User 05.10.2026).
+        cur_sids = {str(_i(x)) for x in sids if _i(x) is not None}
+        for _s in slots:
+            if _i(_s.get("sid")) is not None:
+                cur_sids.add(str(_i(_s.get("sid"))))
+
         tr_age = _mtime_age_s(trades_path, now_dt)
-        trades_sums, trades_daily, trades_monthly = _sum_trades(trades_path, now_dt)
+        trades_sums, trades_daily, trades_monthly = _sum_trades(
+            trades_path, now_dt, sids=cur_sids or None)
         if trades_sums is None:
             trades_family_missing.append(bot)
             trades_sums = {d: None for d in THRESH_PNL_WINDOW_DAYS}  # null statt 0
@@ -1032,10 +1057,6 @@ def build(root, fx_root, sl_root, trading_data, now=None):
             trades_family_age = tr_age if trades_family_age is None \
                 else min(trades_family_age, tr_age)
 
-        reg_entry = {}
-        if isinstance(registry, dict) and isinstance(registry.get("bots"), dict):
-            reg_entry = registry["bots"].get(bot) or {}
-
         # is_live: risk_state.is_live falls vorhanden; sonst Registry:
         # demo=False → live; demo=True → demo; unknown → live (konservativ).
         is_live = None
@@ -1044,13 +1065,6 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         else:
             demo = reg_entry.get("demo")
             is_live = False if demo is True else True
-
-        sid_list_raw = reg_entry.get("strategy_id")
-        sids = sid_list_raw if isinstance(sid_list_raw, list) else [sid_list_raw]
-
-        slots, multi = _bot_slots(bot, fx_root, policy or {}, rot_state or {})
-        if not multi and len([s for s in sids if _i(s) is not None]) > 1:
-            multi = True  # Registry-Liste > 1 Strategie → multi
 
         equity = None
         if rs_ok:
