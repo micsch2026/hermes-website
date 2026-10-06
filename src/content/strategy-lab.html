@@ -2364,6 +2364,41 @@ function renderEventsEngine() {
     const lastChk = (gsHyps[0].forward.checked_at || '').slice(0, 16).replace('T', ' ');
     html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Quelle: Registry-Evidenz (kind=gate_shadow) · letzte Messung ' + esc(lastChk) + ' UTC · gespeist vom täglichen Tracker (05:45 UTC).</div>';
   }
+  const gd = d.gate_detail;
+  if (gd && (gd.rows || []).length) {
+    const gdYear = function(yrs) {
+      if (!yrs) return '—';
+      const keys = Object.keys(yrs);
+      if (!keys.length) return '—';
+      return keys.map(function(y) {
+        const v = yrs[y];
+        return y.slice(2) + ': ' + (v[1] > 0 ? '+' : '') + Number(v[1]).toFixed(0) + '€ (' + v[0] + 'x)';
+      }).join(' · ');
+    };
+    html += '<div class="rd-section-title" style="margin-top:0.9rem">🔬 Einsparungs-Detail — was hätten aktivierte Gates gerettet?</div>';
+    html += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.5rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">'
+      + 'Historischer Backtest je Gate-Kandidat × Klasse (Retro-Simulation der 6 Kernstrategien, ' + ((gd.basis && gd.basis.retro_n) || 0) + ' Trades, plus Index-Set): „gerettet“ = Summe der Verluste, die ein Entry-Blackout verhindert hätte (netto, statisch). '
+      + 'Klassenregel: NIE global ausrollen — Index-Nacht/Sommer und Metalle-Nacht sind NEGATIV. In-Sample-Kandidaten → Anwendung nur über Gate-Shadow → Lab-Seed → Demo.'
+      + (gd.checks_ok ? ' Engine-Reproduktion ✅ 6/6.' : ' ⚠️ Reproduktions-Checks abweichend!')
+      + '</div>';
+    html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th>Klasse / Scope</th><th class="num">Trades</th><th class="num">blockt</th><th class="num">%</th><th class="num">gerettet</th><th class="num">Ø/Block</th><th>je Jahr</th></tr></thead><tbody>';
+    for (const r of gd.rows) {
+      const neg = (r.saved || 0) < 0;
+      const ic = r.kind === 'union' ? '🧩 ' : (r.kind === 'extra' ? '🟡 ' : (r.kind === 'info' ? 'ℹ️ ' : ''));
+      const sub = r.sub ? ' <span style="color:var(--dim);font-size:0.7rem">— ' + esc(r.sub) + '</span>' : '';
+      html += '<tr' + (r.warn ? ' style="background:rgba(224,82,82,0.06)"' : '') + '>'
+        + '<td>' + ic + esc(r.gate) + '</td>'
+        + '<td>' + esc(r.scope) + sub + '</td>'
+        + '<td class="num">' + r.n + '</td>'
+        + '<td class="num">' + r.blocked + '</td>'
+        + '<td class="num">' + Number(r.pct).toFixed(1) + '%</td>'
+        + '<td class="num ' + (neg ? 'neg' : 'pos') + '">' + (neg ? '' : '+') + Number(r.saved).toFixed(0) + '€' + (r.warn ? ' ⛔' : '') + '</td>'
+        + '<td class="num">' + (r.bmean != null ? Number(r.bmean).toFixed(2) + '€' : '—') + '</td>'
+        + '<td style="font-size:0.7rem;color:var(--dim)">' + esc(gdYear(r.years)) + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Stand ' + esc(new Date(gd.generated_at).toLocaleString('de-DE')) + ' · Quelle: Event Engine gate-detail (read-only) · Basis ' + esc((gd.basis && gd.basis.retro_span) || '') + ' + Index ' + esc((gd.basis && gd.basis.index_span) || '') + ' · Vollbericht: reports/gate_detail_*.md</div>';
+  }
   const lf = d.latest_findings && d.latest_findings.detail ? d.latest_findings.detail : null;
   if (lf) {
     html += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyse-Lauf ('
