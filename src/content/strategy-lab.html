@@ -2358,6 +2358,43 @@ function renderEventsEngine() {
         }
       }
     }
+    if (lf.tracking) {
+      const tr = lf.tracking;
+      html += '<div style="margin-top:0.9rem;font-size:0.82rem"><b>🔄 Fund-Tracking</b> — hält sich ein Fund über die Zeit? (Datenbasis ' + esc(tr.trades || '') + ', ' + (tr.n_runs || 0) + ' Auswertungsstände)</div>';
+      const tchip = function(ic, body, color) {
+        return '<div style="padding:0.35rem 0.6rem;margin:0.25rem 0;background:rgba(255,255,255,0.02);border-left:3px solid ' + color + ';border-radius:4px;font-size:0.78rem">' + ic + ' ' + body + '</div>';
+      };
+      if (!(tr.stable || []).length && !(tr.fresh || []).length && !(tr.flips || []).length && !(tr.fading || []).length) {
+        html += '<div style="font-size:0.76rem;color:var(--dim);margin-top:0.2rem">Basisaufbau: Wiederkehr-Analyse ab dem 2. Auswertungsstand. Forward-Evidenz wächst automatisch (Shadow wöchentlich).</div>';
+      }
+      for (const s of (tr.stable || []).slice(0, 8)) {
+        const neg = (s.last_delta || 0) < 0;
+        html += tchip('✅', '<b>' + esc(s.label) + '</b> — ' + s.n_sig + '/' + s.n_runs + ' Läufe signifikant, letzter Δ ' + (s.last_delta > 0 ? '+' : '') + Number(s.last_delta).toFixed(2) + '€/Trade (p=' + Number(s.last_p).toFixed(4) + ') · 💡 ' + (neg ? 'Kandidat für Vertiefung über den Gate-Weg' : 'Fokus-Kandidat'), '#39b54a');
+      }
+      for (const s of (tr.fresh || []).slice(0, 4)) {
+        html += tchip('🆕', '<b>' + esc(s.label) + '</b> — neu signifikant (Δ ' + (s.last_delta > 0 ? '+' : '') + Number(s.last_delta).toFixed(2) + '€, p=' + Number(s.last_p).toFixed(4) + ') — abwarten, ob es sich hält', '#5ba3d9');
+      }
+      for (const s of (tr.flips || []).slice(0, 4)) {
+        html += tchip('🔀', '<b>' + esc(s.label) + '</b> — Vorzeichen über die Zeit gedreht → instabil, NICHT anwenden', '#a05555');
+      }
+      for (const s of (tr.fading || []).slice(0, 4)) {
+        html += tchip('📉', '<b>' + esc(s.label) + '</b> — war signifikant, zuletzt abgeschwächt — beobachten', '#888888');
+      }
+      html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Hinweis: Bei retro/index sind „Läufe" verschiedene Methodik-Stände derselben Datenbasis; echte Forward-Wiederkehr entsteht mit jedem Shadow-Lauf (wöchentlich).</div>';
+    }
+    if (lf.blind_spots && (lf.blind_spots.clusters || []).length) {
+      html += '<div style="margin-top:0.9rem;font-size:0.82rem"><b>🔎 Blind-Spot-Suche</b> — ' + lf.blind_spots.n_unexplained + ' Trades (' + lf.blind_spots.pct + '%) liefen weiter als 24h von JEDEM bekannten Termin entfernt; verlustreichste Cluster:</div>';
+      html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gruppierung</th><th>Fenster</th><th class="num">Trades</th><th class="num">Ø/Trade</th></tr></thead><tbody>';
+      for (const b of lf.blind_spots.clusters) {
+        html += '<tr><td>' + esc(b.group) + '</td><td>' + esc(b.key) + '</td><td class="num">' + b.n + '</td><td class="num neg">' + b.mean.toFixed(2) + '€</td></tr>';
+      }
+      html += '</tbody></table></div>';
+      html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">💡 Diese Cluster sind Kandidaten für FEHLENDE Datenquellen im Kalender (z. B. Zinsauktionen, Öl-/Lagerberichte, Notenbank-Reden) — hier sucht die Engine gezielt nach dem fehlenden Event-Typ.</div>';
+    }
+    if (lf.engine_health && lf.engine_health.sources) {
+      const parts = lf.engine_health.sources.map(function(s) { return esc(s.name) + ': ' + (s.age_h == null ? '—' : Number(s.age_h).toFixed(1) + 'h'); });
+      html += '<div style="margin-top:0.6rem;font-size:0.73rem;color:var(--dim)">Engine-Selbstcheck · Quellen-Frische: ' + parts.join(' · ') + '</div>';
+    }
   }
   html += '<div style="margin-top:1rem;font-size:0.75rem;color:var(--dim)">Event Engine v' + (meta.engine_version || '?')
     + ' · Engine-Funde sind in-sample → Anwendung nur über Lab/WFO/Shadow (Spec §10) · Kommandos: Skill <code>event-engine</code></div>';
