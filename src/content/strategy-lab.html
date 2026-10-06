@@ -2327,6 +2327,43 @@ function renderEventsEngine() {
     }
     html += '</div>';
   }
+  const gsHyps = hyps.filter(h => h.forward);
+  if (gsHyps.length) {
+    const sparkline = function(vals) {
+      if (!vals || vals.length < 2) return '<span style="color:var(--dim)">—</span>';
+      const ch = '▁▂▃▄▅▆▇█';
+      const mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+      return vals.slice(-12).map(function(v) {
+        const t = (mx === mn) ? 0.5 : (v - mn) / (mx - mn);
+        return ch[Math.round(t * 7)];
+      }).join('');
+    };
+    const gsStage = function(f) {
+      const b = f.blocked_n || 0;
+      if (b === 0) return {txt: '⏳ sammelt — noch keine Trades im Fenster', col: 'var(--dim)'};
+      if (b < 10) return {txt: '⏳ sammelt (' + b + '/10 bis Zwischenfazit)', col: 'var(--dim)'};
+      if (b < 30) return {txt: '🔍 Zwischenfazit möglich — Stichprobe klein', col: '#e8b84a'};
+      return {txt: '✅ bewertungsreif — Lab-Seed-Vorbereitung', col: '#39b54a'};
+    };
+    html += '<div class="rd-section-title" style="margin-top:0.9rem">🧪 Gate-Shadow-Test — Forward-Verfolgung der Kandidaten</div>';
+    html += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.5rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">'
+      + 'Virtuelle Parallelwelt: Es wird NICHTS live geblockt — die Engine zählt auf den echten Shadow-Trades mit, was ein Entry-Blackout je Kandidat gebracht HÄTTE (virtuell gespart = Summe der Verluste, die das Gate verhindert hätte; positive Werte = Gate wirkt). Täglich 05:45 UTC. Richtwerte: ~10 Trades im Fangnetz = Zwischenfazit, ~30+ = bewertungsreif für den nächsten Schritt (Lab-Seed → Demo → Live, manuelle Freigabe). Saisonale Gates (z. B. Sommer) bleiben außerhalb ihrer Saison leer.</div>';
+    html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Kandidat</th><th class="num">Fangnetz</th><th class="num">virtuell gespart</th><th class="num">Ø/Trade</th><th>Verlauf</th><th>Stand / Empfehlung</th></tr></thead><tbody>';
+    for (const h of gsHyps) {
+      const f = h.forward;
+      const hist = (h.forward_history || []).map(function(x) { return x.saved_eur; }).filter(function(v) { return v != null; });
+      const st = gsStage(f);
+      html += '<tr><td><b>' + esc(h.name) + '</b><div style="font-size:0.7rem;color:var(--dim)">' + esc(h.hid || '') + ' · seit ' + esc(f.since || '') + '</div></td>'
+        + '<td class="num">' + (f.blocked_n || 0) + ' / ' + (f.n_forward || 0) + '</td>'
+        + '<td class="num ' + ((f.saved_eur || 0) > 0 ? 'pos' : 'neg') + '">' + ((f.saved_eur || 0) > 0 ? '+' : '') + Number(f.saved_eur || 0).toFixed(2) + '€</td>'
+        + '<td class="num">' + (f.blocked_mean != null ? Number(f.blocked_mean).toFixed(2) + '€' : '—') + '</td>'
+        + '<td style="font-size:0.9rem;letter-spacing:1px" title="' + esc(hist.join('€ → ')) + '€">' + sparkline(hist) + '</td>'
+        + '<td style="font-size:0.75rem;color:' + st.col + '">' + st.txt + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    const lastChk = (gsHyps[0].forward.checked_at || '').slice(0, 16).replace('T', ' ');
+    html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Quelle: Registry-Evidenz (kind=gate_shadow) · letzte Messung ' + esc(lastChk) + ' UTC · gespeist vom täglichen Tracker (05:45 UTC).</div>';
+  }
   const lf = d.latest_findings && d.latest_findings.detail ? d.latest_findings.detail : null;
   if (lf) {
     html += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyse-Lauf ('
