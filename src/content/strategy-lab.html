@@ -166,6 +166,7 @@
     <button class="sl4-tab" data-tab="rdlive">🔬 R&D Live <span class="badge" id="badge-rdlive">0</span></button>
     <button class="sl4-tab" data-tab="shadow">👻 Shadow <span class="badge" id="badge-shadow">0</span></button>
     <button class="sl4-tab" data-tab="stratege">🧠 R&D Stratege <span class="badge" id="badge-stratege">0</span></button>
+    <button class="sl4-tab" data-tab="events">📅 Events <span class="badge" id="badge-events">0</span></button>
   </div>
   <div class="sl4-toolbar" id="sl4-toolbar">
     <input class="sl4-search" id="sl4-search" placeholder="Suche nach Name, Asset, Typ..." type="text">
@@ -188,6 +189,7 @@ let shadowData = null;
 let pipelineStatus = null;
 let rdData = null;
 let boardData = null;
+let eventsData = null;
 let currentTab = 'deploy';
 let currentFilter = 'all';
 let sortCol = 'score';
@@ -221,6 +223,11 @@ async function loadData() {
     const br = await fetch('/api/strategy-lab/strategy_board.json?_=' + Date.now());
     boardData = await br.json();
   } catch(e) { boardData = null; }
+  // Load Event Engine export
+  try {
+    const ev = await fetch('/api/strategy-lab/events_engine.json?_=' + Date.now());
+    eventsData = await ev.json();
+  } catch(e) { eventsData = null; }
   render();
 }
 
@@ -281,6 +288,10 @@ function render() {
   if (boardData && boardData.available) {
     document.getElementById('badge-stratege').textContent = (boardData.decisions || []).length;
   }
+  if (eventsData) {
+    const _n24 = (eventsData.calendar_next14d || []).filter(e => e.epoch <= Date.now()/1000 + 86400).length;
+    document.getElementById('badge-events').textContent = _n24;
+  }
   renderTable();
 }
 
@@ -288,6 +299,7 @@ function renderTable() {
   if (currentTab === 'rdlive') { renderRdLive(); return; }
   if (currentTab === 'shadow') { renderShadowDashboard(); return; }
   if (currentTab === 'stratege') { renderStrategeBoard(); return; }
+  if (currentTab === 'events') { renderEventsEngine(); return; }
   let data = [];
   let columns = [];
   if (currentTab === 'deploy') { data = catalogData.deploy; columns = deployCols; }
@@ -2255,6 +2267,85 @@ function renderStrategeBoard() {
     html += '</tbody></table></div>';
   }
 
+// ── 📅 Events (Event Engine) ──
+function renderEventsEngine() {
+  const el = document.getElementById('sl4-content');
+  if (!eventsData) {
+    el.innerHTML = '<div class="rd-section-title">📅 Event-Engine</div><div style="color:var(--dim)">Keine Daten (events_engine.json nicht erreichbar).</div>';
+    return;
+  }
+  const d = eventsData;
+  const meta = d.meta || {};
+  const upd = meta.generated_at ? new Date(meta.generated_at).toLocaleString('de-DE') : '—';
+  let html = '<div class="rd-section-title">📅 Event-Engine <span style="font-size:0.75rem;color:var(--dim)">'
+    + (meta.events_total || 0) + ' Events · ' + (meta.hypotheses || 0) + ' Hypothesen · Stand ' + esc(upd) + '</span></div>';
+  const cal = d.calendar_next14d || [];
+  const now = Date.now()/1000;
+  const soon = cal.filter(e => e.epoch <= now + 48*3600);
+  html += '<div class="rd-section-title" style="margin-top:0.6rem">🗓️ Kalender — nächste 48 h</div>';
+  if (soon.length) {
+    html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Zeit (Berlin)</th><th>Event</th><th>Kat.</th><th>Währung</th><th>Impact</th></tr></thead><tbody>';
+    for (const e of soon.slice(0, 40)) {
+      const imp = e.impact === 'High' ? '<span class="gate gate-fail">High</span>'
+        : (e.impact === 'Medium' ? '<span class="gate" style="background:rgba(210,153,34,0.15);color:#d29922">Med</span>'
+        : '<span class="gate" style="background:rgba(107,114,128,0.1);color:var(--dim)">Low</span>');
+      html += '<tr><td style="width:130px">' + esc(e.ts_berlin || '') + '</td><td>' + esc(e.title || '')
+        + '</td><td style="width:110px">' + esc(e.category || '—') + '</td><td style="width:60px">' + esc(e.currency || '')
+        + '</td><td style="width:70px">' + imp + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+  } else {
+    html += '<div style="color:var(--dim)">Keine Events in den nächsten 48 h.</div>';
+  }
+  const later = cal.filter(e => e.epoch > now + 48*3600 && (e.impact === 'High' || e.impact === 'Medium'));
+  if (later.length) {
+    html += '<div class="rd-section-title" style="margin-top:0.8rem">📆 Danach (bis 14 Tage) — High/Medium</div>';
+    html += '<div class="sl4-table-wrap"><table class="sl4-table"><tbody>';
+    for (const e of later.slice(0, 60)) {
+      html += '<tr><td style="width:130px">' + esc((e.ts_berlin || '').slice(5)) + '</td><td>' + esc(e.title || '')
+        + '</td><td style="width:110px">' + esc(e.category || '') + '</td><td style="width:60px">' + esc(e.currency || '') + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+  }
+  const hyps = d.hypotheses || [];
+  const stIcon = {candidate:'🟡', observing:'👁️', active:'🟢', rejected:'❌'};
+  html += '<div class="rd-section-title" style="margin-top:0.8rem">🎯 Hypothesen-Registry (' + hyps.length + ')</div>';
+  html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Status</th><th>ID</th><th>Name</th><th>Scope</th><th>Notiz</th></tr></thead><tbody>';
+  for (const h of hyps) {
+    html += '<tr><td style="width:110px">' + (stIcon[h.status] || '') + ' ' + esc(h.status || '') + '</td><td style="font-size:0.72rem">'
+      + esc(h.hid || '') + '</td><td>' + esc(h.name || '') + '</td><td style="font-size:0.78rem">' + esc(h.scope || '')
+      + '</td><td style="color:var(--dim);font-size:0.78rem">' + esc(h.summary || '') + '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  const lf = d.latest_findings && d.latest_findings.detail ? d.latest_findings.detail : null;
+  if (lf) {
+    html += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyze-Run ('
+      + esc(lf.trades || '') + ' · ' + (lf.n_trades || 0) + ' Trades)</div>';
+    if (lf.gate_backtests) {
+      html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th class="num">blockt</th><th class="num">Δ€</th><th class="num">blk Ø</th></tr></thead><tbody>';
+      for (const g of lf.gate_backtests) {
+        html += '<tr><td>' + esc(g.name) + '</td><td class="num">' + g.blocked_n + '</td><td class="num '
+          + (g.delta_total > 0 ? 'pos' : 'neg') + '">' + (g.delta_total > 0 ? '+' : '') + g.delta_total.toFixed(0)
+          + '€</td><td class="num">' + (g.blocked_mean != null ? g.blocked_mean.toFixed(2) + '€' : '—') + '</td></tr>';
+      }
+      html += '</tbody></table></div>';
+    }
+    if (lf.top_correlations) {
+      const sig = lf.top_correlations.filter(c => c.p < 0.05).slice(0, 12);
+      if (sig.length) {
+        html += '<div style="margin-top:0.5rem;font-size:0.8rem;color:var(--dim)">Top-Funde (p &lt; 0.05) — FDR ✅ = multiple-testing-fest</div>';
+        html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Fund</th><th class="num">n</th><th class="num">Δ€</th><th class="num">p</th><th>FDR</th></tr></thead><tbody>';
+        for (const c of sig) {
+          html += '<tr><td>' + esc(c.label) + '</td><td class="num">' + c.n + '</td><td class="num '
+            + (c.delta > 0 ? 'pos' : 'neg') + '">' + (c.delta > 0 ? '+' : '') + c.delta.toFixed(2)
+            + '€</td><td class="num">' + c.p.toFixed(4) + '</td><td>' + (c.fdr_pass ? '✅' : '—') + '</td></tr>';
+        }
+        html += '</tbody></table></div>';
+      }
+    }
+  }
+  html += '<div style="margin-top:1rem;font-size:0.75rem;color:var(--dim)">Event Engine v' + (meta.engine_version || '?')
+    + ' · Engine-Funde sind in-sample → Anwendung nur über Lab/WFO/Shadow (Spec §10) · Kommandos: Skill <code>event-engine</code></div>';
   el.innerHTML = html;
 }
 
