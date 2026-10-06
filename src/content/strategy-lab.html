@@ -2312,14 +2312,17 @@ function renderEventsEngine() {
   }
   const hyps = d.hypotheses || [];
   const stIcon = {candidate:'🟡', observing:'👁️', active:'🟢', rejected:'❌'};
-  html += '<div class="rd-section-title" style="margin-top:0.8rem">🎯 Hypothesen-Registry (' + hyps.length + ')</div>';
-  html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Status</th><th>ID</th><th>Name</th><th>Scope</th><th>Notiz</th></tr></thead><tbody>';
+  const stColor = {candidate:'#e8b84a', observing:'#5ba3d9', active:'#39b54a', rejected:'#a05555'};
+  const stLabel = {candidate:'Kandidat — Gate-Test ausstehend', observing:'Beobachtung — läuft', active:'aktiv', rejected:'verworfen — dokumentiert'};
+  html += '<div class="rd-section-title" style="margin-top:0.8rem">🎯 Hypothesen-Registry (' + hyps.length + ') — was funktioniert, was nicht, was als Nächstes</div>';
   for (const h of hyps) {
-    html += '<tr><td style="width:110px">' + (stIcon[h.status] || '') + ' ' + esc(h.status || '') + '</td><td style="font-size:0.72rem">'
-      + esc(h.hid || '') + '</td><td>' + esc(h.name || '') + '</td><td style="font-size:0.78rem">' + esc(h.scope || '')
-      + '</td><td style="color:var(--dim);font-size:0.78rem">' + esc(h.summary || '') + '</td></tr>';
+    const col = stColor[h.status] || '#666';
+    html += '<div style="border-left:3px solid ' + col + ';padding:0.5rem 0.7rem;margin:0.4rem 0;background:rgba(255,255,255,0.025);border-radius:5px">';
+    html += '<div style="font-size:0.88rem"><b>' + (stIcon[h.status] || '') + ' ' + esc(h.name || '') + '</b>';
+    html += '<span style="color:var(--dim);font-size:0.72rem"> · ' + esc(h.hid || '') + ' · Bereich: ' + esc(h.scope || '') + ' · ' + esc(stLabel[h.status] || h.status || '') + '</span></div>';
+    html += '<div style="font-size:0.8rem;margin-top:0.25rem;line-height:1.5">' + esc(h.note || h.summary || '') + '</div>';
+    html += '</div>';
   }
-  html += '</tbody></table></div>';
   const lf = d.latest_findings && d.latest_findings.detail ? d.latest_findings.detail : null;
   if (lf) {
     html += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyze-Run ('
