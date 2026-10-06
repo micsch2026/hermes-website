@@ -2325,28 +2325,37 @@ function renderEventsEngine() {
   }
   const lf = d.latest_findings && d.latest_findings.detail ? d.latest_findings.detail : null;
   if (lf) {
-    html += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyze-Run ('
-      + esc(lf.trades || '') + ' · ' + (lf.n_trades || 0) + ' Trades)</div>';
+    html += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyse-Lauf ('
+      + esc(lf.trades || '') + ' · ' + (lf.n_trades || 0) + ' Trades geprüft)</div>';
+    if (lf.narrative) {
+      html += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.6rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">' + esc(lf.narrative) + '</div>';
+    }
     if (lf.gate_backtests) {
-      html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th class="num">blockt</th><th class="num">Δ€</th><th class="num">blk Ø</th></tr></thead><tbody>';
+      html += '<div style="font-size:0.82rem;margin-top:0.4rem"><b>Gate-Backtests</b> — was hätte ein Entry-Blackout auf die Kandidaten-Gates gebracht?</div>';
+      html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th class="num">Geblockt</th><th class="num">Δ€ (positiv = Blocken hilft)</th><th class="num">Ø/Trade</th><th>Was heißt das / nächster Schritt</th></tr></thead><tbody>';
       for (const g of lf.gate_backtests) {
         html += '<tr><td>' + esc(g.name) + '</td><td class="num">' + g.blocked_n + '</td><td class="num '
           + (g.delta_total > 0 ? 'pos' : 'neg') + '">' + (g.delta_total > 0 ? '+' : '') + g.delta_total.toFixed(0)
-          + '€</td><td class="num">' + (g.blocked_mean != null ? g.blocked_mean.toFixed(2) + '€' : '—') + '</td></tr>';
+          + '€</td><td class="num">' + (g.blocked_mean != null ? g.blocked_mean.toFixed(2) + '€' : '—') + '</td>'
+          + '<td style="font-size:0.78rem;color:var(--dim);line-height:1.45">' + esc(g.desc || '') + '</td></tr>';
       }
       html += '</tbody></table></div>';
     }
     if (lf.top_correlations) {
       const sig = lf.top_correlations.filter(c => c.p < 0.05).slice(0, 12);
       if (sig.length) {
-        html += '<div style="margin-top:0.5rem;font-size:0.8rem;color:var(--dim)">Top-Funde (p &lt; 0.05) — FDR ✅ = multiple-testing-fest</div>';
-        html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Fund</th><th class="num">n</th><th class="num">Δ€</th><th class="num">p</th><th>FDR</th></tr></thead><tbody>';
+        html += '<div style="margin-top:0.7rem;font-size:0.82rem"><b>Einzelfunde</b> (p &lt; 0.05) — Trades rund um Termine vs. ruhige Marktphasen:</div>';
         for (const c of sig) {
-          html += '<tr><td>' + esc(c.label) + '</td><td class="num">' + c.n + '</td><td class="num '
-            + (c.delta > 0 ? 'pos' : 'neg') + '">' + (c.delta > 0 ? '+' : '') + c.delta.toFixed(2)
-            + '€</td><td class="num">' + c.p.toFixed(4) + '</td><td>' + (c.fdr_pass ? '✅' : '—') + '</td></tr>';
+          const dbadge = (c.delta > 0 ? 'pos' : 'neg');
+          html += '<div style="padding:0.45rem 0.65rem;margin:0.35rem 0;background:rgba(255,255,255,0.02);border-radius:5px">';
+          html += '<div style="font-size:0.83rem"><b>' + esc(c.cat_plain || c.cat || '') + '</b> <span style="color:var(--dim)">· ' + esc(c.win_txt || '') + '</span>'
+            + '<span style="font-size:0.72rem;color:var(--dim)"> · n=' + c.n + ' · Δ <span class="' + dbadge + '">' + (c.delta > 0 ? '+' : '') + c.delta.toFixed(2) + '€/Trade</span> · p=' + c.p.toFixed(4) + ' · ' + (c.fdr_pass ? 'FDR ✅' : 'FDR —') + '</span></div>';
+          html += '<div style="font-size:0.78rem;line-height:1.5;margin-top:0.2rem">' + esc(c.desc || '') + '</div>';
+          if (c.hint) {
+            html += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.2rem">💡 ' + esc(c.hint) + '</div>';
+          }
+          html += '</div>';
         }
-        html += '</tbody></table></div>';
       }
     }
   }
