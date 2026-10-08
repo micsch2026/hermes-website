@@ -21,6 +21,7 @@ SRC = SITE / "src/content/supervisor.html"
 
 REQUIRED_IDS = [
     "sv-meta", "sv-error", "sv-kpis",
+    "sv-missions", "sv-missions-count",
     "sv-recs-count", "sv-recs-list",
     "sv-board", "sv-board-at",
     "sv-changes-count", "sv-changes",

@@ -199,6 +199,53 @@ def main() -> int:
         "notes": wr.get("notes") or [],
     }
 
+    # ---- Missionen (Supervisor-Missionslayer) ----
+    mdir = Path("/root/strategy-lab/data/missions")
+    src("missions", mdir, 24 * 3600)
+    missions_active, missions_proposed = [], []
+    for f in sorted(mdir.glob("m*.json")):
+        mm = _read_json(f, {}) or {}
+        if not mm.get("mission_id"):
+            continue
+        stages = mm.get("stages", [])
+        item = {
+            "id": mm.get("mission_id"), "title": mm.get("title"),
+            "status": mm.get("status"), "goal": (mm.get("goal") or "")[:220],
+            "done": sum(1 for s in stages if s.get("status") == "done"),
+            "total": len(stages),
+            "stages": [{"id": s.get("id"), "title": s.get("title"), "type": s.get("type"),
+                        "status": s.get("status"),
+                        "gate_kind": (s.get("gate") or {}).get("kind"),
+                        "gate_state": (s.get("gate") or {}).get("state")}
+                       for s in stages],
+            "gates_open": [{"stage": s.get("id"),
+                            "kind": (s.get("gate") or {}).get("kind"),
+                            "reason": (s.get("gate") or {}).get("reason")}
+                           for s in stages
+                           if (s.get("gate") or {}).get("state") == "pending"],
+        }
+        if mm.get("status") in ("active", "blocked"):
+            missions_active.append(item)
+        elif mm.get("status") == "proposed":
+            missions_proposed.append(item)
+    proposals_open = []
+    try:
+        with open(mdir / "proposals.jsonl", encoding="utf-8") as fh:
+            for ln in fh:
+                ln = ln.strip()
+                if not ln:
+                    continue
+                try:
+                    p = json.loads(ln)
+                except ValueError:
+                    continue
+                if p.get("status") == "open":
+                    proposals_open.append({"title": p.get("title"),
+                                           "goal": (p.get("goal") or "")[:180],
+                                           "by": p.get("by")})
+    except OSError:
+        pass
+
     doc = {
         "schema": "supervisor_v1",
         "generated_at": _iso(NOW),
@@ -224,6 +271,11 @@ def main() -> int:
         "gate_evidence": {
             "generated_at": geo.get("generated_at"),
             "candidates": geo.get("candidates") or [],
+        },
+        "missions": {
+            "active": missions_active,
+            "proposed": missions_proposed,
+            "proposals_open": proposals_open,
         },
         "ops": ops,
     }

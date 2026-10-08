@@ -59,6 +59,14 @@
   .sv-src.ok   { border-color: var(--c-ok); color: var(--c-ok); }
   .sv-src.warn { border-color: var(--c-warn); color: var(--c-warn); }
   .sv-src.err  { border-color: var(--c-err); color: var(--c-err); }
+
+  .sv-mission { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); margin-bottom: var(--s-3); }
+  .sv-m-title { font-weight: 600; margin-bottom: 2px; }
+  .sv-bar { height: 8px; background: var(--c-surface-2); border-radius: 999px; overflow: hidden; margin: var(--s-2) 0 2px; }
+  .sv-bar-fill { height: 100%; background: var(--c-accent); }
+  .sv-chip.ok { border-color: var(--c-ok); color: var(--c-ok); }
+  .sv-chip.warn { border-color: var(--c-warn); color: var(--c-warn); }
+  .sv-chip.err { border-color: var(--c-err); color: var(--c-err); }
 </style>
 <!--/HEAD-->
 <!--BODY-->
@@ -73,6 +81,11 @@
   <div id="sv-error" class="sv-error" style="display:none"></div>
 
   <div class="sv-kpis" id="sv-kpis"></div>
+
+  <section class="sv-sec">
+    <h2>🚀 Missionen <span class="sv-count" id="sv-missions-count"></span></h2>
+    <div id="sv-missions"></div>
+  </section>
 
   <section class="sv-sec">
     <h2>📌 Offene Empfehlungen <span class="sv-count" id="sv-recs-count"></span></h2>
@@ -211,6 +224,46 @@
             '<span class="sv-badge">' + esc(i.action) + '</span>' +
             '<span class="sv-rx">' + esc(i.text) + '</span></div>';
         }).join('');
+
+    // ---- Missionen ----
+    var mi = d.missions || { active: [], proposed: [], proposals_open: [] };
+    var mAll = (mi.active || []).concat(mi.proposed || []);
+    $('sv-missions-count').textContent =
+      '(' + (mi.active || []).length + ' aktiv · ' + (mi.proposed || []).length + ' vorgeschlagen)';
+    function missionCard(m, offered) {
+      var pct = m.total ? Math.round(100 * m.done / m.total) : 0;
+      var stages = (m.stages || []).map(function (s) {
+        var cls = s.status === 'done' ? 'ok' : (s.status === 'running' ? 'warn'
+                  : (s.status === 'blocked' ? 'err' : ''));
+        var g = s.gate_state === 'pending' ? ' 🔴' : '';
+        return '<span class="sv-chip ' + cls + '" title="' + esc(s.type + ' · ' + s.status) + '">' +
+               esc(s.id) + g + '</span>';
+      }).join(' ');
+      var gates = (m.gates_open || []).map(function (g) {
+        return '<div class="sv-li">🔴 GATE ' + esc(g.stage) + ' (' + esc(g.kind) + '): ' +
+               esc(g.reason) + '</div>';
+      }).join('');
+      return '<div class="sv-mission">' +
+        '<div class="sv-m-title">' + esc(m.title) +
+        ' <span class="sv-badge ' + (m.status === 'active' ? 'ok' : (m.status === 'blocked' ? 'err' : 'warn')) + '">' +
+        esc(m.status) + '</span>' +
+        (offered ? ' <span class="sv-dim">wartet auf Start-Freigabe</span>' : '') + '</div>' +
+        '<div class="sv-dim">' + esc(m.goal) + '</div>' +
+        '<div class="sv-bar"><div class="sv-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="sv-dim">' + m.done + '/' + m.total + ' Etappen · ' + pct + '%</div>' +
+        '<div class="sv-chips">' + stages + '</div>' + gates + '</div>';
+    }
+    $('sv-missions').innerHTML =
+      (mAll.length === 0
+        ? '<div class="sv-dim">keine Missionen — Start per „Mission: &lt;Ziel&gt;"</div>'
+        : (mi.active || []).map(function (m) { return missionCard(m, false); }).join('') +
+          (mi.proposed || []).map(function (m) { return missionCard(m, true); }).join('')) +
+      ((mi.proposals_open || []).length
+        ? '<div class="sv-list">' + mi.proposals_open.map(function (p) {
+            return '<div class="sv-li">💡 Vorschlag [' + esc(p.by) + '] ' + esc(p.title) +
+                   ' — <span class="sv-dim">' + esc(p.goal) + '</span></div>';
+          }).join('') + '</div>'
+        : '');
 
     // ---- Board-Beschlüsse ----
     var ap = ch.applied || {};
