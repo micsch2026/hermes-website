@@ -1,0 +1,350 @@
+<!--TITLE:Supervisor — Hermes-->
+<!--HEAD-->
+<style>
+  .sv-wrap { max-width: 1200px; margin: 0 auto; }
+  .sv-header { margin-bottom: var(--s-5); }
+  .sv-header h1 { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--s-1); }
+  .sv-sub { color: var(--c-text-muted); font-size: var(--text-sm); margin: 0 0 var(--s-2); }
+  .sv-meta { color: var(--c-text-dim); font-size: var(--text-xs); }
+  .sv-meta b { color: var(--c-text-2); font-weight: 600; }
+  .sv-error { background: var(--c-err-bg); border: 1px solid var(--c-err); color: var(--c-err); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); margin-bottom: var(--s-4); font-size: var(--text-sm); }
+
+  .sv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-6); }
+  .sv-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-4) var(--s-5); }
+  .sv-card .sv-k { font-size: var(--text-xs); color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .sv-card .sv-v { font-size: var(--text-xl); font-weight: 700; margin: 2px 0; }
+  .sv-card .sv-s { font-size: var(--text-xs); color: var(--c-text-dim); }
+  .sv-card.ok   { border-left: 3px solid var(--c-ok); }
+  .sv-card.warn { border-left: 3px solid var(--c-warn); }
+  .sv-card.err  { border-left: 3px solid var(--c-err); }
+
+  .sv-sec { margin-bottom: var(--s-7, 2rem); }
+  .sv-sec h2 { font-size: var(--text-lg); margin: 0 0 var(--s-3); border-bottom: 1px solid var(--c-border); padding-bottom: var(--s-2); }
+  .sv-sec h3.sv-h3 { font-size: var(--text-md); margin: var(--s-3) 0 var(--s-2); color: var(--c-text-2); }
+  .sv-count { color: var(--c-text-dim); font-weight: 400; font-size: var(--text-sm); }
+  .sv-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-5); }
+  @media (max-width: 900px) { .sv-2col { grid-template-columns: 1fr; } }
+
+  .sv-recs { display: grid; gap: var(--s-2); }
+  .sv-rec { display: flex; gap: var(--s-3); align-items: baseline; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); font-size: var(--text-sm); }
+  .sv-rec .sv-rt { font-family: monospace; color: var(--c-text-2); min-width: 110px; }
+  .sv-rec .sv-rx { color: var(--c-text-muted); flex: 1; }
+  .sv-rec.p-high { border-left: 3px solid var(--c-err); }
+  .sv-rec.p-mid  { border-left: 3px solid var(--c-warn); }
+  .sv-rec.p-low  { border-left: 3px solid var(--c-border-2); }
+
+  .sv-badge { display: inline-block; font-size: var(--text-xs); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--c-border-2); color: var(--c-text-muted); background: var(--c-surface-2); white-space: nowrap; }
+  .sv-badge.advisor { border-color: #6495ed66; color: #9cc0ff; }
+  .sv-badge.decay   { border-color: var(--c-warn); color: var(--c-warn); }
+  .sv-badge.promote { border-color: #b38cff66; color: #c9aaff; }
+  .sv-badge.ok   { border-color: var(--c-ok); color: var(--c-ok); }
+  .sv-badge.warn { border-color: var(--c-warn); color: var(--c-warn); }
+  .sv-badge.err  { border-color: var(--c-err); color: var(--c-err); }
+
+  .sv-chips { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-2) 0; }
+  .sv-chip { font-size: var(--text-xs); background: var(--c-surface-2); border: 1px solid var(--c-border); border-radius: var(--r-sm); padding: 2px 8px; color: var(--c-text-2); font-family: monospace; }
+
+  table.sv-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  table.sv-table th { text-align: left; color: var(--c-text-muted); font-weight: 600; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border); }
+  table.sv-table td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--c-border); }
+  table.sv-table tr:last-child td { border-bottom: none; }
+  .sv-pos { color: var(--c-ok); } .sv-neg { color: var(--c-err); }
+
+  .sv-list { display: grid; gap: var(--s-1); font-size: var(--text-sm); }
+  .sv-list .sv-li { color: var(--c-text-2); }
+  .sv-dim { color: var(--c-text-dim); font-size: var(--text-xs); }
+
+  .sv-sources { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
+  .sv-src { font-size: var(--text-xs); border: 1px solid var(--c-border); border-radius: var(--r-sm); padding: 2px 8px; color: var(--c-text-dim); background: var(--c-surface); }
+  .sv-src.ok   { border-color: var(--c-ok); color: var(--c-ok); }
+  .sv-src.warn { border-color: var(--c-warn); color: var(--c-warn); }
+  .sv-src.err  { border-color: var(--c-err); color: var(--c-err); }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="container sv-wrap">
+  <div class="sv-header">
+    <h1>🛰️ Supervisor</h1>
+    <p class="sv-sub">Selbststeuerung des Systems — Wochen-Review, offene Empfehlungen,
+      autonome Änderungen &amp; Wirksamkeit. Quellen: Strategy-Board,
+      Advisor/Decay/Rotation, Ops-Review.</p>
+    <div class="sv-meta" id="sv-meta">Lade …</div>
+  </div>
+  <div id="sv-error" class="sv-error" style="display:none"></div>
+
+  <div class="sv-kpis" id="sv-kpis"></div>
+
+  <section class="sv-sec">
+    <h2>📌 Offene Empfehlungen <span class="sv-count" id="sv-recs-count"></span></h2>
+    <div id="sv-recs-list" class="sv-recs"></div>
+  </section>
+
+  <section class="sv-sec">
+    <h2>🗳️ Letzte Board-Beschlüsse <span class="sv-count" id="sv-board-at"></span></h2>
+    <div id="sv-board"></div>
+  </section>
+
+  <div class="sv-2col">
+    <section class="sv-sec">
+      <h2>📝 Änderungs-Journal <span class="sv-count" id="sv-changes-count"></span></h2>
+      <div id="sv-changes"></div>
+    </section>
+    <section class="sv-sec">
+      <h2>🎯 Gate-Evidenz <span class="sv-count" id="sv-gates-count"></span></h2>
+      <div id="sv-gates"></div>
+    </section>
+  </div>
+
+  <section class="sv-sec">
+    <h2>📊 Wochen-Review <span class="sv-count" id="sv-week"></span></h2>
+    <div class="sv-2col">
+      <div>
+        <h3 class="sv-h3">Demo-Bots</h3>
+        <div id="sv-demo"></div>
+      </div>
+      <div>
+        <h3 class="sv-h3">Live-Konten</h3>
+        <div id="sv-live"></div>
+        <h3 class="sv-h3">Markt &amp; Kosten</h3>
+        <div id="sv-macro"></div>
+      </div>
+    </div>
+    <h3 class="sv-h3">Hebel / Meilensteine</h3>
+    <div id="sv-lever"></div>
+  </section>
+
+  <section class="sv-sec">
+    <h2>🩺 Ops &amp; Datenfrische</h2>
+    <div id="sv-ops"></div>
+    <div class="sv-sources" id="sv-sources"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var API = window.location.origin + '/api/supervisor/supervisor_status.json';
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtEur(v) {
+    if (v == null || isNaN(v)) return '—';
+    return (v >= 0 ? '+' : '') + Number(v).toFixed(2) + ' €';
+  }
+  function eurCls(v) { return v > 0 ? 'sv-pos' : (v < 0 ? 'sv-neg' : ''); }
+  function fmtAge(s) {
+    if (s == null) return '?';
+    if (s < 90) return s + ' s';
+    if (s < 5400) return Math.round(s / 60) + ' min';
+    if (s < 172800) return Math.round(s / 3600) + ' h';
+    return Math.round(s / 86400) + ' d';
+  }
+  function dt(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('de-DE', {
+        timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) { return String(iso); }
+  }
+  function kvRow(k, v, cls) {
+    return '<div class="sv-li"><span class="sv-dim">' + esc(k) + ':</span> ' +
+           '<span class="' + (cls || '') + '">' + v + '</span></div>';
+  }
+
+  function render(d) {
+    $('sv-meta').innerHTML = 'Woche <b>' + esc(d.week) + '</b> · Datenstand <b>' +
+      dt(d.generated_at) + '</b> · Auto-Refresh 120 s';
+
+    // ---- KPIs ----
+    var recs = d.recommendations || { n: 0, items: [] };
+    var rot = d.rotation || {};
+    var ch = d.changes || {};
+    var port = (d.weekly || {}).portfolio || {};
+    var demo = port.demo || {};
+    var demoPnl7 = (demo.bots || []).reduce(function (a, b) { return a + (b.pnl7d || 0); }, 0);
+    var liveB = ((d.weekly || {}).live_accounts || {}).bots || [];
+    var liveSum = liveB.reduce(function (a, b) { return a + (b.balance || 0); }, 0);
+    var highs = recs.items.filter(function (i) { return i.priority === 'high'; }).length;
+    var typ = ch.by_typ || {};
+    var typTxt = Object.keys(typ).map(function (k) { return k + ' ' + typ[k]; }).join(' · ');
+    var lastFill = rot.last_fill;
+    $('sv-kpis').innerHTML =
+      '<div class="sv-card ' + (recs.n > 0 ? 'warn' : 'ok') + '">' +
+        '<div class="sv-k">Offene Empfehlungen</div>' +
+        '<div class="sv-v">' + (recs.n || 0) + '</div>' +
+        '<div class="sv-s">' + highs + ' high-priority · Advisor/Decay/Blockaden</div></div>' +
+      '<div class="sv-card ' + (rot.runs_7d > 0 ? 'ok' : 'warn') + '">' +
+        '<div class="sv-k">Rotation wirksam (7 d)</div>' +
+        '<div class="sv-v">' + (rot.runs_7d || 0) + ' Läufe</div>' +
+        '<div class="sv-s">' + (rot.fills_14d || 0) + ' Fills/14 d' +
+        (lastFill ? (' · letzter ' + esc(lastFill.bot) + '/' + esc(lastFill.slot) +
+                     ' #' + esc(lastFill.sid)) : '') + '</div></div>' +
+      '<div class="sv-card">' +
+        '<div class="sv-k">Autonome Änderungen ' + esc(d.week) + '</div>' +
+        '<div class="sv-v">' + (ch.total || 0) + '</div>' +
+        '<div class="sv-s">' + esc(typTxt) + '</div></div>' +
+      '<div class="sv-card ' + (demoPnl7 >= 0 ? 'ok' : 'err') + '">' +
+        '<div class="sv-k">Demo 7 d / Live-Stand</div>' +
+        '<div class="sv-v ' + eurCls(demoPnl7) + '">' + fmtEur(demoPnl7) + '</div>' +
+        '<div class="sv-s">Live: ' + fmtEur(liveSum).replace('+', '') + ' auf ' +
+        liveB.length + ' Konten</div></div>';
+
+    // ---- Empfehlungen ----
+    var items = recs.items || [];
+    $('sv-recs-count').textContent = '(' + items.length + ')';
+    var order = { high: 0, mid: 1, low: 2 };
+    items = items.slice().sort(function (a, b) {
+      return (order[a.priority] != null ? order[a.priority] : 9) -
+             (order[b.priority] != null ? order[b.priority] : 9);
+    });
+    $('sv-recs-list').innerHTML = items.length === 0
+      ? '<div class="sv-dim">Keine offenen Empfehlungen 🎉</div>'
+      : items.map(function (i) {
+          var pr = i.priority === 'high' ? 'p-high' : (i.priority === 'mid' ? 'p-mid' : 'p-low');
+          return '<div class="sv-rec ' + pr + '">' +
+            '<span class="sv-badge ' + esc(i.source) + '">' + esc(i.source) + '</span>' +
+            '<span class="sv-rt">' + esc(i.target) + '</span>' +
+            '<span class="sv-badge">' + esc(i.action) + '</span>' +
+            '<span class="sv-rx">' + esc(i.text) + '</span></div>';
+        }).join('');
+
+    // ---- Board-Beschlüsse ----
+    var ap = ch.applied || {};
+    $('sv-board-at').textContent = ap.applied_at ? ('angewandt ' + dt(ap.applied_at)) : '';
+    function chips(arr, mapFn) {
+      if (!arr || !arr.length) return '<span class="sv-dim">keine</span>';
+      return '<div class="sv-chips">' + arr.map(function (x) {
+        return '<span class="sv-chip">' + esc(mapFn ? mapFn(x) : x) + '</span>';
+      }).join('') + '</div>';
+    }
+    var skipped = ap.seeds_skipped || [];
+    $('sv-board').innerHTML =
+      kvRow('Seeds neu (' + ((ap.seeds_new || []).length) + ')', '') +
+      chips(ap.seeds_new) +
+      kvRow('Seeds verworfen (' + skipped.length + ')', '') +
+      (skipped.length ? '<div class="sv-list">' + skipped.map(function (s) {
+        return '<div class="sv-dim">⏭ ' + esc(s[0]) + ' — ' + esc(s[1]) + '</div>';
+      }).join('') + '</div>' : '<span class="sv-dim">keine</span>') +
+      kvRow('Cluster-Edits (' + ((ap.cluster_edits || []).length) + ')', '') +
+      chips(ap.cluster_edits, function (e) { return e[1]; }) +
+      kvRow('Tier-1-Promotions', '') + chips(ap.tiers_added) +
+      kvRow('Watches (' + ((ap.watches_added || []).length) + ' neu, ' +
+            ((ap.watches_closed || []).length) + ' geschlossen)', '') +
+      chips((ap.watches_added || []).map(function (w) {
+        return '#' + w.sid + ' (' + w.kind + ')';
+      }));
+
+    // ---- Änderungs-Journal ----
+    $('sv-changes-count').textContent = '(' + (ch.total || 0) + ' gesamt)';
+    var recent = (ch.recent || []).slice().reverse();
+    $('sv-changes').innerHTML =
+      '<div class="sv-chips">' + Object.keys(typ).map(function (k) {
+        return '<span class="sv-badge">' + esc(k) + ' ' + typ[k] + '</span>';
+      }).join('') + '</div>' +
+      '<div class="sv-list">' + recent.map(function (e) {
+        return '<div class="sv-li"><span class="sv-badge">' + esc(e.typ) + '</span> ' +
+          '<span class="sv-rt" style="font-family:monospace">' + esc(e.key) + '</span> ' +
+          '<span class="sv-dim">' + esc(e.datum) + '</span></div>';
+      }).join('') + '</div>';
+
+    // ---- Gate-Evidenz ----
+    var ge = (d.gate_evidence || {}).candidates || [];
+    $('sv-gates-count').textContent = '(' + ge.length + ')';
+    var rows = ge.map(function (c) {
+      var st = c.stage === 'belastbar' ? 'ok' : (c.stage === 'sammelt' ? 'warn' : '');
+      return '<tr><td>' + esc(c.name) + '</td>' +
+        '<td><span class="sv-badge ' + st + '">' + esc(c.stage_sym || '') + ' ' + esc(c.stage) + '</span></td>' +
+        '<td>' + (c.blocked_n || 0) + '</td>' +
+        '<td class="' + eurCls(c.saved_eur) + '">' + fmtEur(c.saved_eur).replace('+', '') + '</td>' +
+        '<td class="sv-dim">' + esc(c.recommendation) + '</td></tr>';
+    }).join('');
+    $('sv-gates').innerHTML = ge.length === 0 ? '<div class="sv-dim">keine Evidenz</div>' :
+      '<table class="sv-table"><thead><tr><th>Gate</th><th>Stage</th><th>geblockt</th>' +
+      '<th>gespart</th><th>Empfehlung</th></tr></thead><tbody>' + rows + '</tbody></table>';
+
+    // ---- Wochen-Review ----
+    $('sv-week').textContent = '· ' + esc(d.week);
+    var demoRows = (demo.bots || []).map(function (b) {
+      return '<tr><td>' + esc(b.bot) + '</td><td>' + esc(b.holder != null ? '#' + b.holder : '—') +
+        '</td><td>' + (b.equity != null ? Number(b.equity).toFixed(0) + ' €' : '—') + '</td>' +
+        '<td class="' + eurCls(b.pnl7d) + '">' + fmtEur(b.pnl7d) + '</td>' +
+        '<td>' + (b.pf28d != null ? Number(b.pf28d).toFixed(2) : '—') + '</td>' +
+        '<td>' + (b.trades28d != null ? b.trades28d : '—') + '</td></tr>';
+    }).join('');
+    $('sv-demo').innerHTML =
+      '<table class="sv-table"><thead><tr><th>Bot</th><th>Halter</th><th>Equity</th>' +
+      '<th>P&amp;L 7 d</th><th>PF 28 d</th><th>Trades 28 d</th></tr></thead><tbody>' +
+      demoRows + '</tbody></table>';
+
+    var liveRows = liveB.map(function (b) {
+      var pst = b.parity_state || '';
+      var cls = pst.indexOf('ok') === 0 ? 'ok' : (pst === 'live_blocked' ? 'warn' : '');
+      return '<div class="sv-li"><b>' + esc(b.bot) + '</b> · ' +
+        Number(b.balance || 0).toFixed(0) + ' € · ' +
+        '<span class="sv-badge ' + cls + '">' + esc(pst) + '</span>' +
+        (b.note ? ' <span class="sv-dim">' + esc(b.note) + '</span>' : '') + '</div>';
+    }).join('');
+    $('sv-live').innerHTML = '<div class="sv-list">' + liveRows + '</div>';
+
+    var macro = (d.weekly || {}).macro || {};
+    var costs = (d.weekly || {}).costs || {};
+    var g = (costs.guard_trend || [{}])[0] || {};
+    var tca = costs.tca_latest || {};
+    var tax = costs.tax || {};
+    $('sv-macro').innerHTML = '<div class="sv-list">' +
+      kvRow('VIX', macro.vix != null ? Number(macro.vix).toFixed(1) : '—') +
+      kvRow('US 10Y', macro.us_10y != null ? Number(macro.us_10y).toFixed(2) + ' %' : '—') +
+      kvRow('Spread 10Y/2Y', macro.spread_10y2y != null ? Number(macro.spread_10y2y).toFixed(2) : '—') +
+      kvRow('Guard-Counterfactual', (g.saved_eur_sum != null ?
+        fmtEur(g.saved_eur_sum).replace('+', '') + ' gespart (n=' + (g.n_matched || 0) + ')' : '—'),
+        'sv-pos') +
+      kvRow('TCA-Coverage', (tca.coverage_pct != null ?
+        (Number(tca.coverage_pct).toFixed(0) + ' %') : '—') +
+        (tca.coverage_pct === 0 ? ' <span class="sv-dim">(Backfill offen)</span>' : ''), 'sv-neg') +
+      kvRow('Netto-P&amp;L (Tax)', tax.net_pnl_eur != null ? fmtEur(tax.net_pnl_eur) : '—', eurCls(tax.net_pnl_eur)) +
+      '</div>';
+
+    var lever = ((d.weekly || {}).lever || {}).milestones_top || [];
+    $('sv-lever').innerHTML = lever.length === 0 ? '<div class="sv-dim">keine Meilensteine</div>' :
+      '<div class="sv-list">' + lever.map(function (m) {
+        return '<div class="sv-li"><span class="sv-rt" style="font-family:monospace">' +
+          esc(m.key) + '</span> <span class="sv-dim">' + esc(m.note) + '</span></div>';
+      }).join('') + '</div>';
+
+    // ---- Ops & Frische ----
+    var ops = d.ops || {};
+    var issues = ops.open_issues || [];
+    $('sv-ops').innerHTML = '<div class="sv-list">' +
+      kvRow('Ops-Review letzter Lauf', esc(dt(ops.last_run_utc))) +
+      kvRow('Zuletzt grün', esc(dt(ops.last_green))) +
+      '<div class="sv-li"><span class="sv-dim">Offene Findings:</span> ' +
+      (issues.length === 0 ? '<span class="sv-badge ok">keine</span>' :
+        issues.map(function (i) {
+          var cls = i.sev === 'red' ? 'err' : (i.sev === 'yellow' ? 'warn' : '');
+          return '<span class="sv-badge ' + cls + '">' + esc(i.title || i.key) + '</span>';
+        }).join(' ')) + '</div></div>';
+    $('sv-sources').innerHTML = (d.sources || []).map(function (s) {
+      var cls = !s.ok ? 'err' : (s.fresh ? 'ok' : 'warn');
+      return '<span class="sv-src ' + cls + '">' + esc(s.name) + ': ' + fmtAge(s.age_s) + '</span>';
+    }).join('');
+  }
+
+  function load() {
+    fetch(API, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(render).catch(function (e) {
+      var el = $('sv-error');
+      el.style.display = 'block';
+      el.textContent = 'Daten konnten nicht geladen werden: ' + e.message;
+    });
+  }
+  load();
+  setInterval(load, 120000);
+})();
+</script>
+<!--/BODY-->
