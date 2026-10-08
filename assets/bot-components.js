@@ -253,15 +253,20 @@ function renderKPIs(d) {
     dailyEl.textContent = fmtPnl(daily) + ' EUR';
     dailyEl.className = 'bot-card-value ' + pnlClass(daily);
   }
-  var tradesToday = d.trades_today || 0;
+  // Fix 08.10.2026: trades_today/daily/realized liegen im performance-Block des
+  // Builders (build_trend_status.py) — Top-Level-Felder existieren nicht (mehr).
+  // Fallback-Kette: Top-Level (Legacy) -> performance{}.
+  var perf = d.performance || {};
+  var tradesToday = (d.trades_today != null ? d.trades_today : (perf.trades_today || 0));
   var ttEl = el(C.prefix + '-trades-today');
   if (ttEl) ttEl.textContent = tradesToday + ' trade' + (tradesToday === 1 ? '' : 's') + ' today';
 
-  // Total P&L — realized + unrealized (the TRUE trading performance)
-  var perf = d.performance || {};
+  // Total P&L — Gesamtwert der aktuellen Strategie(n) (performance.total_pnl,
+  // konsistent zu den W/L-Zählern); Fallback: realisiert+offen (Alt-Vertrag).
   var realized = (d.realized_pnl != null ? d.realized_pnl : (perf.realized_pnl || 0));
   var unrealized = (d.unrealized_pnl != null ? d.unrealized_pnl : (perf.unrealized_pnl || perf.open_pnl || 0));
-  var totalPnl = realized + unrealized;
+  var totalPnl = (d.total_pnl != null ? d.total_pnl
+    : (perf.total_pnl != null ? perf.total_pnl : realized + unrealized));
   var totalEl = el(C.prefix + '-total-pnl');
   if (totalEl) {
     totalEl.textContent = fmtPnl(totalPnl) + ' EUR';
