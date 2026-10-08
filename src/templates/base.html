@@ -27,6 +27,28 @@ document.addEventListener('DOMContentLoaded', function(){
     active.scrollIntoView({inline:'center',behavior:'instant'});
   }
 });
+// Bots-Dropdown: Klick-Toggle (Desktop + Touch), Hover bleibt via CSS
+(function(){
+  var drops = document.querySelectorAll('.nav-drop');
+  function closeAll(except){ drops.forEach(function(d){ if(d !== except) d.classList.remove('open'); }); }
+  drops.forEach(function(d){
+    var a = d.querySelector('a');
+    if(!a) return;
+    a.addEventListener('click', function(e){
+      if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      var was = d.classList.contains('open');
+      closeAll(d);
+      d.classList.toggle('open', !was);
+    });
+  });
+  document.addEventListener('click', function(e){
+    if(!(e.target && e.target.closest && e.target.closest('.nav-drop'))) closeAll(null);
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeAll(null);
+  });
+})();
 </script>
 </body>
 </html>
