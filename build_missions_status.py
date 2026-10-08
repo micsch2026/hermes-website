@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SITE = Path(__file__).resolve().parent
-OUT = SITE / "api" / "missions" / "missions_status.json"
+OUT = Path(os.environ.get("MISSIONS_OUT", SITE / "api" / "missions" / "missions_status.json"))
 BASE = Path(os.environ.get("MISSION_DIR", "/root/strategy-lab/data/missions"))
 LOG = BASE / "mission_log.jsonl"
 PROPOSALS = BASE / "proposals.jsonl"
