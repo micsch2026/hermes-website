@@ -1,0 +1,218 @@
+<!--TITLE:Missionen — Hermes-->
+<!--HEAD-->
+<style>
+  .mi-wrap { max-width: 1080px; margin: 0 auto; }
+  .mi-meta { color: var(--c-text-dim); font-size: var(--text-sm); margin-bottom: var(--s-4); }
+  .mi-error { display: none; border: 1px solid var(--c-err); color: var(--c-err);
+              padding: var(--s-3) var(--s-4); border-radius: var(--r-md); margin-bottom: var(--s-4); }
+  .mi-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
+  .mi-card { background: var(--c-surface); border: 1px solid var(--c-border);
+             border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); }
+  .mi-card.warn { border-color: var(--c-warn); }
+  .mi-card.ok { border-color: var(--c-ok); }
+  .mi-k { color: var(--c-text-dim); font-size: var(--text-sm); }
+  .mi-v { font-size: 1.5rem; font-weight: 600; }
+  .mi-s { color: var(--c-text-dim); font-size: var(--text-sm); }
+  .mi-sec { margin-bottom: var(--s-6); }
+  .mi-sec h2 { font-size: var(--text-lg); border-bottom: 1px solid var(--c-border); padding-bottom: var(--s-2); }
+  .mi-count { color: var(--c-text-dim); font-weight: 400; font-size: var(--text-sm); }
+  .mi-mission { background: var(--c-surface); border: 1px solid var(--c-border);
+                border-radius: var(--r-lg); padding: var(--s-4); margin-bottom: var(--s-4); }
+  .mi-m-title { font-weight: 600; font-size: var(--text-lg); margin-bottom: 2px; }
+  .mi-badge { border: 1px solid var(--c-border); border-radius: var(--r-sm);
+              padding: 1px 8px; font-size: var(--text-sm); margin-left: 8px; }
+  .mi-badge.ok { border-color: var(--c-ok); color: var(--c-ok); }
+  .mi-badge.warn { border-color: var(--c-warn); color: var(--c-warn); }
+  .mi-badge.err { border-color: var(--c-err); color: var(--c-err); }
+  .mi-dim { color: var(--c-text-dim); font-size: var(--text-sm); }
+  .mi-bar { height: 8px; background: var(--c-surface-2); border-radius: 999px; overflow: hidden; margin: var(--s-2) 0 2px; }
+  .mi-bar-fill { height: 100%; background: var(--c-accent); }
+  .mi-stages { margin-top: var(--s-3); display: flex; flex-direction: column; gap: 4px; }
+  .mi-stage { display: flex; align-items: baseline; gap: var(--s-2); font-size: var(--text-sm); }
+  .mi-stage .mi-st-id { color: var(--c-text-dim); min-width: 26px; }
+  .mi-st-chip { border: 1px solid var(--c-border); border-radius: var(--r-sm); padding: 0 6px; font-size: 0.8rem; }
+  .mi-st-chip.done { border-color: var(--c-ok); color: var(--c-ok); }
+  .mi-st-chip.running { border-color: var(--c-warn); color: var(--c-warn); }
+  .mi-st-chip.blocked { border-color: var(--c-err); color: var(--c-err); }
+  .mi-gate { color: var(--c-err); }
+  .mi-ev { color: var(--c-text-dim); font-family: monospace; font-size: 0.78rem; }
+  .mi-blocker { color: var(--c-err); font-size: var(--text-sm); margin-top: var(--s-2); }
+  .mi-log { margin-top: var(--s-3); border-top: 1px dashed var(--c-border); padding-top: var(--s-2); }
+  .mi-log-line { color: var(--c-text-dim); font-size: 0.8rem; }
+  .mi-li { padding: 2px 0; }
+  .mi-sources { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .mi-src { border: 1px solid var(--c-border); border-radius: var(--r-sm);
+            padding: 2px 8px; font-size: var(--text-sm); color: var(--c-text-dim); }
+</style>
+<!--/HEAD-->
+<!--BODY-->
+<div class="mi-wrap">
+  <h1>🚀 Missionen</h1>
+  <div class="mi-meta" id="mi-meta">Lade …</div>
+  <div class="mi-error" id="mi-error"></div>
+
+  <div class="mi-kpis" id="mi-kpis"></div>
+
+  <section class="mi-sec">
+    <h2>Aktive Missionen <span class="mi-count" id="mi-active-count"></span></h2>
+    <div id="mi-active"></div>
+  </section>
+
+  <section class="mi-sec">
+    <h2>Vorgeschlagen <span class="mi-count" id="mi-proposed-count"></span></h2>
+    <div id="mi-proposed"></div>
+  </section>
+
+  <section class="mi-sec">
+    <h2>Abgeschlossen <span class="mi-count" id="mi-done-count"></span></h2>
+    <div id="mi-done"></div>
+  </section>
+
+  <section class="mi-sec">
+    <h2>💡 Vorschläge (Board/System) <span class="mi-count" id="mi-proposals-count"></span></h2>
+    <div id="mi-proposals"></div>
+  </section>
+
+  <section class="mi-sec">
+    <h2>Quellen</h2>
+    <div class="mi-sources" id="mi-sources"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var API = window.location.origin + '/api/missions/missions_status.json';
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function dt(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('de-DE', {
+        timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) { return String(iso); }
+  }
+  function fmtAge(s) {
+    if (s == null) return '?';
+    if (s < 90) return s + ' s';
+    if (s < 5400) return Math.round(s / 60) + ' min';
+    if (s < 172800) return Math.round(s / 3600) + ' h';
+    return Math.round(s / 86400) + ' d';
+  }
+  var TYPE_ICON = { data: '🧱', dev: '🛠️', lab: '🧪', shadow: '👻', demo: '🖥️',
+                    live: '💶', research: '🔍' };
+  var STATUS_CLS = { done: 'ok', active: 'ok', running: 'warn', blocked: 'err',
+                     pending: '', proposed: 'warn', aborted: 'err' };
+
+  function stageLine(s) {
+    var g = s.gate || {};
+    var gate = '';
+    if (g.state === 'pending') {
+      gate = '<span class="mi-gate" title="' + esc(g.reason || '') + '">🔴 Gate offen (' + esc(g.kind) + ')</span>';
+    } else if (g.state === 'approved') {
+      gate = '<span class="mi-dim" title="' + esc(g.reason || '') + '">✅ Gate genehmigt</span>';
+    } else if (g.kind) {
+      gate = '<span class="mi-dim">Gate: ' + esc(g.kind) + '</span>';
+    }
+    var ev = (s.evidence || []).map(function (e) {
+      return '<div class="mi-ev">📎 ' + esc(e) + '</div>';
+    }).join('');
+    var blocker = s.blocker ? '<div class="mi-blocker">⛔ ' + esc(s.blocker) + '</div>' : '';
+    return '<div class="mi-stage">' +
+      '<span class="mi-st-id">' + esc(s.id) + '</span>' +
+      '<span>' + (TYPE_ICON[s.type] || '•') + '</span>' +
+      '<span class="mi-dim">' + esc(s.type || '') + '</span>' +
+      '<span>' + esc(s.title || '') + '</span>' +
+      '<span class="mi-st-chip ' + (STATUS_CLS[s.status] || '') + '">' + esc(s.status) + '</span>' +
+      (gate ? ' ' + gate : '') + '</div>' + ev + blocker;
+  }
+
+  function missionCard(m) {
+    var stages = (m.stages || []).map(stageLine).join('');
+    var logs = (m.log_tail || []).map(function (l) {
+      return '<div class="mi-log-line">' + esc(dt(l.ts)) + ' · ' + esc(l.event) +
+             (l.stage ? ' [' + esc(l.stage) + ']' : '') + ' — ' + esc(l.text || '') + '</div>';
+    }).join('');
+    return '<div class="mi-mission">' +
+      '<div class="mi-m-title">' + esc(m.title) +
+      ' <span class="mi-badge ' + (STATUS_CLS[m.status] || '') + '">' + esc(m.status) + '</span>' +
+      (m.status === 'proposed' ? ' <span class="mi-dim">wartet auf Start-Freigabe</span>' : '') +
+      '</div>' +
+      '<div class="mi-dim">' + esc(m.goal) + '</div>' +
+      '<div class="mi-bar"><div class="mi-bar-fill" style="width:' + (m.pct || 0) + '%"></div></div>' +
+      '<div class="mi-dim">' + m.done + '/' + m.total + ' Etappen · ' + (m.pct || 0) + '% · ' +
+      'angelegt ' + esc(dt(m.created_at)) + ' · Stand ' + esc(dt(m.updated_at)) + '</div>' +
+      '<div class="mi-stages">' + stages + '</div>' +
+      (logs ? '<div class="mi-log">' + logs + '</div>' : '') +
+      '</div>';
+  }
+
+  function render(d) {
+    var k = d.kpis || {};
+    $('mi-meta').innerHTML = 'Datenstand <b>' + dt(d.generated_at) +
+      '</b> · Auto-Refresh 120 s · Missionslayer (Supervisor)';
+    var inProg = (k.stages_total || 0) > 0
+      ? Math.round(100 * (k.stages_done || 0) / k.stages_total) : 0;
+    $('mi-kpis').innerHTML =
+      '<div class="mi-card ' + ((k.active || 0) > 0 ? 'ok' : '') + '">' +
+        '<div class="mi-k">Aktive Missionen</div><div class="mi-v">' + (k.active || 0) + '</div>' +
+        '<div class="mi-s">' + (k.proposed || 0) + ' vorgeschlagen · ' + (k.finished || 0) + ' abgeschlossen</div></div>' +
+      '<div class="mi-card ' + ((k.gates_open || 0) > 0 ? 'warn' : 'ok') + '">' +
+        '<div class="mi-k">Offene Gates</div><div class="mi-v">' + (k.gates_open || 0) + '</div>' +
+        '<div class="mi-s">User-Entscheide eingefordert</div></div>' +
+      '<div class="mi-card">' +
+        '<div class="mi-k">Etappen-Fortschritt</div><div class="mi-v">' + inProg + '%</div>' +
+        '<div class="mi-s">' + (k.stages_done || 0) + '/' + (k.stages_total || 0) + ' Etappen (aktiv)</div></div>' +
+      '<div class="mi-card ' + ((d.proposals || []).length > 0 ? 'warn' : '') + '">' +
+        '<div class="mi-k">Mission-Vorschläge</div><div class="mi-v">' + (d.proposals || []).length + '</div>' +
+        '<div class="mi-s">approven per mission.py proposals</div></div>';
+
+    var ms = d.missions || [];
+    function pick(list) { return list.map(missionCard).join('') || '<div class="mi-dim">— keine —</div>'; }
+    var act = ms.filter(function (m) { return m.status === 'active' || m.status === 'blocked'; });
+    var prp = ms.filter(function (m) { return m.status === 'proposed'; });
+    var fin = ms.filter(function (m) { return m.status === 'done' || m.status === 'aborted'; });
+    $('mi-active-count').textContent = '(' + act.length + ')';
+    $('mi-proposed-count').textContent = '(' + prp.length + ')';
+    $('mi-done-count').textContent = '(' + fin.length + ')';
+    $('mi-active').innerHTML = pick(act);
+    $('mi-proposed').innerHTML = pick(prp);
+    $('mi-done').innerHTML = pick(fin);
+
+    var props = d.proposals || [];
+    $('mi-proposals-count').textContent = '(' + props.length + ')';
+    $('mi-proposals').innerHTML = props.length === 0
+      ? '<div class="mi-dim">Keine offenen Vorschläge — Board kann via mission.py propose Vorschläge einreichen.</div>'
+      : props.map(function (p) {
+          return '<div class="mi-li">💡 <b>' + esc(p.title) + '</b> <span class="mi-dim">[' +
+                 esc(p.by) + ' · ' + esc(dt(p.ts)) + ']</span><div class="mi-dim">' + esc(p.goal) + '</div></div>';
+        }).join('');
+
+    $('mi-sources').innerHTML = (d.sources || []).map(function (s) {
+      return '<span class="mi-src">' + esc(s.name) + ' · vor ' + fmtAge(s.age_s) + '</span>';
+    }).join('');
+  }
+
+  function load() {
+    fetch(API, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      $('mi-error').style.display = 'none';
+      render(d);
+    }).catch(function (e) {
+      var el = $('mi-error');
+      el.textContent = 'Daten konnten nicht geladen werden: ' + e.message;
+      el.style.display = 'block';
+    });
+  }
+  load();
+  setInterval(load, 120000);
+})();
+</script>
+<!--/BODY-->
