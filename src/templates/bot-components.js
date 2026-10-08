@@ -466,6 +466,14 @@ function _fmtCell(val, fmt, row) {
       var sc = Number(val);
       var cls = sc >= 60 ? 'bot-pnl-pos' : (sc >= 50 ? '' : 'bot-pnl-neg');
       return '<span class="' + cls + '"><b>' + sc + '</b></span>';
+    case 'strategy':
+      // Multibot: Strategie-ID (#NNN) + Slot-Badge (s534/d5/i4/...) — konsistent zur Trade-History
+      var sidStr = String(val).replace(/^#/, '');
+      if (!sidStr) return '—';
+      var stratOut = '<b>#' + escHtml(sidStr) + '</b>';
+      var slotVal = (row && row.slot_id != null && row.slot_id !== '') ? String(row.slot_id) : '';
+      if (slotVal) stratOut += ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Multi-Slot">' + escHtml(slotVal) + '</span>';
+      return stratOut;
     default:
       return String(val);
   }
