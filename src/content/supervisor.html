@@ -25,8 +25,10 @@
   .sv-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-5); }
   @media (max-width: 900px) { .sv-2col { grid-template-columns: 1fr; } }
 
+  .sv-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-4); }
+
   .sv-recs { display: grid; gap: var(--s-2); }
-  .sv-rec { display: flex; gap: var(--s-3); align-items: baseline; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); font-size: var(--text-sm); }
+  .sv-rec { display: flex; gap: var(--s-3); align-items: baseline; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-2) var(--s-3); font-size: var(--text-sm); }
   .sv-rec .sv-rt { font-family: monospace; color: var(--c-text-2); min-width: 110px; }
   .sv-rec .sv-rx { color: var(--c-text-muted); flex: 1; }
   .sv-rec.p-high { border-left: 3px solid var(--c-err); }
@@ -67,6 +69,34 @@
   .sv-chip.ok { border-color: var(--c-ok); color: var(--c-ok); }
   .sv-chip.warn { border-color: var(--c-warn); color: var(--c-warn); }
   .sv-chip.err { border-color: var(--c-err); color: var(--c-err); }
+
+  /* Mini-Stepper (Missionen) */
+  .sv-steps { display: grid; gap: 3px; margin-top: var(--s-2); }
+  .sv-step { display: flex; align-items: baseline; gap: var(--s-2); font-size: var(--text-sm); }
+  .sv-dot { width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--c-border);
+            background: var(--c-surface-2); color: var(--c-text-dim); display: inline-flex;
+            align-items: center; justify-content: center; font-size: 0.62rem; flex: 0 0 auto; }
+  .sv-step.done .sv-dot { border-color: var(--c-ok); color: var(--c-ok); }
+  .sv-step.running .sv-dot { border-color: var(--c-warn); color: var(--c-warn);
+            animation: sv-pulse 1.4s ease-in-out infinite; }
+  .sv-step.blocked .sv-dot { border-color: var(--c-err); color: var(--c-err); }
+  @keyframes sv-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,180,0,0.0); }
+                        50% { box-shadow: 0 0 0 4px rgba(255,180,0,0.20); } }
+  .sv-step .sv-st-id { color: var(--c-text-dim); min-width: 24px; }
+  .sv-step .sv-st-t { color: var(--c-text-2); }
+  .sv-gate { color: var(--c-err); font-size: var(--text-xs); }
+
+  /* Sparkline + Balkenchart */
+  .sv-spark { display: flex; align-items: flex-end; gap: 2px; height: 30px; margin: var(--s-2) 0 2px; }
+  .sv-spark rect { fill: var(--c-accent); }
+  .sv-chart { display: grid; gap: 4px; margin: var(--s-2) 0; }
+  .sv-barline { display: grid; grid-template-columns: 110px 1fr 42px; gap: var(--s-2); align-items: center; font-size: var(--text-sm); }
+  .sv-barline .sv-bl-track { background: var(--c-surface-2); border-radius: 999px; overflow: hidden; height: 12px; }
+  .sv-barline .sv-bl-fill { height: 100%; background: var(--c-accent); }
+  .sv-barline .sv-bl-n { text-align: right; color: var(--c-text-dim); font-family: monospace; }
+  .sv-cap { color: var(--c-text-dim); font-size: var(--text-xs); }
+  .sv-mission details { margin-top: var(--s-2); }
+  .sv-mission summary { cursor: pointer; color: var(--c-text-dim); font-size: var(--text-sm); }
 </style>
 <!--/HEAD-->
 <!--BODY-->
@@ -82,31 +112,61 @@
 
   <div class="sv-kpis" id="sv-kpis"></div>
 
+  <section class="sv-sec" id="sv-autonomy">
+    <h2>🎛️ Autonomie &amp; nächste Schritte</h2>
+    <div class="sv-strip">
+      <div class="sv-card ok" id="sv-autonomy-applied">
+        <div class="sv-k">Autonom umgesetzt</div>
+        <div class="sv-v">—</div>
+        <div class="sv-s">Lade …</div>
+      </div>
+      <div class="sv-card warn" id="sv-waiting-user">
+        <div class="sv-k">Wartet auf Michael</div>
+        <div class="sv-v">—</div>
+        <div class="sv-s">Gates + Vorschläge</div>
+      </div>
+      <div class="sv-card" id="sv-next-run">
+        <div class="sv-k">Nächster Board-Lauf</div>
+        <div class="sv-v">—</div>
+        <div class="sv-s">Sonntag 03:00 BZ</div>
+      </div>
+    </div>
+    <div id="sv-autonomy-chart"></div>
+    <div class="sv-2col">
+      <div>
+        <h3 class="sv-h3">Läuft autonom (mit Guards)</h3>
+        <div id="sv-autonomy-auto" class="sv-list"></div>
+      </div>
+      <div>
+        <h3 class="sv-h3">Braucht deine Freigabe</h3>
+        <div id="sv-waiting-list" class="sv-list"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="sv-sec">
     <h2>🚀 Missionen <span class="sv-count" id="sv-missions-count"></span> <a class="sv-count" href="/missions">Details →</a></h2>
     <div id="sv-missions"></div>
   </section>
 
   <section class="sv-sec">
-    <h2>📌 Offene Empfehlungen <span class="sv-count" id="sv-recs-count"></span></h2>
+    <h2>📌 Offene Empfehlungen <span class="sv-count" id="sv-recs-count"></span>
+      <span class="sv-count" id="sv-recs-hint"></span></h2>
     <div id="sv-recs-list" class="sv-recs"></div>
   </section>
 
   <section class="sv-sec">
-    <h2>🗳️ Letzte Board-Beschlüsse <span class="sv-count" id="sv-board-at"></span></h2>
+    <h2>🗳️ Änderungen &amp; Beschlüsse <span class="sv-count" id="sv-board-at"></span>
+      <span class="sv-count" id="sv-changes-count"></span></h2>
     <div id="sv-board"></div>
+    <div id="sv-changes-activity"></div>
+    <div id="sv-changes"></div>
   </section>
 
-  <div class="sv-2col">
-    <section class="sv-sec">
-      <h2>📝 Änderungs-Journal <span class="sv-count" id="sv-changes-count"></span></h2>
-      <div id="sv-changes"></div>
-    </section>
-    <section class="sv-sec">
-      <h2>🎯 Gate-Evidenz <span class="sv-count" id="sv-gates-count"></span></h2>
-      <div id="sv-gates"></div>
-    </section>
-  </div>
+  <section class="sv-sec">
+    <h2>🎯 Gate-Evidenz <span class="sv-count" id="sv-gates-count"></span></h2>
+    <div id="sv-gates"></div>
+  </section>
 
   <section class="sv-sec">
     <h2>📊 Wochen-Review <span class="sv-count" id="sv-week"></span></h2>
@@ -163,16 +223,50 @@
       });
     } catch (e) { return String(iso); }
   }
+  function dtDay(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('de-DE', {
+        timeZone: 'Europe/Berlin', weekday: 'short', day: '2-digit', month: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch (e) { return String(iso); }
+  }
   function kvRow(k, v, cls) {
     return '<div class="sv-li"><span class="sv-dim">' + esc(k) + ':</span> ' +
            '<span class="' + (cls || '') + '">' + v + '</span></div>';
   }
+  function spark(activity, label) {
+    var a = activity || [];
+    if (!a.length) return '';
+    var max = Math.max.apply(null, a.concat([1]));
+    var w = a.length * 10;
+    var bars = a.map(function (v, i) {
+      var h = Math.round(28 * v / max);
+      if (v > 0 && h < 2) h = 2;
+      var d = new Date(); d.setDate(d.getDate() - (a.length - 1 - i));
+      var lab = d.toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit' });
+      return '<rect x="' + (i * 10) + '" y="' + (28 - h) + '" width="7" height="' + h + '" rx="1">' +
+        '<title>' + esc(lab) + ' · ' + v + '</title></rect>';
+    }).join('');
+    return '<svg class="sv-spark" width="' + w + '" height="28" viewBox="0 0 ' + w + ' 28" ' +
+      'role="img" aria-label="' + esc(label || 'Aktivitaet 14 Tage') + '">' + bars + '</svg>' +
+      '<div class="sv-cap">' + esc(label || 'Aktivität 14 Tage') + '</div>';
+  }
+  function barChart(obj) {
+    var keys = Object.keys(obj || {});
+    if (!keys.length) return '<div class="sv-dim">keine Änderungen</div>';
+    var max = Math.max.apply(null, keys.map(function (k) { return obj[k] || 0; }).concat([1]));
+    return '<div class="sv-chart">' + keys.map(function (k) {
+      var v = obj[k] || 0;
+      return '<div class="sv-barline"><span class="sv-dim">' + esc(k) + '</span>' +
+        '<span class="sv-bl-track"><span class="sv-bl-fill" style="width:' +
+        Math.round(100 * v / max) + '%"></span></span>' +
+        '<span class="sv-bl-n">' + v + '</span></div>';
+    }).join('') + '</div>';
+  }
 
   function render(d) {
-    $('sv-meta').innerHTML = 'Woche <b>' + esc(d.week) + '</b> · Datenstand <b>' +
-      dt(d.generated_at) + '</b> · Auto-Refresh 120 s';
-
-    // ---- KPIs ----
     var recs = d.recommendations || { n: 0, items: [] };
     var rot = d.rotation || {};
     var ch = d.changes || {};
@@ -185,6 +279,16 @@
     var typ = ch.by_typ || {};
     var typTxt = Object.keys(typ).map(function (k) { return k + ' ' + typ[k]; }).join(' · ');
     var lastFill = rot.last_fill;
+    var auto = d.autonomy || {};
+    var applied = auto.applied || {};
+    var wait = auto.waiting_user || {};
+
+    $('sv-meta').innerHTML = 'Woche <b>' + esc(d.week) + '</b> · Datenstand <b>' +
+      dt(d.generated_at) + '</b>' + (d.next_board_run
+        ? ' · nächster Board-Lauf <b>' + dt(d.next_board_run) + '</b>' : '') +
+      ' · Auto-Refresh 120 s';
+
+    // ---- KPIs ----
     $('sv-kpis').innerHTML =
       '<div class="sv-card ' + (recs.n > 0 ? 'warn' : 'ok') + '">' +
         '<div class="sv-k">Offene Empfehlungen</div>' +
@@ -206,16 +310,59 @@
         '<div class="sv-s">Live: ' + fmtEur(liveSum).replace('+', '') + ' auf ' +
         liveB.length + ' Konten</div></div>';
 
+    // ---- Autonomie & nächste Schritte ----
+    var appliedN = (applied.seeds || 0) + (applied.cluster_edits || 0) +
+      (applied.tiers || 0) + (applied.retires || 0) + (applied.watches || 0) +
+      (applied.rotation_fills || 0);
+    var waitingN = (wait.gates_open || 0) + (wait.proposals_open || 0);
+    $('sv-autonomy-applied').innerHTML =
+      '<div class="sv-k">Autonom umgesetzt ' + esc(auto.week || d.week) + '</div>' +
+      '<div class="sv-v">' + appliedN + ' Änderungen</div>' +
+      '<div class="sv-s">Seeds ' + (applied.seeds || 0) + ' · Cluster ' + (applied.cluster_edits || 0) +
+      ' · Tiers ' + (applied.tiers || 0) + ' · Fills ' + (applied.rotation_fills || 0) + '</div>';
+    $('sv-waiting-user').innerHTML =
+      '<div class="sv-k">Wartet auf Michael</div>' +
+      '<div class="sv-v">' + waitingN + '</div>' +
+      '<div class="sv-s">' + (wait.gates_open || 0) + ' Gates · ' +
+      (wait.proposals_open || 0) + ' Vorschläge</div>';
+    $('sv-next-run').innerHTML =
+      '<div class="sv-k">Nächster Board-Lauf</div>' +
+      '<div class="sv-v">' + (d.next_board_run ? dtDay(d.next_board_run) : '—') + '</div>' +
+      '<div class="sv-s">Sonntag 03:00 BZ</div>';
+
+    $('sv-autonomy-chart').innerHTML =
+      '<h3 class="sv-h3">Änderungen nach Typ</h3>' + barChart(typ) +
+      '<div class="sv-cap">Aktivität 14 Tage (Journal)</div>' + spark(d.activity, 'Aktivität 14 Tage (Journal)');
+
+    $('sv-autonomy-auto').innerHTML =
+      kvRow('Seeds angelegt', String(applied.seeds || 0)) +
+      kvRow('Cluster-Edits', String(applied.cluster_edits || 0)) +
+      kvRow('Tier-1-Promotions', String(applied.tiers || 0)) +
+      kvRow('Retires', String(applied.retires || 0)) +
+      kvRow('Watches', String(applied.watches || 0)) +
+      kvRow('Rotation-Fills', String(applied.rotation_fills || 0)) +
+      '<div class="sv-dim">Quelle: Board-Applier (autonom, mit Guards)</div>';
+
+    var witems = wait.items || [];
+    $('sv-waiting-list').innerHTML = witems.length === 0
+      ? '<div class="sv-dim">aktuell nichts offen 🎉</div>'
+      : witems.map(function (it) {
+          return '<div class="sv-li">🔴 <b>' + esc(it.mission) + '</b> [' + esc(it.stage) + '] ' +
+            '<span class="sv-dim">' + esc(it.reason) + '</span></div>';
+        }).join('');
+
     // ---- Empfehlungen ----
     var items = recs.items || [];
     $('sv-recs-count').textContent = '(' + items.length + ')';
+    $('sv-recs-hint').textContent = d.next_board_run
+      ? '· nächster Board-Lauf ' + dt(d.next_board_run) : '';
     var order = { high: 0, mid: 1, low: 2 };
     items = items.slice().sort(function (a, b) {
       return (order[a.priority] != null ? order[a.priority] : 9) -
              (order[b.priority] != null ? order[b.priority] : 9);
     });
     $('sv-recs-list').innerHTML = items.length === 0
-      ? '<div class="sv-dim">Keine offenen Empfehlungen 🎉</div>'
+      ? '<div class="sv-dim">keine offenen Empfehlungen 🎉</div>'
       : items.map(function (i) {
           var pr = i.priority === 'high' ? 'p-high' : (i.priority === 'mid' ? 'p-mid' : 'p-low');
           return '<div class="sv-rec ' + pr + '">' +
@@ -225,20 +372,34 @@
             '<span class="sv-rx">' + esc(i.text) + '</span></div>';
         }).join('');
 
-    // ---- Missionen ----
+    // ---- Missionen (Mini-Stepper) ----
     var mi = d.missions || { active: [], proposed: [], proposals_open: [] };
     var mAll = (mi.active || []).concat(mi.proposed || []);
     $('sv-missions-count').textContent =
       '(' + (mi.active || []).length + ' aktiv · ' + (mi.proposed || []).length + ' vorgeschlagen)';
+    function stepCls(st) {
+      return (st === 'done' || st === 'running' || st === 'blocked') ? st : '';
+    }
+    function dotSym(st) {
+      if (st === 'done') return '✓';
+      if (st === 'blocked') return '✕';
+      if (st === 'running') return '●';
+      return '';
+    }
     function missionCard(m, offered) {
       var pct = m.total ? Math.round(100 * m.done / m.total) : 0;
       var stages = (m.stages || []).map(function (s) {
-        var cls = s.status === 'done' ? 'ok' : (s.status === 'running' ? 'warn'
-                  : (s.status === 'blocked' ? 'err' : ''));
-        var g = s.gate_state === 'pending' ? ' 🔴' : '';
-        return '<span class="sv-chip ' + cls + '" title="' + esc(s.type + ' · ' + s.status) + '">' +
-               esc(s.id) + g + '</span>';
-      }).join(' ');
+        var cls = stepCls(s.status);
+        var full = (s.title || s.id || '') + ' · ' + (s.type || '') + ' · ' + (s.status || '');
+        var gate = s.gate_state === 'pending'
+          ? ' <span class="sv-gate">🔴 Gate offen (' + esc(s.gate_kind) + ')</span>' : '';
+        return '<div class="sv-step ' + cls + '" title="' + esc(full) + '">' +
+          '<span class="sv-dot">' + dotSym(s.status) + '</span>' +
+          '<span class="sv-st-id">' + esc(s.id) + '</span>' +
+          '<span class="sv-st-t">' + esc(s.title) + '</span>' +
+          '<span class="sv-badge ' + (cls === 'done' ? 'ok' : (cls === 'blocked' ? 'err' : (cls === 'running' ? 'warn' : ''))) + '">' +
+          esc(s.status) + '</span>' + gate + '</div>';
+      }).join('');
       var gates = (m.gates_open || []).map(function (g) {
         return '<div class="sv-li">🔴 GATE ' + esc(g.stage) + ' (' + esc(g.kind) + '): ' +
                esc(g.reason) + '</div>';
@@ -251,7 +412,8 @@
         '<div class="sv-dim">' + esc(m.goal) + '</div>' +
         '<div class="sv-bar"><div class="sv-bar-fill" style="width:' + pct + '%"></div></div>' +
         '<div class="sv-dim">' + m.done + '/' + m.total + ' Etappen · ' + pct + '%</div>' +
-        '<div class="sv-chips">' + stages + '</div>' + gates + '</div>';
+        '<div class="sv-steps">' + stages + '</div>' +
+        (gates ? '<div class="sv-list">' + gates + '</div>' : '') + '</div>';
     }
     $('sv-missions').innerHTML =
       (mAll.length === 0
@@ -265,9 +427,9 @@
           }).join('') + '</div>'
         : '');
 
-    // ---- Board-Beschlüsse ----
+    // ---- Board-Beschlüsse + Änderungs-Journal (ein Block) ----
     var ap = ch.applied || {};
-    $('sv-board-at').textContent = ap.applied_at ? ('angewandt ' + dt(ap.applied_at)) : '';
+    $('sv-board-at').textContent = ap.applied_at ? ('· angewandt ' + dt(ap.applied_at)) : '';
     function chips(arr, mapFn) {
       if (!arr || !arr.length) return '<span class="sv-dim">keine</span>';
       return '<div class="sv-chips">' + arr.map(function (x) {
@@ -276,6 +438,7 @@
     }
     var skipped = ap.seeds_skipped || [];
     $('sv-board').innerHTML =
+      '<div class="sv-list">' +
       kvRow('Seeds neu (' + ((ap.seeds_new || []).length) + ')', '') +
       chips(ap.seeds_new) +
       kvRow('Seeds verworfen (' + skipped.length + ')', '') +
@@ -289,9 +452,10 @@
             ((ap.watches_closed || []).length) + ' geschlossen)', '') +
       chips((ap.watches_added || []).map(function (w) {
         return '#' + w.sid + ' (' + w.kind + ')';
-      }));
+      })) + '</div>';
 
-    // ---- Änderungs-Journal ----
+    $('sv-changes-activity').innerHTML = spark(d.activity, 'Änderungen 14 Tage');
+
     $('sv-changes-count').textContent = '(' + (ch.total || 0) + ' gesamt)';
     var recent = (ch.recent || []).slice().reverse();
     $('sv-changes').innerHTML =

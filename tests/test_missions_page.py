@@ -4,7 +4,7 @@
 Prueft: Fragment-Marker, Pflicht-IDs, inline-JS parst (node --check),
 CSS-Variablen existieren in base.css (Fallback erlaubt), build_page-Smoke.
 
-Ausfuehrung: cd /root/.hermes/site && /usr/bin/python3 tests/test_missions_page.py
+Ausfuehrung: cd site && /usr/bin/python3 tests/test_missions_page.py
 """
 from __future__ import annotations
 
@@ -16,11 +16,12 @@ import tempfile
 from html.parser import HTMLParser
 from pathlib import Path
 
-SITE = Path("/root/.hermes/site")
+SITE = Path(__file__).resolve().parent.parent
 SRC = SITE / "src/content/missions.html"
 
 REQUIRED_IDS = [
     "mi-meta", "mi-error", "mi-kpis",
+    "mi-next-run", "mi-next-run-note",
     "mi-active", "mi-active-count",
     "mi-proposed", "mi-proposed-count",
     "mi-done", "mi-done-count",

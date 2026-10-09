@@ -17,16 +17,52 @@ import json
 import os
 import sys
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 
-SITE = Path("/root/.hermes/site")
-SB = Path("/root/strategy-lab/data/strategy_board")
-OPS = Path("/root/.hermes/reports/ops_review")
-FX = Path("/root/fx-bot")
-OUT = SITE / "api" / "supervisor" / "supervisor_status.json"
+try:
+    from zoneinfo import ZoneInfo
+    BERLIN = ZoneInfo("Europe/Berlin")
+except Exception:  # pragma: no cover - Fallback ohne tz-Datenbank
+    BERLIN = timezone(timedelta(hours=2))
+
+SITE = Path(__file__).resolve().parent
+SB = Path(os.environ.get("SB_DIR", "/root/strategy-lab/data/strategy_board"))
+OPS = Path(os.environ.get("OPS_DIR", "/root/.hermes/reports/ops_review"))
+FX = Path(os.environ.get("FX_DIR", "/root/fx-bot"))
+MDIR = Path(os.environ.get("MISSION_DIR", "/root/strategy-lab/data/missions"))
+OUT = Path(os.environ.get("SUPERVISOR_OUT",
+                         SITE / "api" / "supervisor" / "supervisor_status.json"))
 
 NOW = datetime.now(timezone.utc)
+
+AUTONOMY_DAYS = 14
+
+
+def _next_board_run(now: datetime) -> str:
+    """Naechster Strategy-Board-Lauf: Sonntag 03:00 Europe/Berlin -> ISO UTC."""
+    b = now.astimezone(BERLIN)
+    days_ahead = (6 - b.weekday()) % 7  # Sonntag == 6
+    cand = datetime.combine(b.date() + timedelta(days=days_ahead),
+                            time(3, 0), tzinfo=BERLIN)
+    if cand <= b:
+        cand += timedelta(days=7)
+    return cand.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+def _activity(entries, ts_key, now: datetime, days: int = AUTONOMY_DAYS):
+    """14 Ganzzahlen je Berlin-Kalendertag (aeltester zuerst)."""
+    today = now.astimezone(BERLIN).date()
+    buckets = [today - timedelta(days=days - 1 - i) for i in range(days)]
+    counts = {d: 0 for d in buckets}
+    for e in entries:
+        ts = _parse_ts(e.get(ts_key))
+        if ts is None:
+            continue
+        d = datetime.fromtimestamp(ts, timezone.utc).astimezone(BERLIN).date()
+        if d in counts:
+            counts[d] += 1
+    return [counts[d] for d in buckets]
 
 
 def _iso(dt: datetime) -> str:
@@ -200,7 +236,7 @@ def main() -> int:
     }
 
     # ---- Missionen (Supervisor-Missionslayer) ----
-    mdir = Path("/root/strategy-lab/data/missions")
+    mdir = MDIR
     src("missions", mdir, 24 * 3600)
     missions_active, missions_proposed = [], []
     for f in sorted(mdir.glob("m*.json")):
@@ -246,10 +282,39 @@ def main() -> int:
     except OSError:
         pass
 
+    # ---- Autonomie & naechste Schritte ----
+    applied_counts = {
+        "seeds": len(applied_raw.get("seeds_new") or []),
+        "cluster_edits": len(applied_raw.get("cluster_edits") or []),
+        "tiers": len(applied_raw.get("tiers_added") or []),
+        "retires": len(applied_raw.get("retires_applied") or []),
+        "watches": len(applied_raw.get("watches_added") or []),
+        "rotation_fills": int(by_typ.get("rotation_fill", 0)),
+    }
+    gate_items = []
+    for mm in missions_active:
+        for gg in mm.get("gates_open", []):
+            gate_items.append({"kind": "gate", "mission": mm.get("id"),
+                               "stage": gg.get("stage"), "reason": gg.get("reason")})
+    autonomy = {
+        "week": week,
+        "applied": applied_counts,
+        "waiting_user": {
+            "gates_open": len(gate_items),
+            "proposals_open": len(proposals_open),
+            "items": gate_items[:5],
+        },
+    }
+    next_board_run = _next_board_run(NOW)
+    activity = _activity(cj, "ts_recorded", NOW)
+
     doc = {
         "schema": "supervisor_v1",
         "generated_at": _iso(NOW),
         "week": week,
+        "next_board_run": next_board_run,
+        "autonomy": autonomy,
+        "activity": activity,
         "sources": sources,
         "rotation": rotation,
         "recommendations": recs,

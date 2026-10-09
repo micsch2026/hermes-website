@@ -4,7 +4,7 @@
 Prueft: Fragment-Marker, Pflicht-IDs, inline-JS parst (node --check),
 CSS-Variablen existieren in base.css (Fallback erlaubt), build_page-Smoke.
 
-Ausfuehrung: cd /root/.hermes/site && /usr/bin/python3 tests/test_supervisor_page.py
+Ausfuehrung: cd site && /usr/bin/python3 tests/test_supervisor_page.py
 """
 from __future__ import annotations
 
@@ -16,15 +16,17 @@ import tempfile
 from html.parser import HTMLParser
 from pathlib import Path
 
-SITE = Path("/root/.hermes/site")
+SITE = Path(__file__).resolve().parent.parent
 SRC = SITE / "src/content/supervisor.html"
 
 REQUIRED_IDS = [
     "sv-meta", "sv-error", "sv-kpis",
+    "sv-autonomy", "sv-autonomy-applied", "sv-autonomy-chart", "sv-autonomy-auto",
+    "sv-next-run", "sv-waiting-user", "sv-waiting-list",
     "sv-missions", "sv-missions-count",
     "sv-recs-count", "sv-recs-list",
     "sv-board", "sv-board-at",
-    "sv-changes-count", "sv-changes",
+    "sv-changes-count", "sv-changes", "sv-changes-activity",
     "sv-gates", "sv-gates-count",
     "sv-week", "sv-demo", "sv-live", "sv-macro", "sv-lever",
     "sv-ops", "sv-sources",

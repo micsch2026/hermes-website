@@ -91,6 +91,54 @@ class TestBuildMissions(unittest.TestCase):
         self.assertTrue(self.out.exists())
         self.assertFalse(self.out.with_suffix(".tmp").exists())
 
+    def test_now_and_eta_hint(self):
+        """now = last_done/running/next; eta_hint fuer Gate- und Runner-Fall."""
+        extra = [
+            _m("m-runner", "active", [
+                {"id": "s1", "title": "d", "type": "data", "status": "done"},
+                {"id": "s2", "title": "Lab", "type": "lab", "status": "pending",
+                 "owner": "runner"}]),
+            _m("m-gate", "active", [
+                {"id": "s1", "title": "Gate", "type": "dev", "status": "pending",
+                 "gate": {"kind": "k", "state": "pending", "reason": "r"}}]),
+        ]
+        for m in extra:
+            (self.td / f"{m['mission_id']}.json").write_text(
+                json.dumps(m), encoding="utf-8")
+        d = self.build()
+        by_id = {m["id"]: m for m in d["missions"]}
+        self.assertIsNotNone(d.get("next_runner_run"))
+        nrr = d["next_runner_run"]
+        self.assertIsNotNone(nrr)
+        # m-a: s1 done, s2 blocked -> next None, eta "—"
+        self.assertEqual(by_id["m-a"]["now"]["last_done"]["id"], "s1")
+        self.assertIsNone(by_id["m-a"]["now"]["next"])
+        self.assertEqual(by_id["m-a"]["eta_hint"], "—")
+        # runner-Fall
+        self.assertEqual(by_id["m-runner"]["now"]["next"]["id"], "s2")
+        self.assertEqual(by_id["m-runner"]["eta_hint"],
+                         "Runner: naechster Lauf " + nrr)
+        # Gate-Fall
+        self.assertEqual(by_id["m-gate"]["eta_hint"], "Wartet auf Freigabe")
+
+    def test_activity_and_next_runner_run(self):
+        """activity = 14 Ganzzahlen, Summe passt zur Fixture; next > now."""
+        import datetime as _dt
+        now = _dt.datetime.now(_dt.timezone.utc)
+        ts0 = (now - _dt.timedelta(days=1)).isoformat(timespec="seconds")
+        ts1 = now.isoformat(timespec="seconds")
+        lines = "".join(
+            json.dumps({"ts": ts, "mission_id": "m-a", "event": "progress",
+                        "text": "x"}) + "\n" for ts in (ts0, ts1, ts1))
+        (self.td / "mission_log.jsonl").write_text(lines, encoding="utf-8")
+        d = self.build()
+        act = d["missions"][0]["activity"]
+        self.assertEqual(len(act), 14)
+        self.assertTrue(all(isinstance(x, int) for x in act))
+        self.assertEqual(sum(act), 3)
+        nrr = _dt.datetime.fromisoformat(d["next_runner_run"])
+        self.assertGreater(nrr, now)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
