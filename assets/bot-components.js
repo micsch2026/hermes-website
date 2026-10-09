@@ -611,6 +611,79 @@ function renderSlots(d) {
   _loadShadowPortfolio(function(sp) { _renderSlotsInner(_lastSlotsD || d, sp); });
 }
 
+function _renderRotationRadar(d, spById, nameById) {
+  var box = el(C.prefix + '-radar');
+  if (!box) return;
+  var r = d.rotation_radar;
+  if (!r || !((r.candidates || []).length)) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  function candName(sid) {
+    var m = spById[sid] || spById[String(sid)];
+    if (m && m.name) return _spShortName(m.name);
+    return nameById[sid] || nameById[String(sid)] || '';
+  }
+  var h = '';
+  h += '<div style="font-weight:700;font-size:var(--text-md);margin-bottom:2px">🎯 Rotations-Radar</div>';
+  h += '<div style="font-size:10px;color:var(--c-text-dim);margin-bottom:8px">Kandidaten-Pool ' +
+    escHtml(r.target_class || '') + ' · Stand ' + fmtTime(r.generated_at) + ' · ' +
+    (r.pool_size || 0) + ' Kandidaten (' + (r.excluded || 0) + ' exkludiert)</div>';
+  h += '<table style="width:100%;border-collapse:collapse;font-size:var(--text-xs)">' +
+    '<thead><tr style="color:var(--c-text-dim);text-align:left">' +
+    '<th style="padding:2px 6px">Strategie</th><th>Score</th><th>PF</th><th>Trades</th><th>Netto</th><th>Fit</th></tr></thead><tbody>';
+  for (var i = 0; i < r.candidates.length; i++) {
+    var c = r.candidates[i];
+    var nm = candName(c.strategy_id);
+    var reasons = c.reasons || [];
+    var fit;
+    if (!reasons.length) {
+      fit = '<span style="color:#3fb950">✓ füllbar</span>';
+    } else {
+      var chips = [];
+      for (var x = 0; x < reasons.length; x++) {
+        chips.push('<span title="' + escHtml(reasons[x]) + '" style="display:inline-block;font-size:10px;padding:0 5px;border-radius:3px;background:rgba(210,153,34,0.15);color:#d29922;border:1px solid rgba(210,153,34,0.3);margin-right:3px">' + escHtml(_radarReasonShort(reasons[x])) + '</span>');
+      }
+      fit = chips.join('');
+    }
+    h += '<tr style="border-top:1px solid var(--c-border)">';
+    h += '<td style="padding:3px 6px"><b>#' + escHtml(c.strategy_id) + '</b>' + (nm ? ' <span style="color:var(--c-text-dim)">' + escHtml(nm) + '</span>' : '') + '</td>';
+    h += '<td>' + (c.score != null ? c.score : '—') + '</td>';
+    h += '<td>' + (c.pf != null ? Number(c.pf).toFixed(2) : '—') + '</td>';
+    h += '<td>' + (c.n_class != null ? c.n_class : '—') + '</td>';
+    h += '<td class="' + pnlClass(c.net_class || 0) + '">' + fmtPnl(c.net_class || 0) + ' €</td>';
+    h += '<td>' + fit + '</td></tr>';
+  }
+  h += '</tbody></table>';
+  var slots = d.slots || [];
+  var rows = [];
+  for (var j = 0; j < slots.length; j++) {
+    var s = slots[j];
+    var st = s.stats || {};
+    if (st.pnl_7d == null && st.pnl_30d == null) continue;
+    rows.push('<span style="margin-right:12px"><b>' + escHtml(s.slot_id) + '</b> 7d <span class="' + pnlClass(st.pnl_7d || 0) + '">' + fmtPnl(st.pnl_7d || 0) + ' €</span> · 30d <span class="' + pnlClass(st.pnl_30d || 0) + '">' + fmtPnl(st.pnl_30d || 0) + ' €</span></span>');
+  }
+  if (rows.length) {
+    h += '<div style="font-size:10px;color:var(--c-text-dim);margin-top:8px">Slot-Performance (geschlossene Trades): ' + rows.join('') + '</div>';
+  }
+  h += '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:var(--text-xs);color:#7ab4ff">Wie führt der Bot aus?</summary>' +
+    '<ul style="font-size:var(--text-xs);color:var(--c-text-dim);margin:6px 0 0 16px;padding:0">' +
+    '<li>Alle Slots scannen jeden Zyklus; ausgeführt wird nach <b>Signal-Score</b> (Baum-Konfidenz), höchster zuerst.</li>' +
+    '<li>Gate-Kette je Signal: Familie-Dedup → Slot-Heat → Global-Heat → Richtung → Währungs-Buckets → Margin → min_score. Wer zuerst durchkommt, bekommt den freien Platz (FCFS).</li>' +
+    '<li><b>No-Deferred:</b> jedes Signal wird genau 1× verarbeitet — kein Nachholen; die nächste Bar ist die nächste Chance.</li>' +
+    '<li><b>Rotation:</b> Tür tauscht nur bei Schwäche (Bust/Zombie/Parität); Kandidat braucht ≥3 saubere Challenge-Trades netto&gt;0 (14-Tage-Frist) + fail-closed Precheck; max. 1 Fill je Bot/7 Tage.</li>' +
+    '</ul></details>';
+  box.innerHTML = h;
+  box.style.display = '';
+}
+
+function _radarReasonShort(x) {
+  var m = { 'pair_disjoint': 'Paar-Konflikt', 'cluster_cap': 'Cluster-Cap', 'deferred:no_pairs': 'ohne Tree/Pairs', 'pair_cap_tf': 'XAU/XAG-Bucket belegt', 'pair_cap': 'Paar-Cap' };
+  for (var k in m) { if (String(x).indexOf(k) === 0) return m[k]; }
+  return String(x).split(':')[0];
+}
+
 function _renderSlotsInner(d, sp) {
   var slots = d.slots || [];
   var spById = {};
@@ -712,6 +785,14 @@ function _renderSlotsInner(d, sp) {
       html += chipsAndMeta(s.strategy_id, s);
       html += statsRows(s.stats);
       html += oosLine(s.strategy_id);
+      if (s.challenge && s.challenge.candidate != null) {
+        var ce = s.challenge;
+        var ceInfo = ' · Trades ' + (ce.trades || 0) + '/3';
+        if (ce.ready) ceInfo += ' · ✅ ready';
+        else if (ce.need_trades) ceInfo += ' · noch ' + ce.need_trades;
+        else ceInfo += ' · wartet auf +Fenster';
+        html += '<div style="font-size:10px;color:#d29922;margin-top:4px">🔄 Engine-Challenge #' + escHtml(ce.candidate) + ceInfo + (ce.days_left != null ? ' · Frist ' + ce.days_left + ' T' : '') + '</div>';
+      }
     } else {
       var ch = s.challenge;
       if (s.holder != null) {
@@ -727,7 +808,10 @@ function _renderSlotsInner(d, sp) {
         html += descBlock(cand, true);
         var pct = Math.max(2, Math.min(100, Math.round(((ch.day || 1) / (ch.days_total || 14)) * 100)));
         html += '<div style="height:6px;border-radius:3px;background:var(--c-border);overflow:hidden;margin:4px 0 6px"><div style="height:100%;width:' + pct + '%;background:#3b82f6"></div></div>';
-        html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs)"><span>Trades ' + (ch.trades || 0) + '</span><b class="' + pnlClass(ch.net_eur || 0) + '">' + fmtPnl(ch.net_eur || 0) + ' €</b></div>';
+        html += '<div style="display:flex;justify-content:space-between;font-size:var(--text-xs)"><span>Trades ' + (ch.trades || 0) + '/3</span><b class="' + pnlClass(ch.net_eur || 0) + '">' + fmtPnl(ch.net_eur || 0) + ' €</b></div>';
+        if (ch.ready) html += '<div style="font-size:10px;color:#3fb950;margin-top:2px">✅ Readiness erreicht — Engine-Fill beim nächsten Lauf möglich</div>';
+        else if ((ch.trades || 0) >= 3 && !ch.net_positive) html += '<div style="font-size:10px;color:#d29922;margin-top:2px">wartet auf positives Fenster</div>';
+        else html += '<div style="font-size:10px;color:var(--c-text-dim);margin-top:2px">noch ' + (ch.need_trades != null ? ch.need_trades : Math.max(0, 3 - (ch.trades || 0))) + ' saubere Trades bis Readiness' + (ch.days_left != null ? ' · Frist in ' + ch.days_left + ' T' : '') + '</div>';
         html += oosLine(cand);
       } else {
         html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">frei — wartet auf Challenge</div>';
@@ -762,6 +846,9 @@ function _renderSlotsInner(d, sp) {
       hb.innerHTML = hh;
     }
   }
+
+  // 🎯 Rotations-Radar (09.10.2026): Kandidaten + Fit + Slot-Performance + Explainer
+  _renderRotationRadar(d, spById, nameById);
 }
 
 /** Signal overview grid */
