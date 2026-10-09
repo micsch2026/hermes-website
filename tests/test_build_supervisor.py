@@ -84,6 +84,19 @@ class TestBuildSupervisor(unittest.TestCase):
         (self.mi / "proposals.jsonl").write_text(json.dumps(
             {"title": "P", "goal": "G", "by": "board", "status": "open"}) + "\n",
             encoding="utf-8")
+        nowts = now.isoformat(timespec="seconds")
+        oldts = (now - timedelta(days=8)).isoformat(timespec="seconds")
+        mlog = [
+            {"ts": nowts, "mission_id": "m-x", "event": "gate_approved", "text": "", "auto": True},
+            {"ts": nowts, "mission_id": "m-x", "event": "gate_approved", "text": "", "auto": True},
+            {"ts": nowts, "mission_id": "-", "event": "proposal_approved", "text": "#1", "auto": True},
+            {"ts": nowts, "mission_id": "m-x", "event": "auto_release_refused",
+             "text": "deny:live", "auto": True},
+            {"ts": nowts, "mission_id": "m-x", "event": "gate_approved", "text": "manuell"},
+            {"ts": oldts, "mission_id": "m-x", "event": "gate_approved", "text": "", "auto": True},
+        ]
+        (self.mi / "mission_log.jsonl").write_text(
+            "\n".join(json.dumps(e) for e in mlog) + "\n", encoding="utf-8")
 
     def tearDown(self):
         shutil.rmtree(self.td, ignore_errors=True)
@@ -119,6 +132,15 @@ class TestBuildSupervisor(unittest.TestCase):
         self.assertEqual(ap["tiers"], 1)
         self.assertEqual(ap["retires"], 1)
         self.assertEqual(ap["watches"], 1)
+
+    def test_auto_releases_counts(self):
+        d = self.build()
+        ar = d["autonomy"]["auto_releases"]
+        y, w, _ = datetime.now(timezone.utc).isocalendar()
+        self.assertEqual(ar["week"], f"{y}-W{w:02d}")
+        self.assertEqual(ar["gates"], 2)
+        self.assertEqual(ar["proposals"], 1)
+        self.assertEqual(ar["refused"], 1)
 
     def test_waiting_user_consistent_with_gates(self):
         d = self.build()

@@ -65,6 +65,41 @@ def _activity(entries, ts_key, now: datetime, days: int = AUTONOMY_DAYS):
     return [counts[d] for d in buckets]
 
 
+def _auto_releases(log: Path, now: datetime) -> dict:
+    """Stufe-2-Auto-Freigaben der laufenden ISO-Woche (UTC) aus dem mission_log."""
+    y, w, _ = now.astimezone(timezone.utc).isocalendar()
+    wk = f"{y}-W{w:02d}"
+    out = {"week": wk, "gates": 0, "proposals": 0, "refused": 0}
+    try:
+        with open(log, encoding="utf-8") as fh:
+            for ln in fh:
+                ln = ln.strip()
+                if not ln:
+                    continue
+                try:
+                    e = json.loads(ln)
+                except ValueError:
+                    continue
+                if e.get("auto") is not True:
+                    continue
+                ts = _parse_ts(e.get("ts"))
+                if ts is None:
+                    continue
+                yy, ww, _ = datetime.fromtimestamp(ts, timezone.utc).isocalendar()
+                if f"{yy}-W{ww:02d}" != wk:
+                    continue
+                ev = e.get("event")
+                if ev == "gate_approved":
+                    out["gates"] += 1
+                elif ev == "proposal_approved":
+                    out["proposals"] += 1
+                elif ev == "auto_release_refused":
+                    out["refused"] += 1
+    except OSError:
+        pass
+    return out
+
+
 def _iso(dt: datetime) -> str:
     return dt.isoformat(timespec="seconds")
 
@@ -299,6 +334,7 @@ def main() -> int:
     autonomy = {
         "week": week,
         "applied": applied_counts,
+        "auto_releases": _auto_releases(mdir / "mission_log.jsonl", NOW),
         "waiting_user": {
             "gates_open": len(gate_items),
             "proposals_open": len(proposals_open),
