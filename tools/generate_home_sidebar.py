@@ -3,11 +3,13 @@
 shadow_portfolio.json (strategy_id, desc.tag, is_live/role) statt der
 hardcoded Juli-Karten (fix 2026-09-17: bot9/bot10 fehlten, Labels stale).
 
-Multibot-Kennzeichnung (2026-09-28; erweitert 2026-10-01): Bots mit
-Rotations-Doors (bot_rotation_slots) ODER >=2 fixen Slots (deployed_bots)
-bekommen ein MULTI-Chip + Slot-Zeile (z.B. "s372 #372 + s534 #534 + srot → #663"),
-inkl. "max N Slots" aus bots[bot].slots_target. Quelle bleibt
-shadow_portfolio.json — kein Hardcode, keine Extra-Config.
+Multibot-Kennzeichnung (2026-09-28; erweitert 2026-10-01, 2026-10-10): Bots mit
+Rotations-Doors (bot_rotation_slots), >=2 fixen Slots (deployed_bots) ODER
+geplanten Reserve-Plaetzen (bots[].slots_planned — Multibot-Vorbereitung, z.B.
+bot10 vor dem Stock-Onboarding) bekommen ein MULTI-Chip + Slot-Zeile
+(z.B. "s372 #372 + s534 #534 + srot → #663"), inkl. "max N Slots" aus
+bots[bot].slots_target (effektiv max(slots_target, gezeigte Slots)). Quelle
+bleibt shadow_portfolio.json — kein Hardcode, keine Extra-Config.
 
 Läuft manuell oder vor dem Site-Build:  python3 generate_home_sidebar.py
 Quelle der Wahrheit: /root/.hermes/site/api/strategy-lab/shadow_portfolio.json
@@ -47,11 +49,17 @@ live = [k for k in order if bots[k].get("is_live")]
 demo = [k for k in order if not bots[k].get("is_live")]
 
 def slot_line(k):
-    """Slot-Zusammenfassung für Multibots: 's372 #372 + s534 #534 + srot → #663'."""
+    """Slot-Zusammenfassung für Multibots: 's372 #372 + s534 #534 + srot → #663'.
+
+    Fixe Einträge OHNE Slot-ID (Übergangs-Einzelstrategie, z.B. bot10 vor dem
+    Cutover) werden als '#<sid>' gezeigt; geplante Reserve-Plätze als
+    '<id> (geplant)' (Scharfstellung erst nach Kandidat-Verdikt)."""
     parts = []
     for slot, sid in fixed_slots.get(k, []):
         if slot:
             parts.append(f"{slot} #{sid}" if sid is not None else slot)
+        elif sid is not None:
+            parts.append(f"#{sid}")
     for rs in (rot_map.get(k) or []):
         txt = rs.get("slot_id") or "rot"
         ch = rs.get("challenge") or {}
@@ -68,14 +76,18 @@ def card(k, b):
     sid = b.get("strategy_id") or "?"
     tag = (b.get("desc") or {}).get("tag") or (b.get("strategy_name") or "")[:34]
     role = "LIVE" if b.get("is_live") else "Demo"
-    is_multi = bool(rot_map.get(k)) or len(fixed_slots.get(k, [])) >= 2
+    is_multi = (bool(rot_map.get(k)) or len(fixed_slots.get(k, [])) >= 2
+                or bool(b.get("slots_planned")))
     icon = "shield" if b.get("is_live") else ("layers" if is_multi else "trending-up")
     dot = ' <span style="color:#ff6b6b;font-weight:700">●</span>' if b.get("is_live") else ""
     chip = (' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span>'
             if is_multi else "")
     if is_multi:
         mt = b.get("slots_target")
-        shown = (len(fixed_slots.get(k, [])) + len(rot_map.get(k) or [])
+        # "max" = effektive Platz-Zahl: nur Einträge MIT Slot-ID zählen
+        # (Übergangs-Strategie ohne Slot, z.B. bot10/#676, ist KEIN Platz).
+        shown = (len([1 for slot, _ in fixed_slots.get(k, []) if slot])
+                 + len(rot_map.get(k) or [])
                  + len(b.get("slots_planned") or []))
         if mt:
             mt = max(mt, shown)
@@ -111,6 +123,7 @@ if n != 1:
 if n != 1:
     raise SystemExit("❌ Sidebar-Block nicht gefunden!")
 open(INDEX, "w").write(new_html)
-multi = [k for k in order if rot_map.get(k) or len(fixed_slots.get(k, [])) >= 2]
+multi = [k for k in order if (rot_map.get(k) or len(fixed_slots.get(k, [])) >= 2
+                              or bots[k].get("slots_planned"))]
 print(f"✓ Sidebar generiert: {len(live)} LIVE + {len(demo)} DEMO Bots ({', '.join(order)})")
 print(f"  MULTI markiert: {', '.join(multi) if multi else '—'}")

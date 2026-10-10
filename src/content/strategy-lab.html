@@ -911,7 +911,8 @@ function renderShadowDashboard() {
     const _planned = (botsData[bk] && botsData[bk].slots_planned) || [];
     for (const p of _planned) parts.push(p + ' (geplant)');
     if (botsData[bk] && botsData[bk].slots_target) {
-      const _shown = (slotAgg[bk] || []).length + (rotMap[bk] || []).length + _planned.length;
+      const _shown = (slotAgg[bk] || []).filter(function(e) { return e.slot; }).length
+                    + (rotMap[bk] || []).length + _planned.length;
       parts.push('max ' + Math.max(botsData[bk].slots_target, _shown) + ' Slots');
     }
     return parts.join(' · ');
@@ -926,8 +927,9 @@ function renderShadowDashboard() {
       _lastGroup = grp;
     }
     const b = botsData[bk];
-      const _rotSlots = rotMap[bk] || [];
-      const _isMulti = _rotSlots.length > 0 || (slotAgg[bk] || []).length >= 2;
+    const _rotSlots = rotMap[bk] || [];
+    const _plannedSlots = (b && b.slots_planned) || [];
+    const _isMulti = _rotSlots.length > 0 || (slotAgg[bk] || []).length >= 2 || _plannedSlots.length > 0;
       const pnl = b.pnl || 0;
       const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
       const pnlSign = pnl >= 0 ? '+' : '';

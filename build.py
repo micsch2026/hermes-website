@@ -28,9 +28,10 @@ def _load_multi_bots():
     Single Source of Truth: shadow_portfolio.json → bot_rotation_slots
     (Rotations-Doors) UNION bots[].slots_filled >= 2 (materialisierte Slots,
     Erweiterung 01.10.26 — sonst fallen Multibots mit komplett belegten
-    Slots aus der Kennzeichnung). Vom shadow_portfolio_builder im 5-Min-Takt
-    aus der Rotation-Policy gebaut. Fail-soft: fehlt/kaputt → keine
-    Kennzeichnung, kein Build-Abbruch.
+    Slots aus der Kennzeichnung) UNION bots[].slots_planned (Multibot-
+    VORBEREITUNG, 10.10.26 — z.B. bot10 vor dem US-Aktien-Onboarding).
+    Vom shadow_portfolio_builder im 5-Min-Takt aus der Rotation-Policy
+    gebaut. Fail-soft: fehlt/kaputt → keine Kennzeichnung, kein Build-Abbruch.
     """
     try:
         with open(os.path.join(SITE_DIR, 'api', 'strategy-lab', 'shadow_portfolio.json'), 'r') as f:
@@ -43,6 +44,11 @@ def _load_multi_bots():
                     multi.add(b)
             except (TypeError, ValueError):
                 pass
+            # 10.10.26: Bots in Multibot-VORBEREITUNG (geplante Reserve-Plaetze,
+            # z.B. bot10 vor dem Stock-Onboarding) ebenfalls kennzeichnen —
+            # die Slot-Zeile labelt "(geplant)".
+            if (meta or {}).get('slots_planned'):
+                multi.add(b)
         return multi
     except Exception:
         return set()
