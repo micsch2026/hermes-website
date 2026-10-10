@@ -314,7 +314,7 @@ def main():
         doc = DOCS["base"]
         assert doc["schema"] == "overview_v1" and set(doc.keys()) == {
             "schema", "generated_at_utc", "generated_at_bz", "market_open",
-            "gates", "verdict", "findings", "live", "shadow", "lab", "charts",
+            "gates", "execution_guard", "verdict", "findings", "live", "shadow", "lab", "charts",
             "sources",
         }, f"schema/top-keys falsch: {doc.get('schema')} / {sorted(doc.keys())}"
 

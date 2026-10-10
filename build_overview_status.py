@@ -413,6 +413,70 @@ def run_decay_monitor(fx_root, out_path, now_epoch=None):
     return data if err is None else None
 
 
+def execution_guard_section(fx_root, tca, now_dt):
+    """Execution-Schutz-Kachel (2026-10-10): Slippage-Guard-Bilanz + TCA-Kennzahlen.
+
+    - counterfactual: neuester Report aus {fx}/data/reports/guard_counterfactual_*.json
+      (erzeugt vom Wochen-Runner scripts/execution_weekly.py, Mo 05:30 UTC).
+    - tca: bereits per Subprozess geladener tca_report_v1 (tca_latest.json).
+
+    Verdikt-Regel (identisch zur Loop-Logik, n>=5): 'defended' (saved>0),
+    'costs' (saved<0), 'thin' (n<5 oder keine Daten). Fail-soft: fehlender/kaputter
+    Report -> counterfactual=None (Kachel zeigt Platzhalter + Hinweis)."""
+    out = {"counterfactual": None, "tca": None}
+    try:
+        import glob as _glob
+        files = sorted(_glob.glob(os.path.join(
+            str(fx_root), "data", "reports", "guard_counterfactual_*.json")))
+        if files:
+            latest = files[-1]
+            with open(latest, encoding="utf-8") as fh:
+                cf = json.load(fh)
+            tot = cf.get("totals") if isinstance(cf.get("totals"), dict) else {}
+            win = cf.get("window") if isinstance(cf.get("window"), dict) else {}
+            n = tot.get("n_signals") or 0
+            saved = tot.get("saved_eur_sum")
+            if not isinstance(n, (int, float)) or n < 5 or saved is None:
+                verdict = "thin"
+            else:
+                verdict = "defended" if saved > 0 else "costs"
+            age_s = _mtime_age_s(latest, now_dt)
+            out["counterfactual"] = {
+                "file": os.path.basename(latest),
+                "generated_at_utc": cf.get("generated_at_utc"),
+                "days": cf.get("days"),
+                "window_start": win.get("start"),
+                "window_end": win.get("end"),
+                "n_signals": tot.get("n_signals"),
+                "n_matched": tot.get("n_matched"),
+                "saved_eur_sum": saved,
+                "missed_profit_n": tot.get("missed_profit_n"),
+                "avoided_loss_n": tot.get("avoided_loss_n"),
+                "near_fill_n": tot.get("near_fill_n"),
+                "drift_p_median": tot.get("drift_p_median"),
+                "report_age_h": (round(age_s / 3600.0, 1)
+                                 if isinstance(age_s, (int, float)) else None),
+                "verdict": verdict,
+            }
+    except Exception:  # noqa: BLE001 — Kachel ist fail-soft wie alle Overview-Teile
+        out["counterfactual"] = None
+    try:
+        if isinstance(tca, dict):
+            ov = ((tca.get("groups") or {}).get("overall")) or {}
+            out["tca"] = {
+                "n_eligible": tca.get("n_eligible"),
+                "coverage_pct": tca.get("coverage_pct"),
+                "median_bps": ov.get("median_bps"),
+                "p90_bps": ov.get("p90_bps"),
+                "mean_bps": ov.get("mean_bps"),
+                "adverse_pct": ov.get("adverse_pct"),
+                "since": tca.get("since"),
+            }
+    except Exception:  # noqa: BLE001
+        out["tca"] = None
+    return out
+
+
 def run_tca_report(fx_root, out_path, now_epoch=None):
     """tca_report.py als Subprozess ausführen; Report-Dict oder None.
 
@@ -1573,12 +1637,21 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         print(f"[build_overview_status] WARN gates: "
               f"{exc.__class__.__name__}: {exc}")
 
+    # ── Execution-Schutz (2026-10-10): Guard-Counterfactual + TCA (fail-soft) ──
+    try:
+        exec_guard = execution_guard_section(fx_root, tca, now_dt)
+    except Exception as exc:  # noqa: BLE001
+        exec_guard = None
+        print(f"[build_overview_status] WARN exec_guard: "
+              f"{exc.__class__.__name__}: {exc}")
+
     doc = {
         "schema": SCHEMA,
         "generated_at_utc": now_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "generated_at_bz": now_dt.astimezone(BERLIN_TZ).isoformat(timespec="seconds"),
         "market_open": mkt_open,
         "gates": gates,
+        "execution_guard": exec_guard,
         "verdict": {
             "overall": {"status": overall_status, "headline": headline,
                         "why": overall_why},

@@ -225,6 +225,18 @@ setTimeout(() => {
   check('(g) gate-blocks: 4 Skips (Release 2 · Guard 2)',
     blkHtml.includes('<b>4</b>') && blkHtml.includes('Release 2') && blkHtml.includes('Guard 2'),
     blkHtml.slice(0, 140));
+  const egHtml = byId.has('exec-guard-kpis') ? byId.get('exec-guard-kpis').innerHTML : '';
+  const egStand = byId.has('exec-guard-stand') ? byId.get('exec-guard-stand').textContent : '';
+  const egNote = byId.has('exec-guard-note') ? byId.get('exec-guard-note').innerHTML : '';
+  check('(h) exec-guard: Bilanz + vermieden/verpasst + TCA-bps',
+    egHtml.includes('Guard-Bilanz (7 d)') && egHtml.includes('17,99') && egHtml.includes('kostet')
+    && egHtml.includes('vermieden / verpasst') && egHtml.includes('2 / 3')
+    && egHtml.includes('1,6 bps') && egHtml.includes('+1,1 bps'),
+    egHtml.slice(0, 160));
+  check('(h) exec-guard: Stand + Fenster + Semantik-Hinweis',
+    egStand.includes('Stand') && egNote.includes('Schatten-Referenz')
+    && egNote.includes('Coverage') && egNote.includes('gate_skips'),
+    (egStand + ' | ' + egNote).slice(0, 160));
 
   console.log('\n' + '='.repeat(60));
   console.log(`RESULT: ${PASS} PASS, ${FAIL} FAIL`);

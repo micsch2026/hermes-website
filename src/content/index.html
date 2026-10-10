@@ -199,6 +199,13 @@
     <span class="ov-gate-item" id="gate-blocks"><span class="ov-gate-label">Gate-Skips 7 d:</span><b>—</b></span>
   </div>
 
+  <!-- 1c. Execution-Schutz (2026-10-10): Slippage-Guard-Bilanz + TCA -->
+  <div class="ov-card" id="exec-guard" style="margin:0 0 var(--s-6);">
+    <h3>🛡️ Execution-Schutz <span class="ov-gate-dim" id="exec-guard-stand" style="font-weight:400"></span></h3>
+    <div class="ov-kpi-grid" id="exec-guard-kpis"></div>
+    <div class="ov-gate-dim" id="exec-guard-note" style="font-size:0.72rem;line-height:1.55;margin-top:var(--s-2)"></div>
+  </div>
+
   <!-- 2. Komponenten-Ampeln -->
   <p class="ov-section-title">Komponenten</p>
   <div class="ov-comp-grid" id="verdict-components">
@@ -466,6 +473,74 @@
       el.innerHTML = '<span class="ov-gate-label">Gate-Skips 7 d:</span><b>' + fmtInt(b.total) + '</b>' +
         (parts.length ? '<span class="ov-gate-dim">(' + esc(parts.join(' · ')) + ')</span>' : '');
       el.className = 'ov-gate-item' + ((b.total || 0) > 0 ? ' gate-warn' : '');
+    }
+  }
+
+  // ── 1c. Execution-Schutz (2026-10-10): Guard-Bilanz + TCA ──
+  function renderExecGuard(d) {
+    var grid = document.getElementById('exec-guard-kpis');
+    if (!grid) return;
+    var eg = d.execution_guard || {};
+    var cf = eg.counterfactual || null;
+    var tc = eg.tca || null;
+    var k = [];
+    var vdMap = { defended: 'verteidigt', costs: 'kostet', thin: 'noch offen (n<5)' };
+    if (cf) {
+      k.push('<div class="ov-kpi"><div class="ov-kpi-value"><span class="' + fmtEurCls(cf.saved_eur_sum) + '">' +
+             fmtEur(cf.saved_eur_sum) + '</span></div><div class="ov-kpi-label">Guard-Bilanz (' +
+             fmtInt(cf.days) + ' d) · ' + esc(vdMap[cf.verdict] || cf.verdict || '—') + '</div></div>');
+      k.push('<div class="ov-kpi"><div class="ov-kpi-value">' + fmtInt(cf.avoided_loss_n) + ' / ' +
+             fmtInt(cf.missed_profit_n) + '</div><div class="ov-kpi-label">vermieden / verpasst</div></div>');
+    } else {
+      k.push('<div class="ov-kpi"><div class="ov-kpi-value">—</div><div class="ov-kpi-label">Guard-Bilanz (kein Report)</div></div>');
+    }
+    var _bps = function (v) {
+      if (v === null || v === undefined || isNaN(v)) return '—';
+      var s = Math.abs(v).toFixed(1).replace('.', ',');
+      return (v > 0 ? '+' : (v < 0 ? '−' : '')) + s + ' bps';
+    };
+    if (tc) {
+      k.push('<div class="ov-kpi"><div class="ov-kpi-value">' + _bps(tc.median_bps) + '</div>' +
+             '<div class="ov-kpi-label">TCA Median · n=' + fmtInt(tc.n_eligible) + '</div></div>');
+      k.push('<div class="ov-kpi"><div class="ov-kpi-value">' + _bps(tc.p90_bps) + '</div>' +
+             '<div class="ov-kpi-label">TCA p90 Ausführungslip</div></div>');
+    } else {
+      k.push('<div class="ov-kpi"><div class="ov-kpi-value">—</div><div class="ov-kpi-label">TCA</div></div>');
+    }
+    grid.innerHTML = k.join('');
+
+    var bzDT = function (iso, opts) {
+      try {
+        return new Date(iso).toLocaleString('de-DE', Object.assign({ timeZone: 'Europe/Berlin' }, opts || {}));
+      } catch (e) { return ''; }
+    };
+    var stand = document.getElementById('exec-guard-stand');
+    if (stand) {
+      stand.textContent = (cf && cf.generated_at_utc)
+        ? '(Stand ' + bzDT(cf.generated_at_utc, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' BZ' +
+          (cf.report_age_h !== null && cf.report_age_h !== undefined ? ' · ' + fmtAge(cf.report_age_h * 3600) + ' alt' : '') + ')'
+        : '';
+    }
+    var note = document.getElementById('exec-guard-note');
+    if (note) {
+      var parts = [];
+      if (cf) {
+        var w = '';
+        if (cf.window_start && cf.window_end) {
+          w = bzDT(cf.window_start, { day: '2-digit', month: '2-digit' }) + '–' +
+              bzDT(cf.window_end, { day: '2-digit', month: '2-digit' });
+        }
+        parts.push('Fenster ' + w + ' · n=' + fmtInt(cf.n_signals) + ' · gematcht=' + fmtInt(cf.n_matched) +
+                   (cf.near_fill_n !== null && cf.near_fill_n !== undefined ? ' · knapp am Limit: ' + fmtInt(cf.near_fill_n) : '') +
+                   ' · Bilanz = Schatten-Referenz am Signalpreis (verpasst = Skip wäre im Plus gewesen)');
+      } else {
+        parts.push('Kein Counterfactual-Report gefunden (Wochen-Runner execution-weekly, Mo 05:30 UTC)');
+      }
+      if (tc) {
+        parts.push('TCA: reale Fills seit Fill-Logging 08.10. · Coverage ' + fmtPct(tc.coverage_pct));
+      }
+      parts.push('Guard-Skips seit 10.10. in gate_skips.jsonl persistiert (Details: Shadow-Tab)');
+      note.innerHTML = parts.map(esc).join(' — ');
     }
   }
 
@@ -1001,6 +1076,7 @@
   function render(d) {
     renderHero(d);
     renderGates(d);
+    renderExecGuard(d);
     renderComponents(d);
     renderFindings(d);
     renderLive(d);
