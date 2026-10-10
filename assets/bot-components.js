@@ -766,7 +766,7 @@ function _renderSlotsInner(d, sp) {
     sub.textContent = (_total ? nFilled + '/' + _total + ' Strategien belegt (max. ' + _total + ' vorgesehen)'
                               : slots.length + ' Slot' + (slots.length === 1 ? '' : 's')) +
       (nRot ? ' · ' + nRot + ' Rotationsslot' : '') +
-      (nPlanned ? ' · ' + nPlanned + ' Platz' + (nPlanned === 1 ? '' : 'e') + ' vorbereitet (scharf erst nach Kandidat-Verdikt)' : '') +
+      (nPlanned ? ' · ' + nPlanned + (nPlanned === 1 ? ' Platz' : ' Plätze') + ' vorbereitet (scharf erst nach Kandidat-Verdikt)' : '') +
       ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)';
   }
 
