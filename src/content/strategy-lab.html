@@ -908,7 +908,12 @@ function renderShadowDashboard() {
       else t += ' (frei)';
       parts.push(t);
     }
-    if (botsData[bk] && botsData[bk].slots_target) parts.push('max ' + botsData[bk].slots_target + ' Slots');
+    const _planned = (botsData[bk] && botsData[bk].slots_planned) || [];
+    for (const p of _planned) parts.push(p + ' (geplant)');
+    if (botsData[bk] && botsData[bk].slots_target) {
+      const _shown = (slotAgg[bk] || []).length + (rotMap[bk] || []).length + _planned.length;
+      parts.push('max ' + Math.max(botsData[bk].slots_target, _shown) + ' Slots');
+    }
     return parts.join(' · ');
   }
 

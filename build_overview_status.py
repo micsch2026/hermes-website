@@ -680,6 +680,17 @@ def _bot_slots(bot, fx_root, policy, rot_state):
             else:
                 slots.append({"slot_id": rid, "sid": None, "holder": False,
                               "challenge_start": None})
+        # Geplante Reserve-Plaetze (Anzeige-only, 10.10.26 — 'alle Strategie-
+        # plaetze anzeigen'; Scharfstellung erst nach Kandidat-Verdikt).
+        _seen_slot_ids = {str(s["slot_id"]) for s in slots}
+        for _p in (t.get("planned_slots") or []):
+            if not isinstance(_p, dict):
+                continue
+            _pid = str(_p.get("id") or "").strip()
+            if _pid and _pid not in _seen_slot_ids:
+                _seen_slot_ids.add(_pid)
+                slots.append({"slot_id": _pid, "sid": None, "holder": False,
+                              "challenge_start": None, "planned": True})
     multi = len(slots) > 1
     return slots, multi
 

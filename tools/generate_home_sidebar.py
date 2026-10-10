@@ -60,6 +60,8 @@ def slot_line(k):
         elif rs.get("holder") is not None:
             txt += f" → #{rs['holder']}"
         parts.append(txt)
+    for p in (bots.get(k, {}).get("slots_planned") or []):
+        parts.append(f"{p} (geplant)")
     return " + ".join(parts)
 
 def card(k, b):
@@ -73,6 +75,10 @@ def card(k, b):
             if is_multi else "")
     if is_multi:
         mt = b.get("slots_target")
+        shown = (len(fixed_slots.get(k, [])) + len(rot_map.get(k) or [])
+                 + len(b.get("slots_planned") or []))
+        if mt:
+            mt = max(mt, shown)
         desc = f"{slot_line(k)}" + (f" · max {mt} Slots" if mt else "") + f" · {role}"
     else:
         desc = f"#{sid} · {tag} · {role}"

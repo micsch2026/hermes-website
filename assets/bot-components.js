@@ -754,29 +754,40 @@ function _renderSlotsInner(d, sp) {
   var sub = el(C.prefix + '-slots-sub');
   var nRot = 0;
   var nFilled = 0;
+  var nPlanned = 0;
   for (var j = 0; j < slots.length; j++) {
     if (slots[j].kind === 'rotation') nRot++;
+    if (slots[j].kind === 'planned') nPlanned++;
     if (slots[j].strategy_id != null || slots[j].holder != null) nFilled++;
   }
   if (sub) {
     var _tgt = (typeof d.slots_target === 'number') ? d.slots_target : null;
-    sub.textContent = (_tgt ? nFilled + '/' + _tgt + ' Strategien belegt (max. ' + _tgt + ' vorgesehen)'
-                            : slots.length + ' Slot' + (slots.length === 1 ? '' : 's')) +
-      (nRot ? ' · ' + nRot + ' Rotationsslot' : '') + ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)';
+    var _total = _tgt ? Math.max(_tgt, slots.length) : null;
+    sub.textContent = (_total ? nFilled + '/' + _total + ' Strategien belegt (max. ' + _total + ' vorgesehen)'
+                              : slots.length + ' Slot' + (slots.length === 1 ? '' : 's')) +
+      (nRot ? ' · ' + nRot + ' Rotationsslot' : '') +
+      (nPlanned ? ' · ' + nPlanned + ' Platz' + (nPlanned === 1 ? '' : 'e') + ' vorbereitet (scharf erst nach Kandidat-Verdikt)' : '') +
+      ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)';
   }
 
   var html = '';
   for (var k = 0; k < slots.length; k++) {
     var s = slots[k];
     var isRot = s.kind === 'rotation';
+    var isPlanned = s.kind === 'planned';
     var kindBadge = isRot
       ? '<span class="bot-badge bot-badge-warn">ROTATION</span>'
-      : '<span class="bot-badge bot-badge-buy">STRATEGIE</span>';
-    html += '<div class="bot-card" style="padding:var(--s-3);border:1px solid var(--c-border)">';
+      : isPlanned
+        ? '<span class="bot-badge" style="background:var(--c-surface-2);color:var(--c-text-dim);border:1px solid var(--c-border)">GEPLANT</span>'
+        : '<span class="bot-badge bot-badge-buy">STRATEGIE</span>';
+    html += '<div class="bot-card" style="padding:var(--s-3);border:1px ' + (isPlanned ? 'dashed' : 'solid') + ' var(--c-border)' + (isPlanned ? ';opacity:0.85' : '') + '">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s-2);margin-bottom:var(--s-2)">';
     html += '<b style="font-size:var(--text-md)">' + escHtml(s.slot_id) + '</b>' + kindBadge + '</div>';
 
-    if (!isRot) {
+    if (isPlanned) {
+      html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">' +
+        escHtml(s.note || 'Reserve-Platz — wird scharf gestellt, sobald ein Kandidat überzeugt.') + '</div>';
+    } else if (!isRot) {
       var m0 = spById[s.strategy_id] || spById[String(s.strategy_id)];
       var nm0 = (m0 && m0.name) ? _spShortName(m0.name) : (nameById[s.strategy_id] || nameById[String(s.strategy_id)] || '');
       html += '<div style="font-size:var(--text-sm);margin-bottom:4px"><b>#' + escHtml(s.strategy_id) + '</b> ' +
