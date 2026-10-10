@@ -222,8 +222,8 @@ setTimeout(() => {
   check('(g) gate-next: NFP-Fenster 02.10. 14:00–14:30 BZ',
     nxtHtml.includes('Non-Farm') && nxtHtml.includes('02.10. 14:00–14:30') && nxtHtml.includes('30 min vor'),
     nxtHtml.slice(0, 140));
-  check('(g) gate-blocks: 2 Skips (executor 1, shadow 1)',
-    blkHtml.includes('<b>2</b>') && blkHtml.includes('executor 1') && blkHtml.includes('shadow 1'),
+  check('(g) gate-blocks: 4 Skips (Release 2 · Guard 2)',
+    blkHtml.includes('<b>4</b>') && blkHtml.includes('Release 2') && blkHtml.includes('Guard 2'),
     blkHtml.slice(0, 140));
 
   console.log('\n' + '='.repeat(60));

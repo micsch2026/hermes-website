@@ -456,9 +456,15 @@
     el = document.getElementById('gate-blocks');
     if (el) {
       var b = g.blocks_7d || {};
-      var srcTxt = Object.keys(b.by_source || {}).map(function (k) { return k + ' ' + b.by_source[k]; }).join(', ');
+      var GATE_SHORT = { release: 'Release', slippage_guard: 'Guard', risk_gate: 'Risk', market: 'Markt' };
+      var parts = Object.keys(b.by_gate || {}).sort().map(function (k) {
+        return (GATE_SHORT[k] || k) + ' ' + b.by_gate[k];
+      });
+      if (!parts.length) {
+        parts = Object.keys(b.by_source || {}).map(function (k) { return k + ' ' + b.by_source[k]; });
+      }
       el.innerHTML = '<span class="ov-gate-label">Gate-Skips 7 d:</span><b>' + fmtInt(b.total) + '</b>' +
-        (srcTxt ? '<span class="ov-gate-dim">(' + esc(srcTxt) + ')</span>' : '');
+        (parts.length ? '<span class="ov-gate-dim">(' + esc(parts.join(' · ')) + ')</span>' : '');
       el.className = 'ov-gate-item' + ((b.total || 0) > 0 ? ' gate-warn' : '');
     }
   }
