@@ -5,6 +5,16 @@ build_bot_pages.py — ONE builder for ALL bot dashboard pages.
 Reads template + per-bot JSON config → generates content HTML files
 that build.py can process into final pages.
 
+Struktur (Umbau 11.10.2026, Unified-Modell "Bot = Konto mit 1..N Slots"):
+  - Bot-Steckbrief: kompakte Chips (bot-level Fakten; Quelle botN.json: meta_chips)
+  - "Strategien & Slots": je Strategie EINE Karte (Daten aus dashboard.slots +
+    shadow_portfolio.json, gerendert von bot-components.js). Einzel-Bot = N=1.
+  - Asset-Monitor: Live je Paar + Asset-Performance (Heatmap-Widget).
+  - Tabs: Trades | Lab-Referenz (Validierung je Strategie + Benchmark + Re-Opt).
+Entfernt: Info-Tags, Config-Chips (doppelt), Konzept-Tab (doppelt zur Karte),
+Setup-Parameter-Tab (tote RSI-Tabelle), separater Backtest-Tab (war bei 8/10
+Bots leer → jetzt dynamischer Lab-Tab).
+
 Usage:
     python3 build_bot_pages.py              # build all bots
     python3 build_bot_pages.py bot1         # build only Bot #1
@@ -54,100 +64,59 @@ def find_all_configs():
     return configs
 
 
-def build_strategy_tags(tags):
-    """Generate strategy tag HTML from config list."""
+def build_meta_chips(chips):
+    """Bot-Steckbrief: kompakte Chips (bot-level Fakten, je Fakt genau 1×)."""
     parts = []
-    for tag in tags:
-        tag_id = tag.get('id', '')
-        id_attr = f' id="{tag_id}"' if tag_id else ''
-        parts.append(
-            f'  <div class="bot-strategy-tag">\n'
-            f'    <span class="label">{tag["label"]}</span>\n'
-            f'    <span class="value"{id_attr}>{tag["value"]}</span>\n'
-            f'  </div>'
-        )
-    return '\n'.join(parts)
-
-
-def build_config_chips(chips):
-    """Generate config chip HTML."""
-    parts = []
-    for chip in chips:
+    for chip in chips or []:
         parts.append(f'    <span class="bot-config-chip">{chip}</span>')
     return '\n'.join(parts)
 
 
-def build_backtest_section(features, bot_id, config):
-    """Generate backtest overview section if enabled."""
-    if not features.get('backtest', False):
+def build_multi_intro_section(config):
+    """Konzept & Regeln des Bots — statischer Text je Bot (botN.json `multi_intro`).
+
+    Aufklappbar (details): erklärt das Slot-/Rotations-Modell des Bots. Leer für
+    Bots ohne eigenen Text → Block entfällt (die Slots-Sektion selbst wird nur
+    bei vorhandenen dashboard.slots sichtbar).
+    """
+    intro = (config.get('multi_intro') or '').strip()
+    if not intro:
         return ''
-    ro = config.get('reoptimize', {})
-    tf = ro.get('timeframe', '?')
-    strategy = ro.get('strategy', '')
-    dm = ro.get('data_months', '?')
-    im = ro.get('interval_months', '?')
-    if strategy == 'lab_live':
-        bt_title = f'🧪 Backtest Benchmark ({tf} WFO, 11 Splits, 6M Hold-Out)'
-    else:
-        bt_title = f'🧪 Backtest Benchmark ({tf} WFO, IS={dm}M/OOS={im}M)'
-    return f'''
-<!-- BACKTEST BENCHMARK TABLE & STATS -->
-<div class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2)">
-    <span style="font-weight:700;font-size:var(--text-md)">{bt_title}</span>
-    <span id="{bot_id}-bt-verdict" class="bot-badge bot-badge-signal" style="font-size:var(--text-xs)">—</span>
-  </div>
-
-  <div class="bot-grid" id="{bot_id}-bt-grid" style="margin-bottom:var(--s-4)">
-    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
-      <div class="bot-card-title">Backtest WR</div>
-      <div class="bot-card-value" id="{bot_id}-bt-wr">—</div>
-      <div class="bot-card-sub" id="{bot_id}-bt-wr-ci">Expected WR</div>
-    </div>
-    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
-      <div class="bot-card-title">Backtest PF</div>
-      <div class="bot-card-value" id="{bot_id}-bt-pf">—</div>
-      <div class="bot-card-sub" id="{bot_id}-bt-pf-sub">Profit Factor</div>
-    </div>
-    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
-      <div class="bot-card-title">Backtest Exp</div>
-      <div class="bot-card-value" id="{bot_id}-bt-exp">—</div>
-      <div class="bot-card-sub" id="{bot_id}-bt-exp-ci">Per trade</div>
-    </div>
-    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
-      <div class="bot-card-title">Backtest PnL</div>
-      <div class="bot-card-value" id="{bot_id}-bt-pnl">—</div>
-      <div class="bot-card-sub" id="{bot_id}-bt-pnl-sub">Simulated Net</div>
-    </div>
-    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
-      <div class="bot-card-title">Backtest DD</div>
-      <div class="bot-card-value" id="{bot_id}-bt-dd">—</div>
-      <div class="bot-card-sub">Max Drawdown</div>
-    </div>
-    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
-      <div class="bot-card-title">OOS Validation</div>
-      <div class="bot-card-value" id="{bot_id}-bt-oos">—</div>
-      <div class="bot-card-sub" id="{bot_id}-bt-oos-sub">Walk-Forward</div>
-    </div>
-  </div>
-
-  <div style="font-size:var(--text-xs);color:var(--c-text-dim);border-top:1px solid var(--c-border);padding-top:var(--s-3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--s-2)">
-    <span><b>Setup Parameter:</b> <span id="{bot_id}-bt-verdict-sub">—</span></span>
-    <span><b>Aktive Assets:</b> <span id="{bot_id}-bt-pairs-sub">—</span> (<span id="{bot_id}-bt-pairs">—</span> Paare)</span>
-  </div>
-</div>'''
+    return (
+        '<details style="margin-bottom:var(--s-3)">\n'
+        '  <summary style="cursor:pointer;font-size:var(--text-xs);color:var(--c-text-dim);user-select:none">'
+        '📘 Konzept &amp; Regeln dieses Bots ▸</summary>\n'
+        '  <div style="font-size:var(--text-xs);color:var(--c-text-2);line-height:1.65;margin-top:var(--s-2);'
+        'background:var(--c-surface-2);border:1px solid var(--c-border);border-left:3px solid #8b5cf6;'
+        'border-radius:var(--r-md);padding:var(--s-3) var(--s-4)">🧩 ' + intro + '</div>\n'
+        '</details>'
+    )
 
 
 def build_signal_section(features, bot_id):
-    """Generate signal overview section if enabled."""
+    """Asset-Monitor: Live-Status je Paar + Asset-Performance (Heatmap-Widget).
+
+    Review 11.10.: Die Heatmap bleibt ein EIGENES Widget innerhalb des
+    Monitor-Bereichs (visuelle Scanbarkeit erhalten), statt in die Live-Karten
+    eingeschmolzen zu werden.
+    """
     if not features.get('signals', False):
         return ''
-    return f'''
-<!-- 6. SIGNAL OVERVIEW -->
-<p class="bot-section-title">📡 Signal Overview</p>
+    html = f'''
+<!-- 7. ASSET-MONITOR -->
+<p class="bot-section-title">📡 Asset-Monitor</p>
 <div class="bot-signal-grid" id="{bot_id}-signal-grid">
   <div class="bot-signal-card"><div class="bot-no-data">Loading signals...</div></div>
 </div>'''
+    if features.get('heatmap', False):
+        html += f'''
+<div style="margin-top:var(--s-3);border-top:1px solid var(--c-border);padding-top:var(--s-3)">
+  <p class="bot-section-title" style="margin-top:0">🗺️ Asset-Performance <span style="color:var(--c-text-dim);font-weight:400;font-size:var(--text-xs)">(geschlossene Trades je Paar)</span></p>
+  <div class="bot-heatmap-grid" id="{bot_id}-heatmap-grid">
+    <div class="bot-no-data">Loading heatmap...</div>
+  </div>
+</div>'''
+    return html
 
 
 def build_candlestick_section(features, bot_id):
@@ -196,50 +165,42 @@ def build_candlestick_section(features, bot_id):
 </div>'''
 
 
-def build_heatmap_section(features, bot_id):
-    """Generate performance heatmap section if enabled."""
-    if not features.get('heatmap', False):
-        return ''
-    return f'''
-<!-- 10. PERFORMANCE HEATMAP -->
-<p class="bot-section-title">🗺️ Asset Performance Heatmap</p>
-<div class="bot-card">
-  <div class="bot-heatmap-grid" id="{bot_id}-heatmap-grid">
-    <div class="bot-no-data">Loading heatmap...</div>
-  </div>
-</div>'''
-
-
-def build_reoptimize_section(config, bot_id):
-    """Generate re-optimization status + instructions section."""
+def build_reopt_block(config, bot_id):
+    """Re-Opt-/Wartungs-Block für den Lab-Tab (Status + methoden-korrekte Anleitung)."""
     ro = config.get('reoptimize')
     if not ro:
         return ''
-
     last_date = ro.get('last_date', '')
     interval = ro.get('interval_months', 3)
-    steps = ro.get('steps', [])
-    pairs = ro.get('pairs', [])
+    steps = ro.get('steps', []) or []
     timeframe = ro.get('timeframe', '?')
     data_months = ro.get('data_months', 6)
-    script = ro.get('script', '')
+    method = ro.get('method', '')
 
-    # Steps HTML
-    steps_html = ''
-    for i, step in enumerate(steps):
-        if step.startswith('#'):
-            steps_html += f'<div style="color:var(--c-text-dim);margin-top:var(--s-2)">{step}</div>\n'
-        else:
-            steps_html += (
-                f'<div style="display:flex;align-items:center;gap:var(--s-2);margin-top:var(--s-1)">'
-                f'<code style="flex:1;background:var(--c-bg);padding:6px 10px;border-radius:var(--r-sm);'
-                f'font-size:var(--text-xs);user-select:all">{step}</code>'
-                f'</div>\n'
-            )
+    if steps:
+        steps_html = ''
+        for step in steps:
+            if step.startswith('#'):
+                steps_html += f'<div style="color:var(--c-text-dim);margin-top:var(--s-2)">{step}</div>\n'
+            else:
+                steps_html += (
+                    f'<div style="display:flex;align-items:center;gap:var(--s-2);margin-top:var(--s-1)">'
+                    f'<code style="flex:1;background:var(--c-bg);padding:6px 10px;border-radius:var(--r-sm);'
+                    f'font-size:var(--text-xs);user-select:all">{step}</code>'
+                    f'</div>\n'
+                )
+    else:
+        # Kein handgeschriebener Ablauf → methoden-korrekte Standard-Anleitung.
+        # (Früher stand hier „Grid-Search" — falsch für Tree-/Lab-Bots.)
+        steps_html = (
+            '<div style="margin-top:var(--s-2);line-height:1.6">'
+            'Ablauf bei Fälligkeit: neue Variante über den <b>Strategy-Lab-Worker</b> rechnen '
+            '(WFO-Gates) → <b>Shadow-Challenge</b> → bei Bestehen Slot-Fill durch die Rotation. '
+            'Regeln am laufenden Bot (SL/TP/R:R) werden <b>NICHT</b> geändert.</div>'
+        )
 
     return f'''
-<!-- RE-OPTIMIZATION STATUS -->
-<p class="bot-section-title">🔄 Re-Optimierung</p>
+<p class="bot-section-title" style="margin-top:var(--s-4)">🔧 Re-Optimierung &amp; Wartung</p>
 <div class="bot-card" id="{bot_id}-reopt-card" data-interval="{interval}">
   <div style="display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-3);flex-wrap:wrap">
     <div>
@@ -261,7 +222,7 @@ def build_reoptimize_section(config, bot_id):
     <summary style="cursor:pointer;color:var(--c-text-dim);user-select:none">Anleitung — Was tun wenn fällig? ▸</summary>
     <div style="margin-top:var(--s-3)">
       <div style="margin-bottom:var(--s-2);color:var(--c-text-dim)">
-        Grid-Search ({timeframe}, {data_months}M Daten, {len(pairs)} Paare) + Walk-Forward Validation
+        Methode: {method or '—'} · {timeframe}, {data_months}M Daten
       </div>
       {steps_html}
     </div>
@@ -269,149 +230,87 @@ def build_reoptimize_section(config, bot_id):
 </div>'''
 
 
-def load_descriptions():
-    """Load human-readable strategy descriptions from portfolio_descriptions.json."""
-    desc_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'portfolio_descriptions.json')
-    if os.path.exists(desc_path):
-        try:
-            with open(desc_path) as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
+def build_lab_section(config, bot_id):
+    """Lab-Referenz-Tab: Validierung je Strategie (JS-Fill aus shadow_portfolio.json),
+    Backtest-Benchmark (nur sichtbar wenn dashboard.backtest Daten liefert) und
+    Re-Opt-Status. Leere Blöcke bleiben ausgeblendet (keine „—"-Wüsten)."""
+    ro = config.get('reoptimize', {})
+    tf = ro.get('timeframe', '?')
 
-
-def describe_strategy(sid, lab_name, desc_data):
-    """Return structured description dict (tag, was, gut, nicht, ausmacht, ergaenzt)."""
-    name_l = (lab_name or "").lower()
-    overrides = desc_data.get("overrides", {}) or {}
-    if str(sid) in overrides:
-        o = overrides[str(sid)]
-        return {"tag": o.get("tag") or "Individuell",
-                "was": o.get("was", ""), "gut": o.get("gut", ""), "nicht": o.get("nicht", ""),
-                "ausmacht": o.get("ausmacht", ""), "ergaenzt": o.get("ergaenzt", "")}
-    for a in desc_data.get("approaches", []) or []:
-        for kw in a.get("match", []) or []:
-            if kw in name_l or kw in str(sid):
-                return {"tag": a.get("tag"), "was": a.get("was", ""),
-                        "gut": a.get("gut", ""), "nicht": a.get("nicht", ""),
-                        "ausmacht": a.get("ausmacht", ""), "ergaenzt": a.get("ergaenzt", "")}
-    return {"tag": "Trading-Strategie", "was": "", "gut": "", "nicht": "", "ausmacht": "", "ergaenzt": ""}
-
-
-def build_multi_intro_section(config):
-    """Intro-Block für Multibots — statischer Text je Bot aus botN.json (`multi_intro`).
-
-    Beschreibt das Rotator-Konzept (klassenrein, Slots, Rotation nur bei Schwäche,
-    Challenge-Regeln). Leer für Einzelstrategie-Bots → Section bleibt ausgeblendet,
-    weil die Slots-Sektion nur bei vorhandenen dashboard.slots sichtbar wird.
-    """
-    intro = (config.get('multi_intro') or '').strip()
-    if not intro:
-        return ''
-    return (
-        '<div style="font-size:var(--text-xs);color:var(--c-text-2);line-height:1.65;'
-        'background:var(--c-surface-2);border:1px solid var(--c-border);border-left:3px solid #8b5cf6;'
-        'border-radius:var(--r-md);padding:var(--s-3) var(--s-4);margin-bottom:var(--s-3)">'
-        '🧩 ' + intro +
-        '</div>'
-    )
-
-
-def build_strategy_concept_section(bot_id, config, desc_data):
-    """Generate a clean visual strategy explanation card based on portfolio_descriptions."""
-    # Extract strategy ID from config/tags
-    strat_id = ""
-    strat_name = config.get("name", "")
-    for tag in config.get("strategy_tags", []):
-        val = tag.get("value", "")
-        if "#" in val:
-            parts = val.split("#")[1].split()[0].replace("—", "").strip()
-            if parts.isdigit():
-                strat_id = parts
-                break
-    if not strat_id and "reoptimize" in config:
-        script = config["reoptimize"].get("script", "")
-        if "#" in script:
-            strat_id = script.split("#")[1].split("'")[0].strip()
-
-    desc = describe_strategy(strat_id, strat_name, desc_data)
-    tag = desc.get("tag", "Trading-Strategie")
-    was = desc.get("was", "")
-    gut = desc.get("gut", "")
-    nicht = desc.get("nicht", "")
-    ausmacht = desc.get("ausmacht", "")
-    ergaenzt = desc.get("ergaenzt", "")
-
-    multi_chip = ''
-    multi_note = ''
-    if config.get('multi_intro'):
-        multi_chip = ' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span>'
-        multi_note = ('<div style="font-size:var(--text-xs);color:var(--c-text-dim);margin-bottom:var(--s-3)">'
-                      '🧩 Multibot: Dieser Bot handelt mehrere Strategie-Slots. Einzelstrategien, Status und Details: '
-                      'Abschnitt „🧩 Multibot — Slots &amp; Strategien“ weiter unten.</div>')
-
-    chips_html = ""
-    for chip in config.get("config_chips", []):
-        chips_html += f'<span class="bot-strategy-tag" style="background:var(--c-surface-2);border:1px solid var(--c-border);font-size:var(--text-xs);padding:4px 10px;border-radius:var(--r-md);">{chip}</span>\n'
-
-    return f"""
-<!-- STRATEGY CONCEPT & PROFILE -->
-<div class="bot-card" style="padding:var(--s-4);margin-bottom:var(--s-4);">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2);">
-    <div>
-      <span class="bot-tag-primary" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--r-md);background:rgba(99,102,241,0.15);color:#818cf8;margin-right:8px;">{tag}</span>
-      <strong style="font-size:var(--text-md);color:var(--c-text);">Strategie-Profil {'#' + strat_id if strat_id else ''}{multi_chip}</strong>
+    bench = f'''
+<div id="{bot_id}-lab-bench" style="display:none;margin-bottom:var(--s-4)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-3);flex-wrap:wrap;gap:var(--s-2)">
+    <span style="font-weight:700;font-size:var(--text-md)">🧪 Backtest-Benchmark ({tf} WFO)</span>
+    <span id="{bot_id}-bt-verdict" class="bot-badge bot-badge-signal" style="font-size:var(--text-xs)">—</span>
+  </div>
+  <div class="bot-grid" style="margin-bottom:var(--s-3)">
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest WR</div>
+      <div class="bot-card-value" id="{bot_id}-bt-wr">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-wr-ci">Expected WR</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest PF</div>
+      <div class="bot-card-value" id="{bot_id}-bt-pf">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-pf-sub">Profit Factor</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest Exp</div>
+      <div class="bot-card-value" id="{bot_id}-bt-exp">—</div>
+      <div class="bot-card-sub">Per trade</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest PnL</div>
+      <div class="bot-card-value" id="{bot_id}-bt-pnl">—</div>
+      <div class="bot-card-sub">Simulated Net</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">Backtest DD</div>
+      <div class="bot-card-value" id="{bot_id}-bt-dd">—</div>
+      <div class="bot-card-sub">Max Drawdown</div>
+    </div>
+    <div class="bot-card" style="background:rgba(255,255,255,0.02);padding:var(--s-3)">
+      <div class="bot-card-title">OOS Validation</div>
+      <div class="bot-card-value" id="{bot_id}-bt-oos">—</div>
+      <div class="bot-card-sub" id="{bot_id}-bt-oos-sub">Walk-Forward</div>
     </div>
   </div>
-  {multi_note}
-
-  <div class="bot-desc-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:var(--s-4);margin-bottom:var(--s-4);">
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <div class="bot-desc-row"><span class="bot-desc-label">Konzept:</span><span style="color:var(--c-text);">{was or 'Systematische Handelsstrategie basierend auf quantitativen Signalfiltern.'}</span></div>
-      {f'<div class="bot-desc-row"><span class="bot-desc-label">Profil:</span><span style="color:var(--c-text);">{ausmacht}</span></div>' if ausmacht else ''}
-      {f'<div class="bot-desc-row"><span class="bot-desc-label">Portfolio:</span><span style="color:var(--c-text);">{ergaenzt}</span></div>' if ergaenzt else ''}
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      {f'<div class="bot-desc-row"><span class="bot-desc-label">Stärken:</span><span style="color:var(--c-success,#10b981);">{gut}</span></div>' if gut else ''}
-      {f'<div class="bot-desc-row"><span class="bot-desc-label">Schwächen:</span><span style="color:var(--c-warn,#f59e0b);">{nicht}</span></div>' if nicht else ''}
-    </div>
+  <div style="font-size:var(--text-xs);color:var(--c-text-dim);border-top:1px solid var(--c-border);padding-top:var(--s-3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--s-2)">
+    <span><b>Setup Parameter:</b> <span id="{bot_id}-bt-verdict-sub">—</span></span>
+    <span><b>Assets:</b> <span id="{bot_id}-bt-pairs-sub">—</span></span>
   </div>
+</div>'''
 
-  <div style="border-top:1px solid var(--c-border);padding-top:var(--s-3);margin-top:var(--s-2);">
-    <p style="font-size:var(--text-xs);font-weight:600;color:var(--c-text-muted);margin-bottom:var(--s-2);text-transform:uppercase;letter-spacing:0.5px;">Setup- & Execution-Parameter</p>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;">
-      {chips_html}
-    </div>
+    strats = f'''
+<div id="{bot_id}-lab-strats" style="display:none;margin-bottom:var(--s-4)">
+  <p class="bot-section-title" style="margin-top:0">📊 Validierung je Strategie (Lab-WFO)</p>
+  <div class="bot-table-wrap">
+    <table class="bot-table" style="font-size:var(--text-xs)">
+      <thead><tr><th>Strategie</th><th>OOS PF</th><th>OOS Trades</th><th>OOS PnL</th><th>Gap</th></tr></thead>
+      <tbody id="{bot_id}-lab-strats-body"></tbody>
+    </table>
   </div>
-</div>
-"""
+  <p style="font-size:10px;color:var(--c-text-dim);margin-top:var(--s-2)">OOS-Referenz aus der Lab-WFO; Gap = Abweichung Shadow vs. OOS-Erwartung. Karten-Detail (Tier/TF/Budget/Setup) steht in „Strategien &amp; Slots".</p>
+</div>'''
+
+    return f'''
+<div class="bot-card" style="padding:var(--s-4)">
+{bench}
+{strats}
+{build_reopt_block(config, bot_id)}
+</div>'''
 
 
-def build_page(config, template, desc_data=None):
+def build_page(config, template):
     """Generate a complete content HTML from config + template."""
     bot_id = config['bot_id']
     features = config.get('features', {})
-    desc_data = desc_data or {}
 
-    # Strategy tags
-    strategy_tags = build_strategy_tags(config.get('strategy_tags', []))
-
-    # Config chips
-    config_chips = build_config_chips(config.get('config_chips', []))
-
-    # Strategy Concept
-    strategy_concept_section = build_strategy_concept_section(bot_id, config, desc_data)
-
-    # Multibot-Intro (leer bei Einzel-Bots)
+    meta_chips = build_meta_chips(config.get('meta_chips', []))
     multi_intro_section = build_multi_intro_section(config)
-
-    # Conditional sections
-    backtest_section = build_backtest_section(features, bot_id, config)
     signal_section = build_signal_section(features, bot_id)
     candlestick_section = build_candlestick_section(features, bot_id)
-    heatmap_section = build_heatmap_section(features, bot_id)
-    reoptimize_section = build_reoptimize_section(config, bot_id)
+    lab_section = build_lab_section(config, bot_id)
 
     # Extra sections (bot-specific)
     extra_sections = config.get('extra_sections_html', '')
@@ -427,15 +326,11 @@ def build_page(config, template, desc_data=None):
     html = html.replace('{{CHARTS_PATH}}', config.get('charts_path', ''))
     html = html.replace('{{HEATMAP_PATH}}', config.get('heatmap_path', ''))
     html = html.replace('{{REFRESH_INTERVAL}}', str(config.get('refresh_interval', 60000)))
-    html = html.replace('{{STRATEGY_TAGS}}', strategy_tags)
-    html = html.replace('{{CONFIG_CHIPS}}', config_chips)
-    html = html.replace('{{STRATEGY_CONCEPT_SECTION}}', strategy_concept_section)
+    html = html.replace('{{META_CHIPS}}', meta_chips)
     html = html.replace('{{MULTI_INTRO}}', multi_intro_section)
-    html = html.replace('{{BACKTEST_SECTION}}', backtest_section)
     html = html.replace('{{SIGNAL_SECTION}}', signal_section)
     html = html.replace('{{CANDLESTICK_SECTION}}', candlestick_section)
-    html = html.replace('{{HEATMAP_SECTION}}', heatmap_section)
-    html = html.replace('{{REOPTIMIZE_SECTION}}', reoptimize_section)
+    html = html.replace('{{LAB_SECTION}}', lab_section)
     html = html.replace('{{EXTRA_SECTIONS}}', extra_sections)
     html = html.replace('{{EXTRA_SCRIPTS}}', extra_scripts)
 
@@ -443,7 +338,6 @@ def build_page(config, template, desc_data=None):
     html = html.replace('{{HAS_SIGNALS}}', 'true' if features.get('signals') else 'false')
     html = html.replace('{{HAS_CANDLESTICK}}', 'true' if features.get('candlestick') else 'false')
     html = html.replace('{{HAS_HEATMAP}}', 'true' if features.get('heatmap') else 'false')
-    html = html.replace('{{HAS_BACKTEST}}', 'true' if features.get('backtest') else 'false')
 
     # Position columns (JSON array from config, or empty array as fallback)
     pos_cols = config.get('position_columns', [])
@@ -482,14 +376,13 @@ def main():
         sys.exit(1)
 
     template = load_template()
-    desc_data = load_descriptions()
     print(f'Building {len(configs)} bot page(s) from template...\n')
 
     results = []
     for cfg in configs:
         bot_id = cfg['bot_id']
         print(f'  Building {cfg.get("name", bot_id)}...')
-        html = build_page(cfg, template, desc_data)
+        html = build_page(cfg, template)
         out = write_content(bot_id, html)
         results.append((bot_id, out))
 

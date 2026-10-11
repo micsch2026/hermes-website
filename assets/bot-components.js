@@ -25,7 +25,6 @@ var C = {
   hasSignals: true,
   hasCandlestick: true,
   hasHeatmap: true,
-  hasBacktest: true,
 };
 
 var _chartInstances = {};
@@ -526,6 +525,17 @@ function renderHistory(d) {
     var tb = b.timestamp || b.closed_at || '';
     return tb.localeCompare(ta);
   });
+
+  // Exit-Spalte nur zeigen, wenn Trades ein Exit-Feld tragen (Log-Gap: exit_price fehlt oft)
+  var _htbl = el(C.prefix + '-history-table');
+  if (_htbl && _htbl.classList) {
+    var hasExit = false;
+    for (var x = 0; x < trades.length; x++) {
+      var _et = trades[x];
+      if (_et.close_price || _et.exit_price || _et.current_price) { hasExit = true; break; }
+    }
+    if (hasExit) _htbl.classList.remove('no-exit'); else _htbl.classList.add('no-exit');
+  }
   if (trades.length === 0) {
     tbody.innerHTML = '<tr><td colspan="9" class="bot-no-data">No completed trades</td></tr>';
     return;
@@ -731,6 +741,8 @@ function _renderSlotsInner(d, sp) {
     }
     if (dd.gut && !compact) h += '<div style="font-size:var(--text-xs);color:#10b981"><b>Stärken:</b> ' + escHtml(dd.gut) + '</div>';
     if (dd.nicht && !compact) h += '<div style="font-size:var(--text-xs);color:#f59e0b"><b>Schwächen:</b> ' + escHtml(dd.nicht) + '</div>';
+    if (dd.ausmacht && !compact) h += '<div style="font-size:var(--text-xs);color:var(--c-text-2)"><b>Profil:</b> ' + escHtml(dd.ausmacht) + '</div>';
+    if (dd.ergaenzt && !compact) h += '<div style="font-size:var(--text-xs);color:var(--c-text-2)"><b>Portfolio:</b> ' + escHtml(dd.ergaenzt) + '</div>';
     return h;
   }
   function statsRows(st) {
@@ -760,14 +772,27 @@ function _renderSlotsInner(d, sp) {
     if (slots[j].kind === 'planned') nPlanned++;
     if (slots[j].strategy_id != null || slots[j].holder != null) nFilled++;
   }
+
+  // Unified-Modell (Umbau 11.10.): Einzel-Bot (1 Slot, keine Türen/Reserve)
+  // = „Strategie"; Multibot = „Strategien & Slots". Kein „Multibot"-Wording mehr.
+  var _isSingle = (slots.length === 1 && !nRot && !nPlanned);
+  var _ttl = el(C.prefix + '-slots-title');
+  if (_ttl) _ttl.textContent = _isSingle ? '🧩 Strategie' : '🧩 Strategien & Slots';
+
   if (sub) {
-    var _tgt = (typeof d.slots_target === 'number') ? d.slots_target : null;
-    var _total = _tgt ? Math.max(_tgt, slots.length) : null;
-    sub.textContent = (_total ? nFilled + '/' + _total + ' Strategien belegt (max. ' + _total + ' vorgesehen)'
-                              : slots.length + ' Slot' + (slots.length === 1 ? '' : 's')) +
-      (nRot ? ' · ' + nRot + ' Rotationsslot' + (nRot === 1 ? '' : 's') : '') +
-      (nPlanned ? ' · ' + nPlanned + (nPlanned === 1 ? ' Platz' : ' Plätze') + ' vorbereitet (scharf erst nach Kandidat-Verdikt)' : '') +
-      (nRot ? ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)' : '');
+    if (_isSingle) {
+      var _s0 = slots[0];
+      sub.textContent = 'Strategie ' + sidLabel(_s0.strategy_id) +
+        (_s0.since ? ' · seit ' + fmtTime(_s0.since) : '');
+    } else {
+      var _tgt = (typeof d.slots_target === 'number') ? d.slots_target : null;
+      var _total = _tgt ? Math.max(_tgt, slots.length) : null;
+      sub.textContent = (_total ? nFilled + '/' + _total + ' Strategien belegt (max. ' + _total + ' vorgesehen)'
+                                : nFilled + '/' + slots.length + ' Strategien belegt') +
+        (nRot ? ' · ' + nRot + ' Rotationsslot' + (nRot === 1 ? '' : 's') : '') +
+        (nPlanned ? ' · ' + nPlanned + (nPlanned === 1 ? ' Platz' : ' Plätze') + ' vorbereitet (scharf erst nach Kandidat-Verdikt)' : '') +
+        (nRot ? ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)' : '');
+    }
   }
 
   var html = '';
@@ -794,6 +819,7 @@ function _renderSlotsInner(d, sp) {
         (nm0 ? '<span title="' + escHtml((m0 && m0.name) || nm0) + '">' + escHtml(nm0) + '</span>' : '') + '</div>';
       html += descBlock(s.strategy_id, false);
       html += chipsAndMeta(s.strategy_id, s);
+      if (s.tech && s.tech.summary) html += '<div style="font-size:10px;color:var(--c-text-dim);margin:2px 0 4px">⚙️ ' + escHtml(s.tech.summary) + '</div>';
       html += statsRows(s.stats);
       html += oosLine(s.strategy_id);
       if (s.challenge && s.challenge.candidate != null) {
@@ -1609,9 +1635,8 @@ function renderHeatmap() {
  *  BACKTEST OVERVIEW
  * ═══════════════════════════════════════════════════════════ */
 
-function renderBacktest(d) {
-  var bt = d.backtest_summary || d.backtest || {};
-  if (!bt || Object.keys(bt).length === 0) return;
+/** Füllt die Benchmark-Karten im Lab-Tab (nur aufgerufen, wenn Daten existieren). */
+function _fillLabBench(bt) {
 
   var fields = [
     { id: 'bt-wr', val: bt.win_rate != null ? bt.win_rate.toFixed(1) + '%' : '—', cls: bt.win_rate >= 50 ? 'bot-pnl-pos' : 'bot-pnl-neg' },
@@ -1655,14 +1680,7 @@ function renderBacktest(d) {
     oosSubEl.textContent = parts.join(' · ');
   }
 
-  // Pairs
-  var pairsEl = el(C.prefix + '-bt-pairs');
-  if (pairsEl) {
-    if (bt.recipe) pairsEl.textContent = bt.recipe.assets.length;
-    else if (bt.total_pairs) pairsEl.textContent = bt.total_pairs;
-  }
-
-  // Pairs Sub — recipe asset list
+  // Verdict
   var pairsSubEl = el(C.prefix + '-bt-pairs-sub');
   if (pairsSubEl && bt.recipe) {
     pairsSubEl.textContent = bt.recipe.assets.join(', ');
@@ -1692,63 +1710,69 @@ function renderBacktest(d) {
   }
 }
 
-/** Per-pair parameters table */
-function renderPairParams(d) {
-  var tbody = el(C.prefix + '-pair-params-body');
-  if (!tbody) return;
+/** Lab-Referenz-Tab (Umbau 11.10.): Backtest-Benchmark (nur wenn Daten),
+    Validierungstabelle je Strategie (Join über shadow_portfolio.json) und
+    Re-Opt-Status. Leere Blöcke bleiben ausgeblendet — keine „—"-Wüsten. */
+function renderLab(d) {
+  // 1) Backtest-Benchmark — nur wenn dashboard.backtest echte Zahlen liefert
+  var benchWrap = el(C.prefix + '-lab-bench');
   var bt = d.backtest_summary || d.backtest || {};
-  var perPair = bt.per_pair || bt.per_index || {};
-  var pairs = d.pairs || [];
-  if (pairs.length === 0 && Object.keys(perPair).length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="bot-no-data">No pair data</td></tr>';
-    return;
+  var hasBench = !!(bt && (bt.win_rate != null || bt.profit_factor != null || bt.total_pnl != null));
+  if (benchWrap) {
+    benchWrap.style.display = hasBench ? '' : 'none';
+    if (hasBench) _fillLabBench(bt);
   }
-  var pairList = pairs.length > 0 ? pairs.map(function(p) { return p.symbol; }) : Object.keys(perPair);
 
-  // Detect index portfolio mode (has pf, wr, pnl fields)
-  var isIndex = pairList.length > 0 && perPair[pairList[0]] && perPair[pairList[0]].pf != null;
-
-  var html = '';
-  if (isIndex) {
-    for (var i = 0; i < pairList.length; i++) {
-      var sym = pairList[i];
-      var pp = perPair[sym] || {};
-      html += '<tr>';
-      html += '<td><b>' + sym + '</b></td>';
-      html += '<td>' + (pp.pass_rate || '—') + '</td>';
-      html += '<td class="' + (pp.pf >= 2.0 ? 'bot-pnl-pos' : '') + '">' + (pp.pf != null ? pp.pf.toFixed(2) : '—') + '</td>';
-      html += '<td class="' + (pp.wr >= 50 ? 'bot-pnl-pos' : 'bot-pnl-neg') + '">' + (pp.wr != null ? pp.wr.toFixed(1) + '%' : '—') + '</td>';
-      html += '<td class="' + pnlClass(pp.pnl || 0) + '">' + (pp.pnl != null ? fmtPnl(pp.pnl) + ' pts' : '—') + '</td>';
-      html += '<td class="bot-pnl-neg">' + (pp.dd != null ? pp.dd.toFixed(0) + ' pts' : '—') + '</td>';
-      html += '<td>' + (pp.trades || '—') + '</td>';
-      html += '</tr>';
+  // 2) Validierungstabelle je Strategie (Slots + shadow_portfolio.json)
+  var stratsWrap = el(C.prefix + '-lab-strats');
+  var tbody = el(C.prefix + '-lab-strats-body');
+  if (stratsWrap && tbody) {
+    var wanted = [];
+    var seen = {};
+    var slots = d.slots || [];
+    for (var i = 0; i < slots.length; i++) {
+      var sid = slots[i].strategy_id;
+      if (sid == null) continue;
+      var key = String(sid);
+      if (!seen[key]) { seen[key] = 1; wanted.push(sid); }
     }
-    // Update header for index mode
-    var thead = tbody.parentElement ? tbody.parentElement.querySelector('thead tr') : null;
-    if (thead) thead.innerHTML = '<th>Index</th><th>MFO Pass</th><th>PF</th><th>WR</th><th>PnL</th><th>Max DD</th><th>Trades</th>';
-  } else {
-    for (var i = 0; i < pairList.length; i++) {
-      var sym = pairList[i];
-      var pp = perPair[sym] || {};
-      var rsiLo = pp.rsi_oversold || pp.oversold || '—';
-      var rsiHi = pp.rsi_overbought || pp.overbought || '—';
-      var strategy = pp.strategy || '—';
-      var sl = pp.sl_pips != null ? pp.sl_pips : (pp.sl || '—');
-      var tp = pp.tp_pips != null ? pp.tp_pips : (pp.tp || '—');
-      var rr = (typeof sl === 'number' && typeof tp === 'number' && sl > 0) ? (tp / sl).toFixed(1) : '—';
-      var exp = pp.expectancy != null ? fmtPnl(pp.expectancy) : '—';
-      html += '<tr>';
-      html += '<td><b>' + sym + '</b></td>';
-      html += '<td>' + rsiLo + '–' + rsiHi + '</td>';
-      html += '<td>' + strategy + '</td>';
-      html += '<td>' + sl + '</td>';
-      html += '<td>' + tp + '</td>';
-      html += '<td>1:' + rr + '</td>';
-      html += '<td class="' + pnlClass(pp.expectancy || 0) + '">' + exp + '</td>';
-      html += '</tr>';
-    }
+    _loadShadowPortfolio(function(sp) {
+      var byId = {};
+      if (sp && sp.strategies) {
+        for (var j = 0; j < sp.strategies.length; j++) byId[sp.strategies[j].id] = sp.strategies[j];
+      }
+      var h = '';
+      for (var k = 0; k < wanted.length; k++) {
+        var s2 = wanted[k];
+        var m = byId[s2] || byId[String(s2)];
+        var nm = (m && m.name) ? _spShortName(m.name) : '';
+        var pf = (m && m.oos_pf != null) ? Number(m.oos_pf).toFixed(2) : '—';
+        var trs = (m && m.oos_trades != null) ? m.oos_trades : '—';
+        var pnl = '—';
+        var pnlCls = '';
+        if (m && m.oos_pnl != null) { pnl = fmtPnl(m.oos_pnl) + ' €'; pnlCls = pnlClass(m.oos_pnl); }
+        var gap = '—';
+        if (m && m.gap_pct != null) gap = (m.gap_pct >= 0 ? '+' : '') + Math.round(m.gap_pct) + ' %';
+        h += '<tr><td><b>#' + escHtml(s2) + '</b>' + (nm ? ' <span style="color:var(--c-text-dim)">' + escHtml(nm) + '</span>' : '') + '</td>' +
+          '<td>' + pf + '</td><td>' + trs + '</td><td class="' + pnlCls + '">' + pnl + '</td><td>' + gap + '</td></tr>';
+      }
+      if (h) { tbody.innerHTML = h; stratsWrap.style.display = ''; }
+      else { stratsWrap.style.display = 'none'; }
+    });
   }
-  tbody.innerHTML = html || '<tr><td colspan="7" class="bot-no-data">No pair data</td></tr>';
+
+  // 3) Re-Opt-Status (fällig/überfällig aus last_date + interval)
+  renderReoptimize();
+
+  // 4) Lab-Tab ausblenden, wenn gar kein Inhalt existiert (keine leeren Tabs)
+  var tabBtn = el(C.prefix + '-tabbtn-lab');
+  var reoptCard = el(C.prefix + '-reopt-card');
+  var stratsVisible = !!(stratsWrap && stratsWrap.style.display !== 'none');
+  if (tabBtn && !reoptCard && !hasBench && !stratsVisible) {
+    tabBtn.style.display = 'none';
+    var pane = el(C.prefix + '-tab-lab');
+    if (pane && pane.classList.contains('active')) switchTab(C.prefix, 'history');
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1862,7 +1886,7 @@ function switchTab(prefix, tabName) {
   }
 
   // Panes
-  var panes = ['concept', 'history', 'backtest', 'params', 'reopt'];
+  var panes = ['history', 'lab'];
   for (var p = 0; p < panes.length; p++) {
     var pane = el(prefix + '-tab-' + panes[p]);
     if (pane) {
@@ -1893,9 +1917,7 @@ function loadDashboard() {
     renderSlots(d);
     if (C.hasEquity) renderEquity(d);
     if (C.hasSignals) renderSignals(d);
-    if (C.hasBacktest) renderBacktest(d);
-    renderPairParams(d);
-    renderReoptimize();
+    renderLab(d);
     renderParity(C.prefix, d.parity);
     // Fire custom render callback if set
     if (typeof C.onData === 'function') C.onData(d);
@@ -1951,8 +1973,7 @@ window.BotDash = {
   renderSlots: renderSlots,
   renderSignals: renderSignals,
   renderEquity: renderEquity,
-  renderBacktest: renderBacktest,
-  renderPairParams: renderPairParams,
+  renderLab: renderLab,
 };
 
 function renderParity(prefix, p) {
