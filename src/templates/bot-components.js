@@ -765,9 +765,9 @@ function _renderSlotsInner(d, sp) {
     var _total = _tgt ? Math.max(_tgt, slots.length) : null;
     sub.textContent = (_total ? nFilled + '/' + _total + ' Strategien belegt (max. ' + _total + ' vorgesehen)'
                               : slots.length + ' Slot' + (slots.length === 1 ? '' : 's')) +
-      (nRot ? ' · ' + nRot + ' Rotationsslot' : '') +
+      (nRot ? ' · ' + nRot + ' Rotationsslot' + (nRot === 1 ? '' : 's') : '') +
       (nPlanned ? ' · ' + nPlanned + (nPlanned === 1 ? ' Platz' : ' Plätze') + ' vorbereitet (scharf erst nach Kandidat-Verdikt)' : '') +
-      ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)';
+      (nRot ? ' · Rotation nur bei Schwäche (Bust/Zombie/Parität)' : '');
   }
 
   var html = '';
