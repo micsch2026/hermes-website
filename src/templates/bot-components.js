@@ -586,6 +586,7 @@ function escHtml(s) {
 
 var _spCache = null;
 var _spLoading = false;
+var _spWaiters = [];
 var _lastSlotsD = null;
 
 function _loadShadowPortfolio(cb) {
@@ -593,17 +594,24 @@ function _loadShadowPortfolio(cb) {
   try {
     if (typeof fetch !== 'function' || !window || !window.location || !window.location.origin) { cb(null); return; }
   } catch (e) { cb(null); return; }
-  if (_spLoading) { cb(null); return; }  // läuft bereits — nächster Refresh nutzt den Cache
+  // Läuft bereits ein Fetch? → Callback in die Warteschlange (statt cb(null),
+  // sonst bleibt z.B. die Lab-Validierungstabelle beim ersten Load leer).
+  if (_spLoading) { _spWaiters.push(cb); return; }
   _spLoading = true;
+  function _flush(data) {
+    var w = _spWaiters; _spWaiters = [];
+    cb(data);
+    for (var i = 0; i < w.length; i++) { try { w[i](data); } catch (e) {} }
+  }
   try {
     safeFetch('/api/strategy-lab/shadow_portfolio.json').then(function(r) {
       if (!r.ok) throw new Error(r.status);
       return r.json();
     }).then(function(d) {
       _spCache = d; _spLoading = false;
-      cb(d);
-    }).catch(function() { _spLoading = false; cb(null); });
-  } catch (e) { _spLoading = false; cb(null); }
+      _flush(d);
+    }).catch(function() { _spLoading = false; _flush(null); });
+  } catch (e) { _spLoading = false; _flush(null); }
 }
 
 function _spShortName(nm) {
