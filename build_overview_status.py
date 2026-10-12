@@ -994,6 +994,17 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         src_finding("fx.rotation_policy", "shadow", "rotation_policy.json fehlt/kaputt",
                     f"{pol_err or 'missing'} — Slots/Challenges unvollständig")
 
+    # Fokus je Bot (12.10.2026, User): Assetklasse aus der Rotations-Policy (SSOT) →
+    # Anzeige-Label/Icon. Genutzt für fleet[].focus (Fleet-Matrix) — bot_class wird
+    # weiter unten (Exposure-Sektion) wiederverwendet, NICHT erneut bauen.
+    _FOCUS_LABELS = {"FX": ("Forex", "💱"), "METAL": ("Metalle", "🥇"),
+                     "INDEX": ("Indizes", "📈"), "STOCK": ("US-Aktien", "🇺🇸")}
+    bot_class = {}
+    if isinstance(policy, dict):
+        for _t in policy.get("targets") or []:
+            if isinstance(_t, dict) and _t.get("bot"):
+                bot_class[_t["bot"]] = _t.get("asset_class")
+
     rot_state, rot_err = _read_json(os.path.join(fx_root, "data", "rotation", "rotation_state.json"))
     sources.add("fx.rotation_state", os.path.join(fx_root, "data", "rotation", "rotation_state.json"),
                 _mtime_age_s(os.path.join(fx_root, "data", "rotation", "rotation_state.json"), now_dt),
@@ -1171,10 +1182,13 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         if rs_ok and isinstance(rs.get("daily"), dict):
             daily_pnl_pct = _f(rs["daily"].get("pnl_pct"))
 
+        _focus = _FOCUS_LABELS.get(bot_class.get(bot))
         fleet.append({
             "bot": bot,
             "is_live": bool(is_live),
             "multi": bool(multi),
+            "focus": _focus[0] if _focus else None,
+            "focus_icon": _focus[1] if _focus else None,
             "equity": _round2(equity),
             "balance": _round2(balance),
             "pnl_7d": _round2(trades_sums.get(7)),
@@ -1545,11 +1559,7 @@ def build(root, fx_root, sl_root, trading_data, now=None):
     # exposure: Klassen aus Positionen (resolvable symbols) + Slot-Zuordnung
     # über rotation_policy targets[bot].asset_class; open_risk_eur bewusst null
     # (bräuchte contract_sizes/EUR-Raten — keine Schein-Zahlen).
-    bot_class = {}
-    if isinstance(policy, dict):
-        for t in policy.get("targets") or []:
-            if isinstance(t, dict) and t.get("bot"):
-                bot_class[t["bot"]] = t.get("asset_class")
+    # bot_class wurde bereits beim Policy-Load gebaut (Fokus-Labels) — hier nur nutzen.
     class_slots = {"FX": 0, "METAL": 0, "INDEX": 0}
     for b in fleet:
         cls = bot_class.get(b["bot"])

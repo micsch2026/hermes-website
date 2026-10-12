@@ -72,6 +72,21 @@ def build_meta_chips(chips):
     return '\n'.join(parts)
 
 
+def build_focus_badge(config):
+    """Fokus-Badge (12.10.2026, User): Assetklassen-Fokus sofort sichtbar.
+    Quelle: botN.json → focus {label, icon}; SSOT der Klassen = rotation_policy targets."""
+    f = config.get("focus") or {}
+    label = str(f.get("label") or "").strip()
+    if not label:
+        return ""
+    icon = str(f.get("icon") or "").strip()
+    txt = f"{icon} {label}".strip()
+    return ('<span class="bot-focus-badge" style="background:rgba(120,180,255,0.14);'
+            'border:1px solid rgba(120,180,255,0.35);color:#7ab4ff;border-radius:999px;'
+            'padding:2px 10px;font-size:var(--text-xs);font-weight:700;white-space:nowrap">'
+            f'{txt}</span>')
+
+
 def build_multi_intro_section(config):
     """Konzept & Regeln des Bots — statischer Text je Bot (botN.json `multi_intro`).
 
@@ -327,6 +342,7 @@ def build_page(config, template):
     html = html.replace('{{HEATMAP_PATH}}', config.get('heatmap_path', ''))
     html = html.replace('{{REFRESH_INTERVAL}}', str(config.get('refresh_interval', 60000)))
     html = html.replace('{{META_CHIPS}}', meta_chips)
+    html = html.replace('{{FOCUS_BADGE}}', build_focus_badge(config))
     html = html.replace('{{MULTI_INTRO}}', multi_intro_section)
     html = html.replace('{{SIGNAL_SECTION}}', signal_section)
     html = html.replace('{{CANDLESTICK_SECTION}}', candlestick_section)
