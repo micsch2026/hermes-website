@@ -73,6 +73,15 @@ class TestBuildSupervisor(unittest.TestCase):
         (self.fx / "data" / "rotation").mkdir(parents=True, exist_ok=True)
         (self.fx / "data" / "bot3_slot_history.jsonl").write_text("", encoding="utf-8")
         (self.fx / "data" / "rotation" / "rotation_log.jsonl").write_text("", encoding="utf-8")
+        _write(self.fx / "data" / "rotation" / "portfolio_review.json", {
+            "generated": "2026-10-12T04:12:00+00:00",
+            "findings": ["Challenge-KPI: 7 Fills / 0 Fails"],
+            "open_recommendations": [
+                {"slot": "bot1::main", "action": "pull_candidate", "days_open": 6.1, "level": "warn"}],
+            "tracking_error": [
+                {"bot": "bot1", "slot": "main", "sid": 101, "delta_own_vs_live": 40.0}],
+            "challenge_kpi": {"fills": 7, "fails": 0, "conversion_pct": 100.0},
+        })
 
         # --- Missionen ---
         _write(self.mi / "m-x.json", {
@@ -118,6 +127,14 @@ class TestBuildSupervisor(unittest.TestCase):
         self.assertIn("next_board_run", d)
         nbr = datetime.fromisoformat(d["next_board_run"])
         self.assertGreater(nbr, datetime.now(timezone.utc))
+
+    def test_portfolio_review_block(self):
+        d = self.build()
+        pr = d["portfolio_review"]
+        self.assertEqual(pr["challenge_kpi"]["conversion_pct"], 100.0)
+        self.assertEqual(len(pr["open_recs_aged"]), 1)
+        self.assertEqual(len(pr["tracking_error_flags"]), 1)
+        self.assertTrue(any(s["name"] == "portfolio_review" for s in d["sources"]))
 
     def test_autonomy_applied_numbers(self):
         d = self.build()

@@ -243,6 +243,21 @@ def main() -> int:
             "bot": last_fill[1], "slot": last_fill[2], "sid": last_fill[3]},
     }
 
+    # ---- L5 Multibot-Portfolio-Review (12.10.2026) ----
+    pr_path = FX / "data" / "rotation" / "portfolio_review.json"
+    src("portfolio_review", pr_path, 7 * 86400)
+    prj = _read_json(pr_path, {}) or {}
+    portfolio_review = {
+        "generated_at": prj.get("generated"),
+        "findings": (prj.get("findings") or [])[:6],
+        "open_recs_aged": [r for r in (prj.get("open_recommendations") or [])
+                           if r.get("level") in ("warn", "alert")][:5],
+        "tracking_error_flags": [r for r in (prj.get("tracking_error") or [])
+                                 if r.get("delta_own_vs_live") is not None
+                                 and abs(r["delta_own_vs_live"]) > 30][:5],
+        "challenge_kpi": prj.get("challenge_kpi"),
+    }
+
     # ---- Ops-Review ----
     ops_path = OPS / "state.json"
     src("ops_review", ops_path, 2 * 3600)
@@ -353,6 +368,7 @@ def main() -> int:
         "activity": activity,
         "sources": sources,
         "rotation": rotation,
+        "portfolio_review": portfolio_review,
         "recommendations": recs,
         "weekly": weekly,
         "changes": {
