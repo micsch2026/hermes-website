@@ -322,6 +322,9 @@ def main():
         fleet = DOCS["base"]["live"]["fleet"]
         assert [b["bot"] for b in fleet] == ["bot1", "bot4"], \
             f"fleet falsch: {[b['bot'] for b in fleet]}"
+        assert all(isinstance(b.get("n_7d"), int) and isinstance(b.get("n_30d"), int)
+                   for b in fleet), \
+            f"n_7d/n_30d fehlen/kein int: {[(b['bot'], b.get('n_7d'), b.get('n_30d')) for b in fleet]}"
 
     def t_equity():
         b1 = DOCS["base"]["live"]["fleet"][0]

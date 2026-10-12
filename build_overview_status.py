@@ -627,13 +627,16 @@ def _load_curve(path, now_dt):
 
 
 def _sum_trades(path, now_dt, sids=None):
-    """botN_trades.jsonl streamen → (sums{7,30}, daily{date:pnl}, monthly{ym:pnl}).
+    """botN_trades.jsonl streamen → (sums{7,30}, daily{date:pnl}, monthly{ym:pnl},
+    counts{7,30}).
 
     PnL-Regel: cTrader_profit, Fallback pnl; nur Trades mit parsablem
     closed_at (ISO oder 'YYYY-MM-DD HH:MM:SS'). Fenster: 0 <= now-ep <= d*86400.
+    counts[d] zählt die Trades je Fenster (11.10.2026, für /dashboard Fleet-Cockpit).
     sids: Menge aktueller Strategie-IDs (Strings) — wenn gesetzt, zählen NUR
     Trades dieser Strategien (Alt-Strategie-Trades nie mitbewerten, User 05.10.2026)."""
     sums = {d: 0.0 for d in THRESH_PNL_WINDOW_DAYS}
+    counts = {d: 0 for d in THRESH_PNL_WINDOW_DAYS}
     daily = {}
     monthly = {}
     min_daily = (now_dt - timedelta(days=THRESH_PNL_WINDOW_DAYS[-1])).date()
@@ -667,6 +670,7 @@ def _sum_trades(path, now_dt, sids=None):
                 for d in THRESH_PNL_WINDOW_DAYS:
                     if 0.0 <= age <= d * 86400:
                         sums[d] += pnl
+                        counts[d] += 1
                 day = dt.date()
                 if day >= min_daily:
                     daily[day.isoformat()] = daily.get(day.isoformat(), 0.0) + pnl
@@ -674,10 +678,10 @@ def _sum_trades(path, now_dt, sids=None):
                 if ym in months:
                     monthly[ym] = monthly.get(ym, 0.0) + pnl
     except FileNotFoundError:
-        return None, {}, {}
+        return None, {}, {}, {}
     except OSError:
-        return None, {}, {}
-    return sums, daily, monthly
+        return None, {}, {}, {}
+    return sums, daily, monthly, counts
 
 
 def _load_positions(path):
@@ -1120,7 +1124,7 @@ def build(root, fx_root, sl_root, trading_data, now=None):
                 cur_sids.add(str(_i(_s.get("sid"))))
 
         tr_age = _mtime_age_s(trades_path, now_dt)
-        trades_sums, trades_daily, trades_monthly = _sum_trades(
+        trades_sums, trades_daily, trades_monthly, trades_counts = _sum_trades(
             trades_path, now_dt, sids=cur_sids or None)
         if trades_sums is None:
             trades_family_missing.append(bot)
@@ -1175,6 +1179,8 @@ def build(root, fx_root, sl_root, trading_data, now=None):
             "balance": _round2(balance),
             "pnl_7d": _round2(trades_sums.get(7)),
             "pnl_30d": _round2(trades_sums.get(30)),
+            "n_7d": trades_counts.get(7),
+            "n_30d": trades_counts.get(30),
             "dd_pct": _round2(dd_pct),
             "dd_level": dd_level,
             "blocked": blocked,

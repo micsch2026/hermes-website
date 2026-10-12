@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Generiert den "Bot-Fleet"-Sidebar-Block der Homepage DYNAMISCH aus
+"""ARCHIVIERT 2026-10-12: /dashboard rendert live aus api-JSONs; kein Aufrufer.
+
+Generiert den "Bot-Fleet"-Sidebar-Block der Homepage DYNAMISCH aus
 shadow_portfolio.json (strategy_id, desc.tag, is_live/role) statt der
 hardcoded Juli-Karten (fix 2026-09-17: bot9/bot10 fehlten, Labels stale).
 

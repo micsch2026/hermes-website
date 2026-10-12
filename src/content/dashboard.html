@@ -1,145 +1,521 @@
 <!--TITLE:Dashboard — Hermes-->
 <!--HEAD-->
 <style>
-    .hero { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-8) 0 var(--s-6); }
-    .logo {
-      width: 48px; height: 48px;
-      background: var(--c-surface-2);
-      border: 1px solid var(--c-border-2);
-      border-radius: var(--r-lg);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
-    .logo svg { color: var(--c-text-2); }
-    .stat-value { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.01em; }
-    .stat-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.07em; color: var(--c-text-dim); font-weight: 500; margin-bottom: var(--s-2); display: flex; align-items: center; gap: var(--s-2); }
-    .stat-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: var(--s-5); }
-    .inline-badge { display: inline-flex; align-items: center; gap: var(--s-2); color: var(--c-ok); font-size: var(--text-sm); font-weight: 500; }
-    .inline-badge .dot { animation: pulse 2s infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-    .section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s-4); margin-bottom: var(--s-8); }
-    .quick-link {
-      display: flex; flex-direction: column; align-items: center; gap: var(--s-3);
-      background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-xl);
-      padding: var(--s-6) var(--s-4); text-decoration: none; color: var(--c-text-muted);
-      transition: border-color var(--t), color var(--t), background var(--t);
-      text-align: center;
-    }
-    .quick-link:hover { border-color: var(--c-accent); color: var(--c-text); background: var(--c-surface-2); text-decoration: none; }
-    .quick-link-icon { color: var(--c-accent); }
-    .quick-link-label { font-size: var(--text-sm); font-weight: 600; letter-spacing: 0.01em; }
-    .quick-link-desc { font-size: var(--text-xs); color: var(--c-text-dim); }
-    .section-title { font-size: var(--text-sm); font-weight: 600; color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: var(--s-4); display: flex; align-items: center; gap: var(--s-2); }
-  </style>
+  .db-wrap { max-width: 1200px; margin: 0 auto; }
+  .db-head { margin-bottom: var(--s-5); }
+  .db-head h1 { font-size: var(--text-2xl); font-weight: 700; margin: 0 0 var(--s-1); }
+  .db-head .db-sub { color: var(--c-text-muted); font-size: var(--text-sm); margin: 0; }
+
+  .db-sec-title { font-size: var(--text-sm); font-weight: 600; color: var(--c-text-dim);
+    text-transform: uppercase; letter-spacing: 0.07em; margin: var(--s-6) 0 var(--s-3); }
+
+  .db-card { background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--r-xl); padding: var(--s-4) var(--s-5); }
+  .db-k { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--c-text-dim); font-weight: 600; }
+  .db-v { font-size: var(--text-xl); font-weight: 700; margin: 2px 0; }
+  .db-s { font-size: var(--text-sm); color: var(--c-text-muted); }
+  .db-dim { color: var(--c-text-dim); font-size: var(--text-xs); }
+  .db-pos { color: var(--c-ok, #3fb950); }
+  .db-neg { color: var(--c-err, #f85149); }
+
+  .db-error { background: var(--c-err-bg); border: 1px solid var(--c-err, #f85149);
+    color: var(--c-err, #f85149); border-radius: var(--r-md); padding: var(--s-3) var(--s-4);
+    margin-bottom: var(--s-4); font-size: var(--text-sm); }
+
+  /* M1 Status */
+  #db-status { display: flex; align-items: center; gap: var(--s-3); }
+  #db-status-text { font-weight: 700; font-size: var(--text-lg); color: var(--c-text); }
+  .db-status-right { margin-left: auto; font-size: var(--text-sm); color: var(--c-text-muted); }
+  .db-status-right a { color: var(--c-accent); }
+  .db-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+    flex: 0 0 auto; background: var(--c-text-dim); }
+  .db-dot.status-red { background: var(--c-err, #f85149); box-shadow: 0 0 6px var(--c-err, #f85149); }
+  .db-dot.status-yellow { background: var(--c-warn, #f0b940); }
+  .db-dot.status-green { background: var(--c-ok, #3fb950); }
+
+  /* M2 Aktionen */
+  .db-act { display: flex; align-items: baseline; gap: var(--s-2); padding: var(--s-2) 0;
+    font-size: var(--text-sm); border-bottom: 1px solid var(--c-border); }
+  .db-act:last-child { border-bottom: none; }
+  .db-prio { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; align-self: center; }
+  .db-prio-high { background: var(--c-err, #f85149); }
+  .db-prio-mid { background: var(--c-warn, #f0b940); }
+  .db-prio-low { background: var(--c-text-dim); }
+  .db-act-target { font-family: monospace; color: var(--c-text-2); min-width: 96px; }
+  .db-act-text { color: var(--c-text-muted); flex: 1; }
+  .db-foot { display: flex; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap;
+    margin-top: var(--s-3); font-size: var(--text-xs); color: var(--c-text-dim); }
+  .db-foot a { color: var(--c-accent); }
+
+  /* M3 Performance */
+  .db-perf { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-4); }
+
+  /* M4 Matrix */
+  .db-matrix { display: flex; flex-direction: column; overflow-x: auto; }
+  .db-row { display: grid;
+    grid-template-columns: 14px 120px minmax(150px, 1.7fr) 88px 108px 108px 100px 58px 72px auto;
+    gap: var(--s-3); align-items: center; padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--c-border); font-size: var(--text-sm); }
+  .db-row:last-child { border-bottom: none; }
+  .db-row.db-row-head { color: var(--c-text-dim); font-size: var(--text-xs);
+    text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .db-bot { font-weight: 600; white-space: nowrap; }
+  .db-strat a { color: var(--c-text-2); text-decoration: none; }
+  .db-strat a:hover { color: var(--c-accent); }
+  .db-num { font-variant-numeric: tabular-nums; }
+  .db-slots { font-family: monospace; color: var(--c-text-2); white-space: nowrap; }
+  .db-flags { white-space: nowrap; }
+  .db-badge { display: inline-block; font-size: var(--text-xs); padding: 1px 7px;
+    border-radius: 999px; border: 1px solid var(--c-border-2); color: var(--c-text-muted);
+    background: var(--c-surface-2); white-space: nowrap; margin-right: 4px; }
+  .db-badge-err { border-color: var(--c-err, #f85149); color: var(--c-err, #f85149); }
+  .db-badge-warn { border-color: var(--c-warn, #f0b940); color: var(--c-warn, #f0b940); }
+  .db-multi { border-color: var(--c-accent); color: var(--c-accent); }
+  .db-spark { display: block; }
+  .db-spark-line { fill: none; stroke-width: 1.5; }
+  .db-spark-line.db-up { stroke: var(--c-ok, #3fb950); }
+  .db-spark-line.db-down { stroke: var(--c-err, #f85149); }
+
+  /* M5/M6/M7/M8 */
+  .db-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); margin-top: var(--s-4); }
+  .db-dev-line { font-size: var(--text-sm); color: var(--c-text-muted); margin: 4px 0; }
+  .db-dev-line b { color: var(--c-text-2); }
+  .db-chip { display: inline-block; font-size: var(--text-xs); padding: 1px 7px;
+    border-radius: var(--r-sm); border: 1px solid var(--c-border); background: var(--c-surface-2);
+    color: var(--c-text-2); font-family: monospace; margin: 2px 4px 2px 0; }
+  .db-meta { margin: var(--s-6) 0 var(--s-2); font-size: var(--text-xs); color: var(--c-text-dim); }
+  .db-meta a { color: var(--c-accent); }
+
+  @media (max-width: 720px) {
+    .db-perf { grid-template-columns: 1fr; }
+    .db-grid2 { grid-template-columns: 1fr; }
+    #db-status { flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+    .db-status-right { margin-left: 0; }
+    .db-row { grid-template-columns: 1fr; gap: 2px; padding: var(--s-3) 0; }
+    .db-row.db-row-head { display: none; }
+  }
+</style>
 <!--/HEAD-->
 <!--BODY-->
+<div class="container db-wrap">
 
-    <div class="container">
+  <div class="db-head">
+    <h1>🚦 Fleet-Cockpit</h1>
+    <p class="db-sub">Performance, Entwicklung und Empfehlungen auf einen Blick.
+      Live gerendert aus den api-JSONs · Auto-Refresh 60 s.</p>
+  </div>
 
-      <section class="hero" aria-label="Willkommen">
-        <div class="logo" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-        </div>
-        <div>
-          <h1 class="page-title">Hermes</h1>
-          <p class="page-subtitle">hermes.nexusfortis.org</p>
-        </div>
-      </section>
+  <div id="db-error" class="db-error" style="display:none"></div>
 
-      <!-- Bot-Fleet (GENERIERT von tools/generate_home_sidebar.py — nicht handeditieren) -->
-      <section aria-label="Bot-Fleet">
-        <div class="section-title"><i data-lucide="radio" style="width:14px;height:14px"></i> Bot-Fleet</div>
-        <div class="section-grid">
-          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.05em;color:var(--dim,#8892a8);margin:0.35rem 0 0.2rem">🔴 ECHTGELD (MESSKONTEN)</div>
-          <a href="/bot4" class="quick-link">
-            <i data-lucide="shield" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #4 <span style="color:#ff6b6b;font-weight:700">●</span></span>
-            <span class="quick-link-desc">#317 · Trend-Pullback Gold (H1) · LIVE</span>
-          </a>
-          <a href="/bot9" class="quick-link">
-            <i data-lucide="shield" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #9 <span style="color:#ff6b6b;font-weight:700">●</span></span>
-            <span class="quick-link-desc">#534 · AUDCAD MACD-Regime (H1) · LIVE</span>
-          </a>
-          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.05em;color:var(--dim,#8892a8);margin:0.35rem 0 0.2rem">🧪 DEMO (ANSATZ-MATRIX)</div>
-          <a href="/bot1" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #1 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s724 #724 + r1 (geplant) + r2 (geplant) + r3 (geplant) · max 4 Slots · Demo</span>
-          </a>
-          <a href="/bot2" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #2 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s663 #663 + r4 (geplant) + r5 (geplant) + r6 (geplant) · max 4 Slots · Demo</span>
-          </a>
-          <a href="/bot3" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #3 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">d5 #681 + s534 #534 + srot → #663 + d4 → #696 · max 4 Slots · Demo</span>
-          </a>
-          <a href="/bot5" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #5 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">i2 #782 + i3 #784 + i4 #789 + irot #778 + s775 #775 · max 5 Slots · Demo</span>
-          </a>
-          <a href="/bot6" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #6 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s689 #689 + r10 (geplant) · max 2 Slots · Demo</span>
-          </a>
-          <a href="/bot7" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #7 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s672 #672 + mrot → #676 + m3 → #684 + m4 (geplant) + m5 (geplant) · max 5 Slots · Demo</span>
-          </a>
-          <a href="/bot8" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #8 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">s786 #786 + r7 (geplant) + r8 (geplant) + r9 (geplant) · max 4 Slots · Demo</span>
-          </a>
-          <a href="/bot10" class="quick-link">
-            <i data-lucide="layers" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Bot #10 <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation">MULTI</span></span>
-            <span class="quick-link-desc">#676 + st1 (geplant) + st2 (geplant) + st3 (geplant) + st4 (geplant) · max 4 Slots · Demo</span>
-          </a>
-        </div>
-      </section>
+  <div class="db-card" id="db-status">
+    <span class="db-dot"></span>
+    <span id="db-status-text">Lade …</span>
+    <span class="db-status-right">—</span>
+  </div>
 
-      <!-- Tools -->
-      <section aria-label="Tools">
-        <div class="section-title"><i data-lucide="wrench" style="width:14px;height:14px"></i> Tools</div>
-        <div class="section-grid">
-          <a href="/data" class="quick-link">
-            <i data-lucide="database" class="quick-link-icon" style="width:28px;height:28px"></i>
-            <span class="quick-link-label">Data Pipeline</span>
-            <span class="quick-link-desc">Marktdaten, Qualität, Gaps</span>
-          </a>
-        </div>
-      </section>
-
-      <!-- System -->
-      <section aria-label="Status">
-        <div class="section-title"><i data-lucide="server" style="width:14px;height:14px"></i> System</div>
-        <div class="section-grid">
-          <div class="stat-card">
-            <p class="stat-label"><i data-lucide="activity" style="width:12px;height:12px"></i> Status</p>
-            <p class="stat-value"><span class="inline-badge"><span class="dot dot-green dot-pulse"></span> Online</span></p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label"><i data-lucide="bot" style="width:12px;height:12px"></i> Hermes</p>
-            <p class="stat-value">v0.21.5</p>
-          </div>
-          <div class="stat-card">
-            <p class="stat-label"><i data-lucide="brain" style="width:12px;height:12px"></i> Modell</p>
-            <p class="stat-value" style="font-size:var(--text-md)">mimo-v2.5</p>
-          </div>
-        </div>
-      </section>
-
+  <div class="db-sec-title">Jetzt zu tun</div>
+  <div class="db-card" id="db-actions">
+    <div id="db-actions-list"><span class="db-dim">Lade …</span></div>
+    <div class="db-foot">
+      <span id="db-actions-more" style="display:none"></span>
+      <span class="db-dim">Vorschläge — Ausführung manuell</span>
     </div>
+  </div>
 
-  <footer class="footer">
-    Hermes · hermes.nexusfortis.org
-  </footer>
+  <div class="db-sec-title">Performance</div>
+  <div class="db-perf" id="db-perf">
+    <div class="db-card" id="db-perf-demo"><div class="db-k">DEMO</div><div class="db-v">—</div></div>
+    <div class="db-card" id="db-perf-live"><div class="db-k">LIVE</div><div class="db-v">—</div></div>
+    <div class="db-card" id="db-perf-total"><div class="db-k">GESAMT</div><div class="db-v">—</div></div>
+  </div>
 
+  <div class="db-sec-title">Fleet-Matrix</div>
+  <div class="db-card">
+    <div class="db-matrix" id="db-matrix"><span class="db-dim">Lade …</span></div>
+  </div>
+
+  <div class="db-grid2">
+    <div class="db-card">
+      <div class="db-k">Entwicklung (7d vs 30d)</div>
+      <div id="db-dev"><span class="db-dim">Lade …</span></div>
+    </div>
+    <div class="db-card">
+      <div class="db-k">Risiko &amp; Ausführung</div>
+      <div id="db-risk"><span class="db-dim">Lade …</span></div>
+    </div>
+  </div>
+
+  <div class="db-grid2">
+    <div class="db-card" id="db-shadow">—</div>
+    <div class="db-card" id="db-missions">—</div>
+  </div>
+
+  <div class="db-meta" id="db-meta">—</div>
+
+</div>
+
+<script>
+(function () {
+  var API_OV = '/api/overview/overview.json';
+  var API_SP = '/api/strategy-lab/shadow_portfolio.json';
+  var API_SV = '/api/supervisor/supervisor_status.json';
+  var API_MI = '/api/missions/missions_status.json';
+
+  var O = {}, SP = {}, SV = {}, MI = {};
+
+  var nfEur = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var nf1 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var nf2 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var nfInt = new Intl.NumberFormat('de-DE');
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function minus(s) { return String(s).replace(/-/g, '\u2212'); }
+  function has(v) { return v !== null && v !== undefined && v !== '' && !isNaN(v); }
+
+  // ── Formatter (de-DE) ──────────────────────────────────────
+  function fmtEur(v, signed) {
+    if (!has(v)) return '—';
+    var sign = v < 0 ? '\u2212' : (signed && v > 0 ? '+' : '');
+    return sign + nfEur.format(Math.abs(v)) + ' €';
+  }
+  function fmtPct(v, signed) {
+    if (!has(v)) return '—';
+    var sign = v < 0 ? '\u2212' : (signed && v > 0 ? '+' : '');
+    return sign + minus(nf1.format(Math.abs(v))) + ' %';
+  }
+  function fmtBps(v) { return has(v) ? minus(nf2.format(v)) : '—'; }
+  function fmtHM(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return esc(String(iso));
+    var p = {};
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', day: '2-digit',
+      month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+      .formatToParts(d).forEach(function (x) { p[x.type] = x.value; });
+    return p.day + '.' + p.month + '. ' + p.hour + ':' + p.minute;
+  }
+  function pnlCls(v) { return !has(v) ? '' : (v > 0 ? 'db-pos' : (v < 0 ? 'db-neg' : '')); }
+  function botNum(bot) { var m = String(bot || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : 0; }
+  function fmtTarget(t) {
+    if (!t) return '—';
+    var parts = String(t).split('/');
+    var out = /^bot\s*\d+/i.test(parts[0]) ? 'Bot ' + botNum(parts[0]) : parts[0];
+    if (parts.length > 1) out += ' · ' + parts.slice(1).join('/');
+    return out;
+  }
+
+  // ── Daten ──────────────────────────────────────────────────
+  function jget(u) {
+    return fetch(window.location.origin + u, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+  function soft(u) { return jget(u).catch(function () { return null; }); }
+
+  // ── M1 Status ──────────────────────────────────────────────
+  function renderStatus(d) {
+    var ov = (d.verdict || {}).overall || {};
+    var st = ['red', 'yellow', 'green'].indexOf(ov.status) >= 0 ? ov.status : '';
+    var why = (ov.why || []).slice(0, 5);
+    var market = d.market_open ? 'Markt offen' : 'Markt geschlossen';
+    $('db-status').innerHTML =
+      '<span class="db-dot ' + (st ? 'status-' + st : '') + '"></span>' +
+      '<span id="db-status-text" title="' + esc(why.join(' · ')) + '">' +
+        esc(ov.headline || '—') + '</span>' +
+      '<span class="db-status-right">' + esc(market) + ' · Stand ' +
+        esc(fmtHM(d.generated_at_bz)) + ' · <a href="/">→ Kommandocenter</a></span>';
+  }
+
+  // ── M2 Aktionen ────────────────────────────────────────────
+  function sortRecs(items) {
+    var order = { high: 0, mid: 1, low: 2 };
+    return items.map(function (it, i) { return { it: it, i: i }; })
+      .sort(function (a, b) {
+        var ra = order[a.it.priority]; ra = (ra == null) ? 9 : ra;
+        var rb = order[b.it.priority]; rb = (rb == null) ? 9 : rb;
+        return ra !== rb ? ra - rb : a.i - b.i;  // stabil
+      }).map(function (x) { return x.it; });
+  }
+  function renderActions(d) {
+    var items = (((d || {}).recommendations || {}).items) || [];
+    var sorted = sortRecs(items);
+    var top = sorted.slice(0, 3);
+    $('db-actions-list').innerHTML = top.length === 0
+      ? '<span class="db-dim">keine offenen Vorschläge 🎉</span>'
+      : top.map(function (it) {
+          var cls = it.priority === 'high' ? 'db-prio-high'
+                  : (it.priority === 'mid' ? 'db-prio-mid' : 'db-prio-low');
+          return '<div class="db-act">' +
+            '<span class="db-prio ' + cls + '"></span>' +
+            '<span class="db-act-target">' + esc(fmtTarget(it.target)) + '</span>' +
+            '<span class="db-act-text">' + esc(it.text || '') + '</span>' +
+            '<span class="db-badge">' + esc(it.source || '') + '</span></div>';
+        }).join('');
+    var more = sorted.length - 3;
+    var m = $('db-actions-more');
+    if (more > 0) {
+      m.style.display = '';
+      m.innerHTML = '+' + more + ' weitere → <a href="/supervisor">Supervisor</a>';
+    } else {
+      m.style.display = 'none';
+      m.innerHTML = '';
+    }
+  }
+
+  // ── M3 Performance ─────────────────────────────────────────
+  function renderPerf(d) {
+    var kpis = (d.live || {}).kpis || {};
+    var fleet = (d.live || {}).fleet || [];
+    function sum(list, field) {
+      var t = null;
+      list.forEach(function (b) { if (has(b[field])) t = (t || 0) + b[field]; });
+      return t;
+    }
+    function pct(pnl, eq) { return (has(pnl) && has(eq) && eq !== 0) ? pnl / eq * 100 : null; }
+    function card(eq, pnl7, pnl30, extra) {
+      var s = '7d <span class="' + pnlCls(pnl7) + '">' + fmtEur(pnl7, true) + '</span>';
+      if (has(pnl7) && has(eq)) s += ' (' + fmtPct(pct(pnl7, eq), true) + ')';
+      s += ' · 30d <span class="' + pnlCls(pnl30) + '">' + fmtEur(pnl30, true) + '</span>';
+      return '<div class="db-k">' + extra.k + '</div>' +
+        '<div class="db-v">' + fmtEur(eq) + '</div>' +
+        '<div class="db-s">' + s + '</div>' + (extra.foot || '');
+    }
+    var demo = fleet.filter(function (b) { return !b.is_live; });
+    var live = fleet.filter(function (b) { return b.is_live; });
+    $('db-perf-demo').innerHTML = card(kpis.equity_demo, sum(demo, 'pnl_7d'),
+      sum(demo, 'pnl_30d'), { k: 'DEMO' });
+    $('db-perf-live').innerHTML = card(kpis.equity_live, sum(live, 'pnl_7d'),
+      sum(live, 'pnl_30d'), { k: 'LIVE' });
+    $('db-perf-total').innerHTML = card(kpis.equity_total, kpis.pnl_7d, kpis.pnl_30d,
+      { k: 'GESAMT', foot: '<div class="db-s">' +
+        (has(kpis.open_positions) ? kpis.open_positions : '—') + ' offene Positionen</div>' });
+  }
+
+  // ── M4 Matrix ──────────────────────────────────────────────
+  function sparklineSVG(curve) {
+    var pts = (curve || []).map(function (p) {
+      return Array.isArray(p) ? Number(p[1]) : Number(p);
+    }).filter(function (v) { return !isNaN(v); });
+    if (pts.length < 2) return '<span class="db-dim">—</span>';
+    var W = 90, H = 24, pad = 2;
+    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+    var range = (max - min) || 1;
+    var step = Math.max(1, Math.ceil(pts.length / 60));
+    var samp = pts.filter(function (_, i) { return i % step === 0 || i === pts.length - 1; });
+    var poly = samp.map(function (v, i) {
+      var x = pad + i / (samp.length - 1) * (W - 2 * pad);
+      var y = pad + (1 - (v - min) / range) * (H - 2 * pad);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    var up = pts[pts.length - 1] >= pts[0];
+    return '<svg class="db-spark" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W +
+      ' ' + H + '" aria-hidden="true"><polyline class="db-spark-line ' +
+      (up ? 'db-up' : 'db-down') + '" points="' + poly + '"/></svg>';
+  }
+  function decayBadge(bot, findings) {
+    var b = String(bot) + '/';
+    for (var i = 0; i < (findings || []).length; i++) {
+      var t = findings[i].title || '';
+      if (t.indexOf('Decay demote: ' + b) === 0) return ['Decay', 'db-badge-err'];
+      if (t.indexOf('Decay watch: ' + b) === 0) return ['Decay?', 'db-badge-warn'];
+    }
+    return null;
+  }
+  function renderMatrix(d, sp) {
+    var fleet = (d.live || {}).fleet || [];
+    var bots = (sp || {}).bots || {};
+    var adv = ((sp || {}).advisor || {}).fleet || {};
+    var findings = d.findings || [];
+    var rows = fleet.map(function (b) {
+      var bot = b.bot;
+      var acts = {};
+      (((adv[bot] || {}).slots) || []).forEach(function (s) {
+        var a = (s.recommendation || {}).action;
+        if (a) acts[a] = true;
+      });
+      var rank = 2;
+      if (b.blocked || (has(b.dd_level) && b.dd_level >= 2) || acts.pull_candidate || acts.live_blocked) rank = 0;
+      else if (acts.watch || acts.observe || acts.challenge_running) rank = 1;
+      return { b: b, bot: bot, num: botNum(bot), acts: acts, rank: rank };
+    });
+    rows.sort(function (a, b) {
+      return a.rank !== b.rank ? a.rank - b.rank : a.num - b.num;
+    });
+    function rowHtml(r) {
+      var b = r.b;
+      var dot = b.blocked ? 'status-red'
+              : (has(b.dd_level) && b.dd_level >= 2 ? 'status-yellow' : 'status-green');
+      var meta = bots[r.bot] || {};
+      var sid = meta.strategy_id;
+      var tag = (meta.desc || {}).tag;
+      var strat = has(sid)
+        ? '<a href="/' + esc(r.bot) + '">#' + esc(sid) + (tag ? ' · ' + esc(tag) : '') + '</a>'
+        : '—';
+      var n7 = has(b.n_7d) ? b.n_7d : '—';
+      var slots = b.slots || [];
+      var occ = slots.filter(function (s) { return s.sid !== null && s.sid !== undefined; }).length;
+      var planned = slots.filter(function (s) { return s.planned === true; }).length;
+      var slotTitle = slots.map(function (s) { return s.slot_id; }).join(', ');
+      var slotCell = slots.length
+        ? '<span class="db-slots" title="' + esc(slotTitle) + '">' + occ + '● ' + planned + '○</span>'
+        : '—';
+      var badges = [];
+      if (b.blocked) badges.push(['Block', 'db-badge-err']);
+      if (has(b.dd_level) && b.dd_level >= 1)
+        badges.push(['L' + b.dd_level, b.blocked ? 'db-badge-err' : 'db-badge-warn']);
+      var dec = decayBadge(r.bot, findings);
+      if (dec) badges.push(dec);
+      if (meta.parity_status === 'abweichung') badges.push(['Parität', 'db-badge-warn']);
+      var flags = badges.slice(0, 3).map(function (x) {
+        return '<span class="db-badge ' + x[1] + '">' + esc(x[0]) + '</span>';
+      }).join('') || '<span class="db-dim">—</span>';
+      return '<div class="db-row">' +
+        '<span class="db-dot ' + dot + '"></span>' +
+        '<span class="db-bot">Bot ' + r.num +
+          (b.multi ? ' <span class="db-badge db-multi">MULTI</span>' : '') + '</span>' +
+        '<span class="db-strat">' + strat + '</span>' +
+        '<span class="db-num">' + fmtEur(b.equity) + '</span>' +
+        '<span class="db-num ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) +
+          ' <span class="db-dim">(' + n7 + ')</span></span>' +
+        '<span class="db-num ' + pnlCls(b.pnl_30d) + '">' + fmtEur(b.pnl_30d, true) + '</span>' +
+        '<span>' + sparklineSVG(b.equity_curve) + '</span>' +
+        '<span class="db-num">' + (has(b.open_positions) ? b.open_positions : '—') + ' Pos.</span>' +
+        '<span>' + slotCell + '</span>' +
+        '<span class="db-flags">' + flags + '</span>' +
+      '</div>';
+    }
+    var head = '<div class="db-row db-row-head"><span></span><span>Bot</span><span>Strategie</span>' +
+      '<span>Equity</span><span>7d</span><span>30d</span><span>Kurve</span>' +
+      '<span>Pos.</span><span>Slots</span><span>Flags</span></div>';
+    $('db-matrix').innerHTML = rows.length ? head + rows.map(rowHtml).join('')
+      : '<span class="db-dim">keine Bots gemeldet</span>';
+  }
+
+  // ── M5 Entwicklung ─────────────────────────────────────────
+  function renderDev(d) {
+    var fleet = (d.live || {}).fleet || [];
+    var dev = fleet.filter(function (b) {
+      return has(b.n_7d) && b.n_7d > 0 && has(b.pnl_7d);
+    }).map(function (b) { return { num: botNum(b.bot), pnl: b.pnl_7d, n: b.n_7d }; })
+      .sort(function (a, b) { return b.pnl - a.pnl; });
+    var top = dev.slice(0, 3);
+    var flop = dev.slice(-3).reverse();
+    var dd = fleet.filter(function (b) { return has(b.dd_level) && b.dd_level >= 1; })
+      .map(function (b) { return { num: botNum(b.bot), lvl: b.dd_level }; })
+      .sort(function (a, b) { return b.lvl - a.lvl; });
+    var dec = (d.findings || []).filter(function (f) { return /^Decay\s/.test(f.title || ''); })
+      .map(function (f) { return (f.title || '').replace(/^Decay\s+/, ''); });
+    function fmtBot(x) { return 'Bot ' + x.num + ' ' + fmtEur(x.pnl, true) + ' (n=' + x.n + ')'; }
+    function line(label, arr, render) {
+      if (!arr.length) return '';
+      var shown = arr.slice(0, 4);
+      var extra = arr.length - shown.length;
+      var txt = shown.map(render).join(' · ');
+      if (extra > 0) txt += ' · +' + extra;
+      return '<div class="db-dev-line"><b>' + esc(label) + ':</b> ' + txt + '</div>';
+    }
+    var html = '';
+    html += line('Top 7d', top, fmtBot);
+    html += line('Flop 7d', flop, fmtBot);
+    html += line('Drawdown', dd, function (x) { return 'Bot ' + x.num + ' (L' + x.lvl + ')'; });
+    html += line('Decay', dec, function (t) { return '<span class="db-chip">' + esc(t) + '</span>'; });
+    $('db-dev').innerHTML = html || '<span class="db-dim">Keine Auffälligkeiten</span>';
+  }
+
+  // ── M6 Risiko ──────────────────────────────────────────────
+  function renderRisk(d, sp) {
+    var ct = ((d.gates || {}).blocks_7d || {}).total;
+    var eg = d.execution_guard || {};
+    var tca = eg.tca || {}, cf = eg.counterfactual || {};
+    var hasEg = has(ct) || has(tca.median_bps) || has(cf.verdict);
+    var html;
+    if (!hasEg) {
+      html = '<span class="db-dim">—</span>';
+    } else {
+      html = '<div class="db-dev-line">' +
+        (has(ct) ? nfInt.format(ct) : '—') + ' geblockte Entries/7d (Release-Gate) · ' +
+        'Slippage median ' + fmtBps(tca.median_bps) + ' bps / p90 ' + fmtBps(tca.p90_bps) +
+        ' bps (n=' + (has(tca.n_eligible) ? tca.n_eligible : '—') + ') · ' +
+        'Guard: ' + esc(cf.verdict || '—') +
+        ' (n=' + (has(cf.n_signals) ? cf.n_signals : '—') + ', ' +
+        (has(cf.report_age_h) ? minus(nf1.format(cf.report_age_h)) : '—') + ' h alt)</div>';
+    }
+    var cw = (((sp || {}).advisor || {}).portfolio_view || {}).clump_warnings || [];
+    if (cw.length) {
+      html += cw.slice(0, 2).map(function (w) {
+        return '<div class="db-dev-line"><b>Cluster:</b> ' + esc(w.note || '') + '</div>';
+      }).join('');
+    }
+    $('db-risk').innerHTML = html;
+  }
+
+  // ── M7 Shadow ──────────────────────────────────────────────
+  function renderShadow(d) {
+    var k = (d.shadow || {}).kpis || {};
+    $('db-shadow').innerHTML = '<div class="db-k">Shadow</div><div class="db-s">' +
+      (has(k.n_trades_30d) ? nfInt.format(k.n_trades_30d) : '—') + ' Trades/30d · netto ' +
+      '<span class="' + pnlCls(k.net_30d) + '">' + fmtEur(k.net_30d, true) + '</span> · ' +
+      (has(k.n_deployed) ? k.n_deployed : '—') + ' deployt</div>';
+  }
+
+  // ── M8 Missionen ───────────────────────────────────────────
+  function renderMissions(d) {
+    var k = (d || {}).kpis || {};
+    $('db-missions').innerHTML = '<div class="db-k">Missionen</div><div class="db-s">' +
+      '<a href="/missions">' + (has(k.active) ? k.active : '—') + ' aktiv · ' +
+      (has(k.stages_done) ? k.stages_done : '—') + '/' +
+      (has(k.stages_total) ? k.stages_total : '—') + ' Etappen</a></div>';
+  }
+
+  // ── Meta ───────────────────────────────────────────────────
+  function renderMeta(d, sp) {
+    $('db-meta').innerHTML = 'Stand ' + esc(fmtHM(d.generated_at_bz)) +
+      ' · Portfolio ' + esc(fmtHM((sp || {}).updated_at)) +
+      ' · Links: <a href="/data">Data Pipeline</a>';
+  }
+
+  function renderAll() {
+    [
+      function () { renderStatus(O); },
+      function () { renderActions(SV); },
+      function () { renderPerf(O); },
+      function () { renderMatrix(O, SP); },
+      function () { renderDev(O); },
+      function () { renderRisk(O, SP); },
+      function () { renderShadow(O); },
+      function () { renderMissions(MI); },
+      function () { renderMeta(O, SP); }
+    ].forEach(function (fn) {
+      try { fn(); } catch (e) { console.warn('dashboard: Modul-Fehler', e); }
+    });
+  }
+
+  function load() {
+    Promise.all([
+      jget(API_OV),
+      soft(API_SP),
+      soft(API_SV),
+      soft(API_MI)
+    ]).then(function (res) {
+      O = res[0] || {}; SP = res[1] || {}; SV = res[2] || {}; MI = res[3] || {};
+      $('db-error').style.display = 'none';
+      renderAll();
+    }).catch(function (e) {
+      var el = $('db-error');
+      el.style.display = 'block';
+      el.textContent = 'Daten konnten nicht geladen werden: ' + e.message;
+    });
+  }
+
+  load();
+  setInterval(load, 60000);
+})();
+</script>
 <!--/BODY-->
