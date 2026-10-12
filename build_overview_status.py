@@ -1004,6 +1004,9 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         for _t in policy.get("targets") or []:
             if isinstance(_t, dict) and _t.get("bot"):
                 bot_class[_t["bot"]] = _t.get("asset_class")
+    # Single-Bots sind KEINE Rotations-Targets (bewusst) — Klasse ist stabil fix:
+    for _b, _c in (("bot4", "METAL"), ("bot9", "FX")):
+        bot_class.setdefault(_b, _c)
 
     rot_state, rot_err = _read_json(os.path.join(fx_root, "data", "rotation", "rotation_state.json"))
     sources.add("fx.rotation_state", os.path.join(fx_root, "data", "rotation", "rotation_state.json"),
