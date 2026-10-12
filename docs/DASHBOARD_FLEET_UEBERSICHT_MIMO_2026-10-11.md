@@ -4,7 +4,7 @@
 aussagekräftige Übersicht hinbekommen. Performance, aktuelle Entwicklung,
 Empfehlung etc. Aktuell ist die Seite nichtssagend."
 
-**Status:** KONZEPT — wartet auf User-Freigabe. Kein Code geändert.
+**Status:** UMGESETZT 2026-10-12 (User-Go "weiter, go"). Commit `0a1bbec1c` (+ Follow-up: TITLE „Fleet-Cockpit", README-Sync). **Abweichungen vom Konzept:** E1 auf `n_7d`/`n_30d` je Bot reduziert (Top-3-Empfehlungs-Clustering + PnL-% laufen im Frontend aus vorhandenen Feldern — kein `recommendations_top3`-Feld nötig); `tools/generate_home_sidebar.py` archiviert → `archive_legacy/scripts/` (Fleet-Block wird nicht mehr generiert). **Verifikation:** `make test` SITE TESTS OK, Browser-E2E lokal + live (Basic-Auth) — 10 Matrix-Zeilen, alle Module, kein Fehlerbanner.
 **Konsultation:** `xiaomi/mimo-v2.6-pro` via OpenRouter (Provider: Xiaomi),
 79 s, $0.0031, finish=stop. Brief + Antwort: `~/.hermes/cache/scratch/mimo_dashboard_review.md`.
 Ergebnis ist ADVISOR-INPUT — Entscheidung bleibt bei Hermes/User; System-Evidenz schlägt Modellmeinung.

@@ -17,7 +17,7 @@ Alt-Seiten/APIs archiviert, Alt-Timer gestoppt).
 │   │   └── bot-components.js, bot.css  (→ nach assets/ synchronisiert)
 │   └── content/              ← Content-Fragmente (DAS ist die Quelle, nie _build editieren)
 │       ├── index.html        ← Kommandocenter (/)
-│       ├── dashboard.html    ← Bots-Hub (/dashboard, Nav-Eintrag „Bots")
+│       ├── dashboard.html    ← Fleet-Cockpit (/dashboard, Nav-Eintrag „Bots") — rendert live aus api-JSONs
 │       ├── botN.html         ← Bot #N Dashboard — GENERIERT von build_bot_pages.py
 │       ├── strategy-lab.html ← Strategy Lab — GENERIERT von strategy-lab/src/website/build_v4.py
 │       ├── research-library.html
@@ -25,7 +25,7 @@ Alt-Seiten/APIs archiviert, Alt-Timer gestoppt).
 ├── build.py                  ← Generator: src/content/** → _build/**  (+ git_auto_push)
 ├── _build/                   ← GENERATED OUTPUT (Caddy-Root, .gitignore'd)
 ├── assets/, api/             ← CSS/JS bzw. JSON-Endpunkte (via Symlink in _build)
-├── tools/generate_home_sidebar.py  ← schreibt den Fleet-Block in src/content/dashboard.html
+├── tools/                    ← (generate_home_sidebar.py seit 12.10.26 archiviert → archive_legacy/scripts/)
 └── archive_legacy/           ← Archiv: alte Seiten/Skripte/Backups (NICHT gebaut)
 ```
 
