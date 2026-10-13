@@ -2418,21 +2418,21 @@ function renderEventsEngine() {
       html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th class="num">Geblockt</th><th class="num">Δ€ (positiv = Blocken hilft)</th><th class="num">Ø/Trade</th><th>Was heißt das / nächster Schritt</th></tr></thead><tbody>';
       for (const g of lf.gate_backtests) {
         html += '<tr><td>' + esc(g.name) + '</td><td class="num">' + g.blocked_n + '</td><td class="num '
-          + (g.delta_total > 0 ? 'pos' : 'neg') + '">' + (g.delta_total > 0 ? '+' : '') + g.delta_total.toFixed(0)
+          + (g.delta_total > 0 ? 'pos' : 'neg') + '">' + (g.delta_total == null ? '—' : (g.delta_total > 0 ? '+' : '') + g.delta_total.toFixed(0))
           + '€</td><td class="num">' + (g.blocked_mean != null ? g.blocked_mean.toFixed(2) + '€' : '—') + '</td>'
           + '<td style="font-size:0.78rem;color:var(--dim);line-height:1.45">' + esc(g.desc || '') + '</td></tr>';
       }
       html += '</tbody></table></div>';
     }
     if (lf.top_correlations) {
-      const sig = lf.top_correlations.filter(c => c.p < 0.05).slice(0, 12);
+      const sig = lf.top_correlations.filter(c => c.p != null && c.p < 0.05).slice(0, 12);
       if (sig.length) {
         html += '<div style="margin-top:0.7rem;font-size:0.82rem"><b>Einzelfunde</b> (p &lt; 0.05) — Trades rund um Termine vs. ruhige Marktphasen:</div>';
         for (const c of sig) {
           const dbadge = (c.delta > 0 ? 'pos' : 'neg');
           html += '<div style="padding:0.45rem 0.65rem;margin:0.35rem 0;background:rgba(255,255,255,0.02);border-radius:5px">';
           html += '<div style="font-size:0.83rem"><b>' + esc(c.cat_plain || c.cat || '') + '</b> <span style="color:var(--dim)">· ' + esc(c.win_txt || '') + '</span>'
-            + '<span style="font-size:0.72rem;color:var(--dim)"> · n=' + c.n + ' · Δ <span class="' + dbadge + '">' + (c.delta > 0 ? '+' : '') + c.delta.toFixed(2) + '€/Trade</span> · p=' + c.p.toFixed(4) + ' · ' + (c.fdr_pass ? 'FDR ✅' : 'FDR —') + '</span></div>';
+            + '<span style="font-size:0.72rem;color:var(--dim)"> · n=' + c.n + ' · Δ <span class="' + dbadge + '">' + (c.delta == null ? '—' : (c.delta > 0 ? '+' : '') + c.delta.toFixed(2)) + '€/Trade</span> · p=' + (c.p == null ? '—' : c.p.toFixed(4)) + ' · ' + (c.fdr_pass ? 'FDR ✅' : 'FDR —') + '</span></div>';
           html += '<div style="font-size:0.78rem;line-height:1.5;margin-top:0.2rem">' + esc(c.desc || '') + '</div>';
           if (c.hint) {
             html += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.2rem">💡 ' + esc(c.hint) + '</div>';
@@ -2469,7 +2469,7 @@ function renderEventsEngine() {
       html += '<div style="margin-top:0.9rem;font-size:0.82rem"><b>🔎 Blind-Spot-Suche</b> — ' + lf.blind_spots.n_unexplained + ' Trades (' + lf.blind_spots.pct + '%) liefen weiter als 24h von JEDEM bekannten Termin entfernt; verlustreichste Cluster:</div>';
       html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gruppierung</th><th>Fenster</th><th class="num">Trades</th><th class="num">Ø/Trade</th></tr></thead><tbody>';
       for (const b of lf.blind_spots.clusters) {
-        html += '<tr><td>' + esc(b.group) + '</td><td>' + esc(b.key) + '</td><td class="num">' + b.n + '</td><td class="num neg">' + b.mean.toFixed(2) + '€</td></tr>';
+        html += '<tr><td>' + esc(b.group) + '</td><td>' + esc(b.key) + '</td><td class="num">' + b.n + '</td><td class="num neg">' + (b.mean == null ? '—' : b.mean.toFixed(2) + '€') + '</td></tr>';
       }
       html += '</tbody></table></div>';
       html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">💡 Diese Cluster sind Kandidaten für FEHLENDE Datenquellen im Kalender (z. B. Zinsauktionen, Öl-/Lagerberichte, Notenbank-Reden) — hier sucht die Engine gezielt nach dem fehlenden Event-Typ.</div>';
