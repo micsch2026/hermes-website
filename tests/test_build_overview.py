@@ -67,7 +67,9 @@ def make_fixture(base, with_empty_bot=True, feed_age_s=60.0, gates_active=False)
         "bot1": {"account_id": 1, "demo": True, "strategy_id": 724, "role": "pipeline"},
         "bot4": {"account_id": 2, "demo": False, "is_live": True, "strategy_id": 317,
                  "role": "live"},
-    }}
+    },
+        # Slot-Host-Konto (LIVE/DEMO-Split): bot1 routet s724 auf das Live-Konto 99
+        "accounts": {"99": {"kind": "live", "is_live": True, "bots": ["bot1"]}}}
     _w = lambda p, o: open(p, "w", encoding="utf-8").write(json.dumps(o))
     _w(os.path.join(fx, "config", "deploy_registry.json"), registry)
     _w(os.path.join(fx, "config", "risk_guards.json"),
@@ -80,7 +82,7 @@ def make_fixture(base, with_empty_bot=True, feed_age_s=60.0, gates_active=False)
             {"bot": "bot4", "asset_class": "METAL", "slot_ids": ["s317"]},
         ]})
     with open(os.path.join(fx, "config", "bot1_multi.toml"), "w") as fh:
-        fh.write('[[slots]]\nid = "s724"\nstrategy_id = 724\n')
+        fh.write('[[slots]]\nid = "s724"\nstrategy_id = 724\naccount_id = 99\n')
 
     # ── bot1 (voll) ──
     _w(os.path.join(fx, "data", "bot1_balance.json"),
@@ -348,6 +350,10 @@ def main():
                 b1["multi"], b4["open_positions"]) == \
             (False, True, None, False, True, 0), \
             f"is_live/dd/multi falsch: {b1['is_live']}/{b4['is_live']}/{b4['dd_level']}/{b4['blocked']}/{b1['multi']}/{b4['open_positions']}"
+        # LIVE/DEMO-Split (13.10.): bot1 = Demo-Bucket MIT live geroutetem Slot
+        # (accounts-Sektion) → mixed_slots; bot4 = eigener Live-Bot → False.
+        assert (b1["mixed_slots"], b4["mixed_slots"]) == (True, False), \
+            f"mixed_slots falsch: b1={b1.get('mixed_slots')} b4={b4.get('mixed_slots')}"
 
     def t_shadow_kpis():
         k = DOCS["base"]["shadow"]["kpis"]

@@ -1159,6 +1159,26 @@ def build(root, fx_root, sl_root, trading_data, now=None):
             demo = reg_entry.get("demo")
             is_live = False if demo is True else True
 
+        # LIVE/DEMO-Split (13.10.2026): Demo-Bucket-Bot mit live gerouteten
+        # Slots (bot5/bot7) → mixed_slots (Chip "LIVE+DMO" in der Matrix).
+        # Bucket-Zuordnung (demo/live-KPI) bleibt unveraendert — bewusste
+        # Anzeige-Nuance (Punkt "Live-Slot-PnL-Attribution" in
+        # multi-bot-website-truth.md).
+        mixed_slots = False
+        try:
+            import tomllib as _tl
+            with open(os.path.join(fx_root, "config", f"{bot}_multi.toml"),
+                      "rb") as _fh:
+                _mcfg = _tl.load(_fh)
+            _accts = (registry.get("accounts") or {}) if isinstance(registry, dict) else {}
+            mixed_slots = bool(
+                not is_live and any(
+                    isinstance(_s, dict) and _s.get("account_id") not in (None, "")
+                    and ((_accts.get(str(_s.get("account_id"))) or {}).get("is_live"))
+                    for _s in (_mcfg.get("slots") or [])))
+        except Exception:
+            mixed_slots = False
+
         equity = None
         if rs_ok:
             equity = _f(rs.get("equity"))
@@ -1189,6 +1209,7 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         fleet.append({
             "bot": bot,
             "is_live": bool(is_live),
+            "mixed_slots": bool(mixed_slots),
             "multi": bool(multi),
             "focus": _focus[0] if _focus else None,
             "focus_icon": _focus[1] if _focus else None,

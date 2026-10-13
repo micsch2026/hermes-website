@@ -170,8 +170,14 @@ function renderStatus(d) {
 
   var badge = el(C.prefix + '-mode-badge');
   if (badge) {
-    badge.textContent = mode.toUpperCase();
-    badge.className = 'bot-badge ' + (mode === 'live' ? 'bot-badge-live' : 'bot-badge-demo');
+    if (mode === 'mixed') {
+      // LIVE/DEMO-Split (13.10.2026): Bot handelt auf Live- UND Demo-Konto
+      badge.textContent = 'LIVE + DEMO';
+      badge.className = 'bot-badge bot-badge-live';
+    } else {
+      badge.textContent = mode.toUpperCase();
+      badge.className = 'bot-badge ' + (mode === 'live' ? 'bot-badge-live' : 'bot-badge-demo');
+    }
   }
 
   var upd = el(C.prefix + '-last-update');
@@ -920,6 +926,19 @@ function _renderSlotsInner(d, sp) {
   }
 
   var html = '';
+  // Stufen-Modell (13.10.2026): 🔴 LIVE (echtes Geld; nur wenn armed) /
+  // 🟡 DEMO / 🔵 SHADOW (angezeigt, handelt nur im Shadow) / GEPLANT.
+  var _hasLive = false, _hasDemo = false;
+  for (var j0 = 0; j0 < slots.length; j0++) {
+    if (slots[j0].stage === 'live') _hasLive = true;
+    else if (slots[j0].stage === 'demo') _hasDemo = true;
+  }
+  function stageBadge(s) {
+    if (s.stage === 'live') return '<span class="bot-badge bot-badge-live">🔴 LIVE' + (s.armed === false ? ' · GESPERRT' : '') + '</span>';
+    if (s.stage === 'demo') return '<span class="bot-badge" style="background:rgba(210,153,34,0.14);color:#d29922;border:1px solid rgba(210,153,34,0.4)">🟡 DEMO</span>';
+    if (s.stage === 'shadow') return '<span class="bot-badge" style="background:rgba(59,130,246,0.12);color:#3b82f6;border:1px solid rgba(59,130,246,0.35)">🔵 SHADOW</span>';
+    return '';
+  }
   for (var k = 0; k < slots.length; k++) {
     var s = slots[k];
     var isRot = s.kind === 'rotation';
@@ -931,7 +950,15 @@ function _renderSlotsInner(d, sp) {
         : '<span class="bot-badge bot-badge-buy">STRATEGIE</span>';
     html += '<div class="bot-card" style="padding:var(--s-3);border:1px ' + (isPlanned ? 'dashed' : 'solid') + ' var(--c-border)' + (isPlanned ? ';opacity:0.85' : '') + '">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:var(--s-2);margin-bottom:var(--s-2)">';
-    html += '<b style="font-size:var(--text-md)">' + escHtml(s.slot_id) + '</b>' + kindBadge + '</div>';
+    html += '<b style="font-size:var(--text-md)">' + escHtml(s.slot_id) + '</b><span>' + kindBadge + stageBadge(s) + '</span></div>';
+    // Konto-Zeile nur wenn der Bot mindestens einen Live-Slot hat und die Kachel
+    // eine Strategie zeigt (Split-Bots: bot5/bot7). Reine Demo-Bots: kein Rauschen.
+    if (_hasLive && s.kind === 'strategy' && s.account_id != null) {
+      var _accTxt = 'Konto ' + s.account_id +
+        (s.stage === 'live' ? (s.armed === false ? ' · LIVE-Host (nicht scharf gestellt)' : ' · LIVE-Host') :
+         s.stage === 'demo' ? ' · Demo' : '');
+      html += '<div style="font-size:10px;color:var(--c-text-dim);margin:-2px 0 4px">' + escHtml(_accTxt) + '</div>';
+    }
 
     if (isPlanned) {
       html += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">' +
