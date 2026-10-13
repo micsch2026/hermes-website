@@ -113,6 +113,10 @@ const LLM_ONE = Object.assign({}, LLM_OK, {
   check('(A5) since enthält "Historie ab"', since.includes('Historie ab'), since);
   check('(A6) Chart-Cap nennt Messpunkte',
     chart.includes('4 Messpunkte'), chart.slice(-120));
+  check('(A7) Reichweite ≈ 14,6 Tage (spend.runway_days — Regress 13.10.)',
+    bal.includes('14,6 Tage Reichweite'), bal.slice(0, 200));
+  check('(A8) used_pct de-DE formatiert (65,5 %)',
+    spent.includes('65,5 %'), spent.slice(0, 200));
 
   // ── Szenario B: Historie mit nur 1 Punkt → kein SVG ───────────────
   const B = await runScenario(LLM_ONE);
