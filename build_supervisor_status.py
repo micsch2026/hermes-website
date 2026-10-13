@@ -196,7 +196,9 @@ def main() -> int:
 
     # ---- Rotation-Wirksamkeit ----
     rl_path = FX / "data" / "rotation" / "rotation_log.jsonl"
-    src("rotation_log", rl_path, 6 * 3600)
+    # 13.10.26: Rotation laeuft TAEGLICH (06:12 BZ) — die alte 6h-Kadenz erzeugte
+    # False-STALE fuer ~18h/Tag. 24h-Kadenz (+1.5x Freshness-Faktor = 36h Fenster).
+    src("rotation_log", rl_path, 24 * 3600)
     runs7, refused7 = set(), 0
     now_ts = NOW.timestamp()
     try:
@@ -215,8 +217,11 @@ def main() -> int:
         pass
     fills14, last_fill = 0, None
     sh_files = sorted(FX.glob("data/bot*_slot_history.jsonl"))
-    src("slot_history", sh_files[-1] if sh_files else FX / "data" / "bot3_slot_history.jsonl",
-        24 * 3600)
+    # 13.10.26: NEUESTE Datei nach mtime zaehlt (alphabetisch letzte war z.B. bot8
+    # und 60h alt = False-STALE trotz frischem bot7-Schreibzugriff). Slot-Uebergaenge
+    # sind ereignisbasiert → Kadenz 72h (Freshness-Fenster 108h).
+    _sh_newest = max(sh_files, key=os.path.getmtime) if sh_files else FX / "data" / "bot3_slot_history.jsonl"
+    src("slot_history", _sh_newest, 72 * 3600)
     for f in sh_files:
         try:
             with open(f, encoding="utf-8") as fh:
