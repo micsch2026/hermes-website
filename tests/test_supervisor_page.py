@@ -29,6 +29,8 @@ REQUIRED_IDS = [
     "sv-changes-count", "sv-changes", "sv-changes-activity",
     "sv-gates", "sv-gates-count",
     "sv-week", "sv-demo", "sv-live", "sv-macro", "sv-lever",
+    "sv-llm", "sv-llm-since", "sv-llm-balance", "sv-llm-spent", "sv-llm-rates",
+    "sv-llm-chart", "sv-llm-note",
     "sv-ops", "sv-sources",
 ]
 

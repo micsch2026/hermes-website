@@ -186,6 +186,29 @@
     <div id="sv-lever"></div>
   </section>
 
+  <section class="sv-sec" id="sv-llm">
+    <h2>🔋 LLM-Budget (OpenRouter) <span class="sv-count" id="sv-llm-since"></span></h2>
+    <div class="sv-strip">
+      <div class="sv-card" id="sv-llm-balance">
+        <div class="sv-k">Guthaben</div>
+        <div class="sv-v">—</div>
+        <div class="sv-s">Lade …</div>
+      </div>
+      <div class="sv-card" id="sv-llm-spent">
+        <div class="sv-k">Verbraucht gesamt</div>
+        <div class="sv-v">—</div>
+        <div class="sv-s">Lade …</div>
+      </div>
+      <div class="sv-card" id="sv-llm-rates">
+        <div class="sv-k">Verbrauch</div>
+        <div class="sv-v">—</div>
+        <div class="sv-s">Lade …</div>
+      </div>
+    </div>
+    <div id="sv-llm-chart"></div>
+    <div class="sv-cap" id="sv-llm-note"></div>
+  </section>
+
   <section class="sv-sec">
     <h2>🩺 Ops &amp; Datenfrische</h2>
     <div id="sv-ops"></div>
@@ -196,6 +219,7 @@
 <script>
 (function () {
   var API = window.location.origin + '/api/supervisor/supervisor_status.json';
+  var API_LLM = window.location.origin + '/api/openrouter/status.json';
   function $(id) { return document.getElementById(id); }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -264,6 +288,160 @@
         Math.round(100 * v / max) + '%"></span></span>' +
         '<span class="sv-bl-n">' + v + '</span></div>';
     }).join('') + '</div>';
+  }
+
+  // ---- LLM-Budget (OpenRouter) ----
+  function fmtUsd(v) {
+    if (v == null || isNaN(v)) return '—';
+    return Number(v).toLocaleString('de-DE', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2
+    }) + ' $';
+  }
+  function dayLabel(ts) {
+    return new Date(ts * 1000).toLocaleDateString('de-DE', {
+      timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit'
+    });
+  }
+  function tsLabel(ts) {
+    var d = new Date(ts * 1000);
+    return d.toLocaleDateString('de-DE', {
+      timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit'
+    }) + ' ' + d.toLocaleTimeString('de-DE', {
+      timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit'
+    });
+  }
+  function renderLlmChart(history) {
+    var h = history || [];
+    if (h.length < 2) {
+      var first = h.length === 1 ? tsLabel(h[0][0]) : '—';
+      return '<div class="sv-dim">«Historie wird aufgebaut — erster Messpunkt: ' +
+        esc(first) + '»</div>';
+    }
+    var W = 860, H = 190, L = 56, R = 12, T = 14, B = 22;
+    var t0 = h[0][0], t1 = h[h.length - 1][0];
+    var rem = h.map(function (p) { return p[1]; });
+    var mn = Math.min.apply(null, rem), mx = Math.max.apply(null, rem);
+    var pad = Math.max((mx - mn) * 0.08, 0.05);
+    var ymin = mn - pad, ymax = mx + pad;
+    function X(ts) {
+      return t1 > t0 ? L + (W - L - R) * (ts - t0) / (t1 - t0) : L;
+    }
+    function Y(v) {
+      return ymax > ymin ? T + (H - T - B) * (ymax - v) / (ymax - ymin) : T;
+    }
+    var pts = h.map(function (p) {
+      return X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1);
+    });
+    var base = (H - B).toFixed(1);
+    var area = '<path fill="var(--c-accent)" fill-opacity="0.15" d="M' + pts[0] +
+      ' L' + pts.join(' L') + ' L' + X(t1).toFixed(1) + ',' + base +
+      ' L' + X(t0).toFixed(1) + ',' + base + ' Z"/>';
+    var poly = '<polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="' +
+      pts.join(' ') + '"/>';
+    var last = h[h.length - 1];
+    var tip = tsLabel(last[0]) + ' · Guthaben ' + fmtUsd(last[1]) +
+      ' · verbraucht ' + fmtUsd(last[2]);
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto" ' +
+      'role="img" aria-label="Guthaben ueber Zeit">' + area + poly +
+      '<text x="' + (L - 6) + '" y="' + (T + 4) + '" font-size="10" ' +
+      'fill="var(--c-text-dim)" text-anchor="end">' + esc(fmtUsd(mx)) + '</text>' +
+      '<text x="' + (L - 6) + '" y="' + (H - B) + '" font-size="10" ' +
+      'fill="var(--c-text-dim)" text-anchor="end">' + esc(fmtUsd(mn)) + '</text>' +
+      '<text x="' + L + '" y="' + (H - 8) + '" font-size="10" ' +
+      'fill="var(--c-text-dim)">' + esc(dayLabel(t0)) + '</text>' +
+      '<text x="' + (W - R) + '" y="' + (H - 8) + '" font-size="10" ' +
+      'fill="var(--c-text-dim)" text-anchor="end">' + esc(dayLabel(t1)) + '</text>' +
+      '<circle cx="' + X(last[0]).toFixed(1) + '" cy="' + Y(last[1]).toFixed(1) +
+      '" r="3" fill="var(--c-accent)"><title>' + esc(tip) + '</title></circle></svg>';
+    return svg + '<div class="sv-cap">Absoluter Stand: Guthaben über Zeit in $ (' +
+      h.length + ' Messpunkte)</div>';
+  }
+  var LLM_CARDS = [
+    ['sv-llm-balance', 'Guthaben'],
+    ['sv-llm-spent', 'Verbraucht gesamt'],
+    ['sv-llm-rates', 'Verbrauch']
+  ];
+  function llmUnavailable() {
+    LLM_CARDS.forEach(function (c) {
+      var el = $(c[0]);
+      if (el) {
+        el.innerHTML = '<div class="sv-k">' + esc(c[1]) + '</div>' +
+          '<div class="sv-v">—</div><div class="sv-s">nicht verfügbar</div>';
+      }
+    });
+  }
+  function renderLlm(d) {
+    var balance = d && d.balance;
+    var spend = d && d.spend;
+    var hist = (d && d.history) || [];
+    var note = $('sv-llm-note');
+    var since = $('sv-llm-since');
+    if (!balance || !spend) {
+      llmUnavailable();
+      since.textContent = '';
+      $('sv-llm-chart').innerHTML = '';
+      note.textContent = (d && d.fetch_error)
+        ? ('⚠ Letzter Abruf fehlgeschlagen: ' + d.fetch_error)
+        : 'Keine OpenRouter-Daten';
+      return;
+    }
+
+    var rc = balance.runway_days;
+    var cls = (rc == null) ? '' : (rc >= 14 ? 'ok' : (rc >= 7 ? 'warn' : 'err'));
+    var c1 = $('sv-llm-balance');
+    c1.className = 'sv-card' + (cls ? ' ' + cls : '');
+    c1.innerHTML = '<div class="sv-k">Guthaben</div>' +
+      '<div class="sv-v">' + esc(fmtUsd(balance.remaining)) + '</div>' +
+      '<div class="sv-s">' + (rc == null
+        ? 'Reichweite: —'
+        : ('≈ ' + esc(String(rc)) + ' Tage Reichweite · Ø ' +
+           esc(fmtUsd(spend.burn_7d_per_day)) + '/Tag (7 d)')) + '</div>';
+
+    $('sv-llm-spent').innerHTML = '<div class="sv-k">Verbraucht gesamt</div>' +
+      '<div class="sv-v">' + esc(fmtUsd(balance.total_usage)) + '</div>' +
+      '<div class="sv-s">von ' + esc(fmtUsd(balance.total_credits)) + ' · ' +
+      (balance.used_pct == null ? '—' : esc(String(balance.used_pct))) + ' %</div>';
+
+    $('sv-llm-rates').innerHTML = '<div class="sv-k">Verbrauch</div>' +
+      '<div class="sv-v">' + esc(fmtUsd(spend.daily)) + ' heute</div>' +
+      '<div class="sv-s">7 d: ' + esc(fmtUsd(spend.weekly)) +
+      ' · Monat: ' + esc(fmtUsd(spend.monthly)) + '</div>';
+
+    since.textContent = (hist.length && d.history_first_iso)
+      ? '· Historie ab ' + new Date(d.history_first_iso).toLocaleDateString('de-DE', {
+          timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric'
+        })
+      : '';
+
+    $('sv-llm-chart').innerHTML = renderLlmChart(hist);
+
+    var prefix = '';
+    if (d.fetch_ok === false) {
+      prefix = '⚠ Letzter Abruf fehlgeschlagen: ' + (d.fetch_error || 'unbekannt') + ' · ';
+    }
+    var ageTxt = 'gerade eben';
+    if (d.fetched_at) {
+      var n = (Date.now() - new Date(d.fetched_at).getTime()) / 60000;
+      if (isFinite(n) && n >= 1) {
+        ageTxt = 'vor ' + (n < 90 ? Math.round(n) + ' min' : Math.round(n / 60) + ' h');
+      }
+    } else {
+      ageTxt = 'unbekannt';
+    }
+    note.textContent = prefix + 'Quelle: OpenRouter API (credits + key) · letzter Abruf ' +
+      dt(d.fetched_at) + ' (' + ageTxt + ')';
+  }
+  function loadLlm() {
+    fetch(API_LLM, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(renderLlm).catch(function (e) {
+      var note = $('sv-llm-note');
+      if (note) note.textContent = '⚠ OpenRouter-Daten nicht erreichbar (' + e.message + ')';
+      llmUnavailable();
+      var ch = $('sv-llm-chart');
+      if (ch) ch.innerHTML = '';
+    });
   }
 
   function render(d) {
@@ -570,6 +748,8 @@
   }
   load();
   setInterval(load, 120000);
+  loadLlm();
+  setInterval(loadLlm, 120000);
 })();
 </script>
 <!--/BODY-->

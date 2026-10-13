@@ -25,6 +25,10 @@ test:
 	  echo "== tests/verify_radar.js"; \
 	  $(NODE) tests/verify_radar.js || fail=1; \
 	fi; \
+	if [ -f tests/verify_llm_chart.js ]; then \
+	  echo "== tests/verify_llm_chart.js"; \
+	  $(NODE) tests/verify_llm_chart.js || fail=1; \
+	fi; \
 	if [ $$fail -eq 0 ]; then echo "SITE TESTS OK"; else echo "SITE TESTS FAILED"; exit 1; fi
 
 .PHONY: test
