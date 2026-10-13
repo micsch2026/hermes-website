@@ -84,6 +84,16 @@ class TestBuildMissions(unittest.TestCase):
         self.assertEqual(len(d["proposals"]), 1)
         self.assertEqual(d["proposals"][0]["by"], "board")
 
+    def test_kohorte_support_doc_not_listed(self):
+        """Support-Dokumente (mission_id ohne stages, z. B. *-kohorte.json) werden ignoriert."""
+        kohorte = {"mission_id": "m-a", "stand": "x", "zweck": "y", "ticker": ["AAPL"]}
+        (self.td / "m-a-kohorte.json").write_text(json.dumps(kohorte), encoding="utf-8")
+        d = self.build()
+        ids = [m["id"] for m in d["missions"]]
+        self.assertEqual(ids, ["m-a", "m-b"])
+        m_a = next(m for m in d["missions"] if m["id"] == "m-a")
+        self.assertEqual(m_a["total"], 2)  # echte Mission, nicht der leere Support-Doc
+
     def test_sources_and_atomic_output(self):
         d = self.build()
         self.assertEqual([s["name"] for s in d["sources"]],

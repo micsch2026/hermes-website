@@ -146,6 +146,10 @@ def main():
         m = _read_json(f)
         if not m or not m.get("mission_id"):
             continue
+        # Kohorten-/Support-Dokumente (*-kohorte.json) tragen zwar mission_id,
+        # sind aber keine Missionen (kein stages-Schema) -> nicht als Karte listen.
+        if not isinstance(m.get("stages"), list):
+            continue
         stages_raw = m.get("stages", [])
         done = sum(1 for s in stages_raw if s.get("status") == "done")
         total = len(stages_raw)

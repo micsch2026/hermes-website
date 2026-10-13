@@ -293,6 +293,9 @@ def main() -> int:
         mm = _read_json(f, {}) or {}
         if not mm.get("mission_id"):
             continue
+        # Support-Dokumente (*-kohorte.json) haben kein stages-Schema -> skip.
+        if not isinstance(mm.get("stages"), list):
+            continue
         stages = mm.get("stages", [])
         item = {
             "id": mm.get("mission_id"), "title": mm.get("title"),
