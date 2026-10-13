@@ -629,15 +629,110 @@ function renderSlots(d) {
   _loadShadowPortfolio(function(sp) { _renderSlotsInner(_lastSlotsD || d, sp); });
 }
 
+/* 🎯 Rotations-Radar v2 (13.10.2026): Top-10-Kandidaten mit Stufen-Bewertung
+ * (S0 Pool-Fit … S4 Fill-bereit), 95%-KI, Wave-Timeline („Warum bewegt sich
+ * nichts"), Ausschluss-Breakdown. Altdaten-tolerant: fehlen neue Felder
+ * (wave/ci95/…), degradiert die Anzeige — nie crashen. */
+
+/** Datum-only Format (Timeline; wie fmtTime, ohne Uhrzeit). */
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    if (typeof iso === 'number') iso = new Date(iso * 1000);
+    else {
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso) && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(iso)) iso += 'Z';
+      iso = new Date(iso);
+    }
+    return iso.toLocaleDateString('de-DE', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      timeZone: 'Europe/Berlin'
+    });
+  } catch(e) { return String(iso); }
+}
+
+/** Mini-Box der Stufen-Spalte (10px, 14px breit, Glyph + Tooltip). */
+function _radarStage(glyph, color, title) {
+  return '<span class="radar-stg" title="' + escHtml(title) + '" style="display:inline-block;width:14px;height:14px;line-height:14px;text-align:center;font-size:10px;border-radius:3px;margin-right:2px;color:' + color + ';background:rgba(139,148,158,0.10)">' + glyph + '</span>';
+}
+
+/** Stufen-Spalte je Kandidat: S0 Pool-Fit / S1 Evidenz / S2 Slot-Fit /
+ *  S3 Challenge / S4 Fill-bereit (Semantik Spec D4.4). */
+function _radarStageCell(c, wave) {
+  var GRAY = '#8b949e', GREEN = '#3fb950', YELLOW = '#d29922', RED = '#f85149';
+  var evCol = c.ev_grade === 'green' ? GREEN : (c.ev_grade === 'yellow' ? YELLOW : RED);
+  var ch = c.challenge || null;
+  var fillable = !!c.fillable;
+  var ready = !!(ch && ch.ready);
+  var s4ok = fillable && ready && !!(wave && wave.open);
+  return _radarStage('✓', GREEN, 'S0 Pool-Fit: im Kandidaten-Pool (Score-Ordnung)') +
+    _radarStage('●', evCol, 'S1 Evidenz: saubere KLASSEN-Trades n=' + (c.n_class != null ? c.n_class : '—') + ' (' + escHtml(c.ev_grade || 'red') + ')') +
+    (fillable ? _radarStage('✓', GREEN, 'S2 Slot-Fit: keine Blockgründe — Pfade/Caps frei')
+              : _radarStage('✕', GRAY, 'S2 Slot-Fit: blockiert — ' + escHtml(c.lacks || 'Gründe siehe Status'))) +
+    (ready ? _radarStage('✓', GREEN, 'S3 Challenge: reif (≥3 saubere Trades, netto>0)')
+      : (ch ? _radarStage('◐', YELLOW, 'S3 Challenge: läuft — ' + escHtml(c.lacks || ''))
+            : _radarStage('–', GRAY, 'S3 Challenge: keine aktiv'))) +
+    (s4ok ? _radarStage('✓', GREEN, 'S4 Fill-bereit: Challenge reif + Wave-Cap offen')
+          : _radarStage('–', GRAY, 'S4 Fill-bereit: wartet (Challenge/Wave-Cap)'));
+}
+
+/** Timeline „Warum bewegt sich nichts?" (Spec D4.3; nur wenn wave vorhanden). */
+function _radarTimeline(r) {
+  var w = r.wave;
+  if (!w) return '';
+  var f30 = (r.fills_30d != null) ? r.fills_30d : 0;
+  var h = '<div style="font-size:var(--text-xs);margin:0 0 4px">';
+  if (w.last_fill_ts) {
+    h += '⏱ Letzte Fills: ' + f30 + ' in 30 d · letzter: ' + escHtml(w.last_fill_label || '—') + ' (' + fmtDate(w.last_fill_ts) + ')';
+  } else {
+    h += '⏱ Letzte Fills: ' + f30 + ' in 30 d · noch kein Fill';
+  }
+  h += '</div>';
+  h += '<div style="font-size:var(--text-xs);margin:0 0 4px">Wave-Cap: ' +
+    (w.open ? 'frei' : ('frei ab ' + fmtDate(w.unlock_ts))) + '</div>';
+  var ca = r.challenges_active || [];
+  if (ca.length) {
+    var parts = [];
+    for (var i = 0; i < ca.length; i++) {
+      var e = ca[i];
+      parts.push(escHtml(e.slot_id || '—') + ' #' + escHtml(e.candidate != null ? e.candidate : '?') + ' ' + (e.trades || 0) + '/3' + (e.ready ? ' ✓' : ''));
+    }
+    h += '<div style="font-size:var(--text-xs);margin:0 0 4px">Challenges: ' + parts.join(' · ') + '</div>';
+  }
+  h += '<div style="font-size:10px;color:var(--c-text-dim);margin:0 0 6px">Hinweis: Bei dieser Challenge-Frequenz ist ein Stillstand von Tagen normal (n klein).</div>';
+  return h;
+}
+
+/** Ausschluss-Breakdown-Zeile (Spec D4.2; Label-Map, Fallback rohes Token). */
+function _radarExclusionLine(r) {
+  var bd = r.excluded_breakdown || [];
+  if (!bd.length) return '';
+  var map = {
+    'min_asset_trades': 'ohne ≥5 Klassentrades',
+    'not_selected': 'nicht in Shadow-Auswahl',
+    'inactive': '>42 d inaktiv',
+    'catalog_status:rejected': 'Katalog rejected',
+    'catalog_status:archived': 'Katalog archiviert',
+    'asset_bust': 'Asset-Bust',
+    'global_bust': 'Bust'
+  };
+  var parts = [];
+  for (var i = 0; i < bd.length; i++) {
+    var tok = bd[i].reason;
+    parts.push(escHtml(map[tok] || tok) + ' (' + bd[i].count + ')');
+  }
+  return '<div style="font-size:10px;color:var(--c-text-dim);margin-bottom:8px">Ausschlüsse u. a.: ' + parts.join(' · ') + ' (Mehrfachnennungen möglich)</div>';
+}
+
 function _renderRotationRadar(d, spById, nameById) {
   var box = el(C.prefix + '-radar');
   if (!box) return;
   var r = d.rotation_radar;
-  if (!r || !((r.candidates || []).length)) {
+  if (!r) {
     box.style.display = 'none';
     box.innerHTML = '';
     return;
   }
+  var cands = r.candidates || [];
   function candName(sid) {
     var m = spById[sid] || spById[String(sid)];
     if (m && m.name) return _spShortName(m.name);
@@ -647,33 +742,51 @@ function _renderRotationRadar(d, spById, nameById) {
   h += '<div style="font-weight:700;font-size:var(--text-md);margin-bottom:2px">🎯 Rotations-Radar</div>';
   h += '<div style="font-size:10px;color:var(--c-text-dim);margin-bottom:8px">Kandidaten-Pool ' +
     escHtml(r.target_class || '') + ' · Stand ' + fmtTime(r.generated_at) + ' · ' +
-    (r.pool_size || 0) + ' Kandidaten (' + (r.excluded || 0) + ' exkludiert)</div>';
-  h += '<table style="width:100%;border-collapse:collapse;font-size:var(--text-xs)">' +
-    '<thead><tr style="color:var(--c-text-dim);text-align:left">' +
-    '<th style="padding:2px 6px">Strategie</th><th>Score</th><th>PF</th><th>Trades</th><th>Netto</th><th>Fit</th></tr></thead><tbody>';
-  for (var i = 0; i < r.candidates.length; i++) {
-    var c = r.candidates[i];
-    var nm = candName(c.strategy_id);
-    var reasons = c.reasons || [];
-    var fit;
-    if (!reasons.length) {
-      fit = '<span style="color:#3fb950">✓ füllbar</span>';
-    } else {
-      var chips = [];
-      for (var x = 0; x < reasons.length; x++) {
-        chips.push('<span title="' + escHtml(reasons[x]) + '" style="display:inline-block;font-size:10px;padding:0 5px;border-radius:3px;background:rgba(210,153,34,0.15);color:#d29922;border:1px solid rgba(210,153,34,0.3);margin-right:3px">' + escHtml(_radarReasonShort(reasons[x])) + '</span>');
+    (r.pool_size || 0) + ' Kandidaten · Top ' + (r.shown != null ? r.shown : cands.length) +
+    ' gezeigt (' + (r.excluded || 0) + ' exkludiert)</div>';
+  h += _radarExclusionLine(r);
+  h += _radarTimeline(r);
+  if (!cands.length) {
+    h += '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">Keine Kandidaten im Pool — Lernphase bzw. keine qualifizierte Strategie für diese Klasse.</div>';
+  } else {
+    h += '<table style="width:100%;border-collapse:collapse;font-size:var(--text-xs)">' +
+      '<thead><tr style="color:var(--c-text-dim);text-align:left">' +
+      '<th style="padding:2px 6px">Strategie</th><th>Stufen</th><th>Evidenz</th><th>OOS</th><th>Netto</th><th>Status</th></tr></thead><tbody>';
+    for (var i = 0; i < cands.length; i++) {
+      var c = cands[i];
+      var nm = candName(c.strategy_id);
+      var reasons = c.reasons || [];
+      var status;
+      if (c.fillable) {
+        status = '<span style="color:#3fb950">✓ füllbar</span>';
+      } else {
+        var chips = [];
+        for (var x = 0; x < reasons.length; x++) {
+          chips.push('<span title="' + escHtml(reasons[x]) + '" style="display:inline-block;font-size:10px;padding:0 5px;border-radius:3px;background:rgba(139,148,158,0.12);color:#8b949e;border:1px solid rgba(139,148,158,0.3);margin-right:3px">⚙ ' + escHtml(_radarReasonShort(reasons[x])) + '</span>');
+        }
+        status = chips.join('');
       }
-      fit = chips.join('');
+      var evCell;
+      if (c.ci95 != null) {
+        evCell = (c.eur_per_trade != null ? Number(c.eur_per_trade).toFixed(2) : '—') +
+          ' ±' + Number(c.ci95).toFixed(2) + ' €/T · (n=' + (c.ci_n != null ? c.ci_n : '—') + ')';
+      } else {
+        evCell = 'n=' + (c.ci_n != null ? c.ci_n : 0) + ' · KI n/a';
+      }
+      var oosCell = (c.pf != null)
+        ? Number(c.pf).toFixed(2) + ' (' + (c.oos_trades != null ? c.oos_trades : 0) + ')'
+        : '—';
+      h += '<tr style="border-top:1px solid var(--c-border)">';
+      h += '<td style="padding:3px 6px"><b>#' + escHtml(c.strategy_id) + '</b>' + (nm ? ' <span style="color:var(--c-text-dim)">' + escHtml(nm) + '</span>' : '') + '</td>';
+      h += '<td style="white-space:nowrap">' + _radarStageCell(c, r.wave) + '</td>';
+      h += '<td style="white-space:nowrap">' + evCell + '</td>';
+      h += '<td>' + oosCell + '</td>';
+      h += '<td class="' + pnlClass(c.net_class || 0) + '">' + fmtPnl(c.net_class || 0) + ' €</td>';
+      h += '<td style="white-space:nowrap">' + status +
+        '<div style="font-size:10px;color:var(--c-text-dim)">' + escHtml(c.lacks || '') + '</div></td></tr>';
     }
-    h += '<tr style="border-top:1px solid var(--c-border)">';
-    h += '<td style="padding:3px 6px"><b>#' + escHtml(c.strategy_id) + '</b>' + (nm ? ' <span style="color:var(--c-text-dim)">' + escHtml(nm) + '</span>' : '') + '</td>';
-    h += '<td>' + (c.score != null ? c.score : '—') + '</td>';
-    h += '<td>' + (c.pf != null ? Number(c.pf).toFixed(2) : '—') + '</td>';
-    h += '<td>' + (c.n_class != null ? c.n_class : '—') + '</td>';
-    h += '<td class="' + pnlClass(c.net_class || 0) + '">' + fmtPnl(c.net_class || 0) + ' €</td>';
-    h += '<td>' + fit + '</td></tr>';
+    h += '</tbody></table>';
   }
-  h += '</tbody></table>';
   var slots = d.slots || [];
   var rows = [];
   for (var j = 0; j < slots.length; j++) {
@@ -691,6 +804,7 @@ function _renderRotationRadar(d, spById, nameById) {
     '<li>Gate-Kette je Signal: Familie-Dedup → Slot-Heat → Global-Heat → Richtung → Währungs-Buckets → Margin → min_score. Wer zuerst durchkommt, bekommt den freien Platz (FCFS).</li>' +
     '<li><b>No-Deferred:</b> jedes Signal wird genau 1× verarbeitet — kein Nachholen; die nächste Bar ist die nächste Chance.</li>' +
     '<li><b>Rotation:</b> Tür tauscht nur bei Schwäche (Bust/Zombie/Parität); Kandidat braucht ≥3 saubere Challenge-Trades netto&gt;0 (14-Tage-Frist) + fail-closed Precheck; max. 1 Fill je Bot/7 Tage.</li>' +
+    '<li><b>Entfernen nur als Defekt-Nachweis</b> (Bust/Zombie/Unterperformance, n≥10) — kein PnL-Ranking (Rang-Persistenz ≈ 0).</li>' +
     '</ul></details>';
   box.innerHTML = h;
   box.style.display = '';
@@ -698,8 +812,10 @@ function _renderRotationRadar(d, spById, nameById) {
 
 function _radarReasonShort(x) {
   var m = { 'pair_disjoint': 'Paar-Konflikt', 'cluster_cap': 'Cluster-Cap', 'deferred:no_pairs': 'ohne Tree/Pairs', 'pair_cap_tf': 'XAU/XAG-Bucket belegt', 'pair_cap': 'Paar-Cap' };
-  for (var k in m) { if (String(x).indexOf(k) === 0) return m[k]; }
-  return String(x).split(':')[0];
+  var s = String(x);
+  for (var k in m) { if (s.indexOf(k) === 0) return m[k]; }
+  if (s.indexOf('deferred') === 0) return 'ohne Tree/Pairs';  // v2: generisch
+  return s.split(':')[0];
 }
 
 function _renderSlotsInner(d, sp) {
