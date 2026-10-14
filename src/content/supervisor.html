@@ -64,6 +64,8 @@
 
   .sv-mission { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); margin-bottom: var(--s-3); }
   .sv-m-title { font-weight: 600; margin-bottom: 2px; }
+  .sv-goal { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+             -webkit-box-orient: vertical; overflow: hidden; }
   .sv-bar { height: 8px; background: var(--c-surface-2); border-radius: 999px; overflow: hidden; margin: var(--s-2) 0 2px; }
   .sv-bar-fill { height: 100%; background: var(--c-accent); }
   .sv-chip.ok { border-color: var(--c-ok); color: var(--c-ok); }
@@ -343,13 +345,13 @@
       ' · verbraucht ' + fmtUsd(last[2]);
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto" ' +
       'role="img" aria-label="Guthaben ueber Zeit">' + area + poly +
-      '<text x="' + (L - 6) + '" y="' + (T + 4) + '" font-size="10" ' +
+      '<text x="' + (L - 6) + '" y="' + (T + 4) + '" font-size="12" ' +
       'fill="var(--c-text-dim)" text-anchor="end">' + esc(fmtUsd(mx)) + '</text>' +
-      '<text x="' + (L - 6) + '" y="' + (H - B) + '" font-size="10" ' +
+      '<text x="' + (L - 6) + '" y="' + (H - B) + '" font-size="12" ' +
       'fill="var(--c-text-dim)" text-anchor="end">' + esc(fmtUsd(mn)) + '</text>' +
-      '<text x="' + L + '" y="' + (H - 8) + '" font-size="10" ' +
+      '<text x="' + L + '" y="' + (H - 8) + '" font-size="12" ' +
       'fill="var(--c-text-dim)">' + esc(dayLabel(t0)) + '</text>' +
-      '<text x="' + (W - R) + '" y="' + (H - 8) + '" font-size="10" ' +
+      '<text x="' + (W - R) + '" y="' + (H - 8) + '" font-size="12" ' +
       'fill="var(--c-text-dim)" text-anchor="end">' + esc(dayLabel(t1)) + '</text>' +
       '<circle cx="' + X(last[0]).toFixed(1) + '" cy="' + Y(last[1]).toFixed(1) +
       '" r="3" fill="var(--c-accent)"><title>' + esc(tip) + '</title></circle></svg>';
@@ -595,7 +597,7 @@
         ' <span class="sv-badge ' + (m.status === 'active' ? 'ok' : (m.status === 'blocked' ? 'err' : 'warn')) + '">' +
         esc(m.status) + '</span>' +
         (offered ? ' <span class="sv-dim">wartet auf Start-Freigabe</span>' : '') + '</div>' +
-        '<div class="sv-dim">' + esc(m.goal) + '</div>' +
+        '<div class="sv-dim sv-goal" title="' + esc(m.goal) + '">' + esc(m.goal) + '</div>' +
         '<div class="sv-bar"><div class="sv-bar-fill" style="width:' + pct + '%"></div></div>' +
         '<div class="sv-dim">' + m.done + '/' + m.total + ' Etappen · ' + pct + '%</div>' +
         '<div class="sv-steps">' + stages + '</div>' +
@@ -623,22 +625,33 @@
       }).join('') + '</div>';
     }
     var skipped = ap.seeds_skipped || [];
-    $('sv-board').innerHTML =
-      '<div class="sv-list">' +
-      kvRow('Seeds neu (' + ((ap.seeds_new || []).length) + ')', '') +
-      chips(ap.seeds_new) +
-      kvRow('Seeds verworfen (' + skipped.length + ')', '') +
-      (skipped.length ? '<div class="sv-list">' + skipped.map(function (s) {
-        return '<div class="sv-dim">⏭ ' + esc(s[0]) + ' — ' + esc(s[1]) + '</div>';
-      }).join('') + '</div>' : '<span class="sv-dim">keine</span>') +
-      kvRow('Cluster-Edits (' + ((ap.cluster_edits || []).length) + ')', '') +
-      chips(ap.cluster_edits, function (e) { return e[1]; }) +
-      kvRow('Tier-1-Promotions', '') + chips(ap.tiers_added) +
-      kvRow('Watches (' + ((ap.watches_added || []).length) + ' neu, ' +
-            ((ap.watches_closed || []).length) + ' geschlossen)', '') +
-      chips((ap.watches_added || []).map(function (w) {
-        return '#' + w.sid + ' (' + w.kind + ')';
-      })) + '</div>';
+    var bp = [];
+    if ((ap.seeds_new || []).length) {
+      bp.push(kvRow('Seeds neu (' + ap.seeds_new.length + ')', '') + chips(ap.seeds_new));
+    }
+    if (skipped.length) {
+      bp.push(kvRow('Seeds verworfen (' + skipped.length + ')', '') +
+        '<div class="sv-list">' + skipped.map(function (s) {
+          return '<div class="sv-dim">⏭ ' + esc(s[0]) + ' — ' + esc(s[1]) + '</div>';
+        }).join('') + '</div>');
+    }
+    if ((ap.cluster_edits || []).length) {
+      bp.push(kvRow('Cluster-Edits (' + ap.cluster_edits.length + ')', '') +
+        chips(ap.cluster_edits, function (e) { return e[1]; }));
+    }
+    if ((ap.tiers_added || []).length) {
+      bp.push(kvRow('Tier-1-Promotions (' + ap.tiers_added.length + ')', '') + chips(ap.tiers_added));
+    }
+    var wa = (ap.watches_added || []);
+    var wc = (ap.watches_closed || []);
+    if (wa.length || wc.length) {
+      bp.push(kvRow('Watches (' + wa.length + ' neu, ' + wc.length + ' geschlossen)', '') +
+        chips(wa.map(function (w) { return '#' + w.sid + ' (' + w.kind + ')'; })));
+    }
+    $('sv-board').innerHTML = '<div class="sv-list">' +
+      (bp.length ? bp.join('') :
+        '<span class="sv-dim">keine Änderungen im letzten Manifest</span>') +
+      '</div>';
 
     $('sv-changes-activity').innerHTML = spark(d.activity, 'Änderungen 14 Tage');
 
