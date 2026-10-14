@@ -1109,7 +1109,7 @@ function renderSignals(d) {
   grid.innerHTML = html || '<div class="bot-no-data">No signals</div>';
 }
 
-/** Equity curve (Chart.js) — Basis-Serie + optional Echtgeld-Kontokurven */
+/** Kontoverlauf (Chart.js) — reiner Kontoverlauf; optional + Kontokurven (blau) */
 function renderEquity(d) {
   var canvas = el(C.prefix + '-equity-chart');
   if (!canvas) return;
@@ -1117,40 +1117,26 @@ function renderEquity(d) {
   var snapshots = data.snapshots || data;
   if (!Array.isArray(snapshots) || snapshots.length === 0) return;
 
-  // Echtgeld-Kontokurven (LIVE/DEMO-Split). Ohne curves: exakt heutiges
-  // Verhalten (2 Datasets, unveraenderte labels/values).
+  // Kontokurven (LIVE/DEMO-Split; User-Vereinfachung 14.10.2026: reiner
+  // Kontoverlauf als EINE blaue Linie — keine Farbcodierung, keine Legende).
   var curves = d.curves || [];
 
-  // Roh-Serien (Equity P1, 14.10.2026): Datei-Werte ohne Cash-Flow-/Sanity-
-  // Bereinigung. Basis: d.equity_history_raw; je Kurve c.raw_points.
-  var rawBase = d.equity_history_raw;
-  var rawBaseSnaps = Array.isArray(rawBase) ? rawBase
-    : (rawBase && Array.isArray(rawBase.snapshots) ? rawBase.snapshots : []);
-
-  var baseLabels = [], values = [], drawdowns = [];
-  var peak = 0;
+  var baseLabels = [], values = [];
   for (var i = 0; i < snapshots.length; i++) {
     var s = snapshots[i];
     var val = s.equity || s.balance || s.value || 0;
     baseLabels.push(s.timestamp || s.date || '');
     values.push(val);
-    if (val > peak) peak = val;
-    drawdowns.push(peak > 0 ? ((val - peak) / peak * 100) : 0);
   }
 
   // Label-Union chronologisch (String-Sort reicht fuer ISO-Timestamps) +
   // Index-Maps: Basis- und Kontowerte werden auf die Union-Labels gelegt,
   // fehlende Stellen bleiben null (Luecken sichtbar via spanGaps:false).
-  var labels, eqData, ddData, extraDatasets = [], rawDatasets = [];
-  // Union nur noetig, wenn Kontokurven ODER Roh-Serien vorhanden sind. Sonst
-  // exakt heutiger Fast-Path (labels = baseLabels).
-  var _hasRaw = rawBaseSnaps.length > 0;
-  for (var _rc = 0; _rc < curves.length; _rc++) {
-    if (curves[_rc] && Array.isArray(curves[_rc].raw_points)
-        && curves[_rc].raw_points.length) { _hasRaw = true; break; }
-  }
-  if (curves.length === 0 && !_hasRaw) {
-    labels = baseLabels; eqData = values; ddData = drawdowns;
+  var labels, eqData, extraDatasets = [];
+  // Union nur noetig, wenn Kontokurven vorhanden sind. Sonst Fast-Path
+  // (labels = baseLabels).
+  if (curves.length === 0) {
+    labels = baseLabels; eqData = values;
   } else {
     var labelSet = {};
     for (var bi = 0; bi < baseLabels.length; bi++) labelSet[baseLabels[bi]] = true;
@@ -1160,16 +1146,6 @@ function renderEquity(d) {
         var lt = (pts[pi] && (pts[pi].timestamp || pts[pi].date)) || '';
         labelSet[lt] = true;
       }
-      var rps = (curves[ci] && curves[ci].raw_points) || [];
-      for (var rpi = 0; rpi < rps.length; rpi++) {
-        var rlt = (rps[rpi] && (rps[rpi].timestamp || rps[rpi].date)) || '';
-        labelSet[rlt] = true;
-      }
-    }
-    for (var rbi = 0; rbi < rawBaseSnaps.length; rbi++) {
-      var rbl = (rawBaseSnaps[rbi] && (rawBaseSnaps[rbi].timestamp
-        || rawBaseSnaps[rbi].date)) || '';
-      labelSet[rbl] = true;
     }
     labels = Object.keys(labelSet).sort();
     var indexOf = {};
@@ -1191,17 +1167,16 @@ function renderEquity(d) {
     };
 
     eqData = labels.map(function () { return null; });
-    ddData = labels.map(function () { return null; });
     for (var bj = 0; bj < baseLabels.length; bj++) {
       var bIdx = indexOf[baseLabels[bj]];
-      if (bIdx !== undefined) { eqData[bIdx] = values[bj]; ddData[bIdx] = drawdowns[bj]; }
+      if (bIdx !== undefined) eqData[bIdx] = values[bj];
     }
     for (var k = 0; k < curves.length; k++) {
       var cur = curves[k] || {};
       extraDatasets.push({
         label: cur.label || 'Echtgeld',
         data: _mapPts(cur.points),
-        borderColor: '#ef4444',
+        borderColor: '#5b8def',
         borderWidth: 2,
         pointRadius: 0,
         tension: 0.3,
@@ -1211,48 +1186,9 @@ function renderEquity(d) {
         _ctid: cur.ctid != null ? String(cur.ctid) : '',
       });
     }
-    // Roh-Serien: hidden (Toggle = Legenden-Klick, Chart.js-Default), grau
-    // gestrichelt. Bewusst NICHT in die y-Spanne (s.u.).
-    if (rawBaseSnaps.length) {
-      rawDatasets.push({
-        label: 'Kontostand roh',
-        data: _mapPts(rawBaseSnaps),
-        borderColor: '#9ca3af',
-        borderDash: [5, 4],
-        borderWidth: 1,
-        pointRadius: 0,
-        fill: false,
-        spanGaps: false,
-        yAxisID: 'y',
-        hidden: true,
-        _raw: true,
-      });
-    }
-    for (var rk = 0; rk < curves.length; rk++) {
-      var rcur = curves[rk] || {};
-      if (!Array.isArray(rcur.raw_points) || !rcur.raw_points.length) continue;
-      var rctid = rcur.ctid != null ? String(rcur.ctid) : '';
-      rawDatasets.push({
-        label: 'Kontostand roh' + (rctid ? ' (' + rctid + ')' : ''),
-        data: _mapPts(rcur.raw_points),
-        borderColor: '#9ca3af',
-        borderDash: [5, 4],
-        borderWidth: 1,
-        pointRadius: 0,
-        fill: false,
-        spanGaps: false,
-        yAxisID: 'y',
-        hidden: true,
-        _raw: true,
-        _ctid: rctid,
-      });
-    }
   }
 
-  // Y-Achsen-Spanne ueber die SICHTBAREN Serien (Basis + Kontokurven). Die
-  // Roh-Serien bleiben bewusst aussen vor: sie sind hidden und Chart.js'
-  // Auto-Spanne ignoriert hidden-Serien ohnehin — so bleiben die Achsen
-  // konsistent, ohne dass ein versteckter Sprung die Skala sprengt.
+  // Y-Achsen-Spanne ueber Basis + Kontokurven.
   var minVal = Infinity, maxVal = -Infinity;
   function _scan(arr) {
     for (var z = 0; z < arr.length; z++) {
@@ -1277,7 +1213,7 @@ function renderEquity(d) {
 
   var datasets = [
     {
-      label: 'Equity',
+      label: 'Kontoverlauf',
       data: eqData,
       borderColor: '#5b8def',
       backgroundColor: 'rgba(91,141,239,0.08)',
@@ -1286,21 +1222,9 @@ function renderEquity(d) {
       pointRadius: 0,
       borderWidth: 2,
       yAxisID: 'y',
-    },
-    {
-      label: 'Drawdown %',
-      data: ddData,
-      borderColor: 'rgba(239,68,68,0.4)',
-      backgroundColor: 'rgba(239,68,68,0.05)',
-      fill: true,
-      tension: 0.3,
-      pointRadius: 0,
-      borderWidth: 1,
-      yAxisID: 'y1',
     }
   ];
   for (var ds = 0; ds < extraDatasets.length; ds++) datasets.push(extraDatasets[ds]);
-  for (var rs = 0; rs < rawDatasets.length; rs++) datasets.push(rawDatasets[rs]);
 
   // ── Arming-/Era-Marker (Equity P1, 14.10.2026) ──
   // chart.$markers = [{idx,label}]; idx = erster Label-Index >= ts (ISO-Vergleich).
@@ -1369,25 +1293,22 @@ function renderEquity(d) {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: true, labels: { color: '#8b8b9e', font: { size: 10 } } },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: function(ctx) {
+              if (ctx.datasetIndex === 0) return ' €' + ctx.parsed.y.toFixed(2);
               var _ds = ctx.dataset || (ctx.chart && ctx.chart.data
                 && ctx.chart.data.datasets[ctx.datasetIndex]);
-              if (_ds && _ds._raw) return ' €' + ctx.parsed.y.toFixed(2) + ' (roh)';
-              if (ctx.datasetIndex === 0) return ' €' + ctx.parsed.y.toFixed(2);
-              if (ctx.datasetIndex === 1) return ' ' + ctx.parsed.y.toFixed(2) + '%';
               var _ctid = (_ds && _ds._ctid) || '';
-              return ' €' + ctx.parsed.y.toFixed(2) + ' (Echtgeld ' + _ctid + ')';
+              return ' €' + ctx.parsed.y.toFixed(2) + (_ctid ? ' (Konto ' + _ctid + ')' : '');
             }
           }
         }
       },
       scales: {
         x: { display: true, ticks: { color: '#555', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { position: 'left', min: yMin, max: yMax, ticks: { color: '#5b8def', callback: function(v) { return '€' + v.toFixed(0); } }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y1: { position: 'right', ticks: { color: '#ef4444', callback: function(v) { return v.toFixed(0) + '%'; } }, grid: { drawOnChartArea: false } }
+        y: { position: 'left', min: yMin, max: yMax, ticks: { color: '#5b8def', callback: function(v) { return '€' + v.toFixed(0); } }, grid: { color: 'rgba(255,255,255,0.04)' } }
       }
     }
   });
@@ -1398,7 +1319,6 @@ function renderEquity(d) {
   if (summary) {
     var first = values[0] || 0;
     var last = values[values.length - 1] || 0;
-    var minDD = Math.min.apply(null, drawdowns);
     var tradeCount = (d.last_trades && d.last_trades.length) || 0;
     var note = tradeCount === 0 ? '<span style="color:var(--c-text-dim);margin-left:auto;font-style:italic">ℹ️ Startwert nach Deploy (noch keine Trades der aktuellen Strategie)</span>' : '';
 
@@ -1436,7 +1356,6 @@ function renderEquity(d) {
       '<span>Start: <b>€' + first.toFixed(2) + '</b></span>' +
       '<span>Current: <b>€' + last.toFixed(2) + '</b></span>' +
       '<span>P&L: <b class="' + pnlClass(last - first) + '">' + fmtPnl(last - first) + '</b></span>' +
-      '<span>Max DD: <b class="bot-pnl-neg">' + minDD.toFixed(2) + '%</b></span>' +
       note + chips;
   }
 }
