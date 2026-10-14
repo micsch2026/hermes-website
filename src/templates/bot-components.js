@@ -279,6 +279,28 @@ function renderKPIs(d) {
   }
   var wrSub = el(C.prefix + '-winrate-sub');
   if (wrSub) wrSub.textContent = (perf.total_trades || 0) + ' total trades';
+
+  // Echtgeld-Konten-Karten (LIVE/DEMO-Split). Ohne account_cards: nichts.
+  var cards = d.account_cards || [];
+  if (cards.length) {
+    var kpiRow = el(C.prefix + '-kpi-row');
+    for (var ci = 0; ci < cards.length; ci++) {
+      var card = cards[ci] || {};
+      var ctid = card.ctid != null ? String(card.ctid) : '';
+      var cardId = C.prefix + '-ext-' + ctid;
+      if (el(cardId)) continue;      // schon gerendert → nicht duplizieren
+      if (!kpiRow) continue;
+      var cdiv = document.createElement('div');
+      cdiv.className = 'bot-card';
+      cdiv.id = cardId;
+      cdiv.style.padding = 'var(--s-3) var(--s-4)';
+      cdiv.innerHTML =
+        '<div class="bot-card-title">🔴 Echtgeld ' + ctid + '</div>' +
+        '<div class="bot-card-value">€' + Number(card.balance || 0).toFixed(2) + '</div>' +
+        '<div class="bot-card-sub">Equity: €' + Number(card.equity || 0).toFixed(2) + '</div>';
+      kpiRow.appendChild(cdiv);
+    }
+  }
 }
 
 /** Performance metrics: Win Rate, PF, Expectancy, Max DD */
@@ -1087,7 +1109,7 @@ function renderSignals(d) {
   grid.innerHTML = html || '<div class="bot-no-data">No signals</div>';
 }
 
-/** Equity curve (Chart.js) */
+/** Equity curve (Chart.js) — Basis-Serie + optional Echtgeld-Kontokurven */
 function renderEquity(d) {
   var canvas = el(C.prefix + '-equity-chart');
   if (!canvas) return;
@@ -1095,19 +1117,85 @@ function renderEquity(d) {
   var snapshots = data.snapshots || data;
   if (!Array.isArray(snapshots) || snapshots.length === 0) return;
 
-  var labels = [], values = [], drawdowns = [];
+  // Echtgeld-Kontokurven (LIVE/DEMO-Split). Ohne curves: exakt heutiges
+  // Verhalten (2 Datasets, unveraenderte labels/values).
+  var curves = d.curves || [];
+
+  var baseLabels = [], values = [], drawdowns = [];
   var peak = 0;
-  var minVal = Infinity, maxVal = -Infinity;
   for (var i = 0; i < snapshots.length; i++) {
     var s = snapshots[i];
     var val = s.equity || s.balance || s.value || 0;
-    labels.push(s.timestamp || s.date || '');
+    baseLabels.push(s.timestamp || s.date || '');
     values.push(val);
     if (val > peak) peak = val;
-    if (val < minVal) minVal = val;
-    if (val > maxVal) maxVal = val;
     drawdowns.push(peak > 0 ? ((val - peak) / peak * 100) : 0);
   }
+
+  // Label-Union chronologisch (String-Sort reicht fuer ISO-Timestamps) +
+  // Index-Maps: Basis- und Kontowerte werden auf die Union-Labels gelegt,
+  // fehlende Stellen bleiben null (Luecken sichtbar via spanGaps:false).
+  var labels, eqData, ddData, extraDatasets = [];
+  if (curves.length === 0) {
+    labels = baseLabels; eqData = values; ddData = drawdowns;
+  } else {
+    var labelSet = {};
+    for (var bi = 0; bi < baseLabels.length; bi++) labelSet[baseLabels[bi]] = true;
+    for (var ci = 0; ci < curves.length; ci++) {
+      var pts = (curves[ci] && curves[ci].points) || [];
+      for (var pi = 0; pi < pts.length; pi++) {
+        var lt = (pts[pi] && (pts[pi].timestamp || pts[pi].date)) || '';
+        labelSet[lt] = true;
+      }
+    }
+    labels = Object.keys(labelSet).sort();
+    var indexOf = {};
+    for (var li = 0; li < labels.length; li++) indexOf[labels[li]] = li;
+
+    eqData = labels.map(function () { return null; });
+    ddData = labels.map(function () { return null; });
+    for (var bj = 0; bj < baseLabels.length; bj++) {
+      var bIdx = indexOf[baseLabels[bj]];
+      if (bIdx !== undefined) { eqData[bIdx] = values[bj]; ddData[bIdx] = drawdowns[bj]; }
+    }
+    for (var k = 0; k < curves.length; k++) {
+      var cur = curves[k] || {};
+      var cpts = cur.points || [];
+      var cdata = labels.map(function () { return null; });
+      for (var cj = 0; cj < cpts.length; cj++) {
+        var cp = cpts[cj] || {};
+        var ckey = cp.timestamp || cp.date || '';
+        var cIdx = indexOf[ckey];
+        var cv = cp.equity != null ? cp.equity
+               : (cp.balance != null ? cp.balance
+               : (cp.value != null ? cp.value : null));
+        if (cIdx !== undefined && cv != null) cdata[cIdx] = cv;
+      }
+      extraDatasets.push({
+        label: cur.label || 'Echtgeld',
+        data: cdata,
+        borderColor: '#ef4444',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: false,
+        spanGaps: false,
+        yAxisID: 'y',
+        _ctid: cur.ctid != null ? String(cur.ctid) : '',
+      });
+    }
+  }
+
+  // Y-Achsen-Spanne ueber ALLE Serien (minSpan-Regel bleibt).
+  var minVal = Infinity, maxVal = -Infinity;
+  function _scan(arr) {
+    for (var z = 0; z < arr.length; z++) {
+      var v = arr[z];
+      if (v != null) { if (v < minVal) minVal = v; if (v > maxVal) maxVal = v; }
+    }
+  }
+  _scan(eqData);
+  for (var es = 0; es < extraDatasets.length; es++) _scan(extraDatasets[es].data);
 
   // Y-Axis padding: ensure at least ±1.5% (or ±15 EUR) span around balance so micro-cent fluctuations don't look like crashes
   var yMin = undefined, yMax = undefined;
@@ -1121,35 +1209,38 @@ function renderEquity(d) {
     }
   }
 
+  var datasets = [
+    {
+      label: 'Equity',
+      data: eqData,
+      borderColor: '#5b8def',
+      backgroundColor: 'rgba(91,141,239,0.08)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 2,
+      yAxisID: 'y',
+    },
+    {
+      label: 'Drawdown %',
+      data: ddData,
+      borderColor: 'rgba(239,68,68,0.4)',
+      backgroundColor: 'rgba(239,68,68,0.05)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 1,
+      yAxisID: 'y1',
+    }
+  ];
+  for (var ds = 0; ds < extraDatasets.length; ds++) datasets.push(extraDatasets[ds]);
+
   if (_chartInstances.equity) _chartInstances.equity.destroy();
   _chartInstances.equity = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: {
       labels: labels,
-      datasets: [
-        {
-          label: 'Equity',
-          data: values,
-          borderColor: '#5b8def',
-          backgroundColor: 'rgba(91,141,239,0.08)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 0,
-          borderWidth: 2,
-          yAxisID: 'y',
-        },
-        {
-          label: 'Drawdown %',
-          data: drawdowns,
-          borderColor: 'rgba(239,68,68,0.4)',
-          backgroundColor: 'rgba(239,68,68,0.05)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 0,
-          borderWidth: 1,
-          yAxisID: 'y1',
-        }
-      ]
+      datasets: datasets
     },
     options: {
       responsive: true,
@@ -1161,7 +1252,11 @@ function renderEquity(d) {
           callbacks: {
             label: function(ctx) {
               if (ctx.datasetIndex === 0) return ' €' + ctx.parsed.y.toFixed(2);
-              return ' ' + ctx.parsed.y.toFixed(2) + '%';
+              if (ctx.datasetIndex === 1) return ' ' + ctx.parsed.y.toFixed(2) + '%';
+              var _ds = ctx.dataset || (ctx.chart && ctx.chart.data
+                && ctx.chart.data.datasets[ctx.datasetIndex]);
+              var _ctid = (_ds && _ds._ctid) || '';
+              return ' €' + ctx.parsed.y.toFixed(2) + ' (Echtgeld ' + _ctid + ')';
             }
           }
         }
@@ -1174,7 +1269,7 @@ function renderEquity(d) {
     }
   });
 
-  // Summary
+  // Summary — nur Basis-Serie (Default-Konto).
   var summary = el(C.prefix + '-equity-summary');
   if (summary) {
     var first = values[0] || 0;
