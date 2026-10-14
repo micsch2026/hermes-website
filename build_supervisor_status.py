@@ -169,8 +169,14 @@ def main() -> int:
     imp_path = SB / f"impact_{week}.json" if week else None
     ap_path = SB / f"applied_{week}.json" if week else None
     ge_path = SB / f"gate_evidence_{week}.json" if week else None
+    # Applied: der woechentliche Job schreibt je Zyklus ein NEUES Manifest; die
+    # Loop-Frische am NEUESTEN Manifest messen (das review-wochen-gekoppelte File
+    # ist per Konvention schon vor Wochenstart geschrieben und erzeugte sonst
+    # False-STALE nach dem Apply der Folgewoche; Konvention 13.10.).
+    ap_manifests = sorted(SB.glob("applied_2026-W*.json"))
+    ap_fresh_path = ap_manifests[-1] if ap_manifests else ap_path
     for n, p in (("weekly_review", wr_path), ("impact", imp_path),
-                 ("applied", ap_path), ("gate_evidence", ge_path)):
+                 ("applied", ap_fresh_path), ("gate_evidence", ge_path)):
         if p:
             src(n, p, 7 * 86400)
 
