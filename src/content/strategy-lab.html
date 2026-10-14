@@ -882,9 +882,12 @@ function renderShadowDashboard() {
   const botsData = sd.bots || {};
   const botKeys = Object.keys(botsData).sort((a,b)=>parseInt(a.slice(3))-parseInt(b.slice(3)));
   if (botKeys.length > 0) {
+    // Gruppen (14.10.2026): LIVE → LIVE/DEMO-SPLIT (Live-Slots auf Echtgeld,
+    // bots[].live_split vom Portfolio-Builder) → DEMO. Innerhalb numerisch.
     const liveKeys = botKeys.filter(k => botsData[k].is_live);
-    const demoKeys = botKeys.filter(k => !botsData[k].is_live);
-    const ordered = liveKeys.map(k=>['live',k]).concat(demoKeys.map(k=>['demo',k]));
+    const splitKeys = botKeys.filter(k => !botsData[k].is_live && botsData[k].live_split);
+    const demoKeys = botKeys.filter(k => !botsData[k].is_live && !botsData[k].live_split);
+    const ordered = liveKeys.map(k=>['live',k]).concat(splitKeys.map(k=>['split',k])).concat(demoKeys.map(k=>['demo',k]));
 
   // Multibot-Kennzeichnung (2026-09-28; erweitert 01.10.26: auch >=2 fixe
   // Slots = MULTI, 'max N Slots' aus bots[].slots_target): fixe Slots aus
@@ -923,7 +926,7 @@ function renderShadowDashboard() {
   let _lastGroup = null;
   for (const [grp, bk] of ordered) {
     if (grp !== _lastGroup) {
-      html += '<div style="grid-column:1/-1;font-size:0.72rem;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin-top:0.35rem">'+(grp==='live' ? '🔴 LIVE — ECHTGELD-MESSKONTEN' : '🧪 DEMO — ANSATZ-MATRIX')+'</div>';
+      html += '<div style="grid-column:1/-1;font-size:0.72rem;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin-top:0.35rem">'+(grp==='live' ? '🔴 LIVE — ECHTGELD-MESSKONTEN' : (grp==='split' ? '🔴/🟡 LIVE + DEMO-SPLIT — LIVE-SLOTS AUF ECHTGELD' : '🧪 DEMO — ANSATZ-MATRIX'))+'</div>';
       _lastGroup = grp;
     }
     const b = botsData[bk];
@@ -941,7 +944,7 @@ function renderShadowDashboard() {
 
       html += '<div class="rd-card" style="padding:0.6rem 0.8rem;border-top:3px solid '+(pnl>=0?'var(--green)':'var(--red)')+';cursor:pointer" data-href="/'+bk+'" onclick="location.href=this.dataset.href" title="Zur Bot-Seite">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem">';
-      html += '<strong>'+bk.toUpperCase()+(b.is_live ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.15);color:var(--red,#ff6b6b);border:1px solid rgba(255,90,90,0.35);border-radius:3px;padding:0.02rem 0.3rem">LIVE</span>' : '')+(_isMulti ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">🧩 MULTI</span>' : '')+'</strong>';
+      html += '<strong>'+bk.toUpperCase()+(b.is_live ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.15);color:var(--red,#ff6b6b);border:1px solid rgba(255,90,90,0.35);border-radius:3px;padding:0.02rem 0.3rem">LIVE</span>' : (b.live_split ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.10);color:var(--yellow,#d29922);border:1px solid rgba(255,150,90,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Live-Slots auf Echtgeld: '+esc((b.live_slots||[]).join(', '))+'">LIVE-SLOT</span>' : ''))+(_isMulti ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">🧩 MULTI</span>' : '')+'</strong>';
       html += '<span style="font-size:0.75rem">'+bhIcon+' Health</span>';
       html += '</div>';
 
