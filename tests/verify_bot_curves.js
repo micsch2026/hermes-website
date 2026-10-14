@@ -92,7 +92,7 @@ reg('f8-equity-chart');
   console.log('\nverify_bot_curves.js — Echtgeld-Konten-Kurven + Karten');
   console.log('='.repeat(60));
 
-  // ── F1: OHNE curves → exakt 2 Datasets wie heute ──────────────────
+  // ── F1: OHNE curves → genau 1 Dataset (nur Kontoverlauf) ──────────
   BD.config.prefix = 'f1';
   BD.renderEquity({
     equity_history: { snapshots: [
@@ -101,15 +101,14 @@ reg('f8-equity-chart');
     ] },
   });
   const cfg1 = lastChart();
-  check('F1 ohne curves: genau 2 Datasets',
-    !!cfg1 && cfg1.data.datasets.length === 2,
+  check('F1 ohne curves: genau 1 Dataset',
+    !!cfg1 && cfg1.data.datasets.length === 1,
     cfg1 ? 'ist: ' + cfg1.data.datasets.length : 'keine Chart-Config');
   check('F1 ohne curves: labels/values wie heute',
     !!cfg1 && cfg1.data.labels.length === 2 &&
-    cfg1.data.datasets[0].data[0] === 1000 && cfg1.data.datasets[0].data[1] === 1010 &&
-    cfg1.data.datasets[1].yAxisID === 'y1');
+    cfg1.data.datasets[0].data[0] === 1000 && cfg1.data.datasets[0].data[1] === 1010);
 
-  // ── F2: MIT curve (teils disjunkte ISO-Timestamps) → 3 Datasets ───
+  // ── F2: MIT curve (teils disjunkte ISO-Timestamps) → 2 Datasets ───
   const T0 = '2026-10-14T00:00:00+00:00';
   const T1 = '2026-10-14T00:05:00+00:00';
   const T2 = '2026-10-14T00:10:00+00:00';
@@ -130,17 +129,17 @@ reg('f8-equity-chart');
     }],
   });
   const cfg2 = lastChart();
-  check('F2 mit curve: genau 3 Datasets',
-    !!cfg2 && cfg2.data.datasets.length === 3,
+  check('F2 mit curve: genau 2 Datasets',
+    !!cfg2 && cfg2.data.datasets.length === 2,
     cfg2 ? 'ist: ' + cfg2.data.datasets.length : 'keine Chart-Config');
   check('F2 Label-Union chronologisch (4 Labels inkl. disjoint T3)',
     !!cfg2 && cfg2.data.labels.length === 4 &&
     cfg2.data.labels[0] === T0 && cfg2.data.labels[1] === T1 &&
     cfg2.data.labels[2] === T2 && cfg2.data.labels[3] === T3,
     cfg2 ? JSON.stringify(cfg2.data.labels) : '');
-  const cur = (cfg2 && cfg2.data.datasets[2]) || {};
-  check('F2 Kurven-Dataset: label + rot + width2 + pointRadius0',
-    cur.label === 'Echtgeld-Konto 47490067' && cur.borderColor === '#ef4444' &&
+  const cur = (cfg2 && cfg2.data.datasets[1]) || {};
+  check('F2 Kurven-Dataset: blau wie Basis + width2 + pointRadius0',
+    cur.label === 'Echtgeld-Konto 47490067' && cur.borderColor === '#5b8def' &&
     cur.borderWidth === 2 && cur.pointRadius === 0 && cur.fill === false &&
     cur.spanGaps === false && cur.yAxisID === 'y',
     JSON.stringify({ label: cur.label, borderColor: cur.borderColor }));
@@ -157,12 +156,14 @@ reg('f8-equity-chart');
 
   // Tooltip-Konvention
   const tip = cfg2 && cfg2.options.plugins.tooltip.callbacks.label;
-  check('F2 Tooltip: Basis €, Drawdown %, Kontokurve €…(Echtgeld ctid)',
+  check('F2 Tooltip: Basis €; Kontokurve €…(Konto ctid); keine %-Serie',
     typeof tip === 'function' &&
     tip({ datasetIndex: 0, parsed: { y: 1000 } }) === ' €1000.00' &&
-    tip({ datasetIndex: 1, parsed: { y: -2.5 } }) === ' -2.50%' &&
-    tip({ datasetIndex: 2, dataset: { _ctid: '47490067' }, parsed: { y: 1120.44 } })
-      === ' €1120.44 (Echtgeld 47490067)');
+    tip({ datasetIndex: 1, dataset: { _ctid: '47490067' }, parsed: { y: 1120.44 } })
+      === ' €1120.44 (Konto 47490067)');
+  check('F2 Vereinfachung: Legende aus, keine DD-Achse',
+    !!cfg2 && cfg2.options.plugins.legend.display === false &&
+    (!cfg2.options.scales || !cfg2.options.scales.y1));
 
   // ── F3: account_cards → -ext-Karte mit €1120.44 ───────────────────
   BD.config.prefix = 'f3';
@@ -196,7 +197,7 @@ reg('f8-equity-chart');
   check('F4 ohne cards: keine -ext-Karte', f4cards.length === 0,
     'gefunden: ' + JSON.stringify(f4cards));
 
-  // ── F5: Roh-Serien (equity_history_raw + curve.raw_points) ────────
+  // ── F5: Vereinfachung — Roh-/DD-Felder werden ignoriert ────────────
   BD.config.prefix = 'f5';
   BD.renderEquity({
     equity_history: { snapshots: [
@@ -217,29 +218,13 @@ reg('f8-equity-chart');
     }],
   });
   const cfg5 = lastChart();
-  check('F5 Roh-Serien: 5 Datasets (2 Basis + 1 Kurve + 2 roh)',
-    !!cfg5 && cfg5.data.datasets.length === 5,
+  check('F5 genau 2 Datasets (Basis + Kurve), keine Roh-/DD-Serien',
+    !!cfg5 && cfg5.data.datasets.length === 2,
     cfg5 ? 'ist: ' + cfg5.data.datasets.length : 'keine Chart-Config');
-  const raws5 = (cfg5 ? cfg5.data.datasets : []).filter((ds) => ds._raw === true);
-  check('F5 genau 2 Roh-Datasets, alle hidden:true',
-    raws5.length === 2 && raws5.every((ds) => ds.hidden === true),
-    'raws=' + raws5.length);
-  check('F5 Roh-Datasets: Farbe #9ca3af + borderDash [5,4] + yAxisID y',
-    raws5.length === 2 && raws5.every((ds) => ds.borderColor === '#9ca3af'
-      && Array.isArray(ds.borderDash) && ds.borderDash[0] === 5
-      && ds.borderDash[1] === 4 && ds.borderWidth === 1
-      && ds.pointRadius === 0 && ds.fill === false && ds.spanGaps === false
-      && ds.yAxisID === 'y'),
-    JSON.stringify(raws5.map((d) => ({ c: d.borderColor, b: d.borderDash }))));
-  check('F5 Basis-Roh label "Kontostand roh"',
-    raws5.some((ds) => ds.label === 'Kontostand roh'), '');
-  check('F5 Kurven-Roh label "Kontostand roh (47490067)"',
-    raws5.some((ds) => ds.label === 'Kontostand roh (47490067)'), '');
-  const tip5 = cfg5 && cfg5.options.plugins.tooltip.callbacks.label;
-  check('F5 Tooltip raw: "€x.xx (roh)"',
-    typeof tip5 === 'function' &&
-    tip5({ datasetIndex: 2, dataset: { _raw: true }, parsed: { y: 1000 } })
-      === ' €1000.00 (roh)');
+  check('F5 kein Dataset hidden/_raw, keine y1-Achse, Legende aus',
+    !!cfg5 && cfg5.data.datasets.every((ds) => ds.hidden !== true && ds._raw !== true)
+      && cfg5.options.plugins.legend.display === false
+      && (!cfg5.options.scales || !cfg5.options.scales.y1));
 
   // ── F6: account_flows → Kapital-Chip im Summary (de-DE) ───────────
   BD.config.prefix = 'f6';
