@@ -400,7 +400,14 @@
     if (!keys.length) return '<div class="ov-chips"><span class="ov-chip">keine Metriken</span></div>';
     return '<div class="ov-chips">' + keys.map(function (k) {
       var v = metrics[k];
-      var val = (typeof v === 'number' && k.indexOf('_s') === k.length - 2) ? fmtAge(v) : dash(v);
+      var val;
+      if (v !== null && typeof v === 'object') {
+        // Objektwerte (z. B. decay_counts) kompakt als k=v-Paare — kein [object Object].
+        val = Object.keys(v).map(function (kk) { return kk + '=' + v[kk]; }).join(' ');
+        if (val.length > 90) val = val.slice(0, 87) + '\u2026';
+      } else {
+        val = (typeof v === 'number' && k.indexOf('_s') === k.length - 2) ? fmtAge(v) : dash(v);
+      }
       return '<span class="ov-chip">' + esc(k) + ': <b>' + esc(val) + '</b></span>';
     }).join('') + '</div>';
   }
