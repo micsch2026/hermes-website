@@ -727,7 +727,7 @@ def _load_positions(path):
 
 def _bot_slots(bot, fx_root, policy, rot_state):
     """Slots je Bot: Multi-TOML-[[slots]] (id, strategy_id) + Rotationsslots
-    aus policy targets[bot].slot_ids minus TOML-IDs (Holder/Challenge aus
+    aus policy targets[bot].slot_ids + doors minus TOML-IDs (Holder/Challenge aus
     rotation_state.json slots.<id> — Konvention shadow_portfolio_builder.py:64-134).
 
     Rückgabe: [{"slot_id","sid","holder":bool,"challenge_start":epoch|null}], multi:bool"""
@@ -755,7 +755,15 @@ def _bot_slots(bot, fx_root, policy, rot_state):
     for t in (policy.get("targets") or []) if isinstance(policy, dict) else []:
         if not isinstance(t, dict) or t.get("bot") != bot:
             continue
-        for rid in t.get("slot_ids") or []:
+        # v5 (14.10.2026): Universe = slot_ids + doors (dedupliziert) — Tueren
+        # mit eigenem doors-Feld (bot9 frot/f2/f3/f4) sonst im Kommandocenter
+        # unsichtbar (multi-Flag + Slot-Liste).
+        _rids = []
+        for _x in ([str(x) for x in (t.get("slot_ids") or [])]
+                   + [str(x) for x in (t.get("doors") or [])]):
+            if _x and _x not in _rids:
+                _rids.append(_x)
+        for rid in _rids:
             rid = str(rid)
             if rid in toml_ids:
                 continue  # Strategie-Slot aus der Multi-TOML → schon gemappt
