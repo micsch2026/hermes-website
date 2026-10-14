@@ -385,6 +385,33 @@ def release_gate_section(fx_root, trading_data, now_dt):
 
 # ══ Subprozess-Wrapper (Tests monkeypatchen DIESE beiden Funktionen) ═════════
 
+def _decay_rows_display(rows):
+    """Decay-Rows fuer die Anzeige aufbereiten: ratio ist im decay_monitor_v1 ein
+    Fenster-Dict {28: x, 56: y} — als flache Felder ratio_28/ratio_56 spiegeln.
+    Das rohe Objekt ergab im Frontend Math.round(obj*100) -> NaN (Fix 14.10.2026);
+    alte Zahlenform wird konservativ als ratio_56 uebernommen."""
+    out = []
+    for r in rows or []:
+        if not isinstance(r, dict):
+            continue
+        rr = r.get("ratio")
+        if isinstance(rr, bool):
+            rr = None
+        if isinstance(rr, (int, float)):
+            r = dict(r, ratio_28=None, ratio_56=float(rr))
+        elif isinstance(rr, dict):
+            r28, r56 = rr.get("28"), rr.get("56")
+            r = dict(r,
+                     ratio_28=(float(r28) if isinstance(r28, (int, float))
+                               and not isinstance(r28, bool) else None),
+                     ratio_56=(float(r56) if isinstance(r56, (int, float))
+                               and not isinstance(r56, bool) else None))
+        else:
+            r = dict(r, ratio_28=None, ratio_56=None)
+        out.append(r)
+    return out
+
+
 def run_decay_monitor(fx_root, out_path, now_epoch=None):
     """decay_monitor.py als Subprozess ausführen; Report-Dict oder None.
 
@@ -1708,7 +1735,7 @@ def build(root, fx_root, sl_root, trading_data, now=None):
                      "net_30d": _round2(kpis_30d["net"]),
                      "n_deployed": n_deployed},
             "ranking": ranking,
-            "decay": {"counts": decay_counts, "rows": decay_rows},
+            "decay": {"counts": decay_counts, "rows": _decay_rows_display(decay_rows)},
             "challenges": challenges,
             "rotation": rotation,
         },

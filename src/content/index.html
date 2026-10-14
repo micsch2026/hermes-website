@@ -72,6 +72,7 @@
   #overview-page .ov-badge.lv2 { background: var(--c-warn-bg); color: var(--c-err); }
   #overview-page .ov-badge.lv3 { background: var(--c-err-bg); color: var(--c-err); }
   #overview-page .ov-badge.mode-live { background: var(--c-ok-bg); color: var(--c-ok); }
+  #overview-page .ov-badge.mode-live2 { background: var(--c-ok-bg); color: var(--c-ok); }
   #overview-page .ov-badge.mode-multi { background: var(--c-surface-2); color: var(--c-accent); }
 
   #overview-page .ov-findings { display: flex; flex-direction: column; gap: var(--s-2); margin-bottom: var(--s-6); }
@@ -615,6 +616,7 @@
     tbody.innerHTML = fleet.map(function (b) {
       var mode = '';
       if (b.is_live) mode += '<span class="ov-badge mode-live">LIVE</span> ';
+      if (b.mixed_slots && !b.is_live) mode += '<span class="ov-badge mode-live2">LIVE+DMO</span> ';
       if (b.multi) mode += '<span class="ov-badge mode-multi">MULTI</span>';
       if (!mode) mode = '—';
       var slots = (b.slots || []).map(function (s) {
@@ -642,6 +644,20 @@
   }
 
   // ── 5. Shadow ──────────────────────────────────────────────
+  // Ratio je Fenster (28/56) — robust gegen Objekt-/Zahl-/None-Formen; nie NaN.
+  function fmtRatioCell(r) {
+    function one(v) {
+      return (v === null || v === undefined || (typeof v === 'number' && isNaN(v)))
+        ? '\u2014' : ((Math.round(v * 100) / 100).toFixed(2));
+    }
+    var a = r.ratio_28, b = r.ratio_56;
+    if (a === undefined && b === undefined && r.ratio && typeof r.ratio === 'object') {
+      a = r.ratio['28']; b = r.ratio['56'];
+    }
+    if ((a === null || a === undefined) && (b === null || b === undefined)) return '\u2014';
+    return one(a) + ' / ' + one(b);
+  }
+
   function renderShadow(d) {
     var sh = d.shadow || {};
     var k = sh.kpis || {};
@@ -675,12 +691,12 @@
     var rows = dec.rows || [];
     var rowsHtml = rows.length ?
       '<div class="ov-table-wrap"><table class="ov-table">' +
-      '<thead><tr><th>Bot</th><th>SID</th><th class="ov-num">Ratio</th><th>Status</th><th>Gründe</th></tr></thead><tbody>' +
+      '<thead><tr><th>Bot</th><th>SID</th><th class="ov-num">Ratio 28/56</th><th>Status</th><th>Gründe</th></tr></thead><tbody>' +
       rows.map(function (r) {
         return '<tr>' +
           '<td>' + esc(dash(r.bot)) + '</td>' +
           '<td>#' + esc(dash(r.sid)) + '</td>' +
-          '<td class="ov-num">' + dash(r.ratio === null || r.ratio === undefined ? null : (Math.round(r.ratio * 100) / 100)) + '</td>' +
+          '<td class="ov-num">' + fmtRatioCell(r) + '</td>' +
           '<td>' + esc(dash(r.status_label || r.status)) + '</td>' +
           '<td style="white-space:normal">' + esc((r.reasons || []).join(', ') || '—') + '</td>' +
           '</tr>';

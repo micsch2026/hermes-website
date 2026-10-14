@@ -438,6 +438,15 @@ def main():
             and CALLS["decay"] >= 2 and CALLS["tca"] >= 2, \
             f"red-Mapping falsch: overall={doc['verdict']['overall']['status']} shadow={comp['shadow']['status']} calls={CALLS}"
 
+    def t_decay_ratio_display():
+        rows = RED_DOC["shadow"]["decay"]["rows"]
+        r0 = [x for x in rows if x.get("bot") == "bot3" and x.get("sid") == 372][0]
+        r1 = [x for x in rows if x.get("bot") == "bot2" and x.get("sid") == 663][0]
+        assert r0.get("ratio_56") == 0.2148 and r0.get("ratio_28") is None, \
+            f"Fenster-Dict-Mapping falsch: {r0.get('ratio_56')!r}/{r0.get('ratio_28')!r}"
+        assert r1.get("ratio_56") == 1.5 and r1.get("ratio_28") is None, \
+            f"Zahlen-Fallback falsch: {r1.get('ratio_56')!r}"
+
     def t_verdict_green():
         doc = GREEN_DOC
         assert doc["verdict"]["overall"]["status"] == "green" and \
@@ -496,13 +505,16 @@ def main():
     DOCS = {}
     DOCS["base"] = run_build(base)                                   # bot4 leer → yellow
     RED_DOC = run_build(os.path.join(base, "v_red"),
-                        decay_rows=[{"bot": "bot3", "sid": 372,
-                                     "status": "demote", "reasons": ["pf28 0.83<0.9"]}])
+                        decay_rows=[{"bot": "bot3", "sid": 372, "status": "demote",
+                                     "reasons": ["pf28 0.83<0.9"],
+                                     "ratio": {"28": None, "56": 0.2148}},
+                                    {"bot": "bot2", "sid": 663, "status": "ok",
+                                     "reasons": [], "ratio": 1.5}])
     GREEN_DOC = run_build(os.path.join(base, "v_green"), with_empty_bot=False)
     FEED_DOC = run_build(os.path.join(base, "v_feed"), with_empty_bot=False,
                          feed_age_s=1200.0)
 
-    for name, fn in [
+    ALL_CHECKS = [
         ("schema+top-keys", t_schema),
         ("fleet-discovery", t_fleet),
         ("equity/balance-Skalierung", t_equity),
@@ -518,16 +530,18 @@ def main():
         ("sources vollständigkeit", t_sources),
         ("verdict YELLOW (risk_state fehlt)", t_verdict_yellow),
         ("verdict RED (decay demote)", t_verdict_red),
+        ("decay: ratio 28/56 + Zahlen-Fallback", t_decay_ratio_display),
         ("verdict GREEN (healthy)", t_verdict_green),
         ("feed-rule red@market_open", t_feed_red),
         ("missing-root: kein Crash", t_missing_root),
         ("gates: Sektion fail-soft + Blocks 7d", t_gates_section),
         ("gates: aktiv + Klassen (monkeypatch)", t_gates_active_classes),
-    ]:
+    ]
+    for name, fn in ALL_CHECKS:
         check(name, fn)
 
     shutil.rmtree(base, ignore_errors=True)
-    print(f"\n{20 - len(failures)}/20 PASS, {len(failures)} FAIL")
+    print(f"\n{len(ALL_CHECKS) - len(failures)}/{len(ALL_CHECKS)} PASS, {len(failures)} FAIL")
     if failures:
         print("FAILS:", failures)
         sys.exit(1)
