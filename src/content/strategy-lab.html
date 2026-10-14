@@ -1180,9 +1180,10 @@ function renderShadowDashboard() {
         const bDirColor = bDir === 'long' ? 'var(--green)' : 'var(--red)';
         const bDirIcon = bDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
         if (bm.entry != null) {
-          const bPnl = bm.unrealized_pnl || 0;
-          const bPnlCls = bPnl >= 0 ? 'pos' : 'neg';
-          const bPnlSign = bPnl >= 0 ? '+' : '';
+          const bPnl = bm.unrealized_pnl;
+          const bHasPnl = bPnl != null;
+          const bPnlCls = bHasPnl ? (bPnl >= 0 ? 'pos' : 'neg') : '';
+          const bPnlSign = bHasPnl && bPnl >= 0 ? '+' : '';
           const bPipsSign = (bm.unrealized_pips || 0) >= 0 ? '+' : '';
           html += '<tr style="font-size:0.8rem" title="'+esc(bTitle)+'">';
           html += '<td style="color:var(--dim)">🤖 <strong>' + esc(bm.name) + '</strong> ' + bIcon + (bm.stale ? ' ⚫' : '') + '</td>';
@@ -1193,7 +1194,10 @@ function renderShadowDashboard() {
           html += '<td class="num" style="color:var(--red)">' + (bm.sl_atr != null ? bm.sl_atr.toFixed(1) + 'x' : '—') + '</td>';
           html += '<td class="num" style="color:var(--green)">' + (bm.tp_atr != null ? bm.tp_atr.toFixed(1) + 'x' : '—') + '</td>';
           html += '<td class="num">' + (bm.rr != null ? bm.rr.toFixed(1) : '—') + '</td>';
-          html += '<td class="num"><strong class="'+bPnlCls+'">'+bPnlSign+bPnl.toFixed(2)+'€ ('+bPnlSign+(bm.unrealized_pips||0)+'p)</strong></td>';
+          const bPnlCell = bHasPnl
+            ? '<strong class="'+bPnlCls+'">'+bPnlSign+bPnl.toFixed(2)+'€ ('+bPipsSign+(bm.unrealized_pips||0)+'p)</strong>'
+            : '<span style="color:var(--dim)">—</span>';
+          html += '<td class="num">' + bPnlCell + '</td>';
           html += '</tr>';
         } else {
           html += '<tr style="font-size:0.8rem">';
@@ -1215,9 +1219,10 @@ function renderShadowDashboard() {
         const boDir = (bo.direction||'').toLowerCase();
         const boDirColor = boDir === 'long' ? 'var(--green)' : 'var(--red)';
         const boDirIcon = boDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
-        const boPnl = bo.unrealized_pnl || 0;
-        const boPnlCls = boPnl >= 0 ? 'pos' : 'neg';
-        const boPnlSign = boPnl >= 0 ? '+' : '';
+        const boPnl = bo.unrealized_pnl;
+        const boHasPnl = boPnl != null;
+        const boPnlCls = boHasPnl ? (boPnl >= 0 ? 'pos' : 'neg') : '';
+        const boPnlSign = boHasPnl && boPnl >= 0 ? '+' : '';
         const boPipsSign = (bo.unrealized_pips || 0) >= 0 ? '+' : '';
         const boTitle = '🤖 ' + bo.bot + ' — Bot-Position ohne Shadow-Spiegel'
           + (bo.stale ? ' (positions_live >30min stale)' : '')
@@ -1232,7 +1237,10 @@ function renderShadowDashboard() {
         html += '<td class="num" style="color:var(--dim)">—</td>';
         html += '<td class="num" style="color:var(--dim)">—</td>';
         html += '<td class="num">' + (bo.rr != null ? bo.rr.toFixed(1) : '—') + '</td>';
-        html += '<td class="num"><strong class="' + boPnlCls + '">' + boPnlSign + boPnl.toFixed(2) + '€ (' + boPipsSign + (bo.unrealized_pips||0) + 'p)</strong></td>';
+        const boPnlCell = boHasPnl
+          ? '<strong class="' + boPnlCls + '">' + boPnlSign + boPnl.toFixed(2) + '€ (' + boPipsSign + (bo.unrealized_pips||0) + 'p)</strong>'
+          : '<span style="color:var(--dim)" title="Keine frische Preisquelle (Spot stale/fehlt, keine Bars) — Anzeige-Doktrin: lieber — als Phantom-Wert">—</span>';
+        html += '<td class="num">' + boPnlCell + '</td>';
         html += '</tr>';
       }
     }
