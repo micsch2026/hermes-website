@@ -79,6 +79,12 @@ reg('f1-equity-chart');
 reg('f2-equity-chart');
 reg('f3-kpi-row');
 reg('f4-kpi-row');
+reg('f5-equity-chart');
+reg('f6-equity-chart');
+reg('f6-equity-summary');
+reg('f7-equity-chart');
+reg('f7-equity-summary');
+reg('f8-equity-chart');
 
 (async () => {
   await sleep(0);
@@ -189,6 +195,119 @@ reg('f4-kpi-row');
   const f4cards = Object.keys(elements).filter((k) => k.indexOf('f4-ext-') === 0);
   check('F4 ohne cards: keine -ext-Karte', f4cards.length === 0,
     'gefunden: ' + JSON.stringify(f4cards));
+
+  // ── F5: Roh-Serien (equity_history_raw + curve.raw_points) ────────
+  BD.config.prefix = 'f5';
+  BD.renderEquity({
+    equity_history: { snapshots: [
+      { timestamp: T0, equity: 1000 },
+      { timestamp: T1, equity: 1010 },
+    ] },
+    equity_history_raw: [
+      { timestamp: T0, balance: 1000 },
+      { timestamp: T1, balance: 1010 },
+    ],
+    curves: [{
+      ctid: '47490067', is_live: true, label: 'Echtgeld-Konto 47490067',
+      points: [{ timestamp: T1, equity: 1120.44 }],
+      raw_points: [
+        { timestamp: T0, balance: 1000 },
+        { timestamp: T1, balance: 1120.44 },
+      ],
+    }],
+  });
+  const cfg5 = lastChart();
+  check('F5 Roh-Serien: 5 Datasets (2 Basis + 1 Kurve + 2 roh)',
+    !!cfg5 && cfg5.data.datasets.length === 5,
+    cfg5 ? 'ist: ' + cfg5.data.datasets.length : 'keine Chart-Config');
+  const raws5 = (cfg5 ? cfg5.data.datasets : []).filter((ds) => ds._raw === true);
+  check('F5 genau 2 Roh-Datasets, alle hidden:true',
+    raws5.length === 2 && raws5.every((ds) => ds.hidden === true),
+    'raws=' + raws5.length);
+  check('F5 Roh-Datasets: Farbe #9ca3af + borderDash [5,4] + yAxisID y',
+    raws5.length === 2 && raws5.every((ds) => ds.borderColor === '#9ca3af'
+      && Array.isArray(ds.borderDash) && ds.borderDash[0] === 5
+      && ds.borderDash[1] === 4 && ds.borderWidth === 1
+      && ds.pointRadius === 0 && ds.fill === false && ds.spanGaps === false
+      && ds.yAxisID === 'y'),
+    JSON.stringify(raws5.map((d) => ({ c: d.borderColor, b: d.borderDash }))));
+  check('F5 Basis-Roh label "Kontostand roh"',
+    raws5.some((ds) => ds.label === 'Kontostand roh'), '');
+  check('F5 Kurven-Roh label "Kontostand roh (47490067)"',
+    raws5.some((ds) => ds.label === 'Kontostand roh (47490067)'), '');
+  const tip5 = cfg5 && cfg5.options.plugins.tooltip.callbacks.label;
+  check('F5 Tooltip raw: "€x.xx (roh)"',
+    typeof tip5 === 'function' &&
+    tip5({ datasetIndex: 2, dataset: { _raw: true }, parsed: { y: 1000 } })
+      === ' €1000.00 (roh)');
+
+  // ── F6: account_flows → Kapital-Chip im Summary (de-DE) ───────────
+  BD.config.prefix = 'f6';
+  BD.renderEquity({
+    equity_history: { snapshots: [
+      { timestamp: T0, equity: 1000 },
+      { timestamp: T1, equity: 1010 },
+    ] },
+    account_flows: [{
+      ctid: '47490067', label: 'Echtgeld',
+      einzahlungen_eur: 1000, auszahlungen_eur: -250, transfers_eur: 500,
+      netto_eur: 1250, n_moves: 3,
+    }],
+  });
+  const sum6 = (elements['f6-equity-summary']
+    ? elements['f6-equity-summary'].innerHTML : '');
+  check('F6 Summary enthält "Netto"', sum6.indexOf('Netto') >= 0, sum6);
+  check('F6 de-DE-Format (1.000,00)', sum6.indexOf('1.000,00') >= 0, sum6);
+  check('F6 Einz./Ausz./Transfers-Chip korrekt',
+    sum6.indexOf('Einz. +1.000,00') >= 0 && sum6.indexOf('Ausz. −250,00') >= 0 &&
+    sum6.indexOf('Transfers 500,00') >= 0 && sum6.indexOf('Netto 1.250,00 €') >= 0,
+    sum6);
+
+  // ── F7: eras → Era-Chip im Summary ────────────────────────────────
+  BD.config.prefix = 'f7';
+  BD.renderEquity({
+    equity_history: { snapshots: [
+      { timestamp: T0, equity: 1000 },
+      { timestamp: T1, equity: 1010 },
+    ] },
+    curves: [{
+      ctid: '47490067', is_live: true, label: 'Echtgeld-Konto 47490067',
+      points: [{ timestamp: T0, equity: 1000 }, { timestamp: T1, equity: 1120.44 }],
+      eras: [
+        { label: 'bot4-Ära', pnl_eur: 120.44 },
+        { label: 'bot7-Ära seit 2026-10-13', pnl_eur: 2.5 },
+      ],
+    }],
+  });
+  const sum7 = (elements['f7-equity-summary']
+    ? elements['f7-equity-summary'].innerHTML : '');
+  check('F7 Era-Chip "bot4-Ära" mit + (de-DE)',
+    sum7.indexOf('bot4-Ära') >= 0 && sum7.indexOf('+120,44') >= 0, sum7);
+  check('F7 zweiter Era-Chip mit "seit"',
+    sum7.indexOf('bot7-Ära seit 2026-10-13') >= 0, sum7);
+
+  // ── F8: markers ts zwischen Labels → chart.$markers len 1 ─────────
+  BD.config.prefix = 'f8';
+  BD.renderEquity({
+    equity_history: { snapshots: [
+      { timestamp: T0, equity: 1000 },
+      { timestamp: T1, equity: 1010 },
+      { timestamp: T2, equity: 1005 },
+    ] },
+    curves: [{
+      ctid: '47490067', is_live: true, label: 'Echtgeld-Konto 47490067',
+      points: [{ timestamp: T1, equity: 1120.44 }],
+      markers: [{ ts: '2026-10-14T00:07:00+00:00', label: 'Scharf seit 14.10. 02:07' }],
+    }],
+  });
+  const chart8 = charts[charts.length - 1];
+  check('F8 chart.$markers len 1',
+    !!chart8 && Array.isArray(chart8.$markers) && chart8.$markers.length === 1,
+    chart8 ? JSON.stringify(chart8.$markers) : 'kein Chart');
+  check('F8 Marker-idx = erster Label >= ts (idx 2)',
+    !!chart8 && chart8.$markers[0].idx === 2 &&
+    chart8.$markers[0].label === 'Scharf seit 14.10. 02:07',
+    chart8 ? JSON.stringify(chart8.$markers[0]) : '');
 
   check('keine unhandled Rejections', fatal === null, fatal || '');
   finish();

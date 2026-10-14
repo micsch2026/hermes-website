@@ -1121,6 +1121,12 @@ function renderEquity(d) {
   // Verhalten (2 Datasets, unveraenderte labels/values).
   var curves = d.curves || [];
 
+  // Roh-Serien (Equity P1, 14.10.2026): Datei-Werte ohne Cash-Flow-/Sanity-
+  // Bereinigung. Basis: d.equity_history_raw; je Kurve c.raw_points.
+  var rawBase = d.equity_history_raw;
+  var rawBaseSnaps = Array.isArray(rawBase) ? rawBase
+    : (rawBase && Array.isArray(rawBase.snapshots) ? rawBase.snapshots : []);
+
   var baseLabels = [], values = [], drawdowns = [];
   var peak = 0;
   for (var i = 0; i < snapshots.length; i++) {
@@ -1135,8 +1141,15 @@ function renderEquity(d) {
   // Label-Union chronologisch (String-Sort reicht fuer ISO-Timestamps) +
   // Index-Maps: Basis- und Kontowerte werden auf die Union-Labels gelegt,
   // fehlende Stellen bleiben null (Luecken sichtbar via spanGaps:false).
-  var labels, eqData, ddData, extraDatasets = [];
-  if (curves.length === 0) {
+  var labels, eqData, ddData, extraDatasets = [], rawDatasets = [];
+  // Union nur noetig, wenn Kontokurven ODER Roh-Serien vorhanden sind. Sonst
+  // exakt heutiger Fast-Path (labels = baseLabels).
+  var _hasRaw = rawBaseSnaps.length > 0;
+  for (var _rc = 0; _rc < curves.length; _rc++) {
+    if (curves[_rc] && Array.isArray(curves[_rc].raw_points)
+        && curves[_rc].raw_points.length) { _hasRaw = true; break; }
+  }
+  if (curves.length === 0 && !_hasRaw) {
     labels = baseLabels; eqData = values; ddData = drawdowns;
   } else {
     var labelSet = {};
@@ -1147,10 +1160,35 @@ function renderEquity(d) {
         var lt = (pts[pi] && (pts[pi].timestamp || pts[pi].date)) || '';
         labelSet[lt] = true;
       }
+      var rps = (curves[ci] && curves[ci].raw_points) || [];
+      for (var rpi = 0; rpi < rps.length; rpi++) {
+        var rlt = (rps[rpi] && (rps[rpi].timestamp || rps[rpi].date)) || '';
+        labelSet[rlt] = true;
+      }
+    }
+    for (var rbi = 0; rbi < rawBaseSnaps.length; rbi++) {
+      var rbl = (rawBaseSnaps[rbi] && (rawBaseSnaps[rbi].timestamp
+        || rawBaseSnaps[rbi].date)) || '';
+      labelSet[rbl] = true;
     }
     labels = Object.keys(labelSet).sort();
     var indexOf = {};
     for (var li = 0; li < labels.length; li++) indexOf[labels[li]] = li;
+
+    // Punkt-Wert (equity > balance > value) auf die Union-Labels legen.
+    var _mapPts = function (arr) {
+      var out = labels.map(function () { return null; });
+      for (var j = 0; j < (arr || []).length; j++) {
+        var p = arr[j] || {};
+        var key = p.timestamp || p.date || '';
+        var idx = indexOf[key];
+        var v = p.equity != null ? p.equity
+              : (p.balance != null ? p.balance
+              : (p.value != null ? p.value : null));
+        if (idx !== undefined && v != null) out[idx] = v;
+      }
+      return out;
+    };
 
     eqData = labels.map(function () { return null; });
     ddData = labels.map(function () { return null; });
@@ -1160,20 +1198,9 @@ function renderEquity(d) {
     }
     for (var k = 0; k < curves.length; k++) {
       var cur = curves[k] || {};
-      var cpts = cur.points || [];
-      var cdata = labels.map(function () { return null; });
-      for (var cj = 0; cj < cpts.length; cj++) {
-        var cp = cpts[cj] || {};
-        var ckey = cp.timestamp || cp.date || '';
-        var cIdx = indexOf[ckey];
-        var cv = cp.equity != null ? cp.equity
-               : (cp.balance != null ? cp.balance
-               : (cp.value != null ? cp.value : null));
-        if (cIdx !== undefined && cv != null) cdata[cIdx] = cv;
-      }
       extraDatasets.push({
         label: cur.label || 'Echtgeld',
-        data: cdata,
+        data: _mapPts(cur.points),
         borderColor: '#ef4444',
         borderWidth: 2,
         pointRadius: 0,
@@ -1184,9 +1211,48 @@ function renderEquity(d) {
         _ctid: cur.ctid != null ? String(cur.ctid) : '',
       });
     }
+    // Roh-Serien: hidden (Toggle = Legenden-Klick, Chart.js-Default), grau
+    // gestrichelt. Bewusst NICHT in die y-Spanne (s.u.).
+    if (rawBaseSnaps.length) {
+      rawDatasets.push({
+        label: 'Kontostand roh',
+        data: _mapPts(rawBaseSnaps),
+        borderColor: '#9ca3af',
+        borderDash: [5, 4],
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false,
+        spanGaps: false,
+        yAxisID: 'y',
+        hidden: true,
+        _raw: true,
+      });
+    }
+    for (var rk = 0; rk < curves.length; rk++) {
+      var rcur = curves[rk] || {};
+      if (!Array.isArray(rcur.raw_points) || !rcur.raw_points.length) continue;
+      var rctid = rcur.ctid != null ? String(rcur.ctid) : '';
+      rawDatasets.push({
+        label: 'Kontostand roh' + (rctid ? ' (' + rctid + ')' : ''),
+        data: _mapPts(rcur.raw_points),
+        borderColor: '#9ca3af',
+        borderDash: [5, 4],
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false,
+        spanGaps: false,
+        yAxisID: 'y',
+        hidden: true,
+        _raw: true,
+        _ctid: rctid,
+      });
+    }
   }
 
-  // Y-Achsen-Spanne ueber ALLE Serien (minSpan-Regel bleibt).
+  // Y-Achsen-Spanne ueber die SICHTBAREN Serien (Basis + Kontokurven). Die
+  // Roh-Serien bleiben bewusst aussen vor: sie sind hidden und Chart.js'
+  // Auto-Spanne ignoriert hidden-Serien ohnehin — so bleiben die Achsen
+  // konsistent, ohne dass ein versteckter Sprung die Skala sprengt.
   var minVal = Infinity, maxVal = -Infinity;
   function _scan(arr) {
     for (var z = 0; z < arr.length; z++) {
@@ -1234,6 +1300,61 @@ function renderEquity(d) {
     }
   ];
   for (var ds = 0; ds < extraDatasets.length; ds++) datasets.push(extraDatasets[ds]);
+  for (var rs = 0; rs < rawDatasets.length; rs++) datasets.push(rawDatasets[rs]);
+
+  // ── Arming-/Era-Marker (Equity P1, 14.10.2026) ──
+  // chart.$markers = [{idx,label}]; idx = erster Label-Index >= ts (ISO-Vergleich).
+  // Quelle: Basis-d.markers (falls vorhanden) + je Kurve c.markers.
+  var markers = [];
+  var _addMarkers = function (list) {
+    if (!Array.isArray(list)) return;
+    for (var mi = 0; mi < list.length; mi++) {
+      var m = list[mi] || {};
+      var mts = m.ts || m.timestamp || '';
+      if (!mts) continue;
+      var idx = -1;
+      for (var lj = 0; lj < labels.length; lj++) {
+        if (String(labels[lj]) >= String(mts)) { idx = lj; break; }
+      }
+      if (idx >= 0) markers.push({ idx: idx, label: m.label || '' });
+    }
+  };
+  if (Array.isArray(d.markers)) _addMarkers(d.markers);
+  for (var mki = 0; mki < curves.length; mki++) {
+    _addMarkers(curves[mki] && curves[mki].markers);
+  }
+  var markerPlugin = {
+    id: 'equityMarkers',
+    markers: markers,
+    afterDatasetsDraw: function (chart) {
+      var mk = (chart && chart.$markers) || this.markers || [];
+      if (!mk.length) return;
+      var ctx = chart.ctx;
+      var xa = chart.scales && chart.scales.x;
+      var ya = chart.scales && chart.scales.y;
+      if (!ctx || !xa || !ya) return;
+      ctx.save();
+      for (var mj = 0; mj < mk.length; mj++) {
+        var x = xa.getPixelForValue(mk[mj].idx);
+        if (x == null || isNaN(x)) continue;
+        ctx.beginPath();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = 'rgba(156,163,175,0.85)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(x, ya.top);
+        ctx.lineTo(x, ya.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (mk[mj].label) {
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(mk[mj].label, x + 3, ya.top + 10);
+        }
+      }
+      ctx.restore();
+    }
+  };
 
   if (_chartInstances.equity) _chartInstances.equity.destroy();
   _chartInstances.equity = new Chart(canvas.getContext('2d'), {
@@ -1242,6 +1363,7 @@ function renderEquity(d) {
       labels: labels,
       datasets: datasets
     },
+    plugins: [markerPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -1251,10 +1373,11 @@ function renderEquity(d) {
         tooltip: {
           callbacks: {
             label: function(ctx) {
-              if (ctx.datasetIndex === 0) return ' €' + ctx.parsed.y.toFixed(2);
-              if (ctx.datasetIndex === 1) return ' ' + ctx.parsed.y.toFixed(2) + '%';
               var _ds = ctx.dataset || (ctx.chart && ctx.chart.data
                 && ctx.chart.data.datasets[ctx.datasetIndex]);
+              if (_ds && _ds._raw) return ' €' + ctx.parsed.y.toFixed(2) + ' (roh)';
+              if (ctx.datasetIndex === 0) return ' €' + ctx.parsed.y.toFixed(2);
+              if (ctx.datasetIndex === 1) return ' ' + ctx.parsed.y.toFixed(2) + '%';
               var _ctid = (_ds && _ds._ctid) || '';
               return ' €' + ctx.parsed.y.toFixed(2) + ' (Echtgeld ' + _ctid + ')';
             }
@@ -1268,8 +1391,9 @@ function renderEquity(d) {
       }
     }
   });
+  if (_chartInstances.equity) _chartInstances.equity.$markers = markers;
 
-  // Summary — nur Basis-Serie (Default-Konto).
+  // Summary — Basis-Serie (Default-Konto) + optionale Era-/Kapital-Chips.
   var summary = el(C.prefix + '-equity-summary');
   if (summary) {
     var first = values[0] || 0;
@@ -1277,12 +1401,43 @@ function renderEquity(d) {
     var minDD = Math.min.apply(null, drawdowns);
     var tradeCount = (d.last_trades && d.last_trades.length) || 0;
     var note = tradeCount === 0 ? '<span style="color:var(--c-text-dim);margin-left:auto;font-style:italic">ℹ️ Startwert nach Deploy (noch keine Trades der aktuellen Strategie)</span>' : '';
+
+    var _fmtEur = function (n) {
+      n = Number(n) || 0;
+      try {
+        return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } catch (e) { return n.toFixed(2); }
+    };
+    var chips = '';
+    for (var ek = 0; ek < curves.length; ek++) {
+      var eras = curves[ek] && curves[ek].eras;
+      if (!Array.isArray(eras)) continue;
+      for (var ei = 0; ei < eras.length; ei++) {
+        var e = eras[ei] || {};
+        var pv = Number(e.pnl_eur) || 0;
+        chips += '<span class="bot-era-chip" style="margin-left:var(--s-2)">📜 '
+          + (e.label || '') + ': ' + (pv >= 0 ? '+' : '−')
+          + _fmtEur(Math.abs(pv)) + ' €</span>';
+      }
+    }
+    var flows = d.account_flows || [];
+    if (Array.isArray(flows)) {
+      for (var fi = 0; fi < flows.length; fi++) {
+        var f = flows[fi] || {};
+        chips += '<span class="bot-cap-chip" style="margin-left:var(--s-2)">💶 '
+          + (f.ctid || '') + ' Kapital: Einz. +' + _fmtEur(f.einzahlungen_eur)
+          + ' · Ausz. −' + _fmtEur(Math.abs(Number(f.auszahlungen_eur) || 0))
+          + ' · Transfers ' + _fmtEur(f.transfers_eur)
+          + ' · Netto ' + _fmtEur(f.netto_eur) + ' €</span>';
+      }
+    }
+
     summary.innerHTML =
       '<span>Start: <b>€' + first.toFixed(2) + '</b></span>' +
       '<span>Current: <b>€' + last.toFixed(2) + '</b></span>' +
       '<span>P&L: <b class="' + pnlClass(last - first) + '">' + fmtPnl(last - first) + '</b></span>' +
       '<span>Max DD: <b class="bot-pnl-neg">' + minDD.toFixed(2) + '%</b></span>' +
-      note;
+      note + chips;
   }
 }
 
