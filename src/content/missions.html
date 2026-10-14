@@ -37,6 +37,7 @@
   .mi-co.done { border-color: var(--c-ok); color: var(--c-ok); }
   .mi-co.run { border-color: var(--c-warn); color: var(--c-warn); }
   .mi-co.next { border-color: var(--c-accent); color: var(--c-accent); }
+  .mi-co.wait { border-color: var(--c-err); color: var(--c-err); }
   /* Horizontaler Stepper */
   .mi-stepper { display: flex; align-items: flex-start; gap: 0; overflow-x: auto;
                 padding: var(--s-2) 0; }
@@ -270,6 +271,20 @@
     if (now.next) {
       out += '<span class="mi-co next">⏭️ Als Nächstes: ' + esc(now.next.title) +
         (m.eta_hint ? ' — ' + esc(m.eta_hint) : '') + '</span>';
+    }
+    // Offene Gates/Blocker sichtbar machen (14.10.): Grund direkt auf der Karte,
+    // nicht nur im Tooltip der eingeklappten Etappen-Details.
+    var waitBits = (m.stages || []).filter(function (s) { return s.status === 'blocked'; })
+      .map(function (s) {
+        var g = s.gate || {};
+        var t = (g.state === 'pending' && g.reason) ? g.reason : (s.blocker || '');
+        return s.id + (t ? ': ' + t : '');
+      });
+    if (waitBits.length) {
+      var wtxt = waitBits.join(' \u00b7 ');
+      var short = wtxt.length > 180 ? wtxt.slice(0, 177) + '\u2026' : wtxt;
+      out += '<span class="mi-co wait" title="' + esc(wtxt) + '">\ud83d\udd34 Wartet auf Freigabe: '
+        + esc(short) + '</span>';
     }
     return out ? '<div class="mi-callouts">' + out + '</div>' : '';
   }

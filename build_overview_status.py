@@ -1335,6 +1335,28 @@ def build(root, fx_root, sl_root, trading_data, now=None):
     kpi_30d = _kpi_sum(lambda b: True, "pnl_30d")
     total_equity = _kpi_sum(lambda b: True, "equity")
 
+    # Slot-Host-Konten (accounts kind=live, ohne eigenen Bot-Prozess; 14.10.2026):
+    # Echtgeld-Gegenstueck (bot5/bot7-Slots). Eigener KPI + im Gesamtvermoegen,
+    # der Live-Bot-KPI bleibt bewusst Bots-only (gleiche Nuance wie /supervisor).
+    n_live_hosts = 0
+    hosts_eq = []
+    try:
+        _rg, _e = _read_json(os.path.join(fx_root, "config", "deploy_registry.json"))
+        for _aid, _ad in (((_rg or {}).get("accounts") or {}).items()
+                          if isinstance(_rg, dict) else []):
+            if not (isinstance(_ad, dict) and _ad.get("kind") == "live"):
+                continue
+            n_live_hosts += 1
+            _bal, _eq, _age, _err = _load_balance_file(
+                os.path.join(fx_root, "data", f"account_{_aid}_balance.json"))
+            if _eq is not None:
+                hosts_eq.append(_eq)
+    except Exception:
+        pass
+    equity_live_hosts = _round2(sum(hosts_eq)) if hosts_eq else None
+    if equity_live_hosts is not None and total_equity is not None:
+        total_equity = _round2(total_equity + equity_live_hosts)
+
     # total_equity_curve: Union-TS, Forward-Fill, ≤1500 Punkte.
     # Basis: je-Bot-Curves (bereits auf ≤1500 Punkte gestrafft) — Union der
     # Timestamps, je Bot Forward-Fill (Werte erst ab erstem Bot-Punkt), Summe.
@@ -1370,6 +1392,8 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         "pnl_7d": kpi_7d,
         "pnl_30d": kpi_30d,
         "open_positions": pos_open_total,
+        "n_live_hosts": n_live_hosts,
+        "equity_live_hosts": equity_live_hosts,
     }
 
     # ── Shadow-KPIs / Ranking / Charts-Input ──────────────────────────────

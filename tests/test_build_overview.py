@@ -88,6 +88,10 @@ def make_fixture(base, with_empty_bot=True, feed_age_s=60.0, gates_active=False)
     _w(os.path.join(fx, "data", "bot1_balance.json"),
        {"balance": 98234, "money_digits": 2, "equity": 98510, "account_id": "1",
         "updated": iso_z(NOW_DT - timedelta(minutes=1))})
+    # Slot-Host-Konto (kind=live im Registry-Fixture "99") — Echtgeld-KPI (14.10.)
+    _w(os.path.join(fx, "data", "account_99_balance.json"),
+       {"balance": 50000, "money_digits": 2, "equity": 50000,
+        "updated": iso_z(NOW_DT - timedelta(minutes=1))})
     snaps = []
     eq_vals = [980.0, 981.5, 983.0, 984.5, 985.0]
     for k, eq in enumerate(eq_vals):
@@ -335,6 +339,11 @@ def main():
                 kpis["equity_live"]) == (985.1, 982.34, 985.1, None), \
             f"equity/balance falsch: {b1['equity']}/{b1['balance']} kpis={kpis['equity_demo']}/{kpis['equity_live']} (risk_state-EUR + money_digits-Skalierung; live-Bot ohne Equity → null statt 0)"
 
+    def t_live_hosts_kpis():
+        kpis = DOCS["base"]["live"]["kpis"]
+        assert kpis.get("n_live_hosts") == 1 and kpis.get("equity_live_hosts") == 500.0, \
+            f"Host-KPIs falsch: {kpis.get('n_live_hosts')}/{kpis.get('equity_live_hosts')}"
+
     def t_pnl_windows():
         b1 = DOCS["base"]["live"]["fleet"][0]
         b4 = DOCS["base"]["live"]["fleet"][1]
@@ -518,6 +527,7 @@ def main():
         ("schema+top-keys", t_schema),
         ("fleet-discovery", t_fleet),
         ("equity/balance-Skalierung", t_equity),
+        ("live: Host-Konten-KPIs", t_live_hosts_kpis),
         ("PnL-Fenster 7/30d + daily", t_pnl_windows),
         ("is_live/dd_level/blocked/multi", t_is_live),
         ("shadow-kpis+mirror-exclusion", t_shadow_kpis),
