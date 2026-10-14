@@ -108,6 +108,41 @@ def build_multi_intro_section(config):
     )
 
 
+def build_ausrichtung_section(config):
+    """🎯 Ausrichtung & Mandat — obere Ebene je Bot (botN.json `ausrichtung`).
+
+    Struktur: {type: produktiv|erprobung|erkundung, familie: [..], text: '...'}.
+    Statischer Block (immer sichtbar wenn Text vorhanden), bewusst VOR der
+    Slots-Sektion (Strategie-Details folgen dort). Ehrlichkeits-Regeln:
+    keine Gewinnversprechen, Experimente kennzeichnen (Erkundung/Erprobung).
+    """
+    a = config.get('ausrichtung') or {}
+    text = (a.get('text') or '').strip()
+    if not text:
+        return ''
+    t = str(a.get('type') or 'produktiv').strip().lower()
+    badge_icon, badge_label, badge_color = {
+        'produktiv': ('✅', 'Produktiv', '#22c55e'),
+        'erprobung': ('🧪', 'Erprobung (Demo, kein Live-Kandidat)', '#f59e0b'),
+        'erkundung': ('🔭', 'Erkundung (Experiment-Frame)', '#8b5cf6'),
+    }.get(t, ('✅', 'Produktiv', '#22c55e'))
+    fams = a.get('familie') or []
+    chips = ''.join(
+        f'<span class="bot-config-chip" style="margin:0 6px 6px 0">{fam}</span>' for fam in fams
+    )
+    chips_html = f'<div style="margin-bottom:var(--s-2)">{chips}</div>' if chips else ''
+    return (
+        '<div class="bot-card" style="margin-bottom:var(--s-4);padding:var(--s-4)">\n'
+        '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s-2);flex-wrap:wrap;gap:var(--s-2)">\n'
+        '    <span style="font-weight:700;font-size:var(--text-md)">🎯 Ausrichtung &amp; Mandat</span>\n'
+        f'    <span style="font-size:var(--text-xs);font-weight:600;color:{badge_color}">{badge_icon} {badge_label}</span>\n'
+        '  </div>\n'
+        + chips_html +
+        f'  <div style="font-size:var(--text-sm);color:var(--c-text-2);line-height:1.65">{text}</div>\n'
+        '</div>'
+    )
+
+
 def build_signal_section(features, bot_id):
     """Asset-Monitor: Live-Status je Paar + Asset-Performance (Heatmap-Widget).
 
@@ -323,6 +358,7 @@ def build_page(config, template):
 
     meta_chips = build_meta_chips(config.get('meta_chips', []))
     multi_intro_section = build_multi_intro_section(config)
+    ausrichtung_section = build_ausrichtung_section(config)
     signal_section = build_signal_section(features, bot_id)
     candlestick_section = build_candlestick_section(features, bot_id)
     lab_section = build_lab_section(config, bot_id)
@@ -343,6 +379,7 @@ def build_page(config, template):
     html = html.replace('{{REFRESH_INTERVAL}}', str(config.get('refresh_interval', 60000)))
     html = html.replace('{{META_CHIPS}}', meta_chips)
     html = html.replace('{{FOCUS_BADGE}}', build_focus_badge(config))
+    html = html.replace('{{AUSRICHTUNG}}', ausrichtung_section)
     html = html.replace('{{MULTI_INTRO}}', multi_intro_section)
     html = html.replace('{{SIGNAL_SECTION}}', signal_section)
     html = html.replace('{{CANDLESTICK_SECTION}}', candlestick_section)
