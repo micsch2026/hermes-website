@@ -68,6 +68,16 @@ def next_runner_run(now=None):
     return nxt
 
 
+def _gate_dict(s):
+    """Tolerantes Gate-Feld: dict unveraendert; String -> {kind, not_requested}; sonst {}."""
+    g = (s or {}).get("gate")
+    if isinstance(g, dict):
+        return g
+    if isinstance(g, str) and g.strip():
+        return {"kind": g.strip(), "state": "not_requested"}
+    return {}
+
+
 def _activity(entries, now: datetime, days: int = ACTIVITY_DAYS):
     """14 Ganzzahlen: Log-Eintraege je Berlin-Kalendertag (aeltester zuerst)."""
     today = now.astimezone(BERLIN).date()
@@ -87,7 +97,7 @@ def _eta_hint(next_stage, next_run_iso):
     """Deutsche ETA-Kurzinfo nach fester Regelreihenfolge."""
     if not next_stage:
         return "—"
-    if (next_stage.get("gate") or {}).get("state") == "pending":
+    if _gate_dict(next_stage).get("state") == "pending":
         return "Wartet auf Freigabe"
     owner = next_stage.get("owner")
     if owner == "runner":
@@ -156,7 +166,7 @@ def main():
         stages = [{
             "id": s.get("id"), "title": s.get("title"), "type": s.get("type"),
             "owner": s.get("owner"), "status": s.get("status"),
-            "gate": s.get("gate"), "evidence": s.get("evidence") or [],
+            "gate": _gate_dict(s) or None, "evidence": s.get("evidence") or [],
             "blocker": s.get("blocker"), "notes": s.get("notes"),
         } for s in stages_raw]
 
@@ -190,7 +200,7 @@ def main():
         if next_stage:
             nxt = {"id": next_stage.get("id"), "title": next_stage.get("title"),
                    "owner": next_stage.get("owner"),
-                   "gate_state": (next_stage.get("gate") or {}).get("state")}
+                   "gate_state": _gate_dict(next_stage).get("state")}
 
         missions.append({
             "id": m.get("mission_id"), "title": m.get("title"),
@@ -210,7 +220,7 @@ def main():
 
     gates_open = sum(1 for m in missions if m["status"] in ("active", "blocked")
                      for s in m["stages"]
-                     if (s.get("gate") or {}).get("state") == "pending")
+                     if _gate_dict(s).get("state") == "pending")
     active = [m for m in missions if m["status"] in ("active", "blocked")]
     proposed = [m for m in missions if m["status"] == "proposed"]
     finished = [m for m in missions if m["status"] in ("done", "aborted")]

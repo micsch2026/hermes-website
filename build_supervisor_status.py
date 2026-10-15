@@ -39,6 +39,16 @@ NOW = datetime.now(timezone.utc)
 AUTONOMY_DAYS = 14
 
 
+def _gate_dict(s):
+    """Tolerantes Gate-Feld: dict unveraendert; String -> {kind, not_requested}; sonst {}."""
+    g = (s or {}).get("gate")
+    if isinstance(g, dict):
+        return g
+    if isinstance(g, str) and g.strip():
+        return {"kind": g.strip(), "state": "not_requested"}
+    return {}
+
+
 def _next_board_run(now: datetime) -> str:
     """Naechster Strategy-Board-Lauf: Sonntag 03:00 Europe/Berlin -> ISO UTC."""
     b = now.astimezone(BERLIN)
@@ -315,14 +325,14 @@ def main() -> int:
             "total": len(stages),
             "stages": [{"id": s.get("id"), "title": s.get("title"), "type": s.get("type"),
                         "status": s.get("status"),
-                        "gate_kind": (s.get("gate") or {}).get("kind"),
-                        "gate_state": (s.get("gate") or {}).get("state")}
+                        "gate_kind": _gate_dict(s).get("kind"),
+                        "gate_state": _gate_dict(s).get("state")}
                        for s in stages],
             "gates_open": [{"stage": s.get("id"),
-                            "kind": (s.get("gate") or {}).get("kind"),
-                            "reason": (s.get("gate") or {}).get("reason")}
+                            "kind": _gate_dict(s).get("kind"),
+                            "reason": _gate_dict(s).get("reason")}
                            for s in stages
-                           if (s.get("gate") or {}).get("state") == "pending"],
+                           if _gate_dict(s).get("state") == "pending"],
         }
         if mm.get("status") in ("active", "blocked"):
             missions_active.append(item)
