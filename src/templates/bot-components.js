@@ -476,7 +476,13 @@ function _fmtCell(val, fmt, row) {
       var sym = row.symbol || row.pair || '';
       return fmtPrice(val, sym);
     case 'pnl':
-      return '<span class="' + pnlClass(val) + '"><b>' + fmtPnl(val) + '</b></span>';
+      var pnlOut = '<span class="' + pnlClass(val) + '"><b>' + fmtPnl(val) + '</b></span>';
+      // FIX 2026-10-16: Markt geschlossen (o. kein frischer Feed) → Wert basiert auf
+      // letztem verfügbaren Kurs; Stand-Kennzeichnung via live_price_asof (Tooltip).
+      if (row && row.live_price_asof) {
+        pnlOut += ' <span title="Letzter verfügbarer Kurs — Stand ' + fmtTime(row.live_price_asof) + '" style="font-size:10px;color:var(--c-text-dim);cursor:help">⏸</span>';
+      }
+      return pnlOut;
     case 'datetime':
       // Show UTC time like cTrader: DD/MM/YYYY HH:MM:SS
       try {
@@ -499,7 +505,7 @@ function _fmtCell(val, fmt, row) {
       if (!sidStr) return '—';
       var stratOut = '<b>#' + escHtml(sidStr) + '</b>';
       var slotVal = (row && row.slot_id != null && row.slot_id !== '') ? String(row.slot_id) : '';
-      if (slotVal) stratOut += ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Multi-Slot">' + escHtml(slotVal) + '</span>';
+      if (slotVal) stratOut += ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Slot">' + escHtml(slotVal) + '</span>';
       return stratOut;
     default:
       return String(val);
@@ -582,7 +588,7 @@ function renderHistory(d) {
     var sym = t.symbol || t.pair || '—';
     var stratId = t.strategy_id || '—';
     var _slot = (t.slot_id != null && t.slot_id !== '') ? t.slot_id : '';
-    var slotBadge = _slot ? ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Multi-Slot">' + escHtml(_slot) + '</span>' : '';
+    var slotBadge = _slot ? ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Slot">' + escHtml(_slot) + '</span>' : '';
     html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
     html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + stratId + slotBadge + '</td>';
     html += '<td>' + fmtTime(t.timestamp || t.close_time || t.closed_at) + '</td>';

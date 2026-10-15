@@ -22,39 +22,33 @@ with open(os.path.join(DATA_DIR, 'nav.json'), 'r') as f:
     NAV_DATA = json.load(f)
 
 
-def _load_multi_bots():
-    """Bots mit mehreren Strategie-Slots (= Multibots) aus shadow_portfolio.json.
+def _load_live_bots():
+    """Bots mit ECHTGELD-Handel aus shadow_portfolio.json (SSOT des Builders).
 
-    Single Source of Truth: shadow_portfolio.json → bot_rotation_slots
-    (Rotations-Doors) UNION bots[].slots_filled >= 2 (materialisierte Slots,
-    Erweiterung 01.10.26 — sonst fallen Multibots mit komplett belegten
-    Slots aus der Kennzeichnung) UNION bots[].slots_planned (Multibot-
-    VORBEREITUNG, 10.10.26 — z.B. bot10 vor dem US-Aktien-Onboarding).
-    Vom shadow_portfolio_builder im 5-Min-Takt aus der Rotation-Policy
-    gebaut. Fail-soft: fehlt/kaputt → keine Kennzeichnung, kein Build-Abbruch.
+    bots[].is_live (voller Live-Bot) bzw. live_split + live_slots
+    (LIVE/DEMO-Split: einzelne Slots auf Echtgeld-Konten; bot5 s775,
+    bot7 s317+s672, Stand 16.10.26). Ersetzt die frühere MULTI-Kennzeichnung
+    (User-Entscheid 16.10.26: Multibot-Label weg, stattdessen Echtgeld-Bots
+    markieren). Vom shadow_portfolio_builder im 5-Min-Takt gebaut.
+    Fail-soft: fehlt/kaputt → keine Kennzeichnung, kein Build-Abbruch.
     """
     try:
         with open(os.path.join(SITE_DIR, 'api', 'strategy-lab', 'shadow_portfolio.json'), 'r') as f:
             sp = json.load(f)
-        rot = sp.get('bot_rotation_slots') or {}
-        multi = {b for b, slots in rot.items() if slots}
+        live = {}
         for b, meta in (sp.get('bots') or {}).items():
-            try:
-                if int((meta or {}).get('slots_filled') or 0) >= 2:
-                    multi.add(b)
-            except (TypeError, ValueError):
-                pass
-            # 10.10.26: Bots in Multibot-VORBEREITUNG (geplante Reserve-Plaetze,
-            # z.B. bot10 vor dem Stock-Onboarding) ebenfalls kennzeichnen —
-            # die Slot-Zeile labelt "(geplant)".
-            if (meta or {}).get('slots_planned'):
-                multi.add(b)
-        return multi
+            meta = meta or {}
+            slots = meta.get('live_slots') or []
+            if meta.get('is_live'):
+                live[b] = 'voller Live-Handel'
+            elif meta.get('live_split'):
+                live[b] = ('Live-Slots ' + ', '.join(map(str, slots))) if slots else 'LIVE/DEMO-Split'
+        return live
     except Exception:
-        return set()
+        return {}
 
 
-MULTI_BOTS = _load_multi_bots()
+LIVE_BOTS = _load_live_bots()
 
 # Icons (simplified SVG paths)
 ICONS = {
@@ -319,7 +313,7 @@ def build_nav(current_path):
     """Build navigation HTML with active link highlighted.
 
     Unterstuetzt einstufige Dropdown-Menues ueber link['children']
-    (Bots-Menue seit 2026-10-05). Multibot-/Live-Badges gelten auch fuer Kind-Links.
+    (Bots-Menue seit 2026-10-05). Live-/ECHTGELD-Badges gelten auch fuer Kind-Links.
     """
     current = current_path.replace('.html', '')
     if current.endswith('/index'):
@@ -336,9 +330,9 @@ def build_nav(current_path):
         out = ''
         if badge == 'live':
             out += ' <span class="nav-live-dot" title="Live-Handel aktiv"></span>'
-        # Multibot-Kennzeichnung — datengetrieben (bot_rotation_slots), kein Hardcode
-        if href.startswith('/bot') and href[1:] in MULTI_BOTS:
-            out += ' <span class="multi-chip" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">MULTI</span>'
+        # ECHTGELD-Kennzeichnung — datengetrieben (shadow_portfolio bots[].is_live/live_split), kein Hardcode
+        if href.startswith('/bot') and href[1:] in LIVE_BOTS:
+            out += ' <span class="live-chip" title="Handelt Echtgeld — ' + LIVE_BOTS[href[1:]] + '">ECHTGELD</span>'
         return out
 
     parts = ['<nav class="nav" aria-label="Hauptnavigation">']

@@ -87,6 +87,25 @@ def build_focus_badge(config):
             f'{txt}</span>')
 
 
+def build_live_badge(config):
+    """ECHTGELD-Badge (16.10.2026, User): Bots mit Echtgeld-Handel sofort sichtbar.
+    Quelle: botN.json → live_badge {label, icon, detail}; detail als Tooltip.
+    Nur setzen, wenn der Bot (teilweise) auf Echtgeld-Konten handelt."""
+    lb = config.get("live_badge") or {}
+    label = str(lb.get("label") or "").strip()
+    if not label:
+        return ""
+    icon = str(lb.get("icon") or "").strip()
+    detail = str(lb.get("detail") or "").strip()
+    title = f' title="{detail}"' if detail else ""
+    txt = f"{icon} {label}".strip()
+    return ('<span class="bot-live-badge" style="background:rgba(240,185,64,0.14);'
+            'border:1px solid rgba(240,185,64,0.45);color:#f0b940;border-radius:999px;'
+            'padding:2px 10px;font-size:var(--text-xs);font-weight:700;white-space:nowrap"'
+            f'{title}>'
+            f'{txt}</span>')
+
+
 def build_multi_intro_section(config):
     """Konzept & Regeln des Bots — statischer Text je Bot (botN.json `multi_intro`).
 
@@ -379,6 +398,7 @@ def build_page(config, template):
     html = html.replace('{{REFRESH_INTERVAL}}', str(config.get('refresh_interval', 60000)))
     html = html.replace('{{META_CHIPS}}', meta_chips)
     html = html.replace('{{FOCUS_BADGE}}', build_focus_badge(config))
+    html = html.replace('{{LIVE_BADGE}}', build_live_badge(config))
     html = html.replace('{{AUSRICHTUNG}}', ausrichtung_section)
     html = html.replace('{{MULTI_INTRO}}', multi_intro_section)
     html = html.replace('{{SIGNAL_SECTION}}', signal_section)
