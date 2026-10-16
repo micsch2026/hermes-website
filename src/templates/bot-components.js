@@ -1354,7 +1354,25 @@ function renderEquity(d) {
             var _lastYear = String((labels && labels.length ? labels[labels.length - 1] : '')).slice(0, 4);
             return _m[3] + '.' + _m[2] + '.' + (_m[1] === _lastYear ? '' : _m[1].slice(2));
           }
-        }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        },
+        // Ticks gleichmäßig in der ZEIT (~alle 4 Tage) statt nach Label-Index —
+        // die Union-Labels sind zeitlich ungleich verteilt (Downsampling + Kontokurven).
+        afterBuildTicks: function(axis) {
+          var n = (labels && labels.length) || 0;
+          if (n < 3) return;
+          var _ts = function(l) { return Date.parse(String(l).slice(0, 19) + 'Z'); };
+          var t0 = _ts(labels[0]), t1 = _ts(labels[n - 1]);
+          if (!isFinite(t0) || !isFinite(t1) || t1 <= t0) return;
+          var want = 8, out = [];
+          for (var i = 0; i <= want; i++) {
+            var target = t0 + (t1 - t0) * i / want;
+            var lo = 0, hi = n - 1;
+            while (lo < hi) { var mid = (lo + hi) >> 1; if (_ts(labels[mid]) < target) lo = mid + 1; else hi = mid; }
+            if (!out.length || out[out.length - 1].value !== lo) out.push({ value: lo });
+          }
+          axis.ticks = out;
+        },
+        grid: { color: 'rgba(255,255,255,0.04)' } },
         y: { position: 'left', min: yMin, max: yMax, ticks: { color: '#5b8def', callback: function(v) { return '€' + v.toFixed(0); } }, grid: { color: 'rgba(255,255,255,0.04)' } }
       }
     }
