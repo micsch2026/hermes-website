@@ -25,6 +25,7 @@ REQUIRED_IDS = [
     "db-actions", "db-actions-list", "db-actions-more",
     "db-perf", "db-perf-demo", "db-perf-live", "db-perf-total",
     "db-matrix", "db-dev", "db-risk", "db-shadow", "db-missions", "db-meta",
+    "db-live-accounts", "db-feed",
 ]
 
 # Alt-Launcher-Reste, die auf der neuen Seite NICHT mehr vorkommen duerfen

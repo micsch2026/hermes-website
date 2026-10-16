@@ -661,11 +661,15 @@ def _sum_trades(path, now_dt, sids=None):
     closed_at (ISO oder 'YYYY-MM-DD HH:MM:SS'). Fenster: 0 <= now-ep <= d*86400.
     counts[d] zählt die Trades je Fenster (11.10.2026, für /dashboard Fleet-Cockpit).
     sids: Menge aktueller Strategie-IDs (Strings) — wenn gesetzt, zählen NUR
-    Trades dieser Strategien (Alt-Strategie-Trades nie mitbewerten, User 05.10.2026)."""
+    Trades dieser Strategien (Alt-Strategie-Trades nie mitbewerten, User 05.10.2026).
+    v2 (16.10.2026): 5. Rückgabe-Dict {recent, last_close} — letzte Closes (48h)
+    für den /dashboard-Activity-Feed + Zeitpunkt des letzten Closes (Fleet-Matrix)."""
     sums = {d: 0.0 for d in THRESH_PNL_WINDOW_DAYS}
     counts = {d: 0 for d in THRESH_PNL_WINDOW_DAYS}
     daily = {}
     monthly = {}
+    recent = []
+    last_ep = None
     min_daily = (now_dt - timedelta(days=THRESH_PNL_WINDOW_DAYS[-1])).date()
     months = _last_months(now_dt, THRESH_MONTHS)
     try:
@@ -694,6 +698,13 @@ def _sum_trades(path, now_dt, sids=None):
                     continue
                 ep = dt.timestamp()
                 age = now_dt.timestamp() - ep
+                if last_ep is None or ep > last_ep:
+                    last_ep = ep
+                if 0.0 <= age <= 2 * 86400:
+                    recent.append({"symbol": rec.get("symbol"),
+                                   "direction": rec.get("direction") or rec.get("side"),
+                                   "net": _round2(pnl),
+                                   "closed_at": dt.isoformat()})
                 for d in THRESH_PNL_WINDOW_DAYS:
                     if 0.0 <= age <= d * 86400:
                         sums[d] += pnl
@@ -705,10 +716,111 @@ def _sum_trades(path, now_dt, sids=None):
                 if ym in months:
                     monthly[ym] = monthly.get(ym, 0.0) + pnl
     except FileNotFoundError:
-        return None, {}, {}, {}
+        return None, {}, {}, {}, {"recent": [], "last_close": None}
     except OSError:
-        return None, {}, {}, {}
-    return sums, daily, monthly, counts
+        return None, {}, {}, {}, {"recent": [], "last_close": None}
+    last_iso = None
+    if last_ep is not None:
+        last_iso = datetime.fromtimestamp(last_ep, tz=timezone.utc).isoformat()
+    return sums, daily, monthly, counts, {"recent": recent, "last_close": last_iso}
+
+
+def _live_deal_stats(fx_root, now_dt):
+    """Round-Trip-PnL + WHT je Live-Konto aus real_costs_and_taxes.db (16.10.2026).
+
+    Live-Deals: BEIDE Legs je position_id summieren (wahres Round-Trip-Netto —
+    FX-Eröffnungs-Legs tragen Kommission als Netto != 0). Fenster 7d/30d ueber
+    die Close-Zeit (nur Positionen mit >=2 Deals = geschlossen).
+    Read-only + fail-soft (fehlende DB -> leere Dicts)."""
+    stats, wht = {}, {}
+    db = os.path.join(fx_root, "data", "real_costs_and_taxes.db")
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return stats, wht
+    try:
+        con.row_factory = sqlite3.Row
+        by = {}
+        for r in con.execute("SELECT * FROM live_deals ORDER BY execution_ts"):
+            by.setdefault(str(r["account_id"]), {}).setdefault(
+                str(r["position_id"]), []).append(r)
+        t7 = f"{now_dt - timedelta(days=7):%Y-%m-%d}"
+        t30 = f"{now_dt - timedelta(days=30):%Y-%m-%d}"
+        for acct, poss in by.items():
+            pnl7 = pnl30 = 0.0
+            n7 = n30 = n_tot = 0
+            for rs in poss.values():
+                if len(rs) < 2:
+                    continue
+                c = max(rs, key=lambda x: x["execution_ts"] or 0)
+                net = sum(x["net_pnl_eur"] or 0.0 for x in rs)
+                n_tot += 1
+                t = c["execution_time_berlin"] or ""
+                if t >= t7:
+                    pnl7 += net
+                    n7 += 1
+                if t >= t30:
+                    pnl30 += net
+                    n30 += 1
+            stats[acct] = {"pnl_7d": _round2(pnl7) if n7 else None,
+                           "pnl_30d": _round2(pnl30) if n30 else None,
+                           "n_7d": n7, "n_30d": n30, "n_total": n_tot}
+        for r in con.execute(
+                "SELECT account_id, SUM(delta_eur) s FROM broker_tax_cashflows "
+                "WHERE operation_type LIKE 'WHT%' AND time_berlin >= ? "
+                "GROUP BY account_id", (f"{now_dt.year}-01-01",)):
+            wht[str(r["account_id"])] = _round2(r["s"])
+    except sqlite3.Error:
+        pass
+    finally:
+        con.close()
+    return stats, wht
+
+
+def _live_accounts(fx_root, registry, now_dt):
+    """Echtgeld-Konten (Bot-Konten is_live + Slot-Hosts kind=live).
+
+    Fuer /dashboard v2 (16.10.2026): Balance (account_<id>_-Datei, Fallback
+    botN_balance), Round-Trip-PnL 7d/30d + WHT YTD (Steuer-DB), offene
+    Positionen (account_id-gefiltert aus den Bot-Positionsdateien)."""
+    reg = registry if isinstance(registry, dict) else {}
+    deal_stats, wht = _live_deal_stats(fx_root, now_dt)
+    entries = []
+    for bot, cfg in (reg.get("bots") or {}).items():
+        if isinstance(cfg, dict) and cfg.get("is_live") and cfg.get("account_id"):
+            entries.append((str(cfg["account_id"]), [bot], "bot"))
+    for aid, ad in (reg.get("accounts") or {}).items():
+        if isinstance(ad, dict) and ad.get("kind") == "live":
+            entries.append((str(aid), list(ad.get("bots") or []), "slot-host"))
+    out = []
+    for aid, file_bots, kind in entries:
+        bal, eq, _age, _err = _load_balance_file(
+            os.path.join(fx_root, "data", f"account_{aid}_balance.json"))
+        if bal is None and file_bots:
+            bal, eq, _a2, _e2 = _load_balance_file(
+                os.path.join(fx_root, "data", f"{file_bots[0]}_balance.json"))
+        open_pos = []
+        for b in file_bots:
+            pos, _pf = _load_positions(
+                os.path.join(fx_root, "data", f"{b}_positions_live.json"))
+            for p in pos or []:
+                if str(p.get("account_id")) == aid:
+                    open_pos.append(p)
+        st = deal_stats.get(aid) or {}
+        out.append({
+            "ctid": aid,
+            "kind": kind,
+            "bots": file_bots,
+            "balance": _round2(eq if eq is not None else bal),
+            "pnl_7d": st.get("pnl_7d"),
+            "pnl_30d": st.get("pnl_30d"),
+            "n_total": st.get("n_total", 0),
+            "open_count": len(open_pos),
+            "open": [{"symbol": p.get("symbol"), "side": p.get("side")}
+                     for p in open_pos],
+            "wht_ytd": wht.get(aid),
+        })
+    return out
 
 
 def _load_positions(path):
@@ -1085,6 +1197,7 @@ def build(root, fx_root, sl_root, trading_data, now=None):
     # ── Fleet (Bots) ──────────────────────────────────────────────────────
     bots = _discover_bots(fx_root)
     fleet = []
+    recent_closes = []         # Letzte Closes (48h) fuer /dashboard-Feed (16.10.)
     bot_daily_total = {}       # date → pnl (Demo+Live)
     bot_monthly = {"demo": {}, "live": {}}
     pos_class_counts = {"FX": 0, "METAL": 0, "INDEX": 0}
@@ -1173,8 +1286,15 @@ def build(root, fx_root, sl_root, trading_data, now=None):
                 cur_sids.add(str(_i(_s.get("sid"))))
 
         tr_age = _mtime_age_s(trades_path, now_dt)
-        trades_sums, trades_daily, trades_monthly, trades_counts = _sum_trades(
-            trades_path, now_dt, sids=cur_sids or None)
+        trades_sums, trades_daily, trades_monthly, trades_counts, trades_extra = \
+            _sum_trades(trades_path, now_dt, sids=cur_sids or None)
+        last_close_h = None
+        _lcd = _parse_dt((trades_extra or {}).get("last_close"))
+        if _lcd is not None:
+            last_close_h = _round2(max(
+                0.0, (now_dt.timestamp() - _lcd.timestamp()) / 3600.0))
+        for _rc in (trades_extra or {}).get("recent") or []:
+            recent_closes.append({"bot": bot, **_rc})
         if trades_sums is None:
             trades_family_missing.append(bot)
             trades_sums = {d: None for d in THRESH_PNL_WINDOW_DAYS}  # null statt 0
@@ -1260,6 +1380,7 @@ def build(root, fx_root, sl_root, trading_data, now=None):
             "daily_pnl_pct": _round2(daily_pnl_pct),
             "open_positions": len(positions),
             "slots": slots,
+            "last_close_h": last_close_h,
             "equity_curve": [[int(ts), _round2(v)] for ts, v in
                              _downsample(curve, THRESH_CURVE_MAX_POINTS)],
         })
@@ -1364,6 +1485,9 @@ def build(root, fx_root, sl_root, trading_data, now=None):
     equity_live_hosts = _round2(sum(hosts_eq)) if hosts_eq else None
     if equity_live_hosts is not None and total_equity is not None:
         total_equity = _round2(total_equity + equity_live_hosts)
+
+    # Echtgeld-Konten (Bot-Konten + Slot-Hosts) fuer /dashboard v2 (16.10.2026):
+    live_accounts = _live_accounts(fx_root, registry, now_dt)
 
     # total_equity_curve: Union-TS, Forward-Fill, ≤1500 Punkte.
     # Basis: je-Bot-Curves (bereits auf ≤1500 Punkte gestrafft) — Union der
@@ -1760,6 +1884,10 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         "live": {
             "kpis": live_kpis,
             "fleet": fleet,
+            "accounts": live_accounts,
+            "recent_closes": sorted(recent_closes,
+                                    key=lambda x: x.get("closed_at") or "",
+                                    reverse=True)[:12],
             "total_equity_curve": total_curve_out,
         },
         "shadow": {

@@ -54,7 +54,7 @@
   /* M4 Matrix */
   .db-matrix { display: flex; flex-direction: column; overflow-x: auto; }
   .db-row { display: grid;
-    grid-template-columns: 14px 120px minmax(150px, 1.7fr) 88px 108px 108px 100px 58px 72px auto;
+    grid-template-columns: 14px 136px minmax(150px, 1.7fr) 88px 108px 108px 100px 58px 112px auto;
     gap: var(--s-3); align-items: center; padding: var(--s-2) 0;
     border-bottom: 1px solid var(--c-border); font-size: var(--text-sm); }
   .db-row:last-child { border-bottom: none; }
@@ -78,6 +78,37 @@
   .db-spark-line { fill: none; stroke-width: 1.5; }
   .db-spark-line.db-up { stroke: var(--c-ok, #3fb950); }
   .db-spark-line.db-down { stroke: var(--c-err, #f85149); }
+
+  /* v2 (16.10.2026): Bewertung, Slot-Fortschritt, Entwicklung, Echtgeld */
+  .db-badge-ok { border-color: rgba(63,185,80,0.45); color: #3fb950; }
+  .db-slotwrap { display: flex; flex-direction: column; gap: 1px; }
+  .db-slotbar { display: block; width: 100%; height: 5px; border-radius: 3px;
+    background: var(--c-surface-2); overflow: hidden; }
+  .db-slotbar i { display: block; height: 100%; background: var(--c-ok, #3fb950); }
+  .db-bars { margin-bottom: var(--s-2); }
+  .db-bar-row { display: grid; grid-template-columns: 34px 1fr 92px; gap: var(--s-2);
+    align-items: center; padding: 1px 0; }
+  .db-bar-lbl { font-size: var(--text-xs); color: var(--c-text-dim);
+    font-variant-numeric: tabular-nums; }
+  .db-bar-track { height: 8px; border-radius: 4px; background: var(--c-surface-2);
+    overflow: hidden; }
+  .db-bar-track i { display: block; height: 100%; border-radius: 4px; }
+  .db-bar-pos { background: var(--c-ok, #3fb950); }
+  .db-bar-neg { background: var(--c-err, #f85149); }
+  .db-acct { display: grid; grid-template-columns: minmax(120px, 1.4fr) 84px 92px 1fr;
+    gap: var(--s-2); align-items: center; padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--c-border); font-size: var(--text-sm); }
+  .db-acct:last-child { border-bottom: none; }
+  .db-acct-head { color: var(--c-text-dim); font-size: var(--text-xs);
+    text-transform: uppercase; letter-spacing: 0.04em; }
+  .db-acct-sum { border-top: 1px solid var(--c-border-2); font-weight: 700;
+    border-bottom: none; }
+  .db-acct-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .db-feed-row { display: grid; grid-template-columns: 64px 52px 1fr 84px;
+    gap: var(--s-2); align-items: center; padding: 3px 0;
+    border-bottom: 1px solid var(--c-border); font-size: var(--text-sm); }
+  .db-feed-row:last-child { border-bottom: none; }
+  .db-feed-bot { color: var(--c-text-2); font-weight: 600; }
 
   /* M5/M6/M7/M8 */
   .db-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); margin-top: var(--s-4); }
@@ -135,6 +166,17 @@
   <div class="db-sec-title">Fleet-Matrix</div>
   <div class="db-card">
     <div class="db-matrix" id="db-matrix"><span class="db-dim">Lade …</span></div>
+  </div>
+
+  <div class="db-grid2">
+    <div class="db-card">
+      <div class="db-k">💰 Echtgeld</div>
+      <div id="db-live-accounts"><span class="db-dim">Lade …</span></div>
+    </div>
+    <div class="db-card">
+      <div class="db-k">⚡ Zuletzt passiert (48 h)</div>
+      <div id="db-feed"><span class="db-dim">Lade …</span></div>
+    </div>
   </div>
 
   <div class="db-grid2">
@@ -210,6 +252,17 @@
     var out = /^bot\s*\d+/i.test(parts[0]) ? 'Bot ' + botNum(parts[0]) : parts[0];
     if (parts.length > 1) out += ' · ' + parts.slice(1).join('/');
     return out;
+  }
+  function fmtAgoH(h) {
+    if (!has(h)) return '—';
+    if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min';
+    if (h < 48) return Math.round(h) + ' h';
+    return Math.round(h / 24) + ' T';
+  }
+  function fmtAgo(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return 'vor ' + fmtAgoH((Date.now() - d.getTime()) / 3600000);
   }
 
   // ── Daten ──────────────────────────────────────────────────
@@ -290,11 +343,18 @@
         '<div class="db-s">' + s + '</div>' + (extra.foot || '');
     }
     var demo = fleet.filter(function (b) { return !b.is_live; });
-    var live = fleet.filter(function (b) { return b.is_live; });
     $('db-perf-demo').innerHTML = card(kpis.equity_demo, sum(demo, 'pnl_7d'),
       sum(demo, 'pnl_30d'), { k: 'DEMO' });
-    $('db-perf-live').innerHTML = card(kpis.equity_live, sum(live, 'pnl_7d'),
-      sum(live, 'pnl_30d'), { k: 'LIVE' });
+    // v2 (16.10.2026): LIVE-Karte = Echtgeld gesamt (Bot-Konto + Slot-Hosts);
+    // vorher zeigte sie nur das Live-Bot-Konto und wirkte dadurch zu klein.
+    var liveTotal = (has(kpis.equity_live) || has(kpis.equity_live_hosts))
+      ? (has(kpis.equity_live) ? kpis.equity_live : 0)
+        + (has(kpis.equity_live_hosts) ? kpis.equity_live_hosts : 0) : null;
+    $('db-perf-live').innerHTML =
+      '<div class="db-k">LIVE (Echtgeld)</div>' +
+      '<div class="db-v">' + fmtEur(liveTotal) + '</div>' +
+      '<div class="db-s">Bots ' + fmtEur(kpis.equity_live) +
+      ' · Slot-Hosts ' + fmtEur(kpis.equity_live_hosts) + '</div>';
     $('db-perf-total').innerHTML = card(kpis.equity_total, kpis.pnl_7d, kpis.pnl_30d,
       { k: 'GESAMT', foot: '<div class="db-s">' +
         (has(kpis.open_positions) ? kpis.open_positions : '—') + ' offene Positionen</div>' });
@@ -362,11 +422,29 @@
         : '—';
       var n7 = has(b.n_7d) ? b.n_7d : '—';
       var slots = b.slots || [];
-      var occ = slots.filter(function (s) { return s.sid !== null && s.sid !== undefined; }).length;
-      var planned = slots.filter(function (s) { return s.planned === true; }).length;
-      var slotTitle = slots.map(function (s) { return s.slot_id; }).join(', ');
+      var holders = slots.filter(function (s) { return s.holder === true; });
+      var plannedSl = slots.filter(function (s) { return s.planned === true; });
+      var doors = slots.filter(function (s) { return !s.planned && s.holder !== true; });
+      var totalSl = holders.length + doors.length + plannedSl.length;
+      var pctOcc = totalSl ? Math.round(holders.length / totalSl * 100) : 0;
+      var nowSec = Math.floor(Date.now() / 1000);
+      var doorTxt = doors.map(function (s) {
+        if (has(s.challenge_start)) {
+          var tage = Math.max(0, Math.floor((nowSec - Number(s.challenge_start)) / 86400));
+          return s.slot_id + ' T' + tage;
+        }
+        return s.slot_id;
+      }).join('·');
+      var slotTitle = slots.map(function (s) {
+        return s.slot_id + (s.sid !== null && s.sid !== undefined ? ' #' + s.sid : '')
+          + (s.planned ? ' (geplant)' : '');
+      }).join(', ');
       var slotCell = slots.length
-        ? '<span class="db-slots" title="' + esc(slotTitle) + '">' + occ + '● ' + planned + '○</span>'
+        ? '<span class="db-slotwrap" title="' + esc(slotTitle) + '">' +
+            '<span class="db-slotbar"><i style="width:' + pctOcc + '%"></i></span>' +
+            '<span class="db-slots">' + holders.length + '● ' + doors.length + '◇ ' + plannedSl.length + '○</span>' +
+            (doorTxt ? '<span class="db-dim">Türen: ' + esc(doorTxt) + '</span>' : '') +
+          '</span>'
         : '—';
       var badges = [];
       if (b.blocked) badges.push(['Block', 'db-badge-err']);
@@ -377,13 +455,26 @@
       var dec = decayBadge(r.bot, findings);
       if (dec) badges.push(dec);
       if (meta.parity_status === 'abweichung') badges.push(['Parität', 'db-badge-warn']);
-      var flags = badges.slice(0, 3).map(function (x) {
+      // Bewertung (16.10.2026): sichtbares Urteil je Bot aus Block/DD/Advisor
+      var assess = r.rank === 0 ? ['prüfen', 'db-badge-err']
+                : (r.rank === 1 ? ['beobachten', 'db-badge-warn'] : ['ok', 'db-badge-ok']);
+      var why = [];
+      if (b.blocked) why.push('Entry-Block');
+      if (has(b.dd_level) && b.dd_level >= 1) why.push('DD L' + b.dd_level);
+      if (acts.pull_candidate) why.push('Pull-Kandidat');
+      if (acts.watch) why.push('Watch');
+      if (acts.challenge_running) why.push('Challenge');
+      var assessChip = '<span class="db-badge ' + assess[1] + '" title="Bewertung: ' +
+        esc(why.join(' · ') || 'keine Auffälligkeiten') + '">' + esc(assess[0]) + '</span>';
+      var flags = assessChip + (badges.slice(0, 3).map(function (x) {
         return '<span class="db-badge ' + x[1] + '">' + esc(x[0]) + '</span>';
-      }).join('') || '<span class="db-dim">—</span>';
+      }).join('') || '');
       return '<div class="db-row">' +
         '<span class="db-dot ' + dot + '"></span>' +
         '<span class="db-bot">Bot ' + r.num +
-          (b.focus ? ' <span class="db-badge db-focus">' + esc((b.focus_icon ? b.focus_icon + ' ' : '') + b.focus) + '</span>' : '') + '</span>' +
+          (b.focus ? ' <span class="db-badge db-focus">' + esc((b.focus_icon ? b.focus_icon + ' ' : '') + b.focus) + '</span>' : '') +
+          (has(b.last_close_h) ? '<div class="db-dim" style="font-weight:400" title="Zeit seit dem letzten geschlossenen Trade">Close vor ' + fmtAgoH(b.last_close_h) + '</div>' : '') +
+          '</span>' +
         '<span class="db-strat">' + strat + '</span>' +
         '<span class="db-num">' + fmtEur(b.equity) + '</span>' +
         '<span class="db-num ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) +
@@ -425,7 +516,20 @@
       if (extra > 0) txt += ' · +' + extra;
       return '<div class="db-dev-line"><b>' + esc(label) + ':</b> ' + txt + '</div>';
     }
-    var html = '';
+    // v2 (16.10.2026): 7d-Balken je Bot (visuell) vor den Textlisten
+    var with7 = fleet.filter(function (x) { return has(x.pnl_7d); })
+      .map(function (x) { return { num: botNum(x.bot), pnl: x.pnl_7d }; })
+      .sort(function (a, b) { return b.pnl - a.pnl; });
+    var maxAbs = Math.max.apply(null, with7.map(function (x) {
+      return Math.abs(x.pnl); }).concat([1]));
+    var bars = with7.map(function (x) {
+      var w = Math.max(2, Math.round(Math.abs(x.pnl) / maxAbs * 100));
+      return '<div class="db-bar-row"><span class="db-bar-lbl">B' + x.num + '</span>' +
+        '<span class="db-bar-track"><i class="' + (x.pnl >= 0 ? 'db-bar-pos' : 'db-bar-neg') +
+        '" style="width:' + w + '%"></i></span>' +
+        '<span class="db-num ' + pnlCls(x.pnl) + '">' + fmtEur(x.pnl, true) + '</span></div>';
+    }).join('');
+    var html = bars ? '<div class="db-bars">' + bars + '</div>' : '';
     html += line('Top 7d', top, fmtBot);
     html += line('Flop 7d', flop, fmtBot);
     html += line('Drawdown', dd, function (x) { return 'Bot ' + x.num + ' (L' + x.lvl + ')'; });
@@ -478,6 +582,55 @@
       (has(k.stages_total) ? k.stages_total : '—') + ' Etappen</a></div>';
   }
 
+  // ── M9 Echtgeld + Aktivität (16.10.2026) ───────────────────
+  function renderEchtgeld(d) {
+    var el = $('db-live-accounts');
+    if (!el) return;
+    var accts = ((d.live || {}).accounts) || [];
+    if (!accts.length) {
+      el.innerHTML = '<span class="db-dim">keine Live-Konten</span>';
+      return;
+    }
+    var sumBal = 0;
+    accts.forEach(function (a) { if (has(a.balance)) sumBal += a.balance; });
+    var head = '<div class="db-acct db-acct-head"><span>Konto</span>' +
+      '<span class="db-num">Stand</span><span class="db-num">7d</span><span>Offen</span></div>';
+    var rows = accts.map(function (a) {
+      var label = (a.bots || []).join('+') || a.ctid;
+      var openTxt = a.open_count
+        ? a.open_count + (a.open && a.open.length
+            ? ' (' + a.open.map(function (o) { return o.symbol; }).join(', ') + ')' : '')
+        : '—';
+      return '<div class="db-acct"><span class="db-acct-l">' + esc(label) +
+        ' <span class="db-dim">' + esc(a.ctid) + '</span></span>' +
+        '<span class="db-num">' + fmtEur(a.balance) + '</span>' +
+        '<span class="db-num ' + pnlCls(a.pnl_7d) + '" title="30d: ' + fmtEur(a.pnl_30d, true) +
+        ' · Trades seit Start: ' + (has(a.n_total) ? a.n_total : '—') + '">' +
+        fmtEur(a.pnl_7d, true) + '</span>' +
+        '<span class="db-dim">' + esc(openTxt) + '</span></div>';
+    }).join('');
+    el.innerHTML = head + rows +
+      '<div class="db-acct db-acct-sum"><span>Σ ' + accts.length + ' Konten</span>' +
+      '<span class="db-num">' + fmtEur(sumBal) + '</span><span></span><span></span></div>';
+  }
+  function renderFeed(d) {
+    var el = $('db-feed');
+    if (!el) return;
+    var rc = ((d.live || {}).recent_closes) || [];
+    if (!rc.length) {
+      el.innerHTML = '<span class="db-dim">keine Closes in 48 h</span>';
+      return;
+    }
+    el.innerHTML = rc.slice(0, 10).map(function (c) {
+      var dir = String(c.direction || '').toLowerCase();
+      var dTxt = (dir === 'buy' || dir === 'long') ? 'long' : 'short';
+      return '<div class="db-feed-row"><span class="db-dim">' + esc(fmtAgo(c.closed_at)) + '</span>' +
+        '<span class="db-feed-bot">' + esc(String(c.bot || '').replace('bot', 'B')) + '</span>' +
+        '<span>' + esc(c.symbol || '?') + ' <span class="db-dim">' + dTxt + '</span></span>' +
+        '<span class="db-num ' + pnlCls(c.net) + '">' + fmtEur(c.net, true) + '</span></div>';
+    }).join('');
+  }
+
   // ── Meta ───────────────────────────────────────────────────
   function renderMeta(d, sp) {
     $('db-meta').innerHTML = 'Stand ' + esc(fmtHM(d.generated_at_bz)) +
@@ -495,6 +648,8 @@
       function () { renderRisk(O, SP); },
       function () { renderShadow(O); },
       function () { renderMissions(MI); },
+      function () { renderEchtgeld(O); },
+      function () { renderFeed(O); },
       function () { renderMeta(O, SP); }
     ].forEach(function (fn) {
       try { fn(); } catch (e) { console.warn('dashboard: Modul-Fehler', e); }

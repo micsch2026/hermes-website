@@ -456,6 +456,21 @@ def main():
         assert r1.get("ratio_56") == 1.5 and r1.get("ratio_28") is None, \
             f"Zahlen-Fallback falsch: {r1.get('ratio_56')!r}"
 
+    def t_v2_live_blocks():
+        live = DOCS["base"]["live"]
+        accs = live.get("accounts")
+        assert isinstance(accs, list) and len(accs) == 2, \
+            f"live.accounts fehlt/falsch: {accs}"
+        assert all(("ctid" in a and "balance" in a and "pnl_7d" in a
+                    and "open_count" in a and "bots" in a) for a in accs), \
+            f"live.accounts Felder fehlen: {accs}"
+        assert {a["ctid"] for a in accs} == {"2", "99"}, \
+            f"Konten falsch: {[a['ctid'] for a in accs]}"
+        b1 = live["fleet"][0]
+        assert "last_close_h" in b1, f"last_close_h fehlt: {sorted(b1.keys())}"
+        assert isinstance(live.get("recent_closes"), list), \
+            "recent_closes fehlt/keine Liste"
+
     def t_verdict_green():
         doc = GREEN_DOC
         assert doc["verdict"]["overall"]["status"] == "green" and \
@@ -546,6 +561,7 @@ def main():
         ("missing-root: kein Crash", t_missing_root),
         ("gates: Sektion fail-soft + Blocks 7d", t_gates_section),
         ("gates: aktiv + Klassen (monkeypatch)", t_gates_active_classes),
+        ("v2: Live-Konten + last_close_h + Feed", t_v2_live_blocks),
     ]
     for name, fn in ALL_CHECKS:
         check(name, fn)
