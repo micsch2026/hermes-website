@@ -1200,9 +1200,9 @@ function renderEquity(d) {
     for (var k = 0; k < curves.length; k++) {
       var cur = curves[k] || {};
       extraDatasets.push({
-        label: cur.label || 'Echtgeld',
+        label: '💰 ' + (cur.label || (cur.ctid != null ? 'Echtgeld-Konto ' + cur.ctid : 'Echtgeld')),
         data: _mapPts(cur.points),
-        borderColor: '#5b8def',
+        borderColor: '#f0b940',
         borderWidth: 2,
         pointRadius: 0,
         tension: 0.3,
@@ -1237,9 +1237,13 @@ function renderEquity(d) {
     }
   }
 
+  var _split = curves.length > 0;   // LIVE/DEMO-Split → 2 Kurven (Demo + Echtgeld)
+  var _baseLabel = _split
+    ? ('🧪 Demo-Konto' + (d.account_id ? ' ' + d.account_id : ''))
+    : 'Kontoverlauf';
   var datasets = [
     {
-      label: 'Kontoverlauf',
+      label: _baseLabel,
       data: eqData,
       borderColor: '#5b8def',
       backgroundColor: 'rgba(91,141,239,0.08)',
@@ -1320,15 +1324,20 @@ function renderEquity(d) {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        // Legende nur im LIVE/DEMO-Split (2 Serien) — eindeutige Beschriftung
+        // Demo/Echtgeld (User 16.10.2026); Fast-Path (1 Linie) bleibt ohne Legende.
+        legend: {
+          display: _split,
+          position: 'top',
+          labels: { boxWidth: 10, boxHeight: 10, color: '#9ca3af', font: { size: 10 } },
+        },
         tooltip: {
           callbacks: {
             label: function(ctx) {
-              if (ctx.datasetIndex === 0) return ' €' + ctx.parsed.y.toFixed(2);
               var _ds = ctx.dataset || (ctx.chart && ctx.chart.data
-                && ctx.chart.data.datasets[ctx.datasetIndex]);
-              var _ctid = (_ds && _ds._ctid) || '';
-              return ' €' + ctx.parsed.y.toFixed(2) + (_ctid ? ' (Konto ' + _ctid + ')' : '');
+                && ctx.chart.data.datasets[ctx.datasetIndex]) || {};
+              var _name = _ds.label || (ctx.datasetIndex === 0 ? 'Kontoverlauf' : 'Echtgeld');
+              return _name + ': €' + ctx.parsed.y.toFixed(2);
             }
           }
         }

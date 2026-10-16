@@ -107,6 +107,9 @@ reg('f8-equity-chart');
   check('F1 ohne curves: labels/values wie heute',
     !!cfg1 && cfg1.data.labels.length === 2 &&
     cfg1.data.datasets[0].data[0] === 1000 && cfg1.data.datasets[0].data[1] === 1010);
+  check('F1 Fast-Path: Legende aus + Label "Kontoverlauf"',
+    !!cfg1 && cfg1.options.plugins.legend.display === false &&
+    cfg1.data.datasets[0].label === 'Kontoverlauf');
 
   // ── F2: MIT curve (teils disjunkte ISO-Timestamps) → 2 Datasets ───
   const T0 = '2026-10-14T00:00:00+00:00';
@@ -115,6 +118,7 @@ reg('f8-equity-chart');
   const T3 = '2026-10-14T00:15:00+00:00';   // nur in der Kontokurve
   BD.config.prefix = 'f2';
   BD.renderEquity({
+    account_id: '48663101',
     equity_history: { snapshots: [
       { timestamp: T0, equity: 1000 },
       { timestamp: T1, equity: 1010 },
@@ -141,11 +145,16 @@ reg('f8-equity-chart');
   // spanGaps:true (Fix 16.10.2026): Die Union-Fremd-Timestamps der Kontokurven
   // zerschnitten beide Serien in Einzelpunkte (bot5/bot7 „gepunktet“) — jetzt
   // werden Null-Luecken beidseitig durchgezogen verbunden.
-  check('F2 Kurven-Dataset: blau wie Basis + width2 + pointRadius0 + spanGaps (Fix 16.10.)',
-    cur.label === 'Echtgeld-Konto 47490067' && cur.borderColor === '#5b8def' &&
+  // Beschriftung 16.10.2026 (User): Demo (blau, 🧪) vs Echtgeld (gold #f0b940, 💰).
+  check('F2 Kurven-Dataset: GOLD (Echtgeld) + width2 + pointRadius0 + spanGaps',
+    cur.label === '💰 Echtgeld-Konto 47490067' && cur.borderColor === '#f0b940' &&
     cur.borderWidth === 2 && cur.pointRadius === 0 && cur.fill === false &&
     cur.spanGaps === true && cur.yAxisID === 'y',
     JSON.stringify({ label: cur.label, borderColor: cur.borderColor }));
+  check('F2 Basis-Dataset: 🧪 Demo-Konto + Konto-ID, blau',
+    cfg2.data.datasets[0].label === '🧪 Demo-Konto 48663101' &&
+    cfg2.data.datasets[0].borderColor === '#5b8def',
+    JSON.stringify({ label: cfg2.data.datasets[0].label }));
   check('F2 Echtgeld-Werte an korrekten Indizes, nulls sonst',
     cur.data && cur.data[0] === null && cur.data[1] === 1120.44 &&
     cur.data[2] === null && cur.data[3] === 1125.00,
@@ -157,15 +166,17 @@ reg('f8-equity-chart');
     cfg2.data.datasets[0].data[3] === null,
     cfg2 ? JSON.stringify(cfg2.data.datasets[0].data) : '');
 
-  // Tooltip-Konvention
+  // Tooltip-Konvention (Beschriftung 16.10.2026: Serien-Name aus dem Label)
   const tip = cfg2 && cfg2.options.plugins.tooltip.callbacks.label;
-  check('F2 Tooltip: Basis €; Kontokurve €…(Konto ctid); keine %-Serie',
+  check('F2 Tooltip: Serien-Namen (Demo/Echtgeld) + € + Fallback ohne dataset',
     typeof tip === 'function' &&
-    tip({ datasetIndex: 0, parsed: { y: 1000 } }) === ' €1000.00' &&
-    tip({ datasetIndex: 1, dataset: { _ctid: '47490067' }, parsed: { y: 1120.44 } })
-      === ' €1120.44 (Konto 47490067)');
-  check('F2 Vereinfachung: Legende aus, keine DD-Achse',
-    !!cfg2 && cfg2.options.plugins.legend.display === false &&
+    tip({ datasetIndex: 0, dataset: { label: '🧪 Demo-Konto 48663101' }, parsed: { y: 1000 } })
+      === '🧪 Demo-Konto 48663101: €1000.00' &&
+    tip({ datasetIndex: 1, dataset: { label: '💰 Echtgeld-Konto 47490067' }, parsed: { y: 1120.44 } })
+      === '💰 Echtgeld-Konto 47490067: €1120.44' &&
+    tip({ datasetIndex: 0, parsed: { y: 1000 } }) === 'Kontoverlauf: €1000.00');
+  check('F2 Legende AN (Demo/Echtgeld) + keine DD-Achse',
+    !!cfg2 && cfg2.options.plugins.legend.display === true &&
     (!cfg2.options.scales || !cfg2.options.scales.y1));
 
   // ── F3: account_cards → -ext-Karte mit €1120.44 ───────────────────
@@ -224,9 +235,9 @@ reg('f8-equity-chart');
   check('F5 genau 2 Datasets (Basis + Kurve), keine Roh-/DD-Serien',
     !!cfg5 && cfg5.data.datasets.length === 2,
     cfg5 ? 'ist: ' + cfg5.data.datasets.length : 'keine Chart-Config');
-  check('F5 kein Dataset hidden/_raw, keine y1-Achse, Legende aus',
+  check('F5 kein Dataset hidden/_raw, keine y1-Achse, Legende AN (curves-Fall)',
     !!cfg5 && cfg5.data.datasets.every((ds) => ds.hidden !== true && ds._raw !== true)
-      && cfg5.options.plugins.legend.display === false
+      && cfg5.options.plugins.legend.display === true
       && (!cfg5.options.scales || !cfg5.options.scales.y1));
 
   // ── F6: account_flows → Kapital-Chip im Summary (de-DE) ───────────
