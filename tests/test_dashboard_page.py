@@ -24,7 +24,8 @@ REQUIRED_IDS = [
     "db-error", "db-status", "db-status-text",
     "db-actions", "db-actions-list", "db-actions-more",
     "db-perf", "db-perf-demo", "db-perf-live", "db-perf-total",
-    "db-matrix", "db-dev", "db-risk", "db-shadow", "db-missions", "db-meta",
+    "db-tiles", "db-vt", "db-matrix",
+    "db-dev", "db-risk", "db-shadow", "db-missions", "db-meta",
     "db-live-accounts", "db-feed",
 ]
 
@@ -70,6 +71,15 @@ def main() -> int:
     # 3) Inline-JS parst (node --check)
     scripts = re.findall(r"<script>(.*?)</script>", text, re.S)
     check("genau 1 inline-<script>", len(scripts) == 1, len(scripts))
+
+    # 3b) Kachel-Ansicht (v3, 16.10.2026): Renderer, Umschalter, Gruppen
+    check("Kachel-Renderer + Umschalter vorhanden",
+          "renderTiles" in text and "dbFleetView" in text
+          and "▦ Kacheln" in text and "▤ Tabelle" in text)
+    check("Kachel-Gruppen (LIVE/SPLIT/DEMO) vorhanden",
+          "LIVE — ECHTGELD" in text and "LIVE + DEMO-SPLIT" in text
+          and "DEMO — PROMOTION-PIPELINE" in text)
+
     node = shutil.which("node")
     if scripts and node:
         with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,
@@ -96,7 +106,10 @@ def main() -> int:
          "import build; build.build_page('src/content/dashboard.html', '_build/dashboard.html')"],
         cwd=str(SITE), capture_output=True, text=True)
     ok = r.returncode == 0 and out.exists() and "db-matrix" in out.read_text(encoding="utf-8")
-    check("build_page-Smoke enthält db-matrix", ok, (r.stderr or r.stdout)[-200:])
+    if ok:
+        out_text = out.read_text(encoding="utf-8")
+        ok = "db-tiles" in out_text and "renderTiles" in out_text
+    check("build_page-Smoke enthält db-matrix + db-tiles", ok, (r.stderr or r.stdout)[-200:])
 
     # 6) NEGATIV: keine Alt-Launcher-/Versions-Reste
     present = [s for s in FORBIDDEN if s in text]

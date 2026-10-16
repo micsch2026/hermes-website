@@ -110,6 +110,43 @@
   .db-feed-row:last-child { border-bottom: none; }
   .db-feed-bot { color: var(--c-text-2); font-weight: 600; }
 
+  /* v3 (16.10.2026): Fleet-Übersicht als Kacheln (Standard) + Tabellen-Umschalter */
+  .db-secrow { display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--s-3); margin: var(--s-6) 0 var(--s-3); }
+  .db-secrow .db-sec-title { margin: 0; }
+  .db-vt { display: inline-flex; gap: 4px; }
+  .db-vt button { font-size: var(--text-xs); padding: 2px 10px; border-radius: 999px;
+    border: 1px solid var(--c-border-2); background: var(--c-surface-2);
+    color: var(--c-text-muted); cursor: pointer; }
+  .db-vt button.active { border-color: var(--c-accent); color: var(--c-text);
+    background: var(--c-surface); }
+  .db-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
+    gap: var(--s-3); }
+  .db-tgroup { grid-column: 1 / -1; font-size: var(--text-xs); font-weight: 600;
+    color: var(--c-text-dim); text-transform: uppercase; letter-spacing: 0.05em;
+    margin-top: var(--s-2); }
+  .db-tgroup:first-child { margin-top: 0; }
+  .db-tile { display: block; text-decoration: none; color: var(--c-text);
+    background: var(--c-surface-2); border: 1px solid var(--c-border);
+    border-top: 3px solid var(--c-border-2); border-radius: var(--r-lg);
+    padding: var(--s-2) var(--s-3); }
+  .db-tile:hover { border-color: var(--c-accent); border-top-color: var(--c-accent); }
+  .db-t-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .db-t-head .db-assess { margin-left: auto; }
+  .db-t-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+  .db-t-strat { display: block; font-size: var(--text-xs); color: var(--c-text-muted);
+    margin: 3px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .db-t-vals { display: flex; align-items: baseline; gap: var(--s-2); }
+  .db-t-eq { font-weight: 700; font-size: var(--text-lg); }
+  .db-t-pnl { font-weight: 600; font-size: var(--text-sm); }
+  .db-t-spark { margin-left: auto; }
+  .db-t-slots { display: flex; flex-direction: column; gap: 2px; margin-top: var(--s-2); }
+  .db-t-foot { display: flex; justify-content: space-between; gap: var(--s-2);
+    margin-top: var(--s-2); font-size: var(--text-xs); color: var(--c-text-dim); }
+  .db-t-acct { display: flex; justify-content: space-between; gap: var(--s-2);
+    margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--c-border);
+    font-size: var(--text-xs); color: var(--c-text-muted); }
+
   /* M5/M6/M7/M8 */
   .db-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); margin-top: var(--s-4); }
   .db-dev-line { font-size: var(--text-sm); color: var(--c-text-muted); margin: 4px 0; }
@@ -163,9 +200,16 @@
     <div class="db-card" id="db-perf-total"><div class="db-k">GESAMT</div><div class="db-v">—</div></div>
   </div>
 
-  <div class="db-sec-title">Fleet-Matrix</div>
+  <div class="db-secrow">
+    <div class="db-sec-title">Fleet-Übersicht</div>
+    <div class="db-vt" id="db-vt">
+      <button type="button" data-v="tiles" class="active">▦ Kacheln</button>
+      <button type="button" data-v="table">▤ Tabelle</button>
+    </div>
+  </div>
   <div class="db-card">
-    <div class="db-matrix" id="db-matrix"><span class="db-dim">Lade …</span></div>
+    <div class="db-tiles" id="db-tiles"><span class="db-dim">Lade …</span></div>
+    <div class="db-matrix" id="db-matrix" style="display:none"><span class="db-dim">Lade …</span></div>
   </div>
 
   <div class="db-grid2">
@@ -390,12 +434,11 @@
     }
     return null;
   }
-  function renderMatrix(d, sp) {
+  // Gemeinsame Analyse je Bot (Matrix + Kacheln) — Single Source of Truth
+  function fleetRows(d, sp) {
     var fleet = (d.live || {}).fleet || [];
-    var bots = (sp || {}).bots || {};
     var adv = ((sp || {}).advisor || {}).fleet || {};
-    var findings = d.findings || [];
-    var rows = fleet.map(function (b) {
+    return fleet.map(function (b) {
       var bot = b.bot;
       var acts = {};
       (((adv[bot] || {}).slots) || []).forEach(function (s) {
@@ -407,6 +450,12 @@
       else if (acts.watch || acts.observe || acts.challenge_running) rank = 1;
       return { b: b, bot: bot, num: botNum(bot), acts: acts, rank: rank };
     });
+  }
+
+  function renderMatrix(d, sp) {
+    var bots = (sp || {}).bots || {};
+    var findings = d.findings || [];
+    var rows = fleetRows(d, sp);
     rows.sort(function (a, b) {
       return a.rank !== b.rank ? a.rank - b.rank : a.num - b.num;
     });
@@ -491,6 +540,148 @@
       '<span>Pos.</span><span>Slots</span><span>Flags</span></div>';
     $('db-matrix').innerHTML = rows.length ? head + rows.map(rowHtml).join('')
       : '<span class="db-dim">keine Bots gemeldet</span>';
+  }
+
+  // ── M4b Kachel-Ansicht (v3, 16.10.2026) ────────────────────
+  function tileBadges(r, findings, meta) {
+    var b = r.b;
+    var badges = [];
+    if (b.is_live) badges.push(['💰 ECHTGELD', 'db-badge-live']);
+    else if (b.mixed_slots) badges.push(['💰 LIVE-SLOTS', 'db-badge-live2']);
+    if (b.blocked) badges.push(['Block', 'db-badge-err']);
+    if (has(b.dd_level) && b.dd_level >= 1)
+      badges.push(['L' + b.dd_level, b.blocked ? 'db-badge-err' : 'db-badge-warn']);
+    var dec = decayBadge(r.bot, findings);
+    if (dec) badges.push(dec);
+    if ((meta || {}).parity_status === 'abweichung') badges.push(['Parität', 'db-badge-warn']);
+    return badges.slice(0, 4).map(function (x) {
+      return '<span class="db-badge ' + x[1] + '">' + esc(x[0]) + '</span>';
+    }).join('');
+  }
+  function renderTiles(d, sp) {
+    var el = $('db-tiles');
+    if (!el) return;
+    var rows = fleetRows(d, sp);
+    var bots = (sp || {}).bots || {};
+    var findings = d.findings || [];
+    var accts = ((d.live || {}).accounts) || [];
+    var acctOf = {};
+    accts.forEach(function (a) {
+      (a.bots || []).forEach(function (bk) { acctOf[bk] = a; });
+    });
+    var nowSec = Math.floor(Date.now() / 1000);
+    function tileHtml(r) {
+      var b = r.b;
+      var dot = r.rank === 0 ? 'status-red'
+              : (r.rank === 1 ? 'status-yellow' : 'status-green');
+      var meta = bots[r.bot] || {};
+      var sid = meta.strategy_id;
+      var tag = (meta.desc || {}).tag;
+      var strat = has(sid) ? '#' + esc(sid) + (tag ? ' · ' + esc(tag) : '') : '—';
+      var n7 = has(b.n_7d) ? b.n_7d : '—';
+      var slots = b.slots || [];
+      var holders = slots.filter(function (s) { return s.holder === true; });
+      var plannedSl = slots.filter(function (s) { return s.planned === true; });
+      var doors = slots.filter(function (s) { return !s.planned && s.holder !== true; });
+      var totalSl = holders.length + doors.length + plannedSl.length;
+      var pctOcc = totalSl ? Math.round(holders.length / totalSl * 100) : 0;
+      var doorTxt = doors.map(function (s) {
+        if (has(s.challenge_start)) {
+          var tage = Math.max(0, Math.floor((nowSec - Number(s.challenge_start)) / 86400));
+          return s.slot_id + ' T' + tage;
+        }
+        return s.slot_id;
+      }).join('·');
+      var slotTitle = slots.map(function (s) {
+        return s.slot_id + (s.sid !== null && s.sid !== undefined ? ' #' + s.sid : '')
+          + (s.planned ? ' (geplant)' : '');
+      }).join(', ');
+      var slotCell = slots.length
+        ? '<span class="db-t-slots" title="' + esc(slotTitle) + '">' +
+            '<span class="db-slotbar"><i style="width:' + pctOcc + '%"></i></span>' +
+            '<span class="db-slots">' + holders.length + '● ' + doors.length + '◇ ' +
+            plannedSl.length + '○' +
+            (doorTxt ? ' <span class="db-dim">Türen: ' + esc(doorTxt) + '</span>' : '') +
+            '</span>' +
+          '</span>'
+        : '';
+      var assess = r.rank === 0 ? ['prüfen', 'db-badge-err']
+                : (r.rank === 1 ? ['beobachten', 'db-badge-warn'] : ['ok', 'db-badge-ok']);
+      var why = [];
+      if (b.blocked) why.push('Entry-Block');
+      if (has(b.dd_level) && b.dd_level >= 1) why.push('DD L' + b.dd_level);
+      if (r.acts.pull_candidate) why.push('Pull-Kandidat');
+      if (r.acts.watch) why.push('Watch');
+      if (r.acts.challenge_running) why.push('Challenge');
+      var acct = acctOf[r.bot];
+      var acctLine = '';
+      if (acct) {
+        var openTxt = acct.open_count
+          ? acct.open_count + ' offen' + (acct.open && acct.open.length
+              ? ' (' + acct.open.map(function (o) { return o.symbol; }).join(', ') + ')' : '')
+          : '0 offen';
+        acctLine = '<span class="db-t-acct"><span>💰 ' + esc(acct.ctid) + '</span>' +
+          '<span class="db-num">' + fmtEur(acct.balance) + '</span>' +
+          '<span>' + esc(openTxt) + '</span></span>';
+      }
+      var border = !has(b.pnl_7d) ? 'var(--c-border-2)'
+                 : (b.pnl_7d < 0 ? 'var(--c-err)' : 'var(--c-ok)');
+      return '<a class="db-tile" href="/' + esc(r.bot) +
+        '" style="border-top-color:' + border + '">' +
+        '<span class="db-t-head"><span class="db-dot ' + dot + '"></span>' +
+          '<span class="db-bot">Bot ' + r.num + '</span>' +
+          (b.focus ? '<span class="db-badge db-focus">' +
+            esc((b.focus_icon ? b.focus_icon + ' ' : '') + b.focus) + '</span>' : '') +
+          '<span class="db-badge ' + assess[1] + ' db-assess" title="Bewertung: ' +
+            esc(why.join(' · ') || 'keine Auffälligkeiten') + '">' +
+            esc(assess[0]) + '</span>' +
+        '</span>' +
+        '<span class="db-t-badges">' + tileBadges(r, findings, meta) + '</span>' +
+        '<span class="db-t-strat">' + strat + '</span>' +
+        '<span class="db-t-vals"><span class="db-t-eq">' + fmtEur(b.equity) + '</span>' +
+          '<span class="db-t-pnl ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) +
+          ' <span class="db-dim">7d (' + n7 + ')</span></span>' +
+          '<span class="db-t-spark">' + sparklineSVG(b.equity_curve) + '</span></span>' +
+        slotCell +
+        '<span class="db-t-foot"><span>' +
+          (has(b.open_positions) ? b.open_positions : '—') + ' Pos. offen</span>' +
+          '<span>' + (has(b.last_close_h) ? 'Close vor ' + fmtAgoH(b.last_close_h) : '—') +
+          '</span></span>' +
+        acctLine +
+      '</a>';
+    }
+    function grp(name, pred) {
+      var mem = rows.filter(pred).sort(function (a, b) {
+        return a.rank !== b.rank ? a.rank - b.rank : a.num - b.num;
+      });
+      if (!mem.length) return '';
+      return '<div class="db-tgroup">' + name + '</div>' + mem.map(tileHtml).join('');
+    }
+    var html = grp('🔴 LIVE — ECHTGELD', function (r) { return r.b.is_live; }) +
+      grp('🟡 LIVE + DEMO-SPLIT', function (r) { return r.b.mixed_slots && !r.b.is_live; }) +
+      grp('🧪 DEMO — PROMOTION-PIPELINE', function (r) {
+        return !r.b.is_live && !r.b.mixed_slots;
+      });
+    el.innerHTML = html || '<span class="db-dim">keine Bots gemeldet</span>';
+  }
+
+  // Kacheln ⇄ Tabelle (Auswahl persistiert, Default: Kacheln)
+  var FLEET_VIEW_KEY = 'dbFleetView';
+  function fleetView() {
+    try {
+      return window.localStorage.getItem(FLEET_VIEW_KEY) === 'table' ? 'table' : 'tiles';
+    } catch (e) { return 'tiles'; }
+  }
+  function setFleetView(v) {
+    var isTable = v === 'table';
+    var tiles = $('db-tiles'), matrix = $('db-matrix'), vt = $('db-vt');
+    if (tiles) tiles.style.display = isTable ? 'none' : '';
+    if (matrix) matrix.style.display = isTable ? '' : 'none';
+    if (vt) Array.prototype.forEach.call(vt.querySelectorAll('button[data-v]'), function (btn) {
+      if (btn.getAttribute('data-v') === (isTable ? 'table' : 'tiles')) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+    try { window.localStorage.setItem(FLEET_VIEW_KEY, isTable ? 'table' : 'tiles'); } catch (e) {}
   }
 
   // ── M5 Entwicklung ─────────────────────────────────────────
@@ -643,6 +834,7 @@
       function () { renderStatus(O); },
       function () { renderActions(SV); },
       function () { renderPerf(O); },
+      function () { renderTiles(O, SP); },
       function () { renderMatrix(O, SP); },
       function () { renderDev(O); },
       function () { renderRisk(O, SP); },
@@ -672,6 +864,13 @@
       el.textContent = 'Daten konnten nicht geladen werden: ' + e.message;
     });
   }
+
+  var vtEl = $('db-vt');
+  if (vtEl) vtEl.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('button[data-v]') : null;
+    if (t) setFleetView(t.getAttribute('data-v'));
+  });
+  setFleetView(fleetView());
 
   load();
   setInterval(load, 60000);
