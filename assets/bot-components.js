@@ -1154,7 +1154,10 @@ function renderEquity(d) {
 
   // Label-Union chronologisch (String-Sort reicht fuer ISO-Timestamps) +
   // Index-Maps: Basis- und Kontowerte werden auf die Union-Labels gelegt,
-  // fehlende Stellen bleiben null (Luecken sichtbar via spanGaps:false).
+  // fehlende Stellen bleiben null — UND mit spanGaps:true durchgezogen
+  // verbunden (Fix 16.10.2026: Fremd-Timestamps der Union zerschnitten die
+  // Linien sonst in Einzelpunkte — bot5/bot7 'gepunktet'/unlesbar, bot7 nur
+  // 15 von 559 Nachbar-Paaren).
   var labels, eqData, extraDatasets = [];
   // Union nur noetig, wenn Kontokurven vorhanden sind. Sonst Fast-Path
   // (labels = baseLabels).
@@ -1204,7 +1207,7 @@ function renderEquity(d) {
         pointRadius: 0,
         tension: 0.3,
         fill: false,
-        spanGaps: false,
+        spanGaps: true,
         yAxisID: 'y',
         _ctid: cur.ctid != null ? String(cur.ctid) : '',
       });
@@ -1244,6 +1247,7 @@ function renderEquity(d) {
       tension: 0.3,
       pointRadius: 0,
       borderWidth: 2,
+      spanGaps: true,   // Union-Labels: Null-Luecken durchgezogen (Fix 16.10.)
       yAxisID: 'y',
     }
   ];
