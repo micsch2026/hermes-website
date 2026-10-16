@@ -402,6 +402,20 @@ function renderDataAge(d) {
   _ageTimer = setInterval(tick, 1000);
 }
 
+/** 16.10.2026 (User): 💰 ECHTGELD / 🧪 DEMO-Kennzeichnung — offene Positionen + Trade-Historie.
+ *  row.live kommt aus build_trend_status.py (Registry: Konto is_live; null = unbekannt). */
+function _liveBadge(row) {
+  if (!row) return '';
+  var acct = row.account_id ? ' (Konto ' + escHtml(row.account_id) + ')' : '';
+  if (row.live === true) {
+    return '<span class="bot-badge bot-badge-gold" style="font-size:10px" title="ECHTGELD' + acct + '">💰 ECHTGELD</span>';
+  }
+  if (row.live === false) {
+    return '<span class="bot-badge" style="font-size:10px" title="DEMO' + acct + '">🧪 DEMO</span>';
+  }
+  return '';
+}
+
 /** Open positions table — columns from C.position_columns config */
 function renderPositions(d) {
   var tbody = el(C.prefix + '-positions-body');
@@ -439,7 +453,8 @@ function renderPositions(d) {
     for (var c = 0; c < cols.length; c++) {
       var col = cols[c];
       var val = _resolveField(p, col.field || col.key);
-      html += '<td>' + _fmtCell(val, col.fmt, p) + '</td>';
+      var _lb = (c === 0) ? _liveBadge(p) : '';
+      html += '<td>' + (_lb ? _lb + ' ' : '') + _fmtCell(val, col.fmt, p) + '</td>';
     }
     html += '</tr>';
   }
@@ -529,7 +544,8 @@ function _renderPositionsLegacy(tbody, pos) {
     var sym = p.symbol || p.pair || '—';
     var stratId = p.strategy_id || '—';
     html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
-    html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + stratId + '</td>';
+    var _lbLeg = _liveBadge(p);
+    html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + (_lbLeg ? _lbLeg + ' ' : '') + stratId + '</td>';
     html += '<td><b>' + sym + '</b></td>';
     html += '<td>' + dirBadge + '</td>';
     var sc = p.score != null ? p.score : '—';
@@ -589,8 +605,9 @@ function renderHistory(d) {
     var stratId = t.strategy_id || '—';
     var _slot = (t.slot_id != null && t.slot_id !== '') ? t.slot_id : '';
     var slotBadge = _slot ? ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Slot">' + escHtml(_slot) + '</span>' : '';
+    var _lbH = _liveBadge(t);
     html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
-    html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + stratId + slotBadge + '</td>';
+    html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + stratId + slotBadge + (_lbH ? ' ' + _lbH : '') + '</td>';
     html += '<td>' + fmtTime(t.timestamp || t.close_time || t.closed_at) + '</td>';
     html += '<td><b>' + sym + '</b></td>';
     html += '<td>' + dirBadge + '</td>';

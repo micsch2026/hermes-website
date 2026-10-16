@@ -140,10 +140,12 @@
   .db-t-eq { font-weight: 700; font-size: var(--text-lg); }
   .db-t-pnl { font-weight: 600; font-size: var(--text-sm); }
   .db-t-spark { margin-left: auto; }
-  .db-t-sparks { display: flex; flex-direction: column; gap: 2px; margin-left: auto;
-    align-items: flex-end; }
-  .db-t-sparkrow { display: flex; align-items: center; gap: 4px; }
-  .db-t-sparkrow i { font-style: normal; font-size: 10px; line-height: 1; }
+  .db-t-rows { display: flex; flex-direction: column; gap: 3px; margin: 4px 0 2px; }
+  .db-t-vrow { display: flex; align-items: center; gap: 5px; }
+  .db-t-vrow i { font-style: normal; font-size: 11px; line-height: 1; }
+  .db-t-vrow .db-t-grow { margin-left: auto; }
+  .db-t-vrow .db-t-eq { font-size: var(--text-base); }
+  .db-t-vrow .db-t-delta { font-size: var(--text-xs); font-weight: 600; }
   .db-t-slots { display: flex; flex-direction: column; gap: 2px; margin-top: var(--s-2); }
   .db-t-foot { display: flex; justify-content: space-between; gap: var(--s-2);
     margin-top: var(--s-2); font-size: var(--text-xs); color: var(--c-text-dim); }
@@ -559,17 +561,35 @@
   }
 
   // ── M4b Kachel-Ansicht (v3, 16.10.2026) ────────────────────
-  function tileSpark(b) {
-    // v4 (16.10.2026): Split-Bots zeigen ZWEI Kurven — 🧪 Demo + 💰 Echtgeld
-    // (User: "bei Liveschaltung zählt das Livekonto" — beide Konten sichtbar).
-    if (b.live_curve && b.live_curve.length >= 2) {
-      return '<span class="db-t-sparks">' +
-        '<span class="db-t-sparkrow" title="🧪 Demo-Konto (Standard-Konto des Bot-Prozesses)">' +
-          sparklineSVG(b.equity_curve) + '<i>🧪</i></span>' +
-        '<span class="db-t-sparkrow" title="💰 Echtgeld-Konto ' + esc(b.live_acct || '') +
-          ' (Slot-Host)">' + sparklineSVG(b.live_curve) + '<i>💰</i></span>' +
+  function tileBalances(b, acct) {
+    // v5 (16.10.2026, User): Demo- UND Echtgeld-Kontostand gleichzeitig je Kachel
+    // (Split-Bots) — je Zeile eigener Kontostand + eigener Sparkline, analog den
+    // zwei Equity-Kurven. Einzel-Konten behalten die kompakte Ein-Zeilen-Ansicht.
+    var n7 = has(b.n_7d) ? b.n_7d : '—';
+    if (b.live_curve && b.live_curve.length >= 2 && acct) {
+      var absTxt = has(acct.abs_pnl)
+        ? '<span class="db-t-delta ' + pnlCls(acct.abs_pnl) + '" title="Absolut seit Einzahlung (Einzahlungen ' +
+          fmtEur(acct.deposits_eur) + ')">' + fmtEur(acct.abs_pnl, true) + '</span>'
+        : '';
+      return '<span class="db-t-rows">' +
+        '<span class="db-t-vrow" title="🧪 Demo-Konto (Standard-Konto des Bot-Prozesses) · Equity · 7d ' +
+          fmtEur(b.pnl_7d, true) + ' (' + n7 + ' Trades)">' +
+          '<i>🧪</i><span class="db-t-eq">' + fmtEur(b.equity) + '</span>' +
+          '<span class="db-t-delta ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) + '</span>' +
+          '<span class="db-t-grow">' + sparklineSVG(b.equity_curve) + '</span></span>' +
+        '<span class="db-t-vrow" title="💰 Echtgeld-Konto ' + esc(b.live_acct || acct.ctid || '') +
+          ' (Slot-Host) · Stand · seit Einzahlung' + (has(acct.abs_pnl) ? ' ' + fmtEur(acct.abs_pnl, true) : '') + '">' +
+          '<i>💰</i><span class="db-t-eq">' + fmtEur(acct.balance) + '</span>' + absTxt +
+          '<span class="db-t-grow">' + sparklineSVG(b.live_curve) + '</span></span>' +
       '</span>';
     }
+    return '<span class="db-t-vals"><span class="db-t-eq">' + fmtEur(b.equity) + '</span>' +
+      '<span class="db-t-pnl ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) +
+      ' <span class="db-dim">7d (' + n7 + ')</span></span>' +
+      tileSpark(b) + '</span>';
+  }
+  function tileSpark(b) {
+    // Ein-Konten-Kacheln: voll-live mit 💰-Tooltip, sonst neutral.
     if (b.is_live) {
       return '<span class="db-t-spark" title="💰 Echtgeld-Konto ' +
         esc(b.live_acct || '') + ' (voller Live-Handel)">' +
@@ -648,19 +668,22 @@
       if (r.acts.watch) why.push('Watch');
       if (r.acts.challenge_running) why.push('Challenge');
       var acct = acctOf[r.bot];
+      var _dualRows = !!(acct && b.live_curve && b.live_curve.length >= 2);
       var acctLine = '';
       if (acct) {
         var openTxt = acct.open_count
           ? acct.open_count + ' offen' + (acct.open && acct.open.length
               ? ' (' + acct.open.map(function (o) { return o.symbol; }).join(', ') + ')' : '')
           : '0 offen';
+        // v5: bei Dual-Zeilen stehen Stand/abs schon oben — hier nur Konto-ID + Offen.
         acctLine = '<span class="db-t-acct"><span>💰 ' + esc(acct.ctid) + '</span>' +
-          '<span class="db-num">' + fmtEur(acct.balance) + '</span>' +
-          (has(acct.abs_pnl)
-            ? '<span class="db-num ' + pnlCls(acct.abs_pnl) +
-              '" title="Absolut seit Einzahlung (Einzahlungen ' + fmtEur(acct.deposits_eur) +
-              ')">' + fmtEur(acct.abs_pnl, true) + '</span>'
-            : '') +
+          (_dualRows ? '' :
+            '<span class="db-num">' + fmtEur(acct.balance) + '</span>' +
+            (has(acct.abs_pnl)
+              ? '<span class="db-num ' + pnlCls(acct.abs_pnl) +
+                '" title="Absolut seit Einzahlung (Einzahlungen ' + fmtEur(acct.deposits_eur) +
+                ')">' + fmtEur(acct.abs_pnl, true) + '</span>'
+              : '')) +
           '<span>' + esc(openTxt) + '</span></span>';
       }
       var border = !has(b.pnl_7d) ? 'var(--c-border-2)'
@@ -677,10 +700,7 @@
         '</span>' +
         '<span class="db-t-badges">' + tileBadges(r, findings, meta) + '</span>' +
         '<span class="db-t-strat">' + strat + '</span>' +
-        '<span class="db-t-vals"><span class="db-t-eq">' + fmtEur(b.equity) + '</span>' +
-          '<span class="db-t-pnl ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) +
-          ' <span class="db-dim">7d (' + n7 + ')</span></span>' +
-          tileSpark(b) + '</span>' +
+        tileBalances(b, acct) +
         slotCell +
         '<span class="db-t-foot"><span>' +
           (has(b.open_positions) ? b.open_positions : '—') + ' Pos. offen</span>' +

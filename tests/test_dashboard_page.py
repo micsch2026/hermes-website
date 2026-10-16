@@ -81,9 +81,9 @@ def main() -> int:
           and "DEMO — PROMOTION-PIPELINE" in text)
 
     # 3c) v4 (16.10.2026): Zwei-Kurven (Demo+Echtgeld) + absoluter Echtgeld-G/V
-    check("v4: Zwei-Kurven + Absolut-G/V vorhanden",
-          "live_curve" in text and "db-t-sparks" in text and "tileSpark" in text
-          and "abs_pnl" in text and "seit Einzahlung" in text)
+    check("v4/v5: Zwei-Kurven + Absolut-G/V vorhanden",
+          "live_curve" in text and "db-t-rows" in text and "tileSpark" in text
+          and "tileBalances" in text and "abs_pnl" in text and "seit Einzahlung" in text)
 
     node = shutil.which("node")
     if scripts and node:
