@@ -138,10 +138,13 @@ reg('f8-equity-chart');
     cfg2.data.labels[2] === T2 && cfg2.data.labels[3] === T3,
     cfg2 ? JSON.stringify(cfg2.data.labels) : '');
   const cur = (cfg2 && cfg2.data.datasets[1]) || {};
-  check('F2 Kurven-Dataset: blau wie Basis + width2 + pointRadius0',
+  // spanGaps:true (Fix 16.10.2026): Die Union-Fremd-Timestamps der Kontokurven
+  // zerschnitten beide Serien in Einzelpunkte (bot5/bot7 „gepunktet“) — jetzt
+  // werden Null-Luecken beidseitig durchgezogen verbunden.
+  check('F2 Kurven-Dataset: blau wie Basis + width2 + pointRadius0 + spanGaps (Fix 16.10.)',
     cur.label === 'Echtgeld-Konto 47490067' && cur.borderColor === '#5b8def' &&
     cur.borderWidth === 2 && cur.pointRadius === 0 && cur.fill === false &&
-    cur.spanGaps === false && cur.yAxisID === 'y',
+    cur.spanGaps === true && cur.yAxisID === 'y',
     JSON.stringify({ label: cur.label, borderColor: cur.borderColor }));
   check('F2 Echtgeld-Werte an korrekten Indizes, nulls sonst',
     cur.data && cur.data[0] === null && cur.data[1] === 1120.44 &&
