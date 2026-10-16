@@ -777,6 +777,48 @@ def _live_deal_stats(fx_root, now_dt):
     return stats, wht
 
 
+def _capital_basis(fx_root, now_dt):
+    """Einzahlungs-Basis je Live-Konto (User 16.10.2026: absoluter Echtgeld-G/V).
+
+    SSOT: config/live_capital_basis.json {asof, accounts{<ctid>:{basis_eur,..}}}.
+    basis_eur enthält alle Kapitalbewegungen <= asof; NEUERE erfasste
+    Ein-/Auszahlungen/Transfers (broker_tax_cashflows) werden automatisch
+    additiv ergänzt (signed delta; WHT/Settlements = Trading-Ergebnis, kein
+    Kapital). Fail-soft: Datei/DB fehlt → {} bzw. keine Extras."""
+    path = os.path.join(fx_root, "config", "live_capital_basis.json")
+    data, _err = _read_json(path)
+    if not isinstance(data, dict):
+        return {}
+    accs = data.get("accounts")
+    if not isinstance(accs, dict):
+        return {}
+    flows = {}
+    db = os.path.join(fx_root, "data", "real_costs_and_taxes.db")
+    asof = str(data.get("asof") or "")[:10]
+    try:
+        if asof and os.path.exists(db):
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            for aid, delta in con.execute(
+                    "SELECT account_id, COALESCE(SUM(delta_eur), 0) "
+                    "FROM broker_tax_cashflows WHERE operation_type IN "
+                    "('EINZAHLUNG','AUSZAHLUNG','TRANSFER') "
+                    "AND substr(time_berlin, 1, 10) > ? GROUP BY account_id",
+                    (asof,)):
+                flows[str(aid)] = float(delta or 0.0)
+            con.close()
+    except sqlite3.Error:
+        flows = {}
+    out = {}
+    for aid, ent in accs.items():
+        if not isinstance(ent, dict):
+            continue
+        b = _f(ent.get("basis_eur"))
+        if b is None:
+            continue
+        out[str(aid)] = b + flows.get(str(aid), 0.0)
+    return out
+
+
 def _live_accounts(fx_root, registry, now_dt):
     """Echtgeld-Konten (Bot-Konten is_live + Slot-Hosts kind=live).
 
@@ -785,6 +827,7 @@ def _live_accounts(fx_root, registry, now_dt):
     Positionen (account_id-gefiltert aus den Bot-Positionsdateien)."""
     reg = registry if isinstance(registry, dict) else {}
     deal_stats, wht = _live_deal_stats(fx_root, now_dt)
+    basis = _capital_basis(fx_root, now_dt)
     entries = []
     for bot, cfg in (reg.get("bots") or {}).items():
         if isinstance(cfg, dict) and cfg.get("is_live") and cfg.get("account_id"):
@@ -807,11 +850,16 @@ def _live_accounts(fx_root, registry, now_dt):
                 if str(p.get("account_id")) == aid:
                     open_pos.append(p)
         st = deal_stats.get(aid) or {}
+        bal_final = _round2(eq if eq is not None else bal)
+        _basis = basis.get(aid)
         out.append({
             "ctid": aid,
             "kind": kind,
             "bots": file_bots,
-            "balance": _round2(eq if eq is not None else bal),
+            "balance": bal_final,
+            "deposits_eur": _round2(_basis) if _basis is not None else None,
+            "abs_pnl": (_round2(bal_final - _basis)
+                        if (_basis is not None and bal_final is not None) else None),
             "pnl_7d": st.get("pnl_7d"),
             "pnl_30d": st.get("pnl_30d"),
             "n_total": st.get("n_total", 0),
@@ -1196,6 +1244,14 @@ def build(root, fx_root, sl_root, trading_data, now=None):
 
     # ── Fleet (Bots) ──────────────────────────────────────────────────────
     bots = _discover_bots(fx_root)
+    # v4 (16.10.2026): Slot-Host-Konten je Bot (LIVE/DEMO-Split, Registry
+    # accounts kind=live) → zweite Equity-Kurve je Kachel ("bei Liveschaltung
+    # zählt das Livekonto" — Demo- UND Echtgeld-Konto sichtbar).
+    host_by_bot = {}
+    for _hid, _had in ((registry or {}).get("accounts") or {}).items():
+        if isinstance(_had, dict) and _had.get("kind") == "live":
+            for _hb in (_had.get("bots") or []):
+                host_by_bot.setdefault(str(_hb), (str(_hid), str(_had.get("since") or "")))
     fleet = []
     recent_closes = []         # Letzte Closes (48h) fuer /dashboard-Feed (16.10.)
     bot_daily_total = {}       # date → pnl (Demo+Live)
@@ -1334,6 +1390,23 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         except Exception:
             mixed_slots = False
 
+        # v4 (16.10.2026): zweite Kurve fuer Split-Bots — Echtgeld-Slot-Host,
+        # gefenstert ab Registry-"since" (z. B. 13.10.), Altdaten der Ära davor
+        # bleiben außen vor (47490067: bot4-Ära).
+        live_curve, live_acct = [], None
+        _host = host_by_bot.get(bot)
+        if _host and not is_live:
+            live_acct = _host[0]
+            _lpts, _lhb, _lage, _lerr = _load_curve(
+                os.path.join(fx_root, "data",
+                             f"account_{live_acct}_balance_history.json"), now_dt)
+            _sep = _parse_dt(_host[1]) if _host[1] else None
+            if _sep is not None:
+                _sep_ts = _sep.timestamp()
+                _lpts = [p for p in _lpts if p[0] >= _sep_ts]
+            live_curve = [[int(ts), _round2(v)] for ts, v in
+                          _downsample(_lpts, THRESH_CURVE_MAX_POINTS)]
+
         equity = None
         if rs_ok:
             equity = _f(rs.get("equity"))
@@ -1383,6 +1456,8 @@ def build(root, fx_root, sl_root, trading_data, now=None):
             "last_close_h": last_close_h,
             "equity_curve": [[int(ts), _round2(v)] for ts, v in
                              _downsample(curve, THRESH_CURVE_MAX_POINTS)],
+            "live_acct": live_acct,
+            "live_curve": live_curve,
         })
 
         bucket = "live" if is_live else "demo"

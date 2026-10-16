@@ -80,6 +80,11 @@ def main() -> int:
           "LIVE — ECHTGELD" in text and "LIVE + DEMO-SPLIT" in text
           and "DEMO — PROMOTION-PIPELINE" in text)
 
+    # 3c) v4 (16.10.2026): Zwei-Kurven (Demo+Echtgeld) + absoluter Echtgeld-G/V
+    check("v4: Zwei-Kurven + Absolut-G/V vorhanden",
+          "live_curve" in text and "db-t-sparks" in text and "tileSpark" in text
+          and "abs_pnl" in text and "seit Einzahlung" in text)
+
     node = shutil.which("node")
     if scripts and node:
         with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,

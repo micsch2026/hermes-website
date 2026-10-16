@@ -72,6 +72,9 @@ def make_fixture(base, with_empty_bot=True, feed_age_s=60.0, gates_active=False)
         "accounts": {"99": {"kind": "live", "is_live": True, "bots": ["bot1"]}}}
     _w = lambda p, o: open(p, "w", encoding="utf-8").write(json.dumps(o))
     _w(os.path.join(fx, "config", "deploy_registry.json"), registry)
+    # Einzahlungs-Basis (v3, 16.10.2026): absoluter Echtgeld-G/V je Live-Konto
+    _w(os.path.join(fx, "config", "live_capital_basis.json"),
+       {"asof": "2026-09-29", "accounts": {"99": {"basis_eur": 450.0}}})
     _w(os.path.join(fx, "config", "risk_guards.json"),
        {"defaults": {"l1_alert_pct": 3.0, "l2_block_pct": 5.0},
         "bots": {"bot4": {"max_loss_ref": 1000.0}}})
@@ -92,6 +95,14 @@ def make_fixture(base, with_empty_bot=True, feed_age_s=60.0, gates_active=False)
     _w(os.path.join(fx, "data", "account_99_balance.json"),
        {"balance": 50000, "money_digits": 2, "equity": 50000,
         "updated": iso_z(NOW_DT - timedelta(minutes=1))})
+    # Slot-Host-Historie (v4, 16.10.2026) — zweite Kurve in den Kacheln
+    _w(os.path.join(fx, "data", "account_99_balance_history.json"),
+       {"snapshots": [
+           {"timestamp": iso_z(NOW_DT - timedelta(hours=4)), "balance": 495.0},
+           {"timestamp": iso_z(NOW_DT - timedelta(hours=3)), "balance": 497.0},
+           {"timestamp": iso_z(NOW_DT - timedelta(hours=2)), "balance": 499.0},
+           {"timestamp": iso_z(NOW_DT - timedelta(hours=1)), "balance": 500.0},
+       ]})
     snaps = []
     eq_vals = [980.0, 981.5, 983.0, 984.5, 985.0]
     for k, eq in enumerate(eq_vals):
@@ -471,6 +482,30 @@ def main():
         assert isinstance(live.get("recent_closes"), list), \
             "recent_closes fehlt/keine Liste"
 
+    def t_v3_capital_basis():
+        live = DOCS["base"]["live"]
+        accs = {a["ctid"]: a for a in live.get("accounts", [])}
+        a99 = accs.get("99")
+        assert a99 is not None and a99.get("deposits_eur") == 450.0, \
+            f"99: deposits_eur fehlt/falsch: {a99 and sorted(a99.keys())}"
+        # account_99 = 50000 raw / 10^2 = 500.0 € → abs = 500 − 450 = 50
+        assert a99.get("abs_pnl") == 50.0, f"99: abs_pnl falsch: {a99.get('abs_pnl')}"
+        a2 = accs.get("2")
+        assert a2 is not None and "deposits_eur" in a2 and a2.get("deposits_eur") is None \
+            and a2.get("abs_pnl") is None, \
+            f"2 (ohne Basis) muss fail-soft None sein: {a2 and (a2.get('deposits_eur'), a2.get('abs_pnl'))}"
+
+    def t_v4_live_curve():
+        # v4 (16.10.2026): zweite Equity-Kurve (Echtgeld-Slot-Host) je Kachel
+        live = DOCS["base"]["live"]
+        b1 = live["fleet"][0]
+        assert b1.get("live_acct") == "99", f"bot1 live_acct falsch: {b1.get('live_acct')}"
+        assert isinstance(b1.get("live_curve"), list) and len(b1["live_curve"]) >= 2, \
+            f"bot1 live_curve fehlt/zu kurz: {b1.get('live_curve')}"
+        b4 = live["fleet"][1]
+        assert b4.get("live_acct") is None and b4.get("live_curve") == [], \
+            f"bot4 (ohne Host) darf keine Live-Kurve haben: {b4.get('live_acct')!r}"
+
     def t_verdict_green():
         doc = GREEN_DOC
         assert doc["verdict"]["overall"]["status"] == "green" and \
@@ -562,6 +597,8 @@ def main():
         ("gates: Sektion fail-soft + Blocks 7d", t_gates_section),
         ("gates: aktiv + Klassen (monkeypatch)", t_gates_active_classes),
         ("v2: Live-Konten + last_close_h + Feed", t_v2_live_blocks),
+        ("v3: Einzahlungs-Basis (deposits_eur/abs_pnl)", t_v3_capital_basis),
+        ("v4: Zweite Kurve (live_curve je Kachel)", t_v4_live_curve),
     ]
     for name, fn in ALL_CHECKS:
         check(name, fn)

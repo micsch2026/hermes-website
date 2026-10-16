@@ -95,7 +95,7 @@
   .db-bar-track i { display: block; height: 100%; border-radius: 4px; }
   .db-bar-pos { background: var(--c-ok, #3fb950); }
   .db-bar-neg { background: var(--c-err, #f85149); }
-  .db-acct { display: grid; grid-template-columns: minmax(120px, 1.4fr) 84px 92px 1fr;
+  .db-acct { display: grid; grid-template-columns: minmax(120px, 1.4fr) 80px 84px 84px 1fr;
     gap: var(--s-2); align-items: center; padding: var(--s-2) 0;
     border-bottom: 1px solid var(--c-border); font-size: var(--text-sm); }
   .db-acct:last-child { border-bottom: none; }
@@ -140,6 +140,10 @@
   .db-t-eq { font-weight: 700; font-size: var(--text-lg); }
   .db-t-pnl { font-weight: 600; font-size: var(--text-sm); }
   .db-t-spark { margin-left: auto; }
+  .db-t-sparks { display: flex; flex-direction: column; gap: 2px; margin-left: auto;
+    align-items: flex-end; }
+  .db-t-sparkrow { display: flex; align-items: center; gap: 4px; }
+  .db-t-sparkrow i { font-style: normal; font-size: 10px; line-height: 1; }
   .db-t-slots { display: flex; flex-direction: column; gap: 2px; margin-top: var(--s-2); }
   .db-t-foot { display: flex; justify-content: space-between; gap: var(--s-2);
     margin-top: var(--s-2); font-size: var(--text-xs); color: var(--c-text-dim); }
@@ -398,7 +402,19 @@
       '<div class="db-k">LIVE (Echtgeld)</div>' +
       '<div class="db-v">' + fmtEur(liveTotal) + '</div>' +
       '<div class="db-s">Bots ' + fmtEur(kpis.equity_live) +
-      ' · Slot-Hosts ' + fmtEur(kpis.equity_live_hosts) + '</div>';
+      ' · Slot-Hosts ' + fmtEur(kpis.equity_live_hosts) + '</div>' +
+      (function () {
+        // v4 (16.10.2026): absoluter Echtgeld-G/V seit Einzahlung (Summe Live-Konten)
+        var absSum = null, depSum = null;
+        (((d.live || {}).accounts) || []).forEach(function (a) {
+          if (has(a.abs_pnl)) absSum = (absSum || 0) + a.abs_pnl;
+          if (has(a.deposits_eur)) depSum = (depSum || 0) + a.deposits_eur;
+        });
+        if (!has(absSum)) return '';
+        return '<div class="db-s">Absolut seit Einzahlung: <span class="' + pnlCls(absSum) +
+          '">' + fmtEur(absSum, true) + '</span> <span class="db-dim">(Einz. ' +
+          fmtEur(depSum) + ' €)</span></div>';
+      })();
     $('db-perf-total').innerHTML = card(kpis.equity_total, kpis.pnl_7d, kpis.pnl_30d,
       { k: 'GESAMT', foot: '<div class="db-s">' +
         (has(kpis.open_positions) ? kpis.open_positions : '—') + ' offene Positionen</div>' });
@@ -543,6 +559,24 @@
   }
 
   // ── M4b Kachel-Ansicht (v3, 16.10.2026) ────────────────────
+  function tileSpark(b) {
+    // v4 (16.10.2026): Split-Bots zeigen ZWEI Kurven — 🧪 Demo + 💰 Echtgeld
+    // (User: "bei Liveschaltung zählt das Livekonto" — beide Konten sichtbar).
+    if (b.live_curve && b.live_curve.length >= 2) {
+      return '<span class="db-t-sparks">' +
+        '<span class="db-t-sparkrow" title="🧪 Demo-Konto (Standard-Konto des Bot-Prozesses)">' +
+          sparklineSVG(b.equity_curve) + '<i>🧪</i></span>' +
+        '<span class="db-t-sparkrow" title="💰 Echtgeld-Konto ' + esc(b.live_acct || '') +
+          ' (Slot-Host)">' + sparklineSVG(b.live_curve) + '<i>💰</i></span>' +
+      '</span>';
+    }
+    if (b.is_live) {
+      return '<span class="db-t-spark" title="💰 Echtgeld-Konto ' +
+        esc(b.live_acct || '') + ' (voller Live-Handel)">' +
+        sparklineSVG(b.equity_curve) + '</span>';
+    }
+    return '<span class="db-t-spark">' + sparklineSVG(b.equity_curve) + '</span>';
+  }
   function tileBadges(r, findings, meta) {
     var b = r.b;
     var badges = [];
@@ -622,6 +656,11 @@
           : '0 offen';
         acctLine = '<span class="db-t-acct"><span>💰 ' + esc(acct.ctid) + '</span>' +
           '<span class="db-num">' + fmtEur(acct.balance) + '</span>' +
+          (has(acct.abs_pnl)
+            ? '<span class="db-num ' + pnlCls(acct.abs_pnl) +
+              '" title="Absolut seit Einzahlung (Einzahlungen ' + fmtEur(acct.deposits_eur) +
+              ')">' + fmtEur(acct.abs_pnl, true) + '</span>'
+            : '') +
           '<span>' + esc(openTxt) + '</span></span>';
       }
       var border = !has(b.pnl_7d) ? 'var(--c-border-2)'
@@ -641,7 +680,7 @@
         '<span class="db-t-vals"><span class="db-t-eq">' + fmtEur(b.equity) + '</span>' +
           '<span class="db-t-pnl ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) +
           ' <span class="db-dim">7d (' + n7 + ')</span></span>' +
-          '<span class="db-t-spark">' + sparklineSVG(b.equity_curve) + '</span></span>' +
+          tileSpark(b) + '</span>' +
         slotCell +
         '<span class="db-t-foot"><span>' +
           (has(b.open_positions) ? b.open_positions : '—') + ' Pos. offen</span>' +
@@ -782,10 +821,17 @@
       el.innerHTML = '<span class="db-dim">keine Live-Konten</span>';
       return;
     }
-    var sumBal = 0;
-    accts.forEach(function (a) { if (has(a.balance)) sumBal += a.balance; });
+    var sumBal = 0, sum7 = null, sumAbs = null, sumDep = null;
+    accts.forEach(function (a) {
+      if (has(a.balance)) sumBal += a.balance;
+      if (has(a.pnl_7d)) sum7 = (sum7 || 0) + a.pnl_7d;
+      if (has(a.abs_pnl)) sumAbs = (sumAbs || 0) + a.abs_pnl;
+      if (has(a.deposits_eur)) sumDep = (sumDep || 0) + a.deposits_eur;
+    });
     var head = '<div class="db-acct db-acct-head"><span>Konto</span>' +
-      '<span class="db-num">Stand</span><span class="db-num">7d</span><span>Offen</span></div>';
+      '<span class="db-num">Stand</span><span class="db-num">7d</span>' +
+      '<span class="db-num" title="Stand − Einzahlungen (absoluter Echtgeld-Gewinn/-Verlust)">Abs.</span>' +
+      '<span>Offen</span></div>';
     var rows = accts.map(function (a) {
       var label = (a.bots || []).join('+') || a.ctid;
       var openTxt = a.open_count
@@ -798,11 +844,19 @@
         '<span class="db-num ' + pnlCls(a.pnl_7d) + '" title="30d: ' + fmtEur(a.pnl_30d, true) +
         ' · Trades seit Start: ' + (has(a.n_total) ? a.n_total : '—') + '">' +
         fmtEur(a.pnl_7d, true) + '</span>' +
+        '<span class="db-num ' + pnlCls(a.abs_pnl) + '" title="Absolut seit Einzahlung: Einzahlungen ' +
+        (has(a.deposits_eur) ? fmtEur(a.deposits_eur) : '—') + '">' +
+        (has(a.abs_pnl) ? fmtEur(a.abs_pnl, true) : '—') + '</span>' +
         '<span class="db-dim">' + esc(openTxt) + '</span></div>';
     }).join('');
     el.innerHTML = head + rows +
-      '<div class="db-acct db-acct-sum"><span>Σ ' + accts.length + ' Konten</span>' +
-      '<span class="db-num">' + fmtEur(sumBal) + '</span><span></span><span></span></div>';
+      '<div class="db-acct db-acct-sum"><span>Σ ' + accts.length + ' Konten · Einzahlungen ' +
+        fmtEur(sumDep) + '</span>' +
+      '<span class="db-num">' + fmtEur(sumBal) + '</span>' +
+      '<span class="db-num ' + pnlCls(sum7) + '">' + fmtEur(sum7, true) + '</span>' +
+      '<span class="db-num ' + pnlCls(sumAbs) + '" title="Absoluter Echtgeld-Gewinn/-Verlust über alle Live-Konten">' +
+        fmtEur(sumAbs, true) + '</span>' +
+      '<span></span></div>';
   }
   function renderFeed(d) {
     var el = $('db-feed');
