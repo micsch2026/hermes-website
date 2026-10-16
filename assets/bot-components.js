@@ -1343,7 +1343,18 @@ function renderEquity(d) {
         }
       },
       scales: {
-        x: { display: true, ticks: { color: '#555', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        x: { display: true, ticks: {
+          color: '#9ca3af', maxTicksLimit: 10, maxRotation: 0, font: { size: 10 },
+          // Horizontaler Maßstab (16.10.2026): deutsches Kurz-Datum „TT.MM."
+          // (Jahr nur bei Jahreswechsel) statt langem ISO — lesbar auf dunklem Grund.
+          callback: function(value) {
+            var _lbl = String(this.getLabelForValue ? this.getLabelForValue(value) : '');
+            var _m = _lbl.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (!_m) return _lbl;
+            var _lastYear = String((labels && labels.length ? labels[labels.length - 1] : '')).slice(0, 4);
+            return _m[3] + '.' + _m[2] + '.' + (_m[1] === _lastYear ? '' : _m[1].slice(2));
+          }
+        }, grid: { color: 'rgba(255,255,255,0.04)' } },
         y: { position: 'left', min: yMin, max: yMax, ticks: { color: '#5b8def', callback: function(v) { return '€' + v.toFixed(0); } }, grid: { color: 'rgba(255,255,255,0.04)' } }
       }
     }
