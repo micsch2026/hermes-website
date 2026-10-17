@@ -791,7 +791,7 @@ function _renderAdvisorSection(adv) {
     const g = it.role === 'live' ? 'live' : (it.type === 'multibot' ? 'multi' : (it.role === 'champion' ? 'champ' : 'single'));
     _groups[g].push(bk);
   }
-  const _gdefs = [['live', '🔴 LIVE — ECHTGELD'], ['multi', '🧩 MULTIBOTS (sortenrein)'], ['single', '🎯 EINZELBOTS (Pipeline)'], ['champ', '🏆 CHAMPIONS (fest)']];
+  const _gdefs = [['live', '🔴 LIVE — ECHTGELD'], ['multi', '🧩 SLOT-BOTS (sortenrein)'], ['single', '🎯 EINZELBOTS (Pipeline)'], ['champ', '🏆 CHAMPIONS (fest)']];
   for (const [gk, glabel] of _gdefs) {
     if (!_groups[gk].length) continue;
     html += '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin:0.5rem 0 0.3rem">' + glabel + '</div>';
@@ -944,12 +944,15 @@ function renderShadowDashboard() {
 
       html += '<div class="rd-card" style="padding:0.6rem 0.8rem;border-top:3px solid '+(pnl>=0?'var(--green)':'var(--red)')+';cursor:pointer" data-href="/'+bk+'" onclick="location.href=this.dataset.href" title="Zur Bot-Seite">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem">';
-      html += '<strong>'+bk.toUpperCase()+(b.is_live ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.15);color:var(--red,#ff6b6b);border:1px solid rgba(255,90,90,0.35);border-radius:3px;padding:0.02rem 0.3rem">LIVE</span>' : (b.live_split ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.10);color:var(--yellow,#d29922);border:1px solid rgba(255,150,90,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Live-Slots auf Echtgeld: '+esc((b.live_slots||[]).join(', '))+'">LIVE-SLOT</span>' : ''))+(_isMulti ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Multibot — mehrere Strategie-Slots + Rotation auf einem Bot">🧩 MULTI</span>' : '')+'</strong>';
+      html += '<strong>'+bk.toUpperCase()+(b.is_live ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.15);color:var(--red,#ff6b6b);border:1px solid rgba(255,90,90,0.35);border-radius:3px;padding:0.02rem 0.3rem">LIVE</span>' : (b.live_split ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.10);color:var(--yellow,#d29922);border:1px solid rgba(255,150,90,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Live-Slots auf Echtgeld: '+esc((b.live_slots||[]).join(', '))+'">LIVE-SLOT</span>' : ''))+'</strong>';
       html += '<span style="font-size:0.75rem">'+bhIcon+' Health</span>';
       html += '</div>';
 
-      html += '<div style="font-size:0.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.35rem" title="'+esc(b.strategy_name)+'">';
-      html += '#' + (b.strategy_id || '?') + ' ' + esc(b.strategy_name || '');
+      const _noStrat = !b.strategy_id;
+      const _nameTxt = _noStrat ? 'Noch keine Strategie deployt' : ('#' + b.strategy_id + ' ' + (b.strategy_name || ''));
+      const _nameHtml = _noStrat ? '<span style="color:var(--dim);font-weight:500">' + _nameTxt + '</span>' : esc(_nameTxt);
+      html += '<div style="font-size:0.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.35rem" title="'+esc(_nameTxt)+'">';
+      html += _nameHtml;
       html += '</div>';
 
       // Multibot: Slot-Zeile (fixe Slots + Rotationsslot mit Challenge-Status)
