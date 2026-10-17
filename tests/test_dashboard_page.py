@@ -79,6 +79,10 @@ def main() -> int:
     check("Kachel-Gruppen (LIVE/SPLIT/DEMO) vorhanden",
           "LIVE — ECHTGELD" in text and "LIVE + DEMO-SPLIT" in text
           and "DEMO — PROMOTION-PIPELINE" in text)
+    # 3b2) Bot-Tag-Fallback: Bots ohne deployte Strategie zeigen ihren
+    # bot_overrides-Tag (tileSpark/db-t-strat + Matrix), nicht '—' (17.10.2026)
+    check("Kachel/Tabelle: Bot-Tag-Fallback ohne deployte Strategie",
+          "tag ? esc(tag) : '—'" in text)
 
     # 3c) v4 (16.10.2026): Zwei-Kurven (Demo+Echtgeld) + absoluter Echtgeld-G/V
     check("v4/v5: Zwei-Kurven + Absolut-G/V vorhanden",
