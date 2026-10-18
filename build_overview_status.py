@@ -1252,6 +1252,14 @@ def build(root, fx_root, sl_root, trading_data, now=None):
         if isinstance(_had, dict) and _had.get("kind") == "live":
             for _hb in (_had.get("bots") or []):
                 host_by_bot.setdefault(str(_hb), (str(_hid), str(_had.get("since") or "")))
+    # v6 (18.10.2026, User): Demo-Seiten-Konten je Bot (Registry accounts
+    # kind=demo) → zweite Kachel-Zeile "🧪 Demo-Konto" fuer LIVE-Bots (bot9;
+    # Spiegel von host_by_bot fuer die andere Split-Richtung).
+    demo_host_by_bot = {}
+    for _hid, _had in ((registry or {}).get("accounts") or {}).items():
+        if isinstance(_had, dict) and _had.get("kind") == "demo":
+            for _hb in (_had.get("bots") or []):
+                demo_host_by_bot.setdefault(str(_hb), (str(_hid), str(_had.get("since") or "")))
     fleet = []
     recent_closes = []         # Letzte Closes (48h) fuer /dashboard-Feed (16.10.)
     bot_daily_total = {}       # date → pnl (Demo+Live)
@@ -1407,6 +1415,26 @@ def build(root, fx_root, sl_root, trading_data, now=None):
             live_curve = [[int(ts), _round2(v)] for ts, v in
                           _downsample(_lpts, THRESH_CURVE_MAX_POINTS)]
 
+        # v6 (18.10.2026, User): Spiegel fuer LIVE-Bots mit Demo-Seite (bot9) —
+        # zweite Konto-Zeile "🧪 Demo-Konto <id>" samt Kontostand + Kurve.
+        demo_acct, demo_curve, demo_balance = None, [], None
+        _dhost = demo_host_by_bot.get(bot)
+        if _dhost and is_live:
+            demo_acct = _dhost[0]
+            _dpts, _dhb, _dage, _derr = _load_curve(
+                os.path.join(fx_root, "data",
+                             f"account_{demo_acct}_balance_history.json"), now_dt)
+            _dsep = _parse_dt(_dhost[1]) if _dhost[1] else None
+            if _dsep is not None:
+                _dsep_ts = _dsep.timestamp()
+                _dpts = [p for p in _dpts if p[0] >= _dsep_ts]
+            demo_curve = [[int(ts), _round2(v)] for ts, v in
+                          _downsample(_dpts, THRESH_CURVE_MAX_POINTS)]
+            _db, _de, _dba, _dbe = _load_balance_file(
+                os.path.join(fx_root, "data",
+                             f"account_{demo_acct}_balance.json"))
+            demo_balance = _round2(_de if _de is not None else _db)
+
         equity = None
         if rs_ok:
             equity = _f(rs.get("equity"))
@@ -1458,6 +1486,9 @@ def build(root, fx_root, sl_root, trading_data, now=None):
                              _downsample(curve, THRESH_CURVE_MAX_POINTS)],
             "live_acct": live_acct,
             "live_curve": live_curve,
+            "demo_acct": demo_acct,
+            "demo_curve": demo_curve,
+            "demo_balance": demo_balance,
         })
 
         bucket = "live" if is_live else "demo"

@@ -294,8 +294,12 @@ function renderKPIs(d) {
       cdiv.className = 'bot-card';
       cdiv.id = cardId;
       cdiv.style.padding = 'var(--s-3) var(--s-4)';
+      // 18.10.2026: Karten-Typ aus dem Datenvertrag (is_live/label) —
+      // bot5/7 = 🔴 Echtgeld-Host, bot9 = 🧪 Demo-Seite. Default bleibt Echtgeld.
+      var _cardLive = card.is_live !== false;
+      var _cardLbl = card.label || (_cardLive ? 'Echtgeld' : 'Demo');
       cdiv.innerHTML =
-        '<div class="bot-card-title">🔴 Echtgeld ' + ctid + '</div>' +
+        '<div class="bot-card-title">' + (_cardLive ? '🔴 ' : '🧪 ') + _cardLbl + ' ' + ctid + '</div>' +
         '<div class="bot-card-value">€' + Number(card.balance || 0).toFixed(2) + '</div>' +
         '<div class="bot-card-sub">Equity: €' + Number(card.equity || 0).toFixed(2) + '</div>';
       kpiRow.appendChild(cdiv);
@@ -1199,10 +1203,15 @@ function renderEquity(d) {
     }
     for (var k = 0; k < curves.length; k++) {
       var cur = curves[k] || {};
+      // 18.10.2026: Demo-Kurven (bot9-Demo-Seite) 🧪/silber, Echtgeld 💰/gold.
+      var _curLive = cur.is_live !== false;
       extraDatasets.push({
-        label: '💰 ' + (cur.label || (cur.ctid != null ? 'Echtgeld-Konto ' + cur.ctid : 'Echtgeld')),
+        label: (_curLive ? '💰 ' : '🧪 ') +
+          (cur.label || (cur.ctid != null
+            ? (_curLive ? 'Echtgeld-Konto ' : 'Demo-Konto ') + cur.ctid
+            : (_curLive ? 'Echtgeld' : 'Demo'))),
         data: _mapPts(cur.points),
-        borderColor: '#f0b940',
+        borderColor: _curLive ? '#f0b940' : '#9aa4b2',
         borderWidth: 2,
         pointRadius: 0,
         tension: 0.3,
@@ -1238,8 +1247,11 @@ function renderEquity(d) {
   }
 
   var _split = curves.length > 0;   // LIVE/DEMO-Split → 2 Kurven (Demo + Echtgeld)
+  // 18.10.2026: Basis-Konto-Typ aus d.demo — Demo-Bots (bot5/7) 🧪,
+  // LIVE-Bot mit Demo-Seite (bot9) 💰; ohne Split weiterhin "Kontoverlauf".
   var _baseLabel = _split
-    ? ('🧪 Demo-Konto' + (d.account_id ? ' ' + d.account_id : ''))
+    ? ((d.demo === false ? '💰 Echtgeld-Konto' : '🧪 Demo-Konto')
+       + (d.account_id ? ' ' + d.account_id : ''))
     : 'Kontoverlauf';
   var datasets = [
     {

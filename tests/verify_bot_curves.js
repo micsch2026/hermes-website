@@ -179,6 +179,28 @@ reg('f8-equity-chart');
     !!cfg2 && cfg2.options.plugins.legend.display === true &&
     (!cfg2.options.scales || !cfg2.options.scales.y1));
 
+  // ── F2c: Demo-Kurve (bot9) → 🧪 + Silber; Basis-Label 💰 (d.demo=false) ──
+  BD.config.prefix = 'f2c';
+  BD.renderEquity({
+    account_id: '32912160', demo: false,
+    equity_history: { snapshots: [
+      { timestamp: T0, equity: 1045.66 },
+      { timestamp: T1, equity: 1046.10 },
+    ] },
+    curves: [{
+      ctid: '47109084', is_live: false, label: 'Demo-Konto 47109084',
+      points: [{ timestamp: T1, equity: 3147.41 }],
+    }],
+  });
+  const cfg2c = lastChart();
+  const curD = (cfg2c && cfg2c.data.datasets[1]) || {};
+  check('F2c Demo-Kurve: 🧪 + Silber #9aa4b2',
+    curD.label === '🧪 Demo-Konto 47109084' && curD.borderColor === '#9aa4b2',
+    JSON.stringify({ label: curD.label, color: curD.borderColor }));
+  check('F2c Basis (LIVE-Bot): 💰 Echtgeld-Konto 32912160',
+    !!cfg2c && cfg2c.data.datasets[0].label === '💰 Echtgeld-Konto 32912160',
+    cfg2c ? cfg2c.data.datasets[0].label : '');
+
   // ── F3: account_cards → -ext-Karte mit €1120.44 ───────────────────
   BD.config.prefix = 'f3';
   BD.renderKPIs({
@@ -202,6 +224,19 @@ reg('f8-equity-chart');
   check('F3 zweiter Aufruf: keine Duplikat-Karte',
     row && row.children.filter((c) => c.id === 'f3-ext-47490067').length === 1,
     row ? 'children=' + row.children.length : 'keine Row');
+
+  // ── F3b: Demo-Karte (bot9-Seite) → 🧪-Titel aus is_live/label ─────
+  BD.config.prefix = 'f3b';
+  BD.renderKPIs({
+    account_cards: [{ ctid: '47109084', is_live: false, label: 'Demo',
+                      balance: 3147.41, equity: 3147.41 }],
+  });
+  await sleep(0);
+  const cardD = elements['f3b-ext-47109084'];
+  check('F3b Demo-Karte: 🧪 Demo 47109084 + €3147.41',
+    !!cardD && cardD.innerHTML.indexOf('🧪 Demo 47109084') >= 0 &&
+    cardD.innerHTML.indexOf('€3147.41') >= 0,
+    cardD ? cardD.innerHTML : 'keine Karte');
 
   // ── F4: OHNE cards → keine Karte ──────────────────────────────────
   BD.config.prefix = 'f4';

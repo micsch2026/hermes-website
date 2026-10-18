@@ -89,6 +89,11 @@ def main() -> int:
           "live_curve" in text and "db-t-rows" in text and "tileSpark" in text
           and "tileBalances" in text and "abs_pnl" in text and "seit Einzahlung" in text)
 
+    # 3d) v6 (18.10.2026): LIVE-Bot mit Demo-Seite (bot9) — zweite Kachel-Zeile
+    check("v6: Demo-Seiten-Zeile + Badge (demo_acct) vorhanden",
+          "demo_acct" in text and "demo_balance" in text and "demo_curve" in text
+          and "DEMO-SEITE" in text and "Demo-Seite" in text)
+
     node = shutil.which("node")
     if scripts and node:
         with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,

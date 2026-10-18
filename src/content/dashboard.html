@@ -566,6 +566,24 @@
     // (Split-Bots) — je Zeile eigener Kontostand + eigener Sparkline, analog den
     // zwei Equity-Kurven. Einzel-Konten behalten die kompakte Ein-Zeilen-Ansicht.
     var n7 = has(b.n_7d) ? b.n_7d : '—';
+    // v6 (18.10.2026, User): LIVE-Bot mit Demo-Seite (bot9) — beide Konten
+    // gleichzeitig: oben 💰 Echtgeld (voller Live-Handel), unten 🧪 Demo-Seite.
+    if (b.is_live && b.demo_acct && acct) {
+      var demoSpark = (b.demo_curve && b.demo_curve.length >= 2)
+        ? sparklineSVG(b.demo_curve) : '';
+      return '<span class="db-t-rows">' +
+        '<span class="db-t-vrow" title="💰 Echtgeld-Konto ' + esc(acct.ctid || '') +
+          ' (voller Live-Handel) · Equity · 7d ' + fmtEur(b.pnl_7d, true) +
+          ' (' + n7 + ' Trades)">' +
+          '<i>💰</i><span class="db-t-eq">' + fmtEur(b.equity) + '</span>' +
+          '<span class="db-t-delta ' + pnlCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d, true) + '</span>' +
+          '<span class="db-t-grow">' + sparklineSVG(b.equity_curve) + '</span></span>' +
+        '<span class="db-t-vrow" title="🧪 Demo-Seite ' + esc(b.demo_acct) +
+          ' · Demo-Konto (Handover nach C0 ~22.10.; Trades erst nach Bewährung)">' +
+          '<i>🧪</i><span class="db-t-eq">' + (has(b.demo_balance) ? fmtEur(b.demo_balance) : '—') + '</span>' +
+          '<span class="db-t-grow">' + demoSpark + '</span></span>' +
+      '</span>';
+    }
     if (b.live_curve && b.live_curve.length >= 2 && acct) {
       var absTxt = has(acct.abs_pnl)
         ? '<span class="db-t-delta ' + pnlCls(acct.abs_pnl) + '" title="Absolut seit Einzahlung (Einzahlungen ' +
@@ -601,7 +619,8 @@
     var b = r.b;
     var badges = [];
     if (b.is_live) badges.push(['💰 ECHTGELD', 'db-badge-live']);
-    else if (b.mixed_slots) badges.push(['💰 LIVE-SLOTS', 'db-badge-live2']);
+    if (b.is_live && b.demo_acct) badges.push(['🧪 DEMO-SEITE', 'db-badge-live2']);
+    if (!b.is_live && b.mixed_slots) badges.push(['💰 LIVE-SLOTS', 'db-badge-live2']);
     if (b.blocked) badges.push(['Block', 'db-badge-err']);
     if (has(b.dd_level) && b.dd_level >= 1)
       badges.push(['L' + b.dd_level, b.blocked ? 'db-badge-err' : 'db-badge-warn']);
@@ -670,7 +689,8 @@
       if (r.acts.watch) why.push('Watch');
       if (r.acts.challenge_running) why.push('Challenge');
       var acct = acctOf[r.bot];
-      var _dualRows = !!(acct && b.live_curve && b.live_curve.length >= 2);
+      var _dualRows = !!(acct && ((b.live_curve && b.live_curve.length >= 2)
+        || (b.is_live && b.demo_acct)));
       var acctLine = '';
       if (acct) {
         var openTxt = acct.open_count
