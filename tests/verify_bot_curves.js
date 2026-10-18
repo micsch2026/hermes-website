@@ -85,6 +85,8 @@ reg('f6-equity-summary');
 reg('f7-equity-chart');
 reg('f7-equity-summary');
 reg('f8-equity-chart');
+reg('f2c-equity-chart');
+reg('f3b-kpi-row');
 
 (async () => {
   await sleep(0);
