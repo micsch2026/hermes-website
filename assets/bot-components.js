@@ -606,7 +606,10 @@ function renderHistory(d) {
     var dur = t.duration || (t.duration_hours != null ? Number(t.duration_hours).toFixed(1) + 'h'
       : (t.hold_time_hours ? Number(t.hold_time_hours).toFixed(1) + 'h' : '—'));
     var sym = t.symbol || t.pair || '—';
-    var stratId = t.strategy_id || '—';
+    // 19.10.2026: fehlt eine strategy_id (z. B. bot4-Testpfad, strategy_id=0), den
+    // ENGINE-Namen aus dem Trade-Record zeigen statt „—" — sonst wirken Trades ohne
+    // deployte Strategie wie nicht zugeordnet.
+    var stratId = t.strategy_id || t.strategy || '—';
     var _slot = (t.slot_id != null && t.slot_id !== '') ? t.slot_id : '';
     var slotBadge = _slot ? ' <span class="bot-badge bot-badge-warn" style="font-size:10px" title="Slot">' + escHtml(_slot) + '</span>' : '';
     var _lbH = _liveBadge(t);
