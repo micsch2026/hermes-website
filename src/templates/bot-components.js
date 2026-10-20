@@ -977,7 +977,45 @@ function _renderSlotsInner(d, sp) {
     }
   }
 
-  var html = '';
+  // Scharfstellen-/Automatik-Status (20.10.2026, User): EINE klare Zeile über
+  // den Kacheln. „🔒 bereit für Scharfstellen“ = Live-Slot/Fill wartet auf
+  // Michaels OK; sonst Automatik-Zustände (Fill läuft / Challenge läuft / ok).
+  function _slotsStatusStrip(sl) {
+    var liveWait = [], fillReady = [], chRun = [];
+    for (var i0 = 0; i0 < sl.length; i0++) {
+      var s0 = sl[i0];
+      if (!s0 || s0.kind === 'planned') continue;
+      var ch0 = s0.challenge;
+      if (s0.stage === 'live' && s0.armed === false) { liveWait.push(s0.slot_id); continue; }
+      if (ch0 && ch0.candidate != null) {
+        if (ch0.ready) {
+          if (s0.stage === 'live') liveWait.push(s0.slot_id + ' (#' + ch0.candidate + ')');
+          else fillReady.push(s0.slot_id + ' (#' + ch0.candidate + ')');
+        } else {
+          chRun.push('#' + ch0.candidate + ' · Tag ' + (ch0.day || 1) + '/' + (ch0.days_total || 14));
+        }
+      }
+    }
+    var lvl, txt;
+    if (liveWait.length) {
+      lvl = 'action';
+      txt = '🔒 bereit für Scharfstellen: ' + liveWait.join(', ') + ' — wartet auf dein OK';
+    } else if (fillReady.length) {
+      lvl = 'info';
+      txt = '⚡ bereit — Fill läuft automatisch beim nächsten Engine-Lauf: ' + fillReady.join(', ');
+    } else if (chRun.length) {
+      lvl = 'info';
+      txt = '⏳ Automatik läuft — Challenge ' + chRun.join(' · ');
+    } else {
+      lvl = 'ok';
+      txt = '✅ Keine Aktion nötig — alles läuft automatisch';
+    }
+    var col = lvl === 'action' ? '#d29922' : (lvl === 'info' ? '#3b82f6' : '#3fb950');
+    var bg = lvl === 'action' ? 'rgba(210,153,34,0.12)' : (lvl === 'info' ? 'rgba(59,130,246,0.10)' : 'rgba(63,185,80,0.10)');
+    return '<div id="' + C.prefix + '-slots-status" style="grid-column:1/-1;font-size:var(--text-xs);color:' + col + ';background:' + bg + ';border:1px solid ' + col + '55;border-radius:var(--r-md);padding:6px 10px">' + escHtml(txt) + '</div>';
+  }
+
+  var html = _slotsStatusStrip(slots);
   // Stufen-Modell (13.10.2026): 🔴 LIVE (echtes Geld; nur wenn armed) /
   // 🟡 DEMO / 🔵 SHADOW (angezeigt, handelt nur im Shadow) / GEPLANT.
   var _hasLive = false, _hasDemo = false;
@@ -986,7 +1024,7 @@ function _renderSlotsInner(d, sp) {
     else if (slots[j0].stage === 'demo') _hasDemo = true;
   }
   function stageBadge(s) {
-    if (s.stage === 'live') return '<span class="bot-badge bot-badge-live">🔴 LIVE' + (s.armed === false ? ' · GESPERRT' : '') + '</span>';
+    if (s.stage === 'live') return '<span class="bot-badge bot-badge-live">🔴 LIVE' + (s.armed === false ? ' · OK nötig' : '') + '</span>';
     if (s.stage === 'demo') return '<span class="bot-badge" style="background:rgba(210,153,34,0.14);color:#d29922;border:1px solid rgba(210,153,34,0.4)">🟡 DEMO</span>';
     if (s.stage === 'shadow') return '<span class="bot-badge" style="background:rgba(59,130,246,0.12);color:#3b82f6;border:1px solid rgba(59,130,246,0.35)">🔵 SHADOW</span>';
     return '';
@@ -1007,7 +1045,7 @@ function _renderSlotsInner(d, sp) {
     // eine Strategie zeigt (Split-Bots: bot5/bot7). Reine Demo-Bots: kein Rauschen.
     if (_hasLive && s.kind === 'strategy' && s.account_id != null) {
       var _accTxt = 'Konto ' + s.account_id +
-        (s.stage === 'live' ? (s.armed === false ? ' · LIVE-Host (nicht scharf gestellt)' : ' · LIVE-Host') :
+        (s.stage === 'live' ? (s.armed === false ? ' · 🔒 bereit für Scharfstellen — dein OK' : ' · LIVE-Host') :
          s.stage === 'demo' ? ' · Demo' : '');
       html += '<div style="font-size:10px;color:var(--c-text-dim);margin:-2px 0 4px">' + escHtml(_accTxt) + '</div>';
     }

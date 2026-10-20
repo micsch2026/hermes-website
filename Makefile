@@ -34,6 +34,10 @@ test:
 	  echo "== tests/verify_bot_curves.js"; \
 	  $(NODE) tests/verify_bot_curves.js || fail=1; \
 	fi; \
+	if [ -f tests/verify_bot_readiness.js ]; then \
+	  echo "== tests/verify_bot_readiness.js"; \
+	  $(NODE) tests/verify_bot_readiness.js || fail=1; \
+	fi; \
 	if [ $$fail -eq 0 ]; then echo "SITE TESTS OK"; else echo "SITE TESTS FAILED"; exit 1; fi
 
 .PHONY: test
