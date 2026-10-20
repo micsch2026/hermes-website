@@ -158,6 +158,81 @@ def _atomic_write(path: Path, obj):
     os.replace(tmp, path)
 
 
+def _regionen_kpi(fx: Path, now: datetime) -> dict:
+    """Regionen-KPI bot5 (Mission m20261008 · Fill-Policy F1A, 20.10.2026).
+
+    Soll = Baender aus fx/config/index_regions.json (SSOT, dieselbe Datei wie der
+    Executor-Tiebreak); Ist = offene Positionen (positions_live) + Fills 7 d
+    (bot5_trades, Region per symbol_to_region). Read-only, tolerant: fehlende
+    Dateien/Config => leere Ist-Werte, kein Fehler.
+    """
+    cfg_path = Path(os.environ.get("FX_REGIONS_CONFIG",
+                                   str(fx / "config" / "index_regions.json")))
+    cfg = _read_json(cfg_path, {}) or {}
+    smap = cfg.get("symbol_to_region") or {}
+    bands = cfg.get("bands") or {}
+    order = cfg.get("region_order") or {"ASIA": 0, "EU": 1, "US": 2}
+    regions = [r for r, _ in sorted(order.items(), key=lambda kv: kv[1])]
+    now_ts = now.timestamp()
+    fills = {r: 0 for r in regions}
+    netto = {r: 0.0 for r in regions}
+    unmapped = 0
+    try:
+        with open(fx / "data" / "bot5_trades.jsonl", encoding="utf-8") as fh:
+            for ln in fh:
+                ln = ln.strip()
+                if not ln:
+                    continue
+                try:
+                    e = json.loads(ln)
+                except ValueError:
+                    continue
+                ts = _parse_ts(e.get("timestamp") or e.get("open_timestamp"))
+                if ts is None or now_ts - ts > 7 * 86400:
+                    continue
+                r = smap.get(str(e.get("symbol") or ""))
+                if r is None:
+                    unmapped += 1
+                    continue
+                if r not in fills:
+                    continue
+                fills[r] += 1
+                v = e.get("cTrader_profit")
+                if v is None:
+                    v = e.get("pnl")
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    netto[r] += float(v)
+    except OSError:
+        pass
+    openct = {r: 0 for r in regions}
+    try:
+        raw = _read_json(fx / "data" / "bot5_positions_live.json", []) or []
+        if isinstance(raw, dict):
+            raw = raw.get("positions") or []
+        for p in raw:
+            r = smap.get(str((p or {}).get("symbol") or ""))
+            if r in openct:
+                openct[r] += 1
+    except OSError:
+        pass
+    ist = []
+    for r in regions:
+        b = bands.get(r) or {}
+        ziel = int(b.get("ziel", 1) or 1)
+        ist.append({
+            "region": r, "open": openct.get(r, 0), "fills_7d": fills.get(r, 0),
+            "netto_7d": round(netto.get(r, 0.0), 2),
+            "soll_min": b.get("min"), "soll_max": b.get("max"), "ziel": ziel,
+            "unter_ziel": openct.get(r, 0) < ziel,
+        })
+    return {
+        "bot": "bot5", "as_of": _iso(now), "window_days": 7,
+        "regions": regions, "ist": ist, "unmapped_7d": unmapped,
+        "config_ok": bool(smap and bands),
+        "status": "unter_ziel" if any(x["unter_ziel"] for x in ist) else "ok",
+    }
+
+
 def main() -> int:
     sources = []
 
@@ -279,6 +354,13 @@ def main() -> int:
         "challenge_kpi": prj.get("challenge_kpi"),
     }
 
+    # ---- Regionen-KPI (Index-Fill-Policy F1A, Mission m20261008, 20.10.2026) ----
+    rk_cfg_path = Path(os.environ.get("FX_REGIONS_CONFIG",
+                                      str(FX / "config" / "index_regions.json")))
+    src("index_regions_config", rk_cfg_path, 30 * 86400)
+    src("bot5_dashboard", SITE / "api" / "bot5" / "dashboard.json", 600)
+    regionen_kpi = _regionen_kpi(FX, NOW)
+
     # ---- Ops-Review ----
     ops_path = OPS / "state.json"
     src("ops_review", ops_path, 2 * 3600)
@@ -393,6 +475,7 @@ def main() -> int:
         "sources": sources,
         "rotation": rotation,
         "portfolio_review": portfolio_review,
+        "regionen_kpi": regionen_kpi,
         "recommendations": recs,
         "weekly": weekly,
         "changes": {

@@ -24,6 +24,7 @@ REQUIRED_IDS = [
     "sv-autonomy", "sv-autonomy-applied", "sv-autonomy-chart", "sv-autonomy-auto",
     "sv-next-run", "sv-waiting-user", "sv-waiting-list",
     "sv-missions", "sv-missions-count",
+    "sv-regionen", "sv-regionen-count",
     "sv-recs-count", "sv-recs-list",
     "sv-board", "sv-board-at",
     "sv-changes-count", "sv-changes", "sv-changes-activity",

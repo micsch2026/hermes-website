@@ -83,6 +83,23 @@ class TestBuildSupervisor(unittest.TestCase):
             "challenge_kpi": {"fills": 7, "fails": 0, "conversion_pct": 100.0},
         })
 
+        # --- Regionen-KPI (Index-Fill-Policy F1A) ---
+        _write(self.fx / "config" / "index_regions.json", {
+            "region_order": {"ASIA": 0, "EU": 1, "US": 2},
+            "bands": {"ASIA": {"min": 0, "max": 2, "ziel": 1},
+                      "EU": {"min": 1, "max": 3, "ziel": 1},
+                      "US": {"min": 1, "max": 3, "ziel": 1}},
+            "symbol_to_region": {"US500": "US", "GER40": "EU", "JP225": "ASIA"},
+        })
+        now_iso2 = now.isoformat(timespec="seconds")
+        old_iso2 = (now - timedelta(days=10)).isoformat(timespec="seconds")
+        (self.fx / "data" / "bot5_trades.jsonl").write_text("\n".join(json.dumps(x) for x in [
+            {"symbol": "GER40", "timestamp": now_iso2, "cTrader_profit": 4.0, "status": "tp_sl_closed"},
+            {"symbol": "JP225", "timestamp": old_iso2, "cTrader_profit": 99.0, "status": "tp_sl_closed"},
+            {"symbol": "EURUSD", "timestamp": now_iso2, "cTrader_profit": 7.0, "status": "tp_sl_closed"},
+        ]) + "\n", encoding="utf-8")
+        _write(self.fx / "data" / "bot5_positions_live.json", [{"symbol": "GER40"}])
+
         # --- Missionen ---
         _write(self.mi / "m-x.json", {
             "mission_id": "m-x", "title": "X", "status": "active", "goal": "g",
@@ -179,6 +196,24 @@ class TestBuildSupervisor(unittest.TestCase):
         self.assertEqual(sum(act), 3)
         self.assertTrue(self.out.exists())
         self.assertFalse((self.out.parent / (self.out.name + ".tmp")).exists())
+
+
+    def test_regionen_kpi(self):
+        d = self.build()
+        rk = d["regionen_kpi"]
+        self.assertEqual(rk["bot"], "bot5")
+        self.assertEqual(rk["regions"], ["ASIA", "EU", "US"])
+        self.assertTrue(rk["config_ok"])
+        by = {x["region"]: x for x in rk["ist"]}
+        self.assertEqual(by["EU"]["open"], 1)
+        self.assertEqual(by["EU"]["fills_7d"], 1)          # JP225 liegt ausserhalb 7d
+        self.assertEqual(by["EU"]["netto_7d"], 4.0)
+        self.assertFalse(by["EU"]["unter_ziel"])
+        self.assertTrue(by["ASIA"]["unter_ziel"])
+        self.assertEqual(by["US"]["fills_7d"], 0)
+        self.assertEqual(rk["unmapped_7d"], 1)             # EURUSD ohne Region
+        self.assertEqual(rk["status"], "unter_ziel")       # ASIA offen 0 < Ziel 1
+        self.assertTrue(any(s["name"] == "index_regions_config" for s in d["sources"]))
 
 
 if __name__ == "__main__":

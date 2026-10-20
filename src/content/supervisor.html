@@ -151,6 +151,11 @@
     <div id="sv-missions"></div>
   </section>
 
+  <section class="sv-sec" id="sv-regionen-sec">
+    <h2>🧭 Regionen-Mix bot5 <span class="sv-count" id="sv-regionen-count"></span></h2>
+    <div id="sv-regionen"></div>
+  </section>
+
   <section class="sv-sec">
     <h2>📌 Offene Empfehlungen <span class="sv-count" id="sv-recs-count"></span>
       <span class="sv-count" id="sv-recs-hint"></span></h2>
@@ -446,6 +451,33 @@
     });
   }
 
+  // ---- Regionen-KPI (Index-Fill-Policy F1A, Mission m20261008) ----
+  function renderRegionen(rk) {
+    var sec = $('sv-regionen-sec');
+    var el = $('sv-regionen');
+    if (!el) return;
+    rk = rk || {};
+    var ist = rk.ist || [];
+    if (!ist.length) { if (sec) sec.style.display = 'none'; return; }
+    if (sec) sec.style.display = '';
+    var cnt = $('sv-regionen-count');
+    if (cnt) cnt.textContent = '· 7 d · ' + (rk.status === 'ok' ? 'im Ziel ✅' : 'unter Ziel ⚠');
+    el.innerHTML = ist.map(function (x) {
+      var ok = !x.unter_ziel;
+      var soll = (x.soll_min != null && x.soll_max != null)
+        ? ('Soll ' + x.soll_min + '–' + x.soll_max + ' · Ziel ≥' + (x.ziel != null ? x.ziel : 1))
+        : 'kein Band';
+      return '<div class="sv-li">' + (ok ? '🟢' : '🔴') + ' <b>' + esc(x.region) + '</b>' +
+        ' <span class="sv-dim">(' + esc(soll) + ')</span> · offen <b>' + (x.open || 0) + '</b>' +
+        ' · Fills 7 d <b>' + (x.fills_7d || 0) + '</b>' +
+        ' · Netto <span class="' + eurCls(x.netto_7d) + '">' + fmtEur(x.netto_7d) + '</span>' +
+        (ok ? '' : ' <span class="sv-badge err">unter Ziel</span>') + '</div>';
+    }).join('') +
+    '<div class="sv-cap">Fill-Policy F1A: Bei Evidenz-Gleichstand (≤0,5 Score, gleiche Richtung) gibt die Region unter Band-Ziel die Reihenfolge vor (Asien → EU → US). ' +
+    'Quelle: bot5 Trades + offene Positionen · «unter Ziel» = derzeit 0 offene Positionen in der Region' + (rk.as_of ? ' · Stand ' + dt(rk.as_of) : '') +
+    ((rk.unmapped_7d || 0) > 0 ? ' · ' + rk.unmapped_7d + ' Trade(s) ohne Region-Zuordnung ignoriert' : '') + '</div>';
+  }
+
   function render(d) {
     var recs = d.recommendations || { n: 0, items: [] };
     var rot = d.rotation || {};
@@ -614,6 +646,9 @@
                    ' — <span class="sv-dim">' + esc(p.goal) + '</span></div>';
           }).join('') + '</div>'
         : '');
+
+    // ---- Regionen-KPI (Index-Fill-Policy F1A) ----
+    renderRegionen(d.regionen_kpi);
 
     // ---- Board-Beschlüsse + Änderungs-Journal (ein Block) ----
     var ap = ch.applied || {};
