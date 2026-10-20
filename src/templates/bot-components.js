@@ -992,7 +992,7 @@ function _renderSlotsInner(d, sp) {
           if (s0.stage === 'live') liveWait.push(s0.slot_id + ' (#' + ch0.candidate + ')');
           else fillReady.push(s0.slot_id + ' (#' + ch0.candidate + ')');
         } else {
-          chRun.push('#' + ch0.candidate + ' · Tag ' + (ch0.day || 1) + '/' + (ch0.days_total || 14));
+          chRun.push('#' + ch0.candidate + ' Tag ' + (ch0.day || 1) + '/' + (ch0.days_total || 14));
         }
       }
     }
@@ -1002,7 +1002,7 @@ function _renderSlotsInner(d, sp) {
       txt = '🔒 bereit für Scharfstellen: ' + liveWait.join(', ') + ' — wartet auf dein OK';
     } else if (fillReady.length) {
       lvl = 'info';
-      txt = '⚡ bereit — Fill läuft automatisch beim nächsten Engine-Lauf: ' + fillReady.join(', ');
+      txt = '⚡ bereit — Fill beim nächsten Engine-Lauf möglich: ' + fillReady.join(', ');
     } else if (chRun.length) {
       lvl = 'info';
       txt = '⏳ Automatik läuft — Challenge ' + chRun.join(' · ');

@@ -107,8 +107,8 @@ reg('r1-slots-sub');
                                trades: 4, net_eur: 12.5, net_positive: true } },
   ] });
   await sleep(20);
-  check('B Strip: „⚡ bereit — Fill läuft automatisch“ + Slot + #786',
-    gridHtml().indexOf('Fill läuft automatisch beim nächsten Engine-Lauf: i4 (#786)') !== -1);
+  check('B Strip: „⚡ bereit — Fill beim nächsten Engine-Lauf möglich“ + Slot + #786',
+    gridHtml().indexOf('Fill beim nächsten Engine-Lauf möglich: i4 (#786)') !== -1);
   check('B Strip: blau (info)',
     gridHtml().indexOf('rgba(59,130,246,0.10)') !== -1);
 
@@ -118,8 +118,8 @@ reg('r1-slots-sub');
       assets: [], challenge: { candidate: 782, day: 2, days_total: 14, trades: 1, net_eur: -3 } },
   ] });
   await sleep(20);
-  check('C Strip: „⏳ Automatik läuft — Challenge #782 · Tag 2/14“',
-    gridHtml().indexOf('Automatik läuft — Challenge #782 · Tag 2/14') !== -1);
+  check('C Strip: „⏳ Automatik läuft — Challenge #782 Tag 2/14“',
+    gridHtml().indexOf('Automatik läuft — Challenge #782 Tag 2/14') !== -1);
 
   // ── D: nichts offen (geplante Plätze zählen nicht) ────────────────
   BD.renderSlots({ slots: [
