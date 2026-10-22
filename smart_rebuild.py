@@ -4,6 +4,10 @@ smart_rebuild.py — Site-Rebuilder mit Change-Detection.
 
 Prueft ob Quelldaten neuer sind als der letzte erfolgreiche Build.
 Nur bei Aenderung wird neu gebaut (mtime-Vergleich).
+Zusaetzlich Staleness-Guard (FIX 2026-10-22): ist der letzte ERFOLGREICHE Build
+aelter als max_staleness_hours, wird auch OHNE Quellaenderung neu gebaut —
+sonst skippt ein statisches src/ ewig und der Trading-Watchdog meldet ab 26h
+"Build stale" (site: 24h-Limit < 26h-Watchdog-Frist).
 Verhindert parallele Ausfuehrungen via PID-File.
 
 Targets:
@@ -180,21 +184,58 @@ def format_duration(seconds):
 
 # ── Core Build Logic ─────────────────────────────────────────
 
+def rebuild_decision(name, cfg, state, now_epoch=None, current_mtime=None):
+    """Entscheidet, ob gebaut wird -> (should_build, reason).
+
+    Trigger (FIX 2026-10-22): (a) Quell-mtime neuer als letzter Build;
+    (b) Staleness-Guard: letzter erfolgreicher Build >= max_staleness_hours her
+    (auch OHNE Quellaenderung). Ohne parsebaren last_build-Zeitstempel wird
+    einmal gebaut (State-Refresh), danach greift der Guard normal.
+    """
+    if now_epoch is None:
+        now_epoch = time.time()
+    if current_mtime is None:
+        current_mtime = get_max_mtime(cfg)
+    tstate = state.get(name, {})
+    last_mtime = tstate.get("mtime", 0)
+
+    if current_mtime > last_mtime:
+        return True, (f"changes detected (mtime {last_mtime:.0f} -> {current_mtime:.0f}, "
+                      f"delta={format_duration(current_mtime - last_mtime)}), rebuilding...")
+
+    max_age = cfg.get("max_staleness_hours")
+    if max_age is not None:
+        lb = tstate.get("last_build")
+        if not lb:
+            return True, "no last-build timestamp — rebuilding once to refresh state"
+        try:
+            dt = datetime.fromisoformat(lb)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            age_h = (now_epoch - dt.timestamp()) / 3600.0
+        except ValueError:
+            return True, "unparsable last-build timestamp — rebuilding once to refresh state"
+        if age_h >= max_age:
+            return True, (f"no changes, but stale (last build {age_h:.1f}h ago >= "
+                          f"{max_age}h limit), rebuilding...")
+
+    return False, f"no changes detected (mtime={current_mtime:.0f})"
+
+
 def run_build(name, cfg, force=False):
-    """Check for changes and run build if needed. Returns (built, duration_s, error)."""
+    """Check for changes/staleness and run build if needed. Returns (built, duration_s, error)."""
     current_mtime = get_max_mtime(cfg)
     state = load_state()
     last_mtime = state.get(name, {}).get("mtime", 0)
 
-    if not force and current_mtime <= last_mtime:
-        log.info(f"{name}: no changes detected (mtime={current_mtime:.0f}), skipping")
-        return False, 0, None
-
-    mtime_delta = current_mtime - last_mtime
-    log.info(
-        f"{name}: changes detected (mtime {last_mtime:.0f} -> {current_mtime:.0f}, "
-        f"delta={format_duration(mtime_delta)}), rebuilding..."
-    )
+    if not force:
+        should, reason = rebuild_decision(name, cfg, state, current_mtime=current_mtime)
+        if not should:
+            log.info(f"{name}: {reason}, skipping")
+            return False, 0, None
+        log.info(f"{name}: {reason}")
+    else:
+        log.info(f"{name}: forced rebuild")
 
     start = time.monotonic()
     try:
@@ -351,13 +392,9 @@ def main():
                 if dry_run:
                     mtime = get_max_mtime(cfg)
                     state = load_state()
-                    last = state.get(name, {}).get("mtime", 0)
-                    changed = mtime > last
-                    log.info(
-                        f"{name}: mtime={mtime:.0f}, last_build_mtime={last:.0f}, "
-                        f"changed={changed}"
-                    )
-                    results[name] = {"changed": changed, "mtime": mtime}
+                    should, reason = rebuild_decision(name, cfg, state, current_mtime=mtime)
+                    log.info(f"{name}: would_rebuild={should} — {reason}")
+                    results[name] = {"would_rebuild": should, "mtime": mtime}
                 else:
                     built, duration, error = run_build(name, cfg, force=force)
                     results[name] = {
