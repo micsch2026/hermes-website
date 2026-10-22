@@ -1,0 +1,643 @@
+{
+  "id": 992,
+  "label": "#992",
+  "name": "RCP-CLUSTER: auto_gold_session_pullback (20261017_235533)",
+  "display_name": "RCP-CLUSTER: auto_gold_session_pullback (20261017_235533)",
+  "description": "Folgt dem Trend und steigt in Rücksetzern ein. Gehandelt werden Gold im 1-Stunden-Takt. Der Setup greift, wenn der Trend-Durchschnitt steigt und der RSI im Rücksetzer-Bereich bleibt (RSI unter 45). Nach unten das Spiegelbild. Gilt nur zur London-Session, mit RSI-Überhitzungsschutz. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "promising",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 124.4,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-10-18 00:08:34",
+  "updated_at": "2026-10-18 00:08:44",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"auto_gold_session_pullback\"], \"clusters\": [\"hpf_gold_sessions\"], \"total_assets\": 1, \"total_pnl\": 139.62}",
+  "concept": {
+    "name": "RCP-CLUSTER: auto_gold_session_pullback",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "XAUUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "sig_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 45
+              },
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.5
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "sig_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 55
+              },
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0.5
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          }
+        ]
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.2
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.0
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 96
+      },
+      "pairs": [
+        "XAUUSD"
+      ],
+      "timeframe": "1h",
+      "description": "Folgt dem Trend und steigt in Rücksetzern ein. Gehandelt werden Gold im 1-Stunden-Takt. Der Setup greift, wenn der Trend-Durchschnitt steigt und der RSI im Rücksetzer-Bereich bleibt (RSI unter 45). Nach unten das Spiegelbild. Gilt nur zur London-Session, mit RSI-Überhitzungsschutz. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt."
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Folgt dem Trend und steigt in Rücksetzern ein. Gehandelt werden Gold im 1-Stunden-Takt. Der Setup greift, wenn der Trend-Durchschnitt steigt und der RSI im Rücksetzer-Bereich bleibt (RSI unter 45). Nach unten das Spiegelbild. Gilt nur zur London-Session, mit RSI-Überhitzungsschutz. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "C",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "24M"
+      },
+      "g2_splits": {
+        "pass": false,
+        "value": "3 splits"
+      },
+      "g3_ho": {
+        "pass": false,
+        "value": "6 T / -51€"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "2.11"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "67%"
+      },
+      "g6_dsr": {
+        "pass": null,
+        "value": "n/a"
+      }
+    },
+    "fire_test": null,
+    "oos_pnl": 139.62,
+    "oos_score": 124.4,
+    "oos_pf": 2.11,
+    "oos_wr": 55.0,
+    "oos_trades": 19,
+    "oos_pass_rate": 0.667,
+    "tier_reason": "Bedingt geeignet; Assets profitabel: 67%",
+    "clusters": [
+      {
+        "cluster": "hpf_gold_sessions",
+        "timeframe": "1h",
+        "approach": "auto_gold_session_pullback",
+        "n_combos_tested": 9,
+        "approach_summary": [
+          {
+            "approach": "auto_gold_session_pullback",
+            "score": 124.4,
+            "pnl": 139.62,
+            "recipe_used": true,
+            "trades": 19,
+            "wr": 55.0,
+            "pf": 2.11,
+            "pass_rate": 0.667,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_gold_session_pullback_tom",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": true,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          }
+        ],
+        "best_tree": {
+          "enter": {
+            "signals": [
+              {
+                "id": "sig_long",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema_slope",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": ">",
+                    "value": 0
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 45
+                  },
+                  {
+                    "indicator": "session_london",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "value": 0.5
+                  }
+                ],
+                "direction": "long",
+                "base_score": 50
+              },
+              {
+                "id": "sig_short",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema_slope",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": "<",
+                    "value": 0
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 55
+                  },
+                  {
+                    "indicator": "session_london",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "value": 0.5
+                  }
+                ],
+                "direction": "short",
+                "base_score": 50
+              }
+            ]
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.2
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.0
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 96
+          },
+          "pairs": [
+            "XAUUSD",
+            "XAGUSD"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 139.62,
+        "best_score": 124.4,
+        "selected_assets": [
+          "XAUUSD"
+        ],
+        "dropped_assets": [
+          "XAGUSD"
+        ],
+        "pair_overrides": {
+          "XAUUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 0.8,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 1.6
+            }
+          }
+        },
+        "recipe_used": true,
+        "trades": 19,
+        "pass_rate": 0.667,
+        "tier": "B",
+        "pf": 2.11,
+        "wr": 55.0,
+        "per_asset": {
+          "XAUUSD": {
+            "oos_pnl": 139.62,
+            "oos_trades": 19,
+            "oos_pass_rate": 0.667,
+            "oos_score": 43.5,
+            "oos_wr": 55.0,
+            "oos_pf": 2.11,
+            "best_sl_mult": 0.8,
+            "best_tp_val": 1.6,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-10-27 → 2025-04-28",
+                "oos_range": "2025-04-28 → 2025-07-28",
+                "best_sl_mult": 0.8,
+                "best_tp_val": 1.6,
+                "is_pnl": 69.64,
+                "is_trades": 21,
+                "oos_pnl": 5.47,
+                "oos_trades": 7,
+                "oos_wr": 42.9,
+                "oos_pf": 1.13,
+                "oos_profitable": true,
+                "oos_gp": 46.66,
+                "oos_gl": 41.19
+              },
+              {
+                "split": 1,
+                "is_range": "2025-01-27 → 2025-07-28",
+                "oos_range": "2025-07-28 → 2025-10-28",
+                "best_sl_mult": 0.6,
+                "best_tp_val": 1.6,
+                "is_pnl": 43.39,
+                "is_trades": 20,
+                "oos_pnl": -46.06,
+                "oos_trades": 9,
+                "oos_wr": 22.2,
+                "oos_pf": 0.45,
+                "oos_profitable": false,
+                "oos_gp": 37.99,
+                "oos_gl": 84.05
+              },
+              {
+                "split": 2,
+                "is_range": "2025-04-28 → 2025-10-28",
+                "oos_range": "2025-10-28 → 2026-04-17",
+                "best_sl_mult": 1.9,
+                "best_tp_val": 2.6,
+                "is_pnl": 72.14,
+                "is_trades": 10,
+                "oos_pnl": 180.21,
+                "oos_trades": 3,
+                "oos_wr": 100.0,
+                "oos_pf": 0,
+                "oos_profitable": true,
+                "oos_gp": 180.21,
+                "oos_gl": 0
+              }
+            ],
+            "selected": true
+          },
+          "XAGUSD": {
+            "oos_pnl": -95.49,
+            "oos_trades": 13,
+            "oos_pass_rate": 0.0,
+            "oos_score": 18.2,
+            "oos_wr": 9.5,
+            "oos_pf": 0.38,
+            "best_sl_mult": 1.9,
+            "best_tp_val": 2.0,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-10-27 → 2025-04-28",
+                "oos_range": "2025-04-28 → 2025-07-28",
+                "best_sl_mult": 1.9,
+                "best_tp_val": 2.0,
+                "is_pnl": 59.05,
+                "is_trades": 7,
+                "oos_pnl": -77.73,
+                "oos_trades": 5,
+                "oos_wr": 0.0,
+                "oos_pf": 0.0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 77.73
+              },
+              {
+                "split": 1,
+                "is_range": "2025-01-27 → 2025-07-28",
+                "oos_range": "2025-07-28 → 2025-10-28",
+                "best_sl_mult": 0.8,
+                "best_tp_val": 3.2,
+                "is_pnl": 22.43,
+                "is_trades": 8,
+                "oos_pnl": -0.48,
+                "oos_trades": 7,
+                "oos_wr": 28.6,
+                "oos_pf": 0.99,
+                "oos_profitable": false,
+                "oos_gp": 59.68,
+                "oos_gl": 60.16
+              },
+              {
+                "split": 2,
+                "is_range": "2025-04-28 → 2025-10-28",
+                "oos_range": "2025-10-28 → 2026-04-17",
+                "best_sl_mult": 1.2,
+                "best_tp_val": 3.2,
+                "is_pnl": 31.48,
+                "is_trades": 11,
+                "oos_pnl": -17.28,
+                "oos_trades": 1,
+                "oos_wr": 0.0,
+                "oos_pf": 0.0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 17.28
+              }
+            ],
+            "selected": false
+          }
+        },
+        "updated_at": "2026-10-17T23:59:36.481399+00:00"
+      }
+    ],
+    "all_assets": [
+      "XAUUSD"
+    ],
+    "pair_overrides": {
+      "XAUUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 0.8,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.6
+        }
+      }
+    },
+    "approaches_used": [
+      "auto_gold_session_pullback"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": -50.64,
+      "trades": 6,
+      "pf": 0.44,
+      "per_cluster": [
+        {
+          "approach": "auto_gold_session_pullback",
+          "pnl": -50.64,
+          "trades": 6,
+          "pf": 0.44
+        }
+      ]
+    },
+    "trial_count": 9,
+    "trial_count_kind": "executor_estimate",
+    "campaign_id": "cl:1h:auto_gold_session_pullback",
+    "engine_fp": "29ddf821602c",
+    "stat_gates": {
+      "dsr": null,
+      "dsr_pass": null,
+      "dsr_band": null,
+      "pbo": "n/a",
+      "pbo_pass": "n/a",
+      "pbo_band": "n/a",
+      "trial_count": 9,
+      "trial_count_source": "engine",
+      "campaign_id": "approach:auto_gold_session_pullback#0",
+      "campaign_size": 1,
+      "n_obs": 3,
+      "sigma_source": "fallback",
+      "method_version": "2.0",
+      "computed_at": "2026-10-18T03:01:16+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "XAUUSD",
+      "cluster": "hpf_gold_sessions",
+      "timeframe": "1h",
+      "approach": "auto_gold_session_pullback",
+      "tier": "B",
+      "oos_pnl_total": 139.62,
+      "oos_pf": 2.11,
+      "oos_wr": 55.0,
+      "oos_trades": 19,
+      "oos_pass_rate": 0.667,
+      "oos_score": 43.5,
+      "is_selected": true,
+      "sl_override": 0.8,
+      "tp_override": 1.6
+    },
+    {
+      "symbol": "XAGUSD",
+      "cluster": "hpf_gold_sessions",
+      "timeframe": "1h",
+      "approach": "auto_gold_session_pullback",
+      "tier": "B",
+      "oos_pnl_total": -95.49,
+      "oos_pf": 0.38,
+      "oos_wr": 9.5,
+      "oos_trades": 13,
+      "oos_pass_rate": 0.0,
+      "oos_score": 18.2,
+      "is_selected": false,
+      "sl_override": 1.9,
+      "tp_override": 2.0
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "enter": {
+      "signals": [
+        {
+          "id": "sig_long",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": ">",
+              "value": 0
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": 45
+            },
+            {
+              "indicator": "session_london",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0.5
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "sig_short",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": "<",
+              "value": 0
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": 55
+            },
+            {
+              "indicator": "session_london",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0.5
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        }
+      ]
+    },
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 1.2
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 2.0
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 96
+    },
+    "pairs": [
+      "XAUUSD"
+    ],
+    "timeframe": "1h"
+  },
+  "best_oos_pnl": 139.62,
+  "best_pf": 2.11,
+  "best_wr": 55.0,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.667,
+  "oos_trades": 19,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

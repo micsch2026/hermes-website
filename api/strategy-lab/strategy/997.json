@@ -1,0 +1,868 @@
+{
+  "id": 997,
+  "label": "#997",
+  "name": "RCP-CLUSTER: auto_gold_sess_pullback_tom (20261018_130818)",
+  "display_name": "RCP-CLUSTER: auto_gold_sess_pullback_tom (20261018_130818)",
+  "description": "Folgt dem Trend und steigt in Rücksetzern ein. Gehandelt werden Gold im 1-Stunden-Takt. Der Setup greift, wenn der Trend-Durchschnitt steigt und der RSI im Rücksetzer-Bereich bleibt (RSI unter 48). Nach unten das Spiegelbild. Gilt nur zur London-Session, mit Pause rund um den Monatswechsel, mit RSI-Überhitzungsschutz. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "promising",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 131.7,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-10-18 13:26:02",
+  "updated_at": "2026-10-18 13:26:07",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"auto_gold_sess_pullback_tom\"], \"clusters\": [\"hpf_gold_sessions\"], \"total_assets\": 1, \"total_pnl\": 97.09}",
+  "concept": {
+    "name": "RCP-CLUSTER: auto_gold_sess_pullback_tom",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "XAUUSD"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "sig_long_london",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 48
+              },
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0
+              }
+            ],
+            "direction": "long",
+            "base_score": 55
+          },
+          {
+            "id": "sig_long_ny",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": ">",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 45
+              },
+              {
+                "indicator": "session_new_york",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "sig_short_london",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 58
+              },
+              {
+                "indicator": "session_london",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0
+              }
+            ],
+            "direction": "short",
+            "base_score": 55
+          },
+          {
+            "id": "sig_short_ny",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "ema_slope",
+                "timeframe": "1h",
+                "params": {
+                  "period": 50
+                },
+                "op": "<",
+                "value": 0
+              },
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 55
+              },
+              {
+                "indicator": "session_new_york",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          }
+        ],
+        "gates": [
+          {
+            "indicator": "hours_to_month_start",
+            "timeframe": "1h",
+            "params": {},
+            "op": ">",
+            "value": 48
+          }
+        ]
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.2
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.0
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 96
+      },
+      "pairs": [
+        "XAUUSD"
+      ],
+      "timeframe": "1h",
+      "description": "Folgt dem Trend und steigt in Rücksetzern ein. Gehandelt werden Gold im 1-Stunden-Takt. Der Setup greift, wenn der Trend-Durchschnitt steigt und der RSI im Rücksetzer-Bereich bleibt (RSI unter 48). Nach unten das Spiegelbild. Gilt nur zur London-Session, mit Pause rund um den Monatswechsel, mit RSI-Überhitzungsschutz. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt."
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Folgt dem Trend und steigt in Rücksetzern ein. Gehandelt werden Gold im 1-Stunden-Takt. Der Setup greift, wenn der Trend-Durchschnitt steigt und der RSI im Rücksetzer-Bereich bleibt (RSI unter 48). Nach unten das Spiegelbild. Gilt nur zur London-Session, mit Pause rund um den Monatswechsel, mit RSI-Überhitzungsschutz. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "C",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "24M"
+      },
+      "g2_splits": {
+        "pass": false,
+        "value": "3 splits"
+      },
+      "g3_ho": {
+        "pass": false,
+        "value": "15 T / +60€"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "1.21"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "67%"
+      },
+      "g6_dsr": {
+        "pass": null,
+        "value": "n/a"
+      }
+    },
+    "fire_test": null,
+    "oos_pnl": 97.09,
+    "oos_score": 131.7,
+    "oos_pf": 1.21,
+    "oos_wr": 43.7,
+    "oos_trades": 62,
+    "oos_pass_rate": 0.667,
+    "tier_reason": "Bedingt geeignet; PF 1.21 < Ziel 1.5; WR 44% < Ziel 50%; Assets profitabel: 67%",
+    "clusters": [
+      {
+        "cluster": "hpf_gold_sessions",
+        "timeframe": "1h",
+        "approach": "auto_gold_sess_pullback_tom",
+        "n_combos_tested": 16,
+        "approach_summary": [
+          {
+            "approach": "auto_gold_sess_pullback",
+            "score": 4.7,
+            "pnl": 17.03,
+            "recipe_used": false,
+            "trades": 14,
+            "wr": 38.9,
+            "pf": 1.14,
+            "pass_rate": 0.667,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_gold_sess_pullback_tom",
+            "score": 131.7,
+            "pnl": 97.09,
+            "recipe_used": true,
+            "trades": 62,
+            "wr": 43.7,
+            "pf": 1.21,
+            "pass_rate": 0.667,
+            "tier": "B"
+          }
+        ],
+        "best_tree": {
+          "enter": {
+            "signals": [
+              {
+                "id": "sig_long_london",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema_slope",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": ">",
+                    "value": 0
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 48
+                  },
+                  {
+                    "indicator": "session_london",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "value": 0
+                  }
+                ],
+                "direction": "long",
+                "base_score": 55
+              },
+              {
+                "id": "sig_long_ny",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema_slope",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": ">",
+                    "value": 0
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 45
+                  },
+                  {
+                    "indicator": "session_new_york",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "value": 0
+                  }
+                ],
+                "direction": "long",
+                "base_score": 50
+              },
+              {
+                "id": "sig_short_london",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema_slope",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": "<",
+                    "value": 0
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 58
+                  },
+                  {
+                    "indicator": "session_london",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "value": 0
+                  }
+                ],
+                "direction": "short",
+                "base_score": 55
+              },
+              {
+                "id": "sig_short_ny",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "ema_slope",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 50
+                    },
+                    "op": "<",
+                    "value": 0
+                  },
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 55
+                  },
+                  {
+                    "indicator": "session_new_york",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "value": 0
+                  }
+                ],
+                "direction": "short",
+                "base_score": 50
+              }
+            ],
+            "gates": [
+              {
+                "indicator": "hours_to_month_start",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 48
+              }
+            ]
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.2
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.0
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 96
+          },
+          "pairs": [
+            "XAUUSD",
+            "XAGUSD"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 97.09,
+        "best_score": 131.7,
+        "selected_assets": [
+          "XAUUSD"
+        ],
+        "dropped_assets": [
+          "XAGUSD"
+        ],
+        "pair_overrides": {
+          "XAUUSD": {
+            "sl": {
+              "mode": "atr",
+              "mult": 0.6,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 1.6
+            }
+          }
+        },
+        "recipe_used": true,
+        "trades": 62,
+        "pass_rate": 0.667,
+        "tier": "B",
+        "pf": 1.21,
+        "wr": 43.7,
+        "per_asset": {
+          "XAUUSD": {
+            "oos_pnl": 97.09,
+            "oos_trades": 62,
+            "oos_pass_rate": 0.667,
+            "oos_score": 65.8,
+            "oos_wr": 43.7,
+            "oos_pf": 1.21,
+            "best_sl_mult": 0.6,
+            "best_tp_val": 1.6,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-10-28 → 2025-04-29",
+                "oos_range": "2025-04-29 → 2025-07-29",
+                "best_sl_mult": 0.6,
+                "best_tp_val": 1.6,
+                "is_pnl": 34.75,
+                "is_trades": 34,
+                "oos_pnl": 56.01,
+                "oos_trades": 18,
+                "oos_wr": 50.0,
+                "oos_pf": 1.57,
+                "oos_profitable": true,
+                "oos_gp": 154.38,
+                "oos_gl": 98.37
+              },
+              {
+                "split": 1,
+                "is_range": "2025-01-27 → 2025-07-29",
+                "oos_range": "2025-07-29 → 2025-10-28",
+                "best_sl_mult": 0.6,
+                "best_tp_val": 1.6,
+                "is_pnl": 52.83,
+                "is_trades": 39,
+                "oos_pnl": 73.05,
+                "oos_trades": 16,
+                "oos_wr": 56.2,
+                "oos_pf": 1.85,
+                "oos_profitable": true,
+                "oos_gp": 159.37,
+                "oos_gl": 86.32
+              },
+              {
+                "split": 2,
+                "is_range": "2025-04-29 → 2025-10-28",
+                "oos_range": "2025-10-28 → 2026-04-17",
+                "best_sl_mult": 0.6,
+                "best_tp_val": 2.6,
+                "is_pnl": 160.72,
+                "is_trades": 34,
+                "oos_pnl": -31.97,
+                "oos_trades": 28,
+                "oos_wr": 25.0,
+                "oos_pf": 0.88,
+                "oos_profitable": false,
+                "oos_gp": 245.35,
+                "oos_gl": 277.32
+              }
+            ],
+            "selected": true
+          },
+          "XAGUSD": {
+            "oos_pnl": -116.76,
+            "oos_trades": 33,
+            "oos_pass_rate": 0.333,
+            "oos_score": 89.4,
+            "oos_wr": 17.8,
+            "oos_pf": 0.67,
+            "best_sl_mult": 1.2,
+            "best_tp_val": 3.2,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-10-28 → 2025-04-29",
+                "oos_range": "2025-04-29 → 2025-07-29",
+                "best_sl_mult": 0.6,
+                "best_tp_val": 2.6,
+                "is_pnl": 44.77,
+                "is_trades": 25,
+                "oos_pnl": -143.24,
+                "oos_trades": 15,
+                "oos_wr": 13.3,
+                "oos_pf": 0.21,
+                "oos_profitable": false,
+                "oos_gp": 37.52,
+                "oos_gl": 180.76
+              },
+              {
+                "split": 1,
+                "is_range": "2025-01-27 → 2025-07-29",
+                "oos_range": "2025-07-29 → 2025-10-28",
+                "best_sl_mult": 1.2,
+                "best_tp_val": 3.2,
+                "is_pnl": 36.15,
+                "is_trades": 20,
+                "oos_pnl": 74.08,
+                "oos_trades": 15,
+                "oos_wr": 40.0,
+                "oos_pf": 1.59,
+                "oos_profitable": true,
+                "oos_gp": 199.87,
+                "oos_gl": 125.79
+              },
+              {
+                "split": 2,
+                "is_range": "2025-04-29 → 2025-10-28",
+                "oos_range": "2025-10-28 → 2026-04-17",
+                "best_sl_mult": 1.2,
+                "best_tp_val": 3.2,
+                "is_pnl": 4.55,
+                "is_trades": 25,
+                "oos_pnl": -47.6,
+                "oos_trades": 3,
+                "oos_wr": 0.0,
+                "oos_pf": 0.0,
+                "oos_profitable": false,
+                "oos_gp": 0,
+                "oos_gl": 47.6
+              }
+            ],
+            "selected": false
+          }
+        },
+        "updated_at": "2026-10-18T13:10:27.392324+00:00"
+      }
+    ],
+    "all_assets": [
+      "XAUUSD"
+    ],
+    "pair_overrides": {
+      "XAUUSD": {
+        "sl": {
+          "mode": "atr",
+          "mult": 0.6,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 1.6
+        }
+      }
+    },
+    "approaches_used": [
+      "auto_gold_sess_pullback_tom"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": 60.36,
+      "trades": 15,
+      "pf": 1.33,
+      "per_cluster": [
+        {
+          "approach": "auto_gold_sess_pullback_tom",
+          "pnl": 60.36,
+          "trades": 15,
+          "pf": 1.33
+        }
+      ]
+    },
+    "trial_count": 16,
+    "trial_count_kind": "executor_estimate",
+    "campaign_id": "cl:1h:auto_gold_sess_pullback_tom",
+    "engine_fp": "86666b56f222",
+    "stat_gates": {
+      "dsr": null,
+      "dsr_pass": null,
+      "dsr_band": null,
+      "pbo": "n/a",
+      "pbo_pass": "n/a",
+      "pbo_band": "n/a",
+      "trial_count": 16,
+      "trial_count_source": "engine",
+      "campaign_id": "cl:1h:auto_gold_sess_pullback_tom",
+      "campaign_size": null,
+      "n_obs": 3,
+      "sigma_source": "fallback",
+      "method_version": "2.0",
+      "computed_at": "2026-10-18T13:26:04+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "XAUUSD",
+      "cluster": "hpf_gold_sessions",
+      "timeframe": "1h",
+      "approach": "auto_gold_sess_pullback_tom",
+      "tier": "B",
+      "oos_pnl_total": 97.09,
+      "oos_pf": 1.21,
+      "oos_wr": 43.7,
+      "oos_trades": 62,
+      "oos_pass_rate": 0.667,
+      "oos_score": 65.8,
+      "is_selected": true,
+      "sl_override": 0.6,
+      "tp_override": 1.6
+    },
+    {
+      "symbol": "XAGUSD",
+      "cluster": "hpf_gold_sessions",
+      "timeframe": "1h",
+      "approach": "auto_gold_sess_pullback_tom",
+      "tier": "B",
+      "oos_pnl_total": -116.76,
+      "oos_pf": 0.67,
+      "oos_wr": 17.8,
+      "oos_trades": 33,
+      "oos_pass_rate": 0.333,
+      "oos_score": 89.4,
+      "is_selected": false,
+      "sl_override": 1.2,
+      "tp_override": 3.2
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "enter": {
+      "signals": [
+        {
+          "id": "sig_long_london",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": ">",
+              "value": 0
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": 48
+            },
+            {
+              "indicator": "session_london",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0
+            }
+          ],
+          "direction": "long",
+          "base_score": 55
+        },
+        {
+          "id": "sig_long_ny",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": ">",
+              "value": 0
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": 45
+            },
+            {
+              "indicator": "session_new_york",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "sig_short_london",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": "<",
+              "value": 0
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": 58
+            },
+            {
+              "indicator": "session_london",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0
+            }
+          ],
+          "direction": "short",
+          "base_score": 55
+        },
+        {
+          "id": "sig_short_ny",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "ema_slope",
+              "timeframe": "1h",
+              "params": {
+                "period": 50
+              },
+              "op": "<",
+              "value": 0
+            },
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": 55
+            },
+            {
+              "indicator": "session_new_york",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        }
+      ],
+      "gates": [
+        {
+          "indicator": "hours_to_month_start",
+          "timeframe": "1h",
+          "params": {},
+          "op": ">",
+          "value": 48
+        }
+      ]
+    },
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 1.2
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 2.0
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 96
+    },
+    "pairs": [
+      "XAUUSD"
+    ],
+    "timeframe": "1h"
+  },
+  "best_oos_pnl": 97.09,
+  "best_pf": 1.21,
+  "best_wr": 43.7,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.667,
+  "oos_trades": 62,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

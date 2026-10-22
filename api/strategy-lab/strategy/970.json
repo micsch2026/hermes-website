@@ -1,0 +1,574 @@
+{
+  "id": 970,
+  "label": "#970",
+  "name": "RCP-CLUSTER: cn50_sweep_reclaim (20261009_002734)",
+  "display_name": "RCP-CLUSTER: cn50_sweep_reclaim (20261009_002734)",
+  "description": "Setzt auf die Spuren großer Marktteilnehmer (Liquiditäts-Sweeps). Gehandelt werden China A50 im 1-Stunden-Takt. Der Setup greift, wenn das Muster-Signal der Strategie auslöst. Stop 1.4×ATR, Ziel 2.5× Risiko, spätestens nach 4 Tagen glatt.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "promising",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 317.3,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-10-09 00:29:25",
+  "updated_at": "2026-10-09 00:29:34",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"cn50_sweep_reclaim\"], \"clusters\": [\"idx_asia_cn50\"], \"total_assets\": 1, \"total_pnl\": 1296.85}",
+  "concept": {
+    "name": "RCP-CLUSTER: cn50_sweep_reclaim",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "CN50"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "sig_long",
+            "condition": "AND",
+            "direction": "long",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "low",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "ref_indicator": "donchian_lower",
+                "ref_params": {
+                  "period": 20
+                }
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "ref_indicator": "donchian_lower",
+                "ref_params": {
+                  "period": 20
+                },
+                "value": 0
+              }
+            ]
+          },
+          {
+            "id": "sig_short",
+            "condition": "AND",
+            "direction": "short",
+            "base_score": 50,
+            "rules": [
+              {
+                "indicator": "high",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "ref_indicator": "donchian_upper",
+                "ref_params": {
+                  "period": 20
+                }
+              },
+              {
+                "indicator": "close",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "ref_indicator": "donchian_upper",
+                "ref_params": {
+                  "period": 20
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.4
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.5
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 96
+      },
+      "pairs": [
+        "CN50"
+      ],
+      "timeframe": "1h",
+      "description": "Setzt auf die Spuren großer Marktteilnehmer (Liquiditäts-Sweeps). Gehandelt werden China A50 im 1-Stunden-Takt. Der Setup greift, wenn das Muster-Signal der Strategie auslöst. Stop 1.4×ATR, Ziel 2.5× Risiko, spätestens nach 4 Tagen glatt."
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Setzt auf die Spuren großer Marktteilnehmer (Liquiditäts-Sweeps). Gehandelt werden China A50 im 1-Stunden-Takt. Der Setup greift, wenn das Muster-Signal der Strategie auslöst. Stop 1.4×ATR, Ziel 2.5× Risiko, spätestens nach 4 Tagen glatt."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "C",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "24M"
+      },
+      "g2_splits": {
+        "pass": false,
+        "value": "5 splits"
+      },
+      "g3_ho": {
+        "pass": false,
+        "value": "0 trades"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "1.21"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "80%"
+      }
+    },
+    "fire_test": null,
+    "oos_pnl": 1296.85,
+    "oos_score": 317.3,
+    "oos_pf": 1.21,
+    "oos_wr": 29.9,
+    "oos_trades": 223,
+    "oos_pass_rate": 0.8,
+    "tier_reason": "Bedingt geeignet; PF 1.21 < Ziel 1.5; WR 30% < Ziel 50%; Assets profitabel: 80%",
+    "clusters": [
+      {
+        "cluster": "idx_asia_cn50",
+        "timeframe": "1h",
+        "approach": "cn50_sweep_reclaim",
+        "n_combos_tested": 6,
+        "approach_summary": [
+          {
+            "approach": "cn50_bb_rsi_revert",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": true,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          },
+          {
+            "approach": "cn50_sweep_reclaim",
+            "score": 317.3,
+            "pnl": 1296.85,
+            "recipe_used": true,
+            "trades": 223,
+            "wr": 29.9,
+            "pf": 1.21,
+            "pass_rate": 0.8,
+            "tier": "A"
+          },
+          {
+            "approach": "auto_jp225_bb_trend_pull",
+            "score": -999,
+            "pnl": 0,
+            "recipe_used": false,
+            "trades": 0,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0,
+            "tier": "C"
+          }
+        ],
+        "best_tree": {
+          "enter": {
+            "signals": [
+              {
+                "id": "sig_long",
+                "condition": "AND",
+                "direction": "long",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "low",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "<",
+                    "ref_indicator": "donchian_lower",
+                    "ref_params": {
+                      "period": 20
+                    }
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "ref_indicator": "donchian_lower",
+                    "ref_params": {
+                      "period": 20
+                    },
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "id": "sig_short",
+                "condition": "AND",
+                "direction": "short",
+                "base_score": 50,
+                "rules": [
+                  {
+                    "indicator": "high",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "ref_indicator": "donchian_upper",
+                    "ref_params": {
+                      "period": 20
+                    }
+                  },
+                  {
+                    "indicator": "close",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "<",
+                    "ref_indicator": "donchian_upper",
+                    "ref_params": {
+                      "period": 20
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.4
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.5
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 96
+          },
+          "pairs": [
+            "CN50"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 1296.85,
+        "best_score": 317.3,
+        "selected_assets": [
+          "CN50"
+        ],
+        "dropped_assets": [],
+        "pair_overrides": {
+          "CN50": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.8,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 4.0
+            }
+          }
+        },
+        "recipe_used": true,
+        "trades": 223,
+        "pass_rate": 0.8,
+        "tier": "A",
+        "pf": 1.21,
+        "wr": 29.9,
+        "per_asset": {
+          "CN50": {
+            "oos_pnl": 1296.85,
+            "oos_trades": 223,
+            "oos_pass_rate": 0.8,
+            "oos_score": 158.7,
+            "oos_wr": 29.9,
+            "oos_pf": 1.21,
+            "best_sl_mult": 1.8,
+            "best_tp_val": 4.0,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-10-21 → 2025-04-21",
+                "oos_range": "2025-04-21 → 2025-07-22",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 4.0,
+                "is_pnl": 736.58,
+                "is_trades": 71,
+                "oos_pnl": 45.68,
+                "oos_trades": 40,
+                "oos_wr": 27.5,
+                "oos_pf": 1.04,
+                "oos_profitable": true,
+                "oos_gp": 1090.51,
+                "oos_gl": 1044.83
+              },
+              {
+                "split": 1,
+                "is_range": "2025-01-20 → 2025-07-22",
+                "oos_range": "2025-07-22 → 2025-10-21",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 4.0,
+                "is_pnl": 765.19,
+                "is_trades": 78,
+                "oos_pnl": 167.74,
+                "oos_trades": 51,
+                "oos_wr": 29.4,
+                "oos_pf": 1.13,
+                "oos_profitable": true,
+                "oos_gp": 1464.77,
+                "oos_gl": 1297.03
+              },
+              {
+                "split": 2,
+                "is_range": "2025-04-21 → 2025-10-21",
+                "oos_range": "2025-10-21 → 2026-01-20",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 4.0,
+                "is_pnl": 213.42,
+                "is_trades": 91,
+                "oos_pnl": 88.4,
+                "oos_trades": 41,
+                "oos_wr": 26.8,
+                "oos_pf": 1.07,
+                "oos_profitable": true,
+                "oos_gp": 1312.78,
+                "oos_gl": 1224.38
+              },
+              {
+                "split": 3,
+                "is_range": "2025-07-22 → 2026-01-20",
+                "oos_range": "2026-01-20 → 2026-04-21",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 4.0,
+                "is_pnl": 256.14,
+                "is_trades": 92,
+                "oos_pnl": -353.01,
+                "oos_trades": 41,
+                "oos_wr": 22.0,
+                "oos_pf": 0.73,
+                "oos_profitable": false,
+                "oos_gp": 975.04,
+                "oos_gl": 1328.05
+              },
+              {
+                "split": 4,
+                "is_range": "2025-10-21 → 2026-04-21",
+                "oos_range": "2026-04-21 → 2026-07-22",
+                "best_sl_mult": 1.8,
+                "best_tp_val": 3.2,
+                "is_pnl": 299.81,
+                "is_trades": 91,
+                "oos_pnl": 1348.04,
+                "oos_trades": 50,
+                "oos_wr": 44.0,
+                "oos_pf": 1.94,
+                "oos_profitable": true,
+                "oos_gp": 2776.54,
+                "oos_gl": 1428.5
+              }
+            ],
+            "selected": true
+          }
+        },
+        "updated_at": "2026-10-09T00:29:25.712402+00:00"
+      }
+    ],
+    "all_assets": [
+      "CN50"
+    ],
+    "pair_overrides": {
+      "CN50": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.8,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 4.0
+        }
+      }
+    },
+    "approaches_used": [
+      "cn50_sweep_reclaim"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": 0.0,
+      "trades": 0,
+      "pf": 0,
+      "per_cluster": [
+        {
+          "approach": "cn50_sweep_reclaim",
+          "pnl": 0,
+          "trades": 0,
+          "pf": 0
+        }
+      ]
+    },
+    "trial_count": 6,
+    "trial_count_kind": "executor_estimate",
+    "campaign_id": "cl:1h:cn50_sweep_reclaim",
+    "stat_gates": {
+      "dsr": null,
+      "dsr_pass": null,
+      "dsr_band": null,
+      "pbo": "n/a",
+      "pbo_pass": "n/a",
+      "pbo_band": "n/a",
+      "trial_count": 6,
+      "trial_count_source": "engine",
+      "campaign_id": "approach:cn50_sweep_reclaim#0",
+      "campaign_size": 1,
+      "n_obs": 5,
+      "sigma_source": "fallback",
+      "method_version": "2.0",
+      "computed_at": "2026-10-18T03:01:16+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "CN50",
+      "cluster": "idx_asia_cn50",
+      "timeframe": "1h",
+      "approach": "cn50_sweep_reclaim",
+      "tier": "A",
+      "oos_pnl_total": 1296.85,
+      "oos_pf": 1.21,
+      "oos_wr": 29.9,
+      "oos_trades": 223,
+      "oos_pass_rate": 0.8,
+      "oos_score": 158.7,
+      "is_selected": true,
+      "sl_override": 1.8,
+      "tp_override": 4.0
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "enter": {
+      "signals": [
+        {
+          "id": "sig_long",
+          "condition": "AND",
+          "direction": "long",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "low",
+              "timeframe": "1h",
+              "params": {},
+              "op": "<",
+              "ref_indicator": "donchian_lower",
+              "ref_params": {
+                "period": 20
+              }
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "ref_indicator": "donchian_lower",
+              "ref_params": {
+                "period": 20
+              },
+              "value": 0
+            }
+          ]
+        },
+        {
+          "id": "sig_short",
+          "condition": "AND",
+          "direction": "short",
+          "base_score": 50,
+          "rules": [
+            {
+              "indicator": "high",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "ref_indicator": "donchian_upper",
+              "ref_params": {
+                "period": 20
+              }
+            },
+            {
+              "indicator": "close",
+              "timeframe": "1h",
+              "params": {},
+              "op": "<",
+              "ref_indicator": "donchian_upper",
+              "ref_params": {
+                "period": 20
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 1.4
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 2.5
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 96
+    },
+    "pairs": [
+      "CN50"
+    ],
+    "timeframe": "1h"
+  },
+  "best_oos_pnl": 1296.85,
+  "best_pf": 1.21,
+  "best_wr": 29.9,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.8,
+  "oos_trades": 223,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}

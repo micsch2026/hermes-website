@@ -1,0 +1,1041 @@
+{
+  "id": 966,
+  "label": "#966",
+  "name": "RCP-CLUSTER: auto_jp225_bb_rsi_rev (20261008_205826)",
+  "display_name": "RCP-CLUSTER: auto_jp225_bb_rsi_rev (20261008_205826)",
+  "description": "Setzt auf die Rückkehr zur Mitte nach einer Übertreibung. Gehandelt werden Nikkei & China A50 im 1-Stunden-Takt. Der Setup greift, wenn der Kurs das untere Bollinger-Band berührt; dabei der RSI unter 30 stürzt (überverkauft). Nach unten das Spiegelbild. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt.",
+  "strategy_type": "unified",
+  "timeframe": "1h",
+  "status": "rejected",
+  "readiness": "promising",
+  "rejection_reason": "Keine Enrichment-Daten",
+  "overall_score": 75.7,
+  "iteration_count": 1,
+  "source": "iterative_discovery",
+  "source_url": null,
+  "source_ref": null,
+  "workflow": null,
+  "created_at": "2026-10-08 21:18:24",
+  "updated_at": "2026-10-08 21:18:33",
+  "notes": "{\"mode\": \"recipe_llm_cluster\", \"seed\": \"mean_reversion\", \"approaches_used\": [\"auto_jp225_bb_rsi_rev\"], \"clusters\": [\"idx_w3_jp225\"], \"total_assets\": 2, \"total_pnl\": 664.41}",
+  "concept": {
+    "name": "RCP-CLUSTER: auto_jp225_bb_rsi_rev",
+    "strategy_type": "unified",
+    "timeframe": "1h",
+    "assets_candidate": [
+      "JP225",
+      "CN50"
+    ],
+    "tree": {
+      "enter": {
+        "signals": [
+          {
+            "id": "sig_long",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": "<",
+                "value": 30
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "std_dev": 2
+                },
+                "op": "<",
+                "value": 0.25
+              },
+              {
+                "indicator": "candle_body",
+                "timeframe": "1h",
+                "params": {},
+                "op": ">",
+                "value": 0
+              }
+            ],
+            "direction": "long",
+            "base_score": 50
+          },
+          {
+            "id": "sig_short",
+            "condition": "AND",
+            "rules": [
+              {
+                "indicator": "rsi",
+                "timeframe": "1h",
+                "params": {
+                  "period": 14
+                },
+                "op": ">",
+                "value": 65
+              },
+              {
+                "indicator": "bb_position",
+                "timeframe": "1h",
+                "params": {
+                  "period": 20,
+                  "std_dev": 2
+                },
+                "op": ">",
+                "value": 0.75
+              },
+              {
+                "indicator": "candle_body",
+                "timeframe": "1h",
+                "params": {},
+                "op": "<",
+                "value": 0
+              }
+            ],
+            "direction": "short",
+            "base_score": 50
+          }
+        ]
+      },
+      "sl": {
+        "mode": "atr",
+        "period": 14,
+        "mult": 1.2
+      },
+      "tp": {
+        "mode": "r_multiple",
+        "value": 2.0
+      },
+      "exit": {
+        "mode": "timeout",
+        "max_hold_hours": 96
+      },
+      "pairs": [
+        "JP225",
+        "CN50"
+      ],
+      "timeframe": "1h",
+      "description": "Setzt auf die Rückkehr zur Mitte nach einer Übertreibung. Gehandelt werden Nikkei & China A50 im 1-Stunden-Takt. Der Setup greift, wenn der Kurs das untere Bollinger-Band berührt; dabei der RSI unter 30 stürzt (überverkauft). Nach unten das Spiegelbild. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt."
+    },
+    "params": {
+      "layers": {
+        "data": {
+          "timeframes": [
+            "1h"
+          ]
+        }
+      }
+    },
+    "risk": {
+      "risk_per_trade_pct": 2.0,
+      "max_positions": 1
+    },
+    "exit": {
+      "max_hold_hours": 72
+    },
+    "description": "Setzt auf die Rückkehr zur Mitte nach einer Übertreibung. Gehandelt werden Nikkei & China A50 im 1-Stunden-Takt. Der Setup greift, wenn der Kurs das untere Bollinger-Band berührt; dabei der RSI unter 30 stürzt (überverkauft). Nach unten das Spiegelbild. Stop 1.2×ATR, Ziel 2× Risiko, spätestens nach 4 Tagen glatt."
+  },
+  "screening_result": null,
+  "wfo_result": {
+    "tier": "B",
+    "tier_v2": "C",
+    "tier_v2_gates": {
+      "g1_data": {
+        "pass": true,
+        "value": "24M"
+      },
+      "g2_splits": {
+        "pass": false,
+        "value": "5 splits"
+      },
+      "g3_ho": {
+        "pass": false,
+        "value": "0 trades"
+      },
+      "g4_pf": {
+        "pass": true,
+        "value": "1.20"
+      },
+      "g5_pass": {
+        "pass": true,
+        "value": "70%"
+      }
+    },
+    "fire_test": null,
+    "oos_pnl": 664.41,
+    "oos_score": 75.7,
+    "oos_pf": 1.2,
+    "oos_wr": 35.8,
+    "oos_trades": 380,
+    "oos_pass_rate": 0.7,
+    "tier_reason": "Bedingt geeignet; PF 1.20 < Ziel 1.5; WR 36% < Ziel 50%; Assets profitabel: 70%",
+    "clusters": [
+      {
+        "cluster": "idx_w3_jp225",
+        "timeframe": "1h",
+        "approach": "auto_jp225_bb_rsi_rev",
+        "n_combos_tested": 4,
+        "approach_summary": [
+          {
+            "approach": "idx_jp225_tokyo_orb_h1",
+            "score": 155.4,
+            "pnl": 146.04,
+            "recipe_used": true,
+            "trades": 89,
+            "wr": 46.9,
+            "pf": 1.29,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "jp225_sweep_rsi_rev",
+            "score": 218.6,
+            "pnl": 155.39,
+            "recipe_used": false,
+            "trades": 80,
+            "wr": 34.9,
+            "pf": 1.23,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_sweep_pin",
+            "score": 96.3,
+            "pnl": 212.82,
+            "recipe_used": false,
+            "trades": 63,
+            "wr": 41.5,
+            "pf": 1.49,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_pin_bb_rev",
+            "score": 151.5,
+            "pnl": 381.71,
+            "recipe_used": false,
+            "trades": 222,
+            "wr": 31.3,
+            "pf": 1.18,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_ob_fvg_trend",
+            "score": 70.5,
+            "pnl": 135.83,
+            "recipe_used": true,
+            "trades": 116,
+            "wr": 31.4,
+            "pf": 1.13,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_liq_sweep_rev",
+            "score": 25.0,
+            "pnl": 204.22,
+            "recipe_used": true,
+            "trades": 375,
+            "wr": 33.4,
+            "pf": 1.07,
+            "pass_rate": 0.7,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_pinbar_bb_rev",
+            "score": 22.6,
+            "pnl": 120.67,
+            "recipe_used": true,
+            "trades": 134,
+            "wr": 33.1,
+            "pf": 1.11,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_sweep_rev",
+            "score": 25.0,
+            "pnl": 82.43,
+            "recipe_used": false,
+            "trades": 53,
+            "wr": 40.5,
+            "pf": 1.22,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "jp225_liq_sweep_rev_1h",
+            "score": 250.2,
+            "pnl": 359.43,
+            "recipe_used": true,
+            "trades": 130,
+            "wr": 34.4,
+            "pf": 1.27,
+            "pass_rate": 0.8,
+            "tier": "A"
+          },
+          {
+            "approach": "auto_jp225_bb_trend_pull",
+            "score": 56.6,
+            "pnl": 107.85,
+            "recipe_used": false,
+            "trades": 63,
+            "wr": 40.1,
+            "pf": 1.26,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_bb_rsi_rev",
+            "score": 75.7,
+            "pnl": 664.41,
+            "recipe_used": true,
+            "trades": 380,
+            "wr": 36.0,
+            "pf": 1.2,
+            "pass_rate": 0.7,
+            "tier": "B"
+          },
+          {
+            "approach": "jp225_rsi_bb_pinbar",
+            "score": 2024.6,
+            "pnl": 409.26,
+            "recipe_used": false,
+            "trades": 141,
+            "wr": 35.2,
+            "pf": 1.33,
+            "pass_rate": 0.8,
+            "tier": "A"
+          },
+          {
+            "approach": "jp225_liquidity_sweep_rsi",
+            "score": 888.6,
+            "pnl": 309.34,
+            "recipe_used": true,
+            "trades": 96,
+            "wr": 42.9,
+            "pf": 1.47,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_pinbar_rsi",
+            "score": 0.0,
+            "pnl": 249.73,
+            "recipe_used": true,
+            "trades": 54,
+            "wr": 51.1,
+            "pf": 1.84,
+            "pass_rate": 0.7,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_liq_sweep_rsi",
+            "score": 627.7,
+            "pnl": 237.85,
+            "recipe_used": false,
+            "trades": 81,
+            "wr": 35.9,
+            "pf": 1.35,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_sweep_pin_rsi",
+            "score": 96.4,
+            "pnl": 106.98,
+            "recipe_used": false,
+            "trades": 54,
+            "wr": 44.8,
+            "pf": 1.3,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_sweep_reclaim_1h",
+            "score": 12.5,
+            "pnl": 95.76,
+            "recipe_used": false,
+            "trades": 164,
+            "wr": 32.6,
+            "pf": 1.07,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_liq_sweep_reclaim",
+            "score": -82.5,
+            "pnl": -79.39,
+            "recipe_used": true,
+            "trades": 83,
+            "wr": 0,
+            "pf": 0,
+            "pass_rate": 0.325,
+            "tier": "C"
+          },
+          {
+            "approach": "auto_jp225_sweep_bb_rev_1h",
+            "score": 255.0,
+            "pnl": 280.65,
+            "recipe_used": true,
+            "trades": 146,
+            "wr": 33.3,
+            "pf": 1.2,
+            "pass_rate": 0.8,
+            "tier": "A"
+          },
+          {
+            "approach": "jp225_bb_rsi_pinbar",
+            "score": 33.7,
+            "pnl": 115.45,
+            "recipe_used": false,
+            "trades": 111,
+            "wr": 33.3,
+            "pf": 1.13,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_liq_sweep_ob",
+            "score": 28.4,
+            "pnl": 88.77,
+            "recipe_used": true,
+            "trades": 23,
+            "wr": 34.8,
+            "pf": 1.52,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_liqsweep_rev",
+            "score": 0.0,
+            "pnl": 364.37,
+            "recipe_used": true,
+            "trades": 51,
+            "wr": 40.5,
+            "pf": 1.92,
+            "pass_rate": 1.0,
+            "tier": "B"
+          },
+          {
+            "approach": "idx_jp225_sweep_bb_rsi",
+            "score": 27.5,
+            "pnl": 74.43,
+            "recipe_used": true,
+            "trades": 156,
+            "wr": 34.9,
+            "pf": 1.06,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_ls_rsi",
+            "score": 322.9,
+            "pnl": 347.4,
+            "recipe_used": true,
+            "trades": 118,
+            "wr": 41.2,
+            "pf": 1.39,
+            "pass_rate": 0.8,
+            "tier": "A"
+          },
+          {
+            "approach": "auto_jp225_london_sweep_rev",
+            "score": 305.1,
+            "pnl": 281.09,
+            "recipe_used": true,
+            "trades": 67,
+            "wr": 47.3,
+            "pf": 1.6,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_pinbar_bb",
+            "score": 334.4,
+            "pnl": 94.38,
+            "recipe_used": false,
+            "trades": 107,
+            "wr": 43.4,
+            "pf": 1.14,
+            "pass_rate": 0.8,
+            "tier": "A"
+          },
+          {
+            "approach": "jp225_liq_sweep_reversal",
+            "score": 11.8,
+            "pnl": 46.19,
+            "recipe_used": true,
+            "trades": 154,
+            "wr": 34.7,
+            "pf": 1.04,
+            "pass_rate": 0.6,
+            "tier": "B"
+          },
+          {
+            "approach": "jp225_sweep_pinbar",
+            "score": 152.3,
+            "pnl": 100.55,
+            "recipe_used": true,
+            "trades": 16,
+            "wr": 71.3,
+            "pf": 2.13,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "jp225_liq_sweep_rsi_rev",
+            "score": 218.6,
+            "pnl": 155.39,
+            "recipe_used": false,
+            "trades": 80,
+            "wr": 34.9,
+            "pf": 1.23,
+            "pass_rate": 0.8,
+            "tier": "B"
+          },
+          {
+            "approach": "auto_jp225_liqsweep_reclaim",
+            "score": 134.1,
+            "pnl": 243.3,
+            "recipe_used": true,
+            "trades": 178,
+            "wr": 34.9,
+            "pf": 1.16,
+            "pass_rate": 0.8,
+            "tier": "B"
+          }
+        ],
+        "best_tree": {
+          "enter": {
+            "signals": [
+              {
+                "id": "sig_long",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": "<",
+                    "value": 30
+                  },
+                  {
+                    "indicator": "bb_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "std_dev": 2
+                    },
+                    "op": "<",
+                    "value": 0.25
+                  },
+                  {
+                    "indicator": "candle_body",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": ">",
+                    "value": 0
+                  }
+                ],
+                "direction": "long",
+                "base_score": 50
+              },
+              {
+                "id": "sig_short",
+                "condition": "AND",
+                "rules": [
+                  {
+                    "indicator": "rsi",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 14
+                    },
+                    "op": ">",
+                    "value": 65
+                  },
+                  {
+                    "indicator": "bb_position",
+                    "timeframe": "1h",
+                    "params": {
+                      "period": 20,
+                      "std_dev": 2
+                    },
+                    "op": ">",
+                    "value": 0.75
+                  },
+                  {
+                    "indicator": "candle_body",
+                    "timeframe": "1h",
+                    "params": {},
+                    "op": "<",
+                    "value": 0
+                  }
+                ],
+                "direction": "short",
+                "base_score": 50
+              }
+            ]
+          },
+          "sl": {
+            "mode": "atr",
+            "period": 14,
+            "mult": 1.2
+          },
+          "tp": {
+            "mode": "r_multiple",
+            "value": 2.0
+          },
+          "exit": {
+            "mode": "timeout",
+            "max_hold_hours": 96
+          },
+          "pairs": [
+            "JP225",
+            "CN50"
+          ],
+          "timeframe": "1h"
+        },
+        "best_pnl": 664.41,
+        "best_score": 75.7,
+        "selected_assets": [
+          "JP225",
+          "CN50"
+        ],
+        "dropped_assets": [],
+        "pair_overrides": {
+          "JP225": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.2,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 3.2
+            }
+          },
+          "CN50": {
+            "sl": {
+              "mode": "atr",
+              "mult": 1.9,
+              "period": 14
+            },
+            "tp": {
+              "mode": "r_multiple",
+              "value": 2.6
+            }
+          }
+        },
+        "recipe_used": true,
+        "trades": 380,
+        "pass_rate": 0.7,
+        "tier": "B",
+        "pf": 1.2,
+        "wr": 36.0,
+        "per_asset": {
+          "JP225": {
+            "oos_pnl": 141.15,
+            "oos_trades": 185,
+            "oos_pass_rate": 0.6,
+            "oos_score": 15.1,
+            "oos_wr": 33.2,
+            "oos_pf": 1.09,
+            "best_sl_mult": 1.2,
+            "best_tp_val": 3.2,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-10-18 → 2025-04-19",
+                "oos_range": "2025-04-19 → 2025-07-19",
+                "best_sl_mult": 1.2,
+                "best_tp_val": 3.2,
+                "is_pnl": 302.46,
+                "is_trades": 55,
+                "oos_pnl": -37.68,
+                "oos_trades": 35,
+                "oos_wr": 22.9,
+                "oos_pf": 0.89,
+                "oos_profitable": false,
+                "oos_gp": 304.08,
+                "oos_gl": 341.76
+              },
+              {
+                "split": 1,
+                "is_range": "2025-01-18 → 2025-07-19",
+                "oos_range": "2025-07-19 → 2025-10-19",
+                "best_sl_mult": 1.2,
+                "best_tp_val": 3.2,
+                "is_pnl": 81.56,
+                "is_trades": 70,
+                "oos_pnl": 5.57,
+                "oos_trades": 48,
+                "oos_wr": 25.0,
+                "oos_pf": 1.01,
+                "oos_profitable": true,
+                "oos_gp": 452.01,
+                "oos_gl": 446.44
+              },
+              {
+                "split": 2,
+                "is_range": "2025-04-19 → 2025-10-19",
+                "oos_range": "2025-10-19 → 2026-01-18",
+                "best_sl_mult": 1.2,
+                "best_tp_val": 1.2,
+                "is_pnl": 14.66,
+                "is_trades": 84,
+                "oos_pnl": -80.65,
+                "oos_trades": 44,
+                "oos_wr": 38.6,
+                "oos_pf": 0.72,
+                "oos_profitable": false,
+                "oos_gp": 210.75,
+                "oos_gl": 291.4
+              },
+              {
+                "split": 3,
+                "is_range": "2025-07-19 → 2026-01-18",
+                "oos_range": "2026-01-18 → 2026-04-19",
+                "best_sl_mult": 1.9,
+                "best_tp_val": 3.2,
+                "is_pnl": 45.08,
+                "is_trades": 68,
+                "oos_pnl": 155.93,
+                "oos_trades": 28,
+                "oos_wr": 42.9,
+                "oos_pf": 1.78,
+                "oos_profitable": true,
+                "oos_gp": 356.19,
+                "oos_gl": 200.26
+              },
+              {
+                "split": 4,
+                "is_range": "2025-10-19 → 2026-04-19",
+                "oos_range": "2026-04-19 → 2026-07-20",
+                "best_sl_mult": 1.9,
+                "best_tp_val": 2.6,
+                "is_pnl": 293.39,
+                "is_trades": 62,
+                "oos_pnl": 97.98,
+                "oos_trades": 30,
+                "oos_wr": 36.7,
+                "oos_pf": 1.4,
+                "oos_profitable": true,
+                "oos_gp": 342.7,
+                "oos_gl": 244.72
+              }
+            ],
+            "selected": true
+          },
+          "CN50": {
+            "oos_pnl": 523.26,
+            "oos_trades": 195,
+            "oos_pass_rate": 0.8,
+            "oos_score": 102.0,
+            "oos_wr": 38.2,
+            "oos_pf": 1.28,
+            "best_sl_mult": 1.9,
+            "best_tp_val": 2.6,
+            "splits": [
+              {
+                "split": 0,
+                "is_range": "2024-10-18 → 2025-04-19",
+                "oos_range": "2025-04-19 → 2025-07-19",
+                "best_sl_mult": 0.6,
+                "best_tp_val": 3.2,
+                "is_pnl": 301.29,
+                "is_trades": 73,
+                "oos_pnl": -186.44,
+                "oos_trades": 51,
+                "oos_wr": 23.5,
+                "oos_pf": 0.68,
+                "oos_profitable": false,
+                "oos_gp": 399.68,
+                "oos_gl": 586.12
+              },
+              {
+                "split": 1,
+                "is_range": "2025-01-18 → 2025-07-19",
+                "oos_range": "2025-07-19 → 2025-10-19",
+                "best_sl_mult": 1.2,
+                "best_tp_val": 2.0,
+                "is_pnl": 300.92,
+                "is_trades": 71,
+                "oos_pnl": 52.86,
+                "oos_trades": 46,
+                "oos_wr": 41.3,
+                "oos_pf": 1.15,
+                "oos_profitable": true,
+                "oos_gp": 416.55,
+                "oos_gl": 363.69
+              },
+              {
+                "split": 2,
+                "is_range": "2025-04-19 → 2025-10-19",
+                "oos_range": "2025-10-19 → 2026-01-18",
+                "best_sl_mult": 1.9,
+                "best_tp_val": 3.2,
+                "is_pnl": 251.4,
+                "is_trades": 65,
+                "oos_pnl": 38.76,
+                "oos_trades": 27,
+                "oos_wr": 33.3,
+                "oos_pf": 1.15,
+                "oos_profitable": true,
+                "oos_gp": 305.96,
+                "oos_gl": 267.2
+              },
+              {
+                "split": 3,
+                "is_range": "2025-07-19 → 2026-01-18",
+                "oos_range": "2026-01-18 → 2026-04-19",
+                "best_sl_mult": 1.9,
+                "best_tp_val": 2.6,
+                "is_pnl": 216.39,
+                "is_trades": 64,
+                "oos_pnl": 187.98,
+                "oos_trades": 31,
+                "oos_wr": 45.2,
+                "oos_pf": 1.68,
+                "oos_profitable": true,
+                "oos_gp": 463.89,
+                "oos_gl": 275.91
+              },
+              {
+                "split": 4,
+                "is_range": "2025-10-19 → 2026-04-19",
+                "oos_range": "2026-04-19 → 2026-07-20",
+                "best_sl_mult": 1.9,
+                "best_tp_val": 2.6,
+                "is_pnl": 228.13,
+                "is_trades": 59,
+                "oos_pnl": 430.1,
+                "oos_trades": 40,
+                "oos_wr": 47.5,
+                "oos_pf": 2.12,
+                "oos_profitable": true,
+                "oos_gp": 814.33,
+                "oos_gl": 384.23
+              }
+            ],
+            "selected": true
+          }
+        },
+        "updated_at": "2026-10-08T21:18:24.764104+00:00"
+      }
+    ],
+    "all_assets": [
+      "JP225",
+      "CN50"
+    ],
+    "pair_overrides": {
+      "JP225": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.2,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 3.2
+        }
+      },
+      "CN50": {
+        "sl": {
+          "mode": "atr",
+          "mult": 1.9,
+          "period": 14
+        },
+        "tp": {
+          "mode": "r_multiple",
+          "value": 2.6
+        }
+      }
+    },
+    "approaches_used": [
+      "auto_jp225_bb_rsi_rev"
+    ],
+    "mode": "recipe_llm_cluster",
+    "hold_out": {
+      "pnl": 0.0,
+      "trades": 0,
+      "pf": 0,
+      "per_cluster": [
+        {
+          "approach": "auto_jp225_bb_rsi_rev",
+          "pnl": 0,
+          "trades": 0,
+          "pf": 0
+        }
+      ]
+    },
+    "trial_count": 4,
+    "trial_count_kind": "executor_estimate",
+    "campaign_id": "cl:1h:auto_jp225_bb_rsi_rev",
+    "stat_gates": {
+      "dsr": null,
+      "dsr_pass": null,
+      "dsr_band": null,
+      "pbo": "n/a",
+      "pbo_pass": "n/a",
+      "pbo_band": "n/a",
+      "trial_count": 4,
+      "trial_count_source": "engine",
+      "campaign_id": "approach:auto_jp225_bb_rsi_rev#0",
+      "campaign_size": 1,
+      "n_obs": 5,
+      "sigma_source": "fallback",
+      "method_version": "2.0",
+      "computed_at": "2026-10-18T03:01:16+00:00"
+    }
+  },
+  "enrichment_result": null,
+  "asset_results": [
+    {
+      "symbol": "JP225",
+      "cluster": "idx_w3_jp225",
+      "timeframe": "1h",
+      "approach": "auto_jp225_bb_rsi_rev",
+      "tier": "B",
+      "oos_pnl_total": 141.15,
+      "oos_pf": 1.09,
+      "oos_wr": 33.2,
+      "oos_trades": 185,
+      "oos_pass_rate": 0.6,
+      "oos_score": 15.1,
+      "is_selected": true,
+      "sl_override": 1.2,
+      "tp_override": 3.2
+    },
+    {
+      "symbol": "CN50",
+      "cluster": "idx_w3_jp225",
+      "timeframe": "1h",
+      "approach": "auto_jp225_bb_rsi_rev",
+      "tier": "B",
+      "oos_pnl_total": 523.26,
+      "oos_pf": 1.28,
+      "oos_wr": 38.2,
+      "oos_trades": 195,
+      "oos_pass_rate": 0.8,
+      "oos_score": 102.0,
+      "is_selected": true,
+      "sl_override": 1.9,
+      "tp_override": 2.6
+    }
+  ],
+  "selected_assets": [],
+  "dropped_assets": [],
+  "splits": [],
+  "correlations": [],
+  "iterations": [],
+  "strategy_tree": {
+    "enter": {
+      "signals": [
+        {
+          "id": "sig_long",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": "<",
+              "value": 30
+            },
+            {
+              "indicator": "bb_position",
+              "timeframe": "1h",
+              "params": {
+                "period": 20,
+                "std_dev": 2
+              },
+              "op": "<",
+              "value": 0.25
+            },
+            {
+              "indicator": "candle_body",
+              "timeframe": "1h",
+              "params": {},
+              "op": ">",
+              "value": 0
+            }
+          ],
+          "direction": "long",
+          "base_score": 50
+        },
+        {
+          "id": "sig_short",
+          "condition": "AND",
+          "rules": [
+            {
+              "indicator": "rsi",
+              "timeframe": "1h",
+              "params": {
+                "period": 14
+              },
+              "op": ">",
+              "value": 65
+            },
+            {
+              "indicator": "bb_position",
+              "timeframe": "1h",
+              "params": {
+                "period": 20,
+                "std_dev": 2
+              },
+              "op": ">",
+              "value": 0.75
+            },
+            {
+              "indicator": "candle_body",
+              "timeframe": "1h",
+              "params": {},
+              "op": "<",
+              "value": 0
+            }
+          ],
+          "direction": "short",
+          "base_score": 50
+        }
+      ]
+    },
+    "sl": {
+      "mode": "atr",
+      "period": 14,
+      "mult": 1.2
+    },
+    "tp": {
+      "mode": "r_multiple",
+      "value": 2.0
+    },
+    "exit": {
+      "mode": "timeout",
+      "max_hold_hours": 96
+    },
+    "pairs": [
+      "JP225",
+      "CN50"
+    ],
+    "timeframe": "1h"
+  },
+  "best_oos_pnl": 664.41,
+  "best_pf": 1.2,
+  "best_wr": 35.8,
+  "best_tier": "B",
+  "best_oos_pass_rate": 0.7,
+  "oos_trades": 380,
+  "wfo_is_months": null,
+  "wfo_oos_months": null,
+  "wfo_step_months": null,
+  "n_splits": null,
+  "pnl_per_month": null,
+  "oos_total_months": null
+}
