@@ -43,10 +43,16 @@
 .sl4-table .gate { font-size: 0.7rem; padding: 1px 4px; border-radius: 3px; }
 .sl4-table .gate-pass { background: var(--green-dim); color: var(--green); }
 .sl4-table .gate-fail { background: var(--red-dim); color: var(--red); }
+.sl4-table .gate-warn { background: var(--yellow-dim); color: var(--yellow); }
+.sl4-table .gate-na { background: rgba(125,133,144,0.15); color: var(--dim); }
 .sl4-table .bot-badge { display: inline-block; padding: 1px 6px; border-radius: 8px;
   font-size: 0.7rem; font-weight: 600; background: var(--blue-dim); color: var(--blue); }
 .sl4-table .new-badge { display: inline-block; padding: 1px 5px; border-radius: 8px;
   font-size: 0.65rem; font-weight: 600; background: var(--green-dim); color: var(--green); }
+.sl4-table .basis-badge { display: inline-block; padding: 1px 6px; border-radius: 8px;
+  font-size: 0.65rem; font-weight: 600; background: rgba(188,140,255,0.12); color: var(--purple);
+  white-space: nowrap; cursor: help; }
+.sl4-table .basis-badge.basis-stale { background: var(--yellow-dim); color: var(--yellow); }
 .sl4-table td.spark-td { line-height: 0; }
 .sl4-table .sl-spark { vertical-align: middle; }
 
@@ -192,7 +198,7 @@ let boardData = null;
 let eventsData = null;
 let currentTab = 'deploy';
 let currentFilter = 'all';
-let sortCol = 'score';
+let sortCol = 'id';
 let sortDir = 'desc';
 let searchTerm = '';
 
@@ -345,11 +351,70 @@ function renderTable() {
   document.getElementById('sl4-content').innerHTML = html;
 }
 
+function basisBadge(b) {
+  // P1a: sichtbares Basis-Badge (era + engine-fp; gelb = stale).
+  if (!b) return '<span style="color:var(--dim)">—</span>';
+  const cls = 'basis-badge' + (b.stale ? ' basis-stale' : '');
+  const txt = (b.era || '?') + (b.fp8 ? ' ' + b.fp8 : '');
+  const bits = [];
+  if (b.reason) bits.push(b.reason);
+  if (b.age_days != null) bits.push('Alter ' + b.age_days + ' d');
+  const title = 'Basis: ' + txt + (bits.length ? ' — ' + bits.join(' · ') : '');
+  return '<span class="' + cls + '" title="' + title + '">' + (b.stale ? '⚠ ' : '') + txt + '</span>';
+}
+
+// ── P2 W1 (23.10.2026): G6 ehrlich — nie als "i. O." tarnen ──
+// Labels exakt: pass "G6 ✓" · warn "G6 ⚠ (warn)" · fail "G6 ✗ (fail)" ·
+// insufficient "G6 n/a — insufficient (n_obs X)" · missing "G6 n/a — ohne trial_count" ·
+// Band mit n_obs<8 "G6 n/a (n_obs X<8)". label/tooltip kommen fertig aus dem
+// Builder (g6_from_stat_gates); Fallback hier nur fuer alte Kataloge.
+function g6Badge(g6) {
+  if (!g6) return '<span style="color:var(--dim)" title="Keine G6-Daten im Katalog">G6 —</span>';
+  const cls = 'gate ' + (g6.status === 'pass' ? 'gate-pass'
+    : (g6.status === 'warn' ? 'gate-warn' : (g6.status === 'fail' ? 'gate-fail' : 'gate-na')));
+  const label = g6.label || (g6.status === 'pass' ? 'G6 ✓'
+    : g6.status === 'warn' ? 'G6 ⚠ (warn)'
+    : g6.status === 'fail' ? 'G6 ✗ (fail)'
+    : g6.status === 'insufficient' ? 'G6 n/a — insufficient (n_obs ' + (g6.n_obs != null ? g6.n_obs : '—') + ')'
+    : g6.status === 'missing' ? 'G6 n/a — ohne trial_count' : 'G6 —');
+  const title = g6.tooltip || 'G6';
+  return '<span class="' + cls + '" title="' + esc(title) + '">' + esc(label) + '</span>';
+}
+
+// P2 W2a: PF zusaetzlich als Split-Bereich (nur wenn >=4 Splits mit Trades)
+function pfCell(r) {
+  const base = (r.pf != null ? r.pf : 0).toFixed(2);
+  const pr = r.pf_range;
+  if (!pr || pr.pf_min == null || pr.pf_max == null) return base;
+  const title = 'Split-Bereich: min–max der PF je Split (' + (pr.n || 0) + ' Splits mit Trades)';
+  return base + ' <span style="font-size:0.72rem;color:var(--dim)" title="' + title + '">(' + pr.pf_min.toFixed(1) + '–' + pr.pf_max.toFixed(1) + ')</span>';
+}
+
+// P2 W2c: trades<20 → Suffix, NICHT ausblenden
+function bewertbarSuffix(r) {
+  return ((r.trades || 0) < 20)
+    ? ' <span style="font-size:0.65rem;color:var(--yellow)" title="Weniger als 20 abgeschlossene Trades — keine belastbare Aussage (nicht bewertbar)">· nicht bewertbar</span>'
+    : '';
+}
+
+// P2 W2c: LCB90 aus lcb_report (per_sid) — sonst "—"
+function lcbCell(s) {
+  const rep = (typeof shadowData !== 'undefined' && shadowData) ? shadowData.lcb_report : null;
+  const ps = (rep && rep.per_sid) ? rep.per_sid : {};
+  const row = ps[String(s.id)];
+  const title = 'LCB90 = Normalapproximation der 90%-Konfidenz-Untergrenze des mittleren Netto-PnL je Trade (mean − 1.645·std/√n). Keine anytime-Garantie.';
+  if (!row || row.lcb90 == null) return '<span style="color:var(--dim)" title="' + title + '">—</span>';
+  const v = row.lcb90;
+  return '<span class="' + (v >= 0 ? 'pos' : 'neg') + '" title="' + title + '">LCB90 ' + (v >= 0 ? '+' : '') + v.toFixed(2) + ' (n=' + (row.n != null ? row.n : '—') + ')</span>';
+}
+
+
 const deployCols = [
   {key:'id', label:'ID', render: r => `<strong>#${r.id}</strong>`},
+  {key:'basis_key', label:'Basis', title:'Bewertungsbasis der Kennzahlen: era (root|b4) + engine-fp; gelb/⚠ = stale (>14 d alt oder fp passt nicht zur aktuellen Engine)', render: r => basisBadge(r.basis)},
   {key:'name', label:'Strategie / Ansatz', render: r => `<div><div style="font-weight:600">${r.name || r.label}</div><span style="font-size:0.75rem;color:var(--dim)">${(r.assets||[]).join(', ')}</span></div>`},
-  {key:'score', label:'Score', num: true},
-  {key:'pf', label:'PF', num: true, render: r => r.pf.toFixed(2)},
+  {key:'score', label:'Score', num: true, title:'Rang-Persistenz schwach (E2) — Ordnungskriterium, keine Vorhersage. Standard-Sortierung ist ID/neueste zuerst.'},
+  {key:'pf', label:'PF', num: true, title:'Profit-Faktor; Klammer = Split-Bereich (min–max der PF je Split, nur bei ≥4 Splits mit Trades)', render: r => pfCell(r)},
   {key:'pnl', label:'PnL', num: true, render: r => `<span class="${r.pnl>0?'pos':'neg'}">${r.pnl>0?'+':''}${r.pnl}€</span>`},
   {key:'pnl_per_month', label:'€/Mon', num: true, render: r => r.pnl_per_month ? `<span class="${r.pnl_per_month>0?'pos':'neg'}" style="font-weight:600">${r.pnl_per_month>0?'+':''}${r.pnl_per_month}€</span>` : '—'},
   {key:'trades', label:'Tr', num: true},
@@ -366,6 +431,8 @@ const deployCols = [
     if (r.ho_status === 'warning') return '<span class="gate gate-fail">⚠️</span>';
     return '<span style="color:var(--dim)">➖</span>';
   }},
+  // P2 W1: G6 je Zeile — wahrheitsgemaess (siehe g6Badge)
+  {key:'g6', label:'G6', render: r => g6Badge(r.g6)},
 ];
 const pipelineCols = [
   {key:'score', label:'Score', num: true},
@@ -562,6 +629,7 @@ function showDetail(row) {
       ['Kosten', row.costs.toFixed(2) + '€'],
       ['OOS PF (Backtest)', `<span style="color:var(--dim)">${row.oos_pf.toFixed(2)}</span>`],
       ['OOS PnL (Backtest)', `<span style="color:var(--dim)">${row.oos_pnl>=0?'+':''}${row.oos_pnl}€ / ${row.oos_trades} Tr</span>`],
+      ['LCB90 (Forward)', lcbCell(row)],
       ['Aktiv seit', (() => {
           const se = row.shadow_entry || row.start_date;
           const seD = se ? new Date(se).toLocaleDateString('de-DE') : startTxt;
@@ -581,6 +649,13 @@ function showDetail(row) {
       ? '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--green-dim);color:var(--green);font-weight:600">🟢 Top-Kandidat: Starker Profit-Faktor bei hoher statistischer Signifikanz</div>'
       : '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--blue-dim);color:var(--blue);font-weight:600">🟡 Solider Kandidat: Erfüllt Basiskriterien für Shadow-Forward-Test</div>';
     html += ampel;
+    if (row.basis) {
+      const bbits = [];
+      if (row.basis.fp8) bbits.push('fp ' + row.basis.fp8);
+      if (row.basis.reason) bbits.push(row.basis.reason);
+      if (row.basis.age_days != null) bbits.push('Alter ' + row.basis.age_days + ' d');
+      html += '<div style="margin:-0.4rem 0 0.8rem;font-size:0.78rem;color:var(--dim)">Bewertungsbasis: <strong>' + (row.basis.era || '?') + '</strong>' + (bbits.length ? ' · ' + bbits.join(' · ') : '') + '</div>';
+    }
     html += '<div class="detail-grid">';
     const fields = [
       ['ID', '#' + row.id], ['Score', row.score], ['PF', row.pf || row.best_pf],
@@ -599,6 +674,10 @@ function showDetail(row) {
     html += '</div>';
 
     // Gates
+    if (row.g6) {
+      html += '<div style="margin-top:1rem"><strong>G6 (DSR):</strong> ' + g6Badge(row.g6)
+        + ' <span style="font-size:0.72rem;color:var(--dim)">' + esc(row.g6.tooltip || '') + '</span></div>';
+    }
     if (row.gates) {
       html += '<div style="margin-top:1rem"><strong>Gates:</strong> ';
       for (const [k, v] of Object.entries(row.gates)) {
@@ -728,6 +807,7 @@ function _updateShadowTableOnly() {
       {k:'assets', l:'Assets'},
       {k:'days_active', l:'Tage', num:true},
       {k:'net_pnl', l:'PnL', num:true},
+      {k:'lcb', l:'LCB90', nosort:true},
       {k:'trades', l:'Trades', num:true},
       {k:'win_rate', l:'WR', num:true},
       {k:'shadow_avg_trade', l:'Ø€/Tr', num:true},
@@ -760,8 +840,9 @@ function _updateShadowTableOnly() {
     rowsHtml += '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(s.name)+'">'+esc((s.name||'').slice(0,35))+'</td>';
     rowsHtml += '<td style="font-size:0.7rem">'+(s.assets||[]).join(', ')+'</td>';
     rowsHtml += '<td class="num">'+(s.days_active?Math.floor(s.days_active)+'d':'—')+'</td>';
-    rowsHtml += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span></td>';
-    rowsHtml += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+'</td>';
+    rowsHtml += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span>'+bewertbarSuffix(s)+'</td>';
+    rowsHtml += '<td class="num">'+lcbCell(s)+'</td>';
+    rowsHtml += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+bewertbarSuffix(s)+'</td>';
     rowsHtml += '<td class="num">'+((s.trades||0)>0?(s.win_rate||0).toFixed(0)+'%':'—')+'</td>';
     rowsHtml += '<td class="num">'+(s.shadow_avg_trade!=null?s.shadow_avg_trade+'€':'—')+'</td>';
     rowsHtml += '<td class="num">'+(s.pnl_per_week!=null?'<span class="'+((s.pnl_per_week>=0)?'pos':'neg')+'">'+((s.pnl_per_week>=0)?'+':'')+s.pnl_per_week+'€</span>':'—')+'</td>';
@@ -873,6 +954,22 @@ function renderShadowDashboard() {
   const openPos = shadowData.open_positions || [];
   const sd = shadowData;
   let html = '';
+
+  // ── P2 W3a (23.10.2026): ehrliche Nenner im Shadow-Kopf ──
+  // Zahlen NUR aus evidence_kpi (nie aus der aktuell gerenderten Liste neu
+  // zaehlen); fehlende Felder → „—".
+  {
+    const _kpi = sd.evidence_kpi || null;
+    const _num = (k) => (_kpi && _kpi[k] != null) ? _kpi[k] : '—';
+    const _stand = (_kpi && _kpi.generated) ? String(_kpi.generated) : '—';
+    const _tip = 'Evidenz-Nenner aus evidence_kpi.json (Tool shadow_evidence_kpi.py). '
+      + '„mit n≥20" = Slots mit mindestens 20 regulären Abschlüssen (geschlossene Trades); '
+      + '„ohne Trade" = Slots ohne einen einzigen Abschluss. Stand: ' + _stand;
+    html += '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.6rem 0.9rem;border-left:3px solid var(--blue)">';
+    html += '<div style="font-size:0.82rem" title="' + esc(_tip) + '">📊 <strong>' + _num('slots_total') + '</strong> Slots · <strong>' + _num('n_ge_20') + '</strong> mit n≥20 · <strong>' + _num('n_eq_0') + '</strong> ohne Trade';
+    html += ' <span style="color:var(--dim);font-size:0.72rem">(reguläre Abschlüsse · Quelle: evidence_kpi · Stand ' + esc(_stand) + ')</span></div>';
+    html += '</div>';
+  }
 
   // ── Belegungs-Empfehlungen (Allocation Advisor, 2026-10-05) ──
   // Ganz oben: Entscheidungs-Sicht VOR den Diagnose-Sektionen (User-Vorgabe).
@@ -1044,23 +1141,35 @@ function renderShadowDashboard() {
   }
 
   // ── Korrelations-Warnbox (Klumpenrisiko vor Deploy) ──
+  // P2 W3b (23.10.2026): effektive Wetten statt "von allen Strategien".
   const corrData = sd.correlation || {};
   const highCorrs = corrData.high_correlations || [];
-  if (highCorrs.length > 0) {
+  const _eb = corrData.effective_bets;
+  const _mr = corrData.matrix_rows;
+  const _ar = corrData.alias_rows;
+  const _hasCorr = highCorrs.length > 0 || _eb != null || _mr != null;
+  if (_hasCorr) {
     html += '<div class="rd-section-title">🚨 Klumpenrisiko-Audit (Korrelation ≥ 0.50)</div>';
     html += '<div class="rd-card" style="margin-bottom:0.9rem;border-left:3px solid var(--yellow);padding:0.65rem 0.9rem">';
-    html += '<div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">Die folgenden Strategien bewegen sich stark synchron. Niemals zwei hoch-korrelierte Strategien zeitgleich auf Demo/Live deployen!</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.4rem">';
-    for (const hc of highCorrs.slice(0, 6)) {
-      const isExtreme = hc.correlation >= 0.70;
-      const warnIcon = isExtreme ? '🚨' : '⚠️';
-      const col = isExtreme ? 'var(--red)' : 'var(--yellow)';
-      html += '<div style="font-size:0.75rem;background:rgba(255,255,255,0.03);padding:0.3rem 0.5rem;border-radius:4px">';
-      html += `${warnIcon} <strong>#${hc.strategy_a} ↔ #${hc.strategy_b}</strong>: <span style="color:${col};font-weight:700">r = ${(hc.correlation>=0?'+':'')+hc.correlation.toFixed(2)}</span>`;
-      html += `<div style="color:var(--dim);font-size:0.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(hc.name_a)} vs ${esc(hc.name_b)}</div>`;
+    html += '<div style="font-size:0.85rem;margin-bottom:0.25rem"><strong>Effektive Wetten: ' + (_eb != null ? Number(_eb).toFixed(1) : '—') + ' / ' + (_mr != null ? _mr : '—') + ' Matrix-Zeilen</strong></div>';
+    html += '<div style="font-size:0.72rem;color:var(--dim);margin-bottom:0.5rem">Alias-Zeilen (@botN) separat: ' + (_ar != null ? _ar : '—') + '; Basis: Netto-PnL je Tag, ρ≥0.5</div>';
+    if (highCorrs.length > 0) {
+      html += '<div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">Die folgenden Strategien bewegen sich stark synchron. Niemals zwei hoch-korrelierte Strategien zeitgleich auf Demo/Live deployen!</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.4rem">';
+      for (const hc of highCorrs.slice(0, 6)) {
+        const isExtreme = hc.correlation >= 0.70;
+        const warnIcon = isExtreme ? '🚨' : '⚠️';
+        const col = isExtreme ? 'var(--red)' : 'var(--yellow)';
+        html += '<div style="font-size:0.75rem;background:rgba(255,255,255,0.03);padding:0.3rem 0.5rem;border-radius:4px">';
+        html += `${warnIcon} <strong>#${hc.strategy_a} ↔ #${hc.strategy_b}</strong>: <span style="color:${col};font-weight:700">r = ${(hc.correlation>=0?'+':'')+hc.correlation.toFixed(2)}</span>`;
+        html += `<div style="color:var(--dim);font-size:0.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(hc.name_a)} vs ${esc(hc.name_b)}</div>`;
+        html += '</div>';
+      }
       html += '</div>';
+    } else {
+      html += '<div style="font-size:0.78rem;color:var(--green)">✅ Keine Paare mit r ≥ 0.50 im Fenster.</div>';
     }
-    html += '</div></div>';
+    html += '</div>';
   }
 
   // ── Gate-Blocks (7 d) — Trading-Gate-Transparenz (B, 2026-10-01) ──
@@ -1279,6 +1388,7 @@ function renderShadowDashboard() {
     {k:'assets', l:'Assets'},
     {k:'days_active', l:'Tage', num:true},
     {k:'net_pnl', l:'PnL', num:true},
+    {k:'lcb', l:'LCB90', nosort:true},
     {k:'trades', l:'Trades', num:true},
     {k:'win_rate', l:'WR', num:true},
     {k:'shadow_avg_trade', l:'Ø€/Tr', num:true},
@@ -1313,8 +1423,9 @@ function renderShadowDashboard() {
         const _t = s.days_active ? (s.days_active).toFixed(1)+' Tage'+(s.days_source==='trade'?' (1. Trade)':'') : '';
         html += '<td class="num" title="'+_t+'">'+_dTxt+(_sD?'<br><span style="font-size:0.6rem;color:var(--dim)">seit '+_sD+'</span>':'')+'</td>';
       }
-    html += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span></td>';
-    html += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+'</td>';
+    html += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span>'+bewertbarSuffix(s)+'</td>';
+    html += '<td class="num">'+lcbCell(s)+'</td>';
+    html += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+bewertbarSuffix(s)+'</td>';
     html += '<td class="num">'+((s.trades||0)>0?(s.win_rate||0).toFixed(0)+'%':'—')+'</td>';
     html += '<td class="num">'+(s.shadow_avg_trade!=null?s.shadow_avg_trade+'€':'—')+'</td>';
     html += '<td class="num">'+(s.pnl_per_week!=null?'<span class="'+((s.pnl_per_week>=0)?'pos':'neg')+'">'+((s.pnl_per_week>=0)?'+':'')+s.pnl_per_week+'€</span>':'—')+'</td>';
@@ -1934,6 +2045,7 @@ function renderRdLive() {
       + th('assets', 'str', 'Assets', 'Getestete Assets')
       + th('tf', 'str', 'TF', 'Timeframe')
       + th('status', 'str', 'Status', 'Katalog-Status')
+      + th('basis', 'str', 'Basis', 'Bewertungsbasis (era + engine-fp) der OOS-Kennzahlen')
       + th('pnl', 'num', 'Σ OOS', 'Summe aller Rolling-OOS-Fenster')
       + th('pf', 'num', 'PF', 'Profit Factor (OOS)')
       + th('wr', 'num', 'WR', 'Win Rate (OOS)')
@@ -1955,6 +2067,7 @@ function renderRdLive() {
         <td data-v="${esc((s.assets || []).join(' '))}" style="font-size:0.7rem" title="${esc((s.assets||[]).join(', '))}">${esc(assets)}</td>
         <td data-v="${s.tf || ''}">${s.tf || '—'}</td>
         <td data-v="${s.status || ''}"><span class="${stCls}">${s.status}</span></td>
+        <td data-v="${s.basis ? (s.basis.era + ' ' + s.basis.fp8) : ''}" title="${s.basis ? esc(s.basis.text) : ''}">${basisBadge(s.basis)}</td>
         <td data-v="${s.pnl != null ? s.pnl : ''}" class="num" style="${pnlStyle}">${pnlTxt}</td>
         <td data-v="${s.pf != null ? s.pf : ''}" class="num">${s.pf != null ? s.pf : '—'}</td>
         <td data-v="${s.wr != null ? s.wr : ''}" class="num">${s.wr != null ? s.wr + '%' : '—'}</td>
@@ -2507,7 +2620,7 @@ document.querySelectorAll('.sl4-tab').forEach(tab => {
     currentTab = tab.dataset.tab;
     if (currentTab !== 'rdlive') _destroyRdCharts();
     if (currentTab === 'shadow') { shadowSortCol = 'net_pnl'; shadowSortDir = 'desc'; }
-    else { sortCol = 'score'; sortDir = 'desc'; }
+    else { sortCol = 'id'; sortDir = 'desc'; }
     renderTable();
   });
 });
