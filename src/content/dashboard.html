@@ -190,13 +190,11 @@
     <span class="db-status-right">—</span>
   </div>
 
-  <div class="db-sec-title">Jetzt zu tun</div>
-  <div class="db-card" id="db-actions">
-    <div id="db-actions-list"><span class="db-dim">Lade …</span></div>
-    <div class="db-foot">
-      <span id="db-actions-more" style="display:none"></span>
-      <span class="db-dim">Vorschläge — Ausführung manuell</span>
-    </div>
+  <div class="db-card" id="db-links">
+    <span class="db-dim">Lage &amp; Empfehlungen:
+      <a href="/">Kommandocenter</a> ·
+      <a href="/supervisor">Supervisor</a> ·
+      Shadow: <a href="/strategy-lab">Strategy Lab</a></span>
   </div>
 
   <div class="db-sec-title">Performance</div>
@@ -238,11 +236,6 @@
       <div class="db-k">Risiko &amp; Ausführung</div>
       <div id="db-risk"><span class="db-dim">Lade …</span></div>
     </div>
-  </div>
-
-  <div class="db-grid2">
-    <div class="db-card" id="db-shadow">—</div>
-    <div class="db-card" id="db-missions">—</div>
   </div>
 
   <div class="db-meta" id="db-meta">—</div>
@@ -348,33 +341,6 @@
         return ra !== rb ? ra - rb : a.i - b.i;  // stabil
       }).map(function (x) { return x.it; });
   }
-  function renderActions(d) {
-    var items = (((d || {}).recommendations || {}).items) || [];
-    var sorted = sortRecs(items);
-    var top = sorted.slice(0, 3);
-    $('db-actions-list').innerHTML = top.length === 0
-      ? '<span class="db-dim">keine offenen Vorschläge 🎉</span>'
-      : top.map(function (it) {
-          var cls = it.priority === 'high' ? 'db-prio-high'
-                  : (it.priority === 'mid' ? 'db-prio-mid' : 'db-prio-low');
-          return '<div class="db-act">' +
-            '<span class="db-prio ' + cls + '"></span>' +
-            '<span class="db-act-target">' + esc(fmtTarget(it.target)) + '</span>' +
-            '<span class="db-act-text">' + esc(it.text || '') + '</span>' +
-            '<span class="db-badge">' + esc(it.source || '') + '</span></div>';
-        }).join('');
-    var more = sorted.length - 3;
-    var m = $('db-actions-more');
-    if (more > 0) {
-      m.style.display = '';
-      m.innerHTML = '+' + more + ' weitere → <a href="/supervisor">Supervisor</a>';
-    } else {
-      m.style.display = 'none';
-      m.innerHTML = '';
-    }
-  }
-
-  // ── M3 Performance ─────────────────────────────────────────
   function renderPerf(d) {
     var kpis = (d.live || {}).kpis || {};
     var fleet = (d.live || {}).fleet || [];
@@ -836,24 +802,6 @@
     $('db-risk').innerHTML = html;
   }
 
-  // ── M7 Shadow ──────────────────────────────────────────────
-  function renderShadow(d) {
-    var k = (d.shadow || {}).kpis || {};
-    $('db-shadow').innerHTML = '<div class="db-k">Shadow</div><div class="db-s">' +
-      (has(k.n_trades_30d) ? nfInt.format(k.n_trades_30d) : '—') + ' Trades/30d · netto ' +
-      '<span class="' + pnlCls(k.net_30d) + '">' + fmtEur(k.net_30d, true) + '</span> · ' +
-      (has(k.n_deployed) ? k.n_deployed : '—') + ' deployt</div>';
-  }
-
-  // ── M8 Missionen ───────────────────────────────────────────
-  function renderMissions(d) {
-    var k = (d || {}).kpis || {};
-    $('db-missions').innerHTML = '<div class="db-k">Missionen</div><div class="db-s">' +
-      '<a href="/missions">' + (has(k.active) ? k.active : '—') + ' aktiv · ' +
-      (has(k.stages_done) ? k.stages_done : '—') + '/' +
-      (has(k.stages_total) ? k.stages_total : '—') + ' Etappen</a></div>';
-  }
-
   // ── M9 Echtgeld + Aktivität (16.10.2026) ───────────────────
   function renderEchtgeld(d) {
     var el = $('db-live-accounts');
@@ -928,14 +876,11 @@
   function renderAll() {
     [
       function () { renderStatus(O); },
-      function () { renderActions(SV); },
       function () { renderPerf(O); },
       function () { renderTiles(O, SP); },
       function () { renderMatrix(O, SP); },
       function () { renderDev(O); },
       function () { renderRisk(O, SP); },
-      function () { renderShadow(O); },
-      function () { renderMissions(MI); },
       function () { renderEchtgeld(O); },
       function () { renderFeed(O); },
       function () { renderMeta(O, SP); }

@@ -64,28 +64,11 @@
 
   .sv-mission { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); margin-bottom: var(--s-3); }
   .sv-m-title { font-weight: 600; margin-bottom: 2px; }
-  .sv-goal { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
-             -webkit-box-orient: vertical; overflow: hidden; }
   .sv-bar { height: 8px; background: var(--c-surface-2); border-radius: 999px; overflow: hidden; margin: var(--s-2) 0 2px; }
   .sv-bar-fill { height: 100%; background: var(--c-accent); }
   .sv-chip.ok { border-color: var(--c-ok); color: var(--c-ok); }
   .sv-chip.warn { border-color: var(--c-warn); color: var(--c-warn); }
   .sv-chip.err { border-color: var(--c-err); color: var(--c-err); }
-
-  /* Mini-Stepper (Missionen) */
-  .sv-steps { display: grid; gap: 3px; margin-top: var(--s-2); }
-  .sv-step { display: flex; align-items: baseline; gap: var(--s-2); font-size: var(--text-sm); }
-  .sv-dot { width: 16px; height: 16px; border-radius: 999px; border: 2px solid var(--c-border);
-            background: var(--c-surface-2); color: var(--c-text-dim); display: inline-flex;
-            align-items: center; justify-content: center; font-size: 0.62rem; flex: 0 0 auto; }
-  .sv-step.done .sv-dot { border-color: var(--c-ok); color: var(--c-ok); }
-  .sv-step.running .sv-dot { border-color: var(--c-warn); color: var(--c-warn);
-            animation: sv-pulse 1.4s ease-in-out infinite; }
-  .sv-step.blocked .sv-dot { border-color: var(--c-err); color: var(--c-err); }
-  @keyframes sv-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,180,0,0.0); }
-                        50% { box-shadow: 0 0 0 4px rgba(255,180,0,0.20); } }
-  .sv-step .sv-st-id { color: var(--c-text-dim); min-width: 24px; }
-  .sv-step .sv-st-t { color: var(--c-text-2); }
   .sv-gate { color: var(--c-err); font-size: var(--text-xs); }
 
   /* Sparkline + Balkenchart */
@@ -597,43 +580,18 @@
     var mAll = (mi.active || []).concat(mi.proposed || []);
     $('sv-missions-count').textContent =
       '(' + (mi.active || []).length + ' aktiv · ' + (mi.proposed || []).length + ' vorgeschlagen)';
-    function stepCls(st) {
-      return (st === 'done' || st === 'running' || st === 'blocked') ? st : '';
-    }
-    function dotSym(st) {
-      if (st === 'done') return '✓';
-      if (st === 'blocked') return '✕';
-      if (st === 'running') return '●';
-      return '';
-    }
     function missionCard(m, offered) {
       var pct = m.total ? Math.round(100 * m.done / m.total) : 0;
-      var stages = (m.stages || []).map(function (s) {
-        var cls = stepCls(s.status);
-        var full = (s.title || s.id || '') + ' · ' + (s.type || '') + ' · ' + (s.status || '');
-        var gate = s.gate_state === 'pending'
-          ? ' <span class="sv-gate">🔴 Gate offen (' + esc(s.gate_kind) + ')</span>' : '';
-        return '<div class="sv-step ' + cls + '" title="' + esc(full) + '">' +
-          '<span class="sv-dot">' + dotSym(s.status) + '</span>' +
-          '<span class="sv-st-id">' + esc(s.id) + '</span>' +
-          '<span class="sv-st-t">' + esc(s.title) + '</span>' +
-          '<span class="sv-badge ' + (cls === 'done' ? 'ok' : (cls === 'blocked' ? 'err' : (cls === 'running' ? 'warn' : ''))) + '">' +
-          esc(s.status) + '</span>' + gate + '</div>';
-      }).join('');
-      var gates = (m.gates_open || []).map(function (g) {
-        return '<div class="sv-li">🔴 GATE ' + esc(g.stage) + ' (' + esc(g.kind) + '): ' +
-               esc(g.reason) + '</div>';
-      }).join('');
+      var gates = (m.gates_open || []).length;
       return '<div class="sv-mission">' +
         '<div class="sv-m-title">' + esc(m.title) +
         ' <span class="sv-badge ' + (m.status === 'active' ? 'ok' : (m.status === 'blocked' ? 'err' : 'warn')) + '">' +
         esc(m.status) + '</span>' +
         (offered ? ' <span class="sv-dim">wartet auf Start-Freigabe</span>' : '') + '</div>' +
-        '<div class="sv-dim sv-goal" title="' + esc(m.goal) + '">' + esc(m.goal) + '</div>' +
         '<div class="sv-bar"><div class="sv-bar-fill" style="width:' + pct + '%"></div></div>' +
-        '<div class="sv-dim">' + m.done + '/' + m.total + ' Etappen · ' + pct + '%</div>' +
-        '<div class="sv-steps">' + stages + '</div>' +
-        (gates ? '<div class="sv-list">' + gates + '</div>' : '') + '</div>';
+        '<div class="sv-dim">' + m.done + '/' + m.total + ' Etappen · ' + pct + '%' +
+        (gates ? ' · <span class="sv-gate">🔴 ' + gates + ' Gate offen</span>' : ' · keine offenen Gates') +
+        ' · <a href="/missions">Details →</a></div></div>';
     }
     $('sv-missions').innerHTML =
       (mAll.length === 0

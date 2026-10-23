@@ -21,13 +21,16 @@ SITE = Path(__file__).resolve().parent.parent
 SRC = SITE / "src/content/dashboard.html"
 
 REQUIRED_IDS = [
-    "db-error", "db-status", "db-status-text",
-    "db-actions", "db-actions-list", "db-actions-more",
+    "db-error", "db-status", "db-status-text", "db-links",
     "db-perf", "db-perf-demo", "db-perf-live", "db-perf-total",
     "db-tiles", "db-vt", "db-matrix",
-    "db-dev", "db-risk", "db-shadow", "db-missions", "db-meta",
+    "db-dev", "db-risk", "db-meta",
     "db-live-accounts", "db-feed",
 ]
+
+# Single-Home-Regel (23.10.2026): Findings/Shadow/Missionen nicht auf /dashboard
+FORBIDDEN_IDS = ["db-actions", "db-actions-list", "db-actions-more",
+                 "db-shadow", "db-missions"]
 
 # Alt-Launcher-Reste, die auf der neuen Seite NICHT mehr vorkommen duerfen
 FORBIDDEN = ["generate_home_sidebar", "quick-link", "v0.21.5", "mimo-v2.5"]
@@ -67,6 +70,8 @@ def main() -> int:
     p.feed(text)
     missing = [i for i in REQUIRED_IDS if i not in p.ids]
     check(f"Pflicht-IDs vorhanden ({len(REQUIRED_IDS)})", not missing, missing)
+    left = [i for i in FORBIDDEN_IDS if i in p.ids]
+    check("Single-Home: keine gedoppelten Blöcke", not left, left)
 
     # 3) Inline-JS parst (node --check)
     scripts = re.findall(r"<script>(.*?)</script>", text, re.S)

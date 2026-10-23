@@ -76,11 +76,8 @@ def main():
         "verdict-components", "comp-lab", "comp-shadow", "comp-demo_live", "comp-risk", "comp-data",
         # findings
         "findings",
-        # live/demo
-        "live-block", "live-kpis", "fleet-table",
-        # shadow
-        "shadow-block", "shadow-kpis", "shadow-ranking", "shadow-decay",
-        "shadow-challenges", "shadow-rotation",
+        # single-home navigation (Fleet/Shadow/Missionen leben auf eigenen Seiten)
+        "detail-links",
         # lab
         "lab-block", "lab-worker", "lab-queue", "lab-7d",
         # charts (6 Container: 5 bestehende + neuer Tages-PnL-Chart)
@@ -115,10 +112,11 @@ def main():
           "window.LightweightCharts" in raw and "Chart-Bibliothek nicht geladen" in raw)
     check("Chart-Instanzen in Modulvariablen (Refresh ohne Neuerzeugen)",
           "_eqChart" in raw and "_pnlSeries" in raw and "applyOptions({ width:" in raw)
-    check("Fleet-Tabelle: Spalte Verlauf + colspan 13 (ohne colspan 12)",
-          ">Verlauf</th>" in raw and 'colspan="13"' in raw and 'colspan="12"' not in raw)
-    check("Sparkline-Helper (Inline-SVG polyline, ≤40 Punkte)",
-          "function sparklineSVG" in raw and "polyline" in raw and "/ 40" in raw)
+    # Single-Home-Regel (23.10.2026): Fleet/Shadow werden NICHT mehr auf / gerendert.
+    check("Single-Home: keine Fleet-Tabelle auf /", 'id="fleet-table"' not in raw)
+    check("Single-Home: kein Shadow-Block auf /", 'id="shadow-block"' not in raw)
+    check("Single-Home: keine toten Renderer (renderLive/renderShadow)", 
+          "function renderLive" not in raw and "function renderShadow" not in raw)
 
     # ── 3. Jeder inline <script>-Block: node --check ───────────
     scripts = extract_blocks(raw, "<script", "</script>")

@@ -221,56 +221,18 @@
   <p class="ov-section-title">Findings</p>
   <div class="ov-findings" id="findings"></div>
 
-  <!-- 4. Live/Demo -->
-  <p class="ov-section-title">Live / Demo</p>
-  <div id="live-block">
-    <div class="ov-kpi-grid" id="live-kpis"></div>
-    <div class="ov-table-wrap">
-      <table class="ov-table" id="fleet-table">
-        <thead>
-          <tr>
-            <th>Bot</th><th>Modus</th><th class="ov-num">Equity</th><th class="ov-num">Balance</th>
-            <th class="ov-num">P&amp;L 7d</th><th class="ov-num">P&amp;L 30d</th>
-            <th class="ov-num">DD %</th><th>DD-Level</th><th>Blocked</th>
-            <th class="ov-num">Tag %</th><th class="ov-num">Pos.</th><th>Slots</th><th>Verlauf</th>
-          </tr>
-        </thead>
-        <tbody><tr><td colspan="13">lade…</td></tr></tbody>
-      </table>
+  <!-- 4. Single-Home-Verweise (Fleet/Shadow/Missionen leben auf eigenen Seiten) -->
+  <p class="ov-section-title">Details</p>
+  <div class="ov-card" id="detail-links" style="margin-bottom:var(--s-6)">
+    <div class="ov-gate-dim">
+      Fleet &amp; Konten: <a href="/dashboard">Fleet-Cockpit</a> ·
+      Shadow &amp; Katalog: <a href="/strategy-lab">Strategy Lab</a> ·
+      Missionen: <a href="/missions">Missionen</a> ·
+      Governance: <a href="/supervisor">Supervisor</a>
     </div>
   </div>
 
-  <!-- 5. Shadow -->
-  <p class="ov-section-title">Shadow Trader</p>
-  <div id="shadow-block">
-    <div class="ov-kpi-grid" id="shadow-kpis"></div>
-    <div class="ov-subgrid">
-      <div class="ov-card">
-        <h3>Top-Strategien (30 d)</h3>
-        <div class="ov-table-wrap">
-          <table class="ov-table" id="shadow-ranking">
-            <thead><tr><th>SID</th><th>Name</th><th class="ov-num">N</th><th class="ov-num">Net</th><th class="ov-num">WR %</th><th class="ov-num">PF</th><th>Tier</th><th>Letzter Trade</th></tr></thead>
-            <tbody><tr><td colspan="8">lade…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:var(--s-4)">
-        <div class="ov-card" id="shadow-decay"><h3>Decay-Monitor</h3></div>
-        <div class="ov-card" id="shadow-challenges"><h3>Aktive Challenges</h3></div>
-      </div>
-    </div>
-    <div class="ov-card" style="margin-bottom:var(--s-6)">
-      <h3>Rotation</h3>
-      <div class="ov-table-wrap">
-        <table class="ov-table" id="shadow-rotation">
-          <thead><tr><th>Bot</th><th>Slot</th><th>SID</th><th>Holder</th><th>State</th></tr></thead>
-          <tbody><tr><td colspan="5">lade…</td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- 6. Lab -->
+  <!-- 5. Lab -->
   <p class="ov-section-title">Strategy Lab</p>
   <div id="lab-block" class="ov-subgrid">
     <div class="ov-card" id="lab-worker"><h3>Worker</h3></div>
@@ -593,145 +555,6 @@
     }).join('');
   }
 
-  // ── 4. Live/Demo ───────────────────────────────────────────
-  var KPI_DEFS = [
-    ['equity_demo', 'Equity Demo', 'eur'],
-    ['equity_live', 'Equity Live (Bots)', 'eur'],
-    ['equity_live_hosts', 'Echtgeld Slot-Hosts', 'eur'],
-    ['equity_total', 'Equity Total', 'eur'],
-    ['pnl_7d', 'P&L 7 d', 'eur_cls'],
-    ['pnl_30d', 'P&L 30 d', 'eur_cls'],
-    ['open_positions', 'Offene Positionen', 'int']
-  ];
-  function renderLive(d) {
-    var live = d.live || {};
-    var kpis = live.kpis || {};
-    document.getElementById('live-kpis').innerHTML = KPI_DEFS.map(function (def) {
-      var v = kpis[def[0]];
-      var val;
-      if (def[2] === 'eur') val = '<span class="' + fmtEurCls(v) + '">' + fmtEur(v) + '</span>';
-      else if (def[2] === 'eur_cls') val = '<span class="' + fmtEurCls(v) + '">' + fmtEur(v) + '</span>';
-      else val = fmtInt(v);
-      return '<div class="ov-kpi"><div class="ov-kpi-value">' + val + '</div><div class="ov-kpi-label">' + esc(def[1]) + '</div></div>';
-    }).join('');
-
-    var tbody = document.querySelector('#fleet-table tbody');
-    var fleet = live.fleet || [];
-    if (!fleet.length) {
-      tbody.innerHTML = '<tr><td colspan="13">keine Bot-Daten</td></tr>';
-      return;
-    }
-    tbody.innerHTML = fleet.map(function (b) {
-      var mode = '';
-      if (b.is_live) mode += '<span class="ov-badge mode-live">LIVE</span> ';
-      if (b.mixed_slots && !b.is_live) mode += '<span class="ov-badge mode-live2">LIVE+DMO</span> ';
-      if (!mode) mode = '<span class="ov-badge mode-demo">DEMO</span>';
-      var slots = (b.slots || []).map(function (s) {
-        if (s.planned) return esc(s.slot_id || '—') + ' (geplant)';
-        return esc(s.slot_id || '—') + (s.sid !== null && s.sid !== undefined ? '·#' + esc(s.sid) : '');
-      }).join(', ');
-      var ddLevel = (b.dd_level === null || b.dd_level === undefined) ? '—'
-        : '<span class="ov-badge lv' + esc(b.dd_level) + '">L' + esc(b.dd_level) + '</span>';
-      return '<tr>' +
-        '<td><b>' + esc(b.bot || '—') + '</b></td>' +
-        '<td>' + mode + '</td>' +
-        '<td class="ov-num">' + fmtEur(b.equity) + '</td>' +
-        '<td class="ov-num">' + fmtEur(b.balance) + '</td>' +
-        '<td class="ov-num ' + fmtEurCls(b.pnl_7d) + '">' + fmtEur(b.pnl_7d) + '</td>' +
-        '<td class="ov-num ' + fmtEurCls(b.pnl_30d) + '">' + fmtEur(b.pnl_30d) + '</td>' +
-        '<td class="ov-num ' + fmtEurCls(b.dd_pct) + '">' + fmtPct(b.dd_pct) + '</td>' +
-        '<td>' + ddLevel + '</td>' +
-        '<td>' + (b.blocked ? '🔴' : '—') + '</td>' +
-        '<td class="ov-num ' + fmtEurCls(b.daily_pnl_pct) + '">' + fmtPct(b.daily_pnl_pct) + '</td>' +
-        '<td class="ov-num">' + fmtInt(b.open_positions) + '</td>' +
-        '<td>' + (slots || '—') + '</td>' +
-        '<td class="spark-td">' + sparklineSVG(b.equity_curve) + '</td>' +
-        '</tr>';
-    }).join('');
-  }
-
-  // ── 5. Shadow ──────────────────────────────────────────────
-  // Ratio je Fenster (28/56) — robust gegen Objekt-/Zahl-/None-Formen; nie NaN.
-  function fmtRatioCell(r) {
-    function one(v) {
-      return (v === null || v === undefined || (typeof v === 'number' && isNaN(v)))
-        ? '\u2014' : ((Math.round(v * 100) / 100).toFixed(2));
-    }
-    var a = r.ratio_28, b = r.ratio_56;
-    if (a === undefined && b === undefined && r.ratio && typeof r.ratio === 'object') {
-      a = r.ratio['28']; b = r.ratio['56'];
-    }
-    if ((a === null || a === undefined) && (b === null || b === undefined)) return '\u2014';
-    return one(a) + ' / ' + one(b);
-  }
-
-  function renderShadow(d) {
-    var sh = d.shadow || {};
-    var k = sh.kpis || {};
-    document.getElementById('shadow-kpis').innerHTML =
-      '<div class="ov-kpi"><div class="ov-kpi-value">' + fmtInt(k.n_trades_30d) + '</div><div class="ov-kpi-label">Trades 30 d</div></div>' +
-      '<div class="ov-kpi"><div class="ov-kpi-value"><span class="' + fmtEurCls(k.net_30d) + '">' + fmtEur(k.net_30d) + '</span></div><div class="ov-kpi-label">Net 30 d</div></div>' +
-      '<div class="ov-kpi"><div class="ov-kpi-value">' + fmtInt(k.n_deployed) + '</div><div class="ov-kpi-label">Deployed</div></div>';
-
-    // Ranking (Top 15)
-    var rk = (sh.ranking || []).slice(0, 15);
-    document.querySelector('#shadow-ranking tbody').innerHTML = rk.length ? rk.map(function (r) {
-      return '<tr>' +
-        '<td>#' + esc(dash(r.sid)) + '</td>' +
-        '<td style="white-space:normal;min-width:200px">' + esc(dash(r.name)) + '</td>' +
-        '<td class="ov-num">' + fmtInt(r.n) + '</td>' +
-        '<td class="ov-num ' + fmtEurCls(r.net) + '">' + fmtEur(r.net) + '</td>' +
-        '<td class="ov-num">' + fmtPct(r.wr_pct) + '</td>' +
-        '<td class="ov-num">' + dash(r.pf === null || r.pf === undefined ? null : (Math.round(r.pf * 100) / 100)) + '</td>' +
-        '<td>' + esc(dash(r.tier)) + '</td>' +
-        '<td>' + esc(fmtTsHuman(r.last_ts)) + '</td>' +
-        '</tr>';
-    }).join('') : '<tr><td colspan="8">keine Daten</td></tr>';
-
-    // Decay
-    var dec = sh.decay || {};
-    var counts = dec.counts || {};
-    var order = ['total', 'tableau', 'demote', 'watch', 'ok', 'insufficient'];
-    var countsHtml = '<div class="ov-chips" style="margin-bottom:var(--s-2)">' + order.map(function (key) {
-      return '<span class="ov-chip">' + esc(key) + ': <b>' + fmtInt(counts[key]) + '</b></span>';
-    }).join('') + '</div>';
-    var rows = dec.rows || [];
-    var rowsHtml = rows.length ?
-      '<div class="ov-table-wrap"><table class="ov-table">' +
-      '<thead><tr><th>Bot</th><th>SID</th><th class="ov-num">Ratio 28/56</th><th>Status</th><th>Gründe</th></tr></thead><tbody>' +
-      rows.map(function (r) {
-        return '<tr>' +
-          '<td>' + esc(dash(r.bot)) + '</td>' +
-          '<td>#' + esc(dash(r.sid)) + '</td>' +
-          '<td class="ov-num">' + fmtRatioCell(r) + '</td>' +
-          '<td>' + esc(dash(r.status_label || r.status)) + '</td>' +
-          '<td style="white-space:normal">' + esc((r.reasons || []).join(', ') || '—') + '</td>' +
-          '</tr>';
-      }).join('') + '</tbody></table></div>'
-      : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine Zeilen</div>';
-    document.getElementById('shadow-decay').innerHTML = '<h3>Decay-Monitor</h3>' + countsHtml + rowsHtml;
-
-    // Challenges
-    var ch = sh.challenges || [];
-    document.getElementById('shadow-challenges').innerHTML = '<h3>Aktive Challenges</h3>' + (ch.length ?
-      '<div class="ov-chips">' + ch.map(function (c) {
-        return '<span class="ov-chip">' + esc(c.bot) + ' / ' + esc(c.slot_id) + ' · #' + esc(dash(c.sid)) + ' · <b>' + fmtInt(c.days) + ' d</b></span>';
-      }).join('') + '</div>'
-      : '<div style="font-size:var(--text-xs);color:var(--c-text-dim)">keine aktiven Challenges</div>');
-
-    // Rotation
-    var rot = sh.rotation || [];
-    document.querySelector('#shadow-rotation tbody').innerHTML = rot.length ? rot.map(function (r) {
-      return '<tr>' +
-        '<td>' + esc(dash(r.bot)) + '</td>' +
-        '<td>' + esc(dash(r.slot_id)) + '</td>' +
-        '<td>#' + esc(dash(r.sid)) + '</td>' +
-        '<td>' + (r.holder ? '✓' : '—') + '</td>' +
-        '<td><span class="ov-badge ' + (r.state === 'held' ? 'mode-live' : 'sev-info') + '">' + esc(dash(r.state)) + '</span></td>' +
-        '</tr>';
-    }).join('') : '<tr><td colspan="5">keine Daten</td></tr>';
-  }
-
   // ── 6. Lab ─────────────────────────────────────────────────
   function renderLab(d) {
     var lab = d.lab || {};
@@ -1051,24 +874,6 @@
     }).join('');
   }
 
-  function sparklineSVG(curve) {
-    var pts = curveToPoints(curve);
-    if (pts.length < 2) return '—';
-    var step = Math.max(1, Math.ceil(pts.length / 40)); // Downsample ≤40 Punkte
-    var samp = pts.filter(function (_, i) { return i % step === 0 || i === pts.length - 1; });
-    var vs = samp.map(function (p) { return p.value; });
-    var min = Math.min.apply(null, vs), max = Math.max.apply(null, vs);
-    var range = (max - min) || 1;
-    var W = 64, H = 16, pad = 1.5;
-    var poly = samp.map(function (p, i) {
-      var x = pad + i / (samp.length - 1) * (W - 2 * pad);
-      var y = pad + (1 - (p.value - min) / range) * (H - 2 * pad);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    }).join(' ');
-    var color = vs[vs.length - 1] >= vs[0] ? C_POS : C_NEG;
-    return '<svg class="spark" width="64" height="16" viewBox="0 0 64 16" aria-hidden="true"><polyline points="' + poly + '" fill="none" stroke="' + color + '" stroke-width="1.5"/></svg>';
-  }
-
   function renderCharts(d) {
     var charts = d.charts || {};
     if (!window.LightweightCharts) {
@@ -1102,8 +907,6 @@
     renderExecGuard(d);
     renderComponents(d);
     renderFindings(d);
-    renderLive(d);
-    renderShadow(d);
     renderLab(d);
     renderSources(d);
     renderCharts(d);

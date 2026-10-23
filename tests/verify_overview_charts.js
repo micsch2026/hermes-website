@@ -197,10 +197,9 @@ setTimeout(() => {
   check('(d) #chart-monthly enthält 9 Balken (3 Monate × 3)', rects === 9, 'ist: ' + rects);
   check('(d) #chart-monthly enthält 3 verschiedene Monate', months === 3, 'ist: ' + months);
 
-  // (e) Sparkline-SVGs == 2 (eine je Bot in der Fleet-Tabelle)
-  const sparks = (fleetHtml.match(/class="spark"/g) || []).length;
-  check('(e) 2 Sparkline-SVGs in der Fleet-Tabelle', sparks === 2, 'ist: ' + sparks);
-  check('(e) Fleet-Tabelle ohne colspan="12"', !fleetHtml.includes('colspan="12"'));
+  // (e) Single-Home (23.10.2026): Fleet-Tabelle lebt auf /dashboard, nicht auf /
+  check('(e) keine Fleet-Tabelle mehr auf /', !raw.includes('id="fleet-table"'), 
+    'fleetHtml=' + fleetHtml.length);
 
   // defensive Pfad-Checks (kein Crash bei Hinweistexten)
   check('kein Fehler-/Guard-Hinweis im Equity-Chart (Lib-Stub geladen)',
