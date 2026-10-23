@@ -2525,7 +2525,7 @@ function renderEventsEngine() {
   const soon = cal.filter(e => e.epoch <= now + 48*3600);
   html += '<div class="rd-section-title" style="margin-top:0.6rem">🗓️ Kalender — nächste 48 h</div>';
   if (soon.length) {
-    html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Zeit (Berlin)</th><th>Event</th><th>Kat.</th><th>Währung</th><th>Impact</th></tr></thead><tbody>';
+    html += '<div class="sl4-table-wrap" style="max-height:420px;overflow-y:auto"><table class="sl4-table"><thead><tr><th>Zeit (Berlin)</th><th>Event</th><th>Kat.</th><th>Währung</th><th>Impact</th></tr></thead><tbody>';
     for (const e of soon.slice(0, 40)) {
       const imp = e.impact === 'High' ? '<span class="gate gate-fail">High</span>'
         : (e.impact === 'Medium' ? '<span class="gate" style="background:rgba(210,153,34,0.15);color:#d29922">Med</span>'
@@ -2565,6 +2565,7 @@ function renderEventsEngine() {
     }
     html += '</div>';
   }
+  let an = '';
   const gsHyps = hyps.filter(h => h.forward);
   if (gsHyps.length) {
     const sparkline = function(vals) {
@@ -2583,24 +2584,24 @@ function renderEventsEngine() {
       if (b < 30) return {txt: '🔍 Zwischenfazit möglich — Stichprobe klein', col: '#e8b84a'};
       return {txt: '✅ bewertungsreif — Lab-Seed-Vorbereitung', col: '#39b54a'};
     };
-    html += '<div class="rd-section-title" style="margin-top:0.9rem">🧪 Gate-Shadow-Test — Forward-Verfolgung der Kandidaten</div>';
-    html += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.5rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">'
+    an += '<div class="rd-section-title" style="margin-top:0.9rem">🧪 Gate-Shadow-Test — Forward-Verfolgung der Kandidaten</div>';
+    an += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.5rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">'
       + 'Virtuelle Parallelwelt: Es wird NICHTS live geblockt — die Engine zählt auf den echten Shadow-Trades mit, was ein Entry-Blackout je Kandidat gebracht HÄTTE (virtuell gespart = Summe der Verluste, die das Gate verhindert hätte; positive Werte = Gate wirkt). Täglich 05:45 UTC. Richtwerte: ~10 Trades im Fangnetz = Zwischenfazit, ~30+ = bewertungsreif für den nächsten Schritt (Lab-Seed → Demo → Live, manuelle Freigabe). Saisonale Gates (z. B. Sommer) bleiben außerhalb ihrer Saison leer.</div>';
-    html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Kandidat</th><th class="num">Fangnetz</th><th class="num">virtuell gespart</th><th class="num">Ø/Trade</th><th>Verlauf</th><th>Stand / Empfehlung</th></tr></thead><tbody>';
+    an += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Kandidat</th><th class="num">Fangnetz</th><th class="num">virtuell gespart</th><th class="num">Ø/Trade</th><th>Verlauf</th><th>Stand / Empfehlung</th></tr></thead><tbody>';
     for (const h of gsHyps) {
       const f = h.forward;
       const hist = (h.forward_history || []).map(function(x) { return x.saved_eur; }).filter(function(v) { return v != null; });
       const st = gsStage(f);
-      html += '<tr><td><b>' + esc(h.name) + '</b><div style="font-size:0.7rem;color:var(--dim)">' + esc(h.hid || '') + ' · seit ' + esc(f.since || '') + '</div></td>'
+      an += '<tr><td><b>' + esc(h.name) + '</b><div style="font-size:0.7rem;color:var(--dim)">' + esc(h.hid || '') + ' · seit ' + esc(f.since || '') + '</div></td>'
         + '<td class="num">' + (f.blocked_n || 0) + ' / ' + (f.n_forward || 0) + '</td>'
         + '<td class="num ' + ((f.saved_eur || 0) > 0 ? 'pos' : 'neg') + '">' + ((f.saved_eur || 0) > 0 ? '+' : '') + Number(f.saved_eur || 0).toFixed(2) + '€</td>'
         + '<td class="num">' + (f.blocked_mean != null ? Number(f.blocked_mean).toFixed(2) + '€' : '—') + '</td>'
         + '<td style="font-size:0.9rem;letter-spacing:1px" title="' + esc(hist.join('€ → ')) + '€">' + sparkline(hist) + '</td>'
         + '<td style="font-size:0.75rem;color:' + st.col + '">' + st.txt + '</td></tr>';
     }
-    html += '</tbody></table></div>';
+    an += '</tbody></table></div>';
     const lastChk = (gsHyps[0].forward.checked_at || '').slice(0, 16).replace('T', ' ');
-    html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Quelle: Registry-Evidenz (kind=gate_shadow) · letzte Messung ' + esc(lastChk) + ' UTC · gespeist vom täglichen Tracker (05:45 UTC).</div>';
+    an += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Quelle: Registry-Evidenz (kind=gate_shadow) · letzte Messung ' + esc(lastChk) + ' UTC · gespeist vom täglichen Tracker (05:45 UTC).</div>';
   }
   const gd = d.gate_detail;
   if (gd && (gd.rows || []).length) {
@@ -2613,18 +2614,18 @@ function renderEventsEngine() {
         return y.slice(2) + ': ' + (v[1] > 0 ? '+' : '') + Number(v[1]).toFixed(0) + '€ (' + v[0] + 'x)';
       }).join(' · ');
     };
-    html += '<div class="rd-section-title" style="margin-top:0.9rem">🔬 Einsparungs-Detail — was hätten aktivierte Gates gerettet?</div>';
-    html += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.5rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">'
+    an += '<div class="rd-section-title" style="margin-top:0.9rem">🔬 Einsparungs-Detail — was hätten aktivierte Gates gerettet?</div>';
+    an += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.5rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">'
       + 'Historischer Backtest je Gate-Kandidat × Klasse (Retro-Simulation der 6 Kernstrategien, ' + ((gd.basis && gd.basis.retro_n) || 0) + ' Trades, plus Index-Set): „gerettet“ = Summe der Verluste, die ein Entry-Blackout verhindert hätte (netto, statisch). '
       + 'Klassenregel: NIE global ausrollen — Index-Nacht/Sommer und Metalle-Nacht sind NEGATIV. In-Sample-Kandidaten → Anwendung nur über Gate-Shadow → Lab-Seed → Demo.'
       + (gd.checks_ok ? ' Engine-Reproduktion ✅ 6/6.' : ' ⚠️ Reproduktions-Checks abweichend!')
       + '</div>';
-    html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th>Klasse / Scope</th><th class="num">Trades</th><th class="num">blockt</th><th class="num">%</th><th class="num">gerettet</th><th class="num">Ø/Block</th><th>je Jahr</th></tr></thead><tbody>';
+    an += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th>Klasse / Scope</th><th class="num">Trades</th><th class="num">blockt</th><th class="num">%</th><th class="num">gerettet</th><th class="num">Ø/Block</th><th>je Jahr</th></tr></thead><tbody>';
     for (const r of gd.rows) {
       const neg = (r.saved || 0) < 0;
       const ic = r.kind === 'union' ? '🧩 ' : (r.kind === 'extra' ? '🟡 ' : (r.kind === 'info' ? 'ℹ️ ' : ''));
       const sub = r.sub ? ' <span style="color:var(--dim);font-size:0.7rem">— ' + esc(r.sub) + '</span>' : '';
-      html += '<tr' + (r.warn ? ' style="background:rgba(224,82,82,0.06)"' : '') + '>'
+      an += '<tr' + (r.warn ? ' style="background:rgba(224,82,82,0.06)"' : '') + '>'
         + '<td>' + ic + esc(r.gate) + '</td>'
         + '<td>' + esc(r.scope) + sub + '</td>'
         + '<td class="num">' + r.n + '</td>'
@@ -2634,82 +2635,83 @@ function renderEventsEngine() {
         + '<td class="num">' + (r.bmean != null ? Number(r.bmean).toFixed(2) + '€' : '—') + '</td>'
         + '<td style="font-size:0.7rem;color:var(--dim)">' + esc(gdYear(r.years)) + '</td></tr>';
     }
-    html += '</tbody></table></div>';
-    html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Stand ' + esc(new Date(gd.generated_at).toLocaleString('de-DE')) + ' · Quelle: Event Engine gate-detail (read-only) · Basis ' + esc((gd.basis && gd.basis.retro_span) || '') + ' + Index ' + esc((gd.basis && gd.basis.index_span) || '') + ' · Vollbericht: reports/gate_detail_*.md</div>';
+    an += '</tbody></table></div>';
+    an += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Stand ' + esc(new Date(gd.generated_at).toLocaleString('de-DE')) + ' · Quelle: Event Engine gate-detail (read-only) · Basis ' + esc((gd.basis && gd.basis.retro_span) || '') + ' + Index ' + esc((gd.basis && gd.basis.index_span) || '') + ' · Vollbericht: reports/gate_detail_*.md</div>';
   }
   const lf = d.latest_findings && d.latest_findings.detail ? d.latest_findings.detail : null;
   if (lf) {
-    html += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyse-Lauf ('
+    an += '<div class="rd-section-title" style="margin-top:0.8rem">📊 Letzter Analyse-Lauf ('
       + esc(lf.trades || '') + ' · ' + (lf.n_trades || 0) + ' Trades geprüft)</div>';
     if (lf.narrative) {
-      html += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.6rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">' + esc(lf.narrative) + '</div>';
+      an += '<div style="font-size:0.78rem;color:var(--dim);line-height:1.55;margin:0.35rem 0 0.6rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.02);border-radius:4px">' + esc(lf.narrative) + '</div>';
     }
     if (lf.gate_backtests) {
-      html += '<div style="font-size:0.82rem;margin-top:0.4rem"><b>Gate-Backtests</b> — was hätte ein Entry-Blackout auf die Kandidaten-Gates gebracht?</div>';
-      html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th class="num">Geblockt</th><th class="num">Δ€ (positiv = Blocken hilft)</th><th class="num">Ø/Trade</th><th>Was heißt das / nächster Schritt</th></tr></thead><tbody>';
+      an += '<div style="font-size:0.82rem;margin-top:0.4rem"><b>Gate-Backtests</b> — was hätte ein Entry-Blackout auf die Kandidaten-Gates gebracht?</div>';
+      an += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gate</th><th class="num">Geblockt</th><th class="num">Δ€ (positiv = Blocken hilft)</th><th class="num">Ø/Trade</th><th>Was heißt das / nächster Schritt</th></tr></thead><tbody>';
       for (const g of lf.gate_backtests) {
-        html += '<tr><td>' + esc(g.name) + '</td><td class="num">' + g.blocked_n + '</td><td class="num '
+        an += '<tr><td>' + esc(g.name) + '</td><td class="num">' + g.blocked_n + '</td><td class="num '
           + (g.delta_total > 0 ? 'pos' : 'neg') + '">' + (g.delta_total == null ? '—' : (g.delta_total > 0 ? '+' : '') + g.delta_total.toFixed(0))
           + '€</td><td class="num">' + (g.blocked_mean != null ? g.blocked_mean.toFixed(2) + '€' : '—') + '</td>'
           + '<td style="font-size:0.78rem;color:var(--dim);line-height:1.45">' + esc(g.desc || '') + '</td></tr>';
       }
-      html += '</tbody></table></div>';
+      an += '</tbody></table></div>';
     }
     if (lf.top_correlations) {
       const sig = lf.top_correlations.filter(c => c.p != null && c.p < 0.05).slice(0, 12);
       if (sig.length) {
-        html += '<div style="margin-top:0.7rem;font-size:0.82rem"><b>Einzelfunde</b> (p &lt; 0.05) — Trades rund um Termine vs. ruhige Marktphasen:</div>';
+        an += '<div style="margin-top:0.7rem;font-size:0.82rem"><b>Einzelfunde</b> (p &lt; 0.05) — Trades rund um Termine vs. ruhige Marktphasen:</div>';
         for (const c of sig) {
           const dbadge = (c.delta > 0 ? 'pos' : 'neg');
-          html += '<div style="padding:0.45rem 0.65rem;margin:0.35rem 0;background:rgba(255,255,255,0.02);border-radius:5px">';
-          html += '<div style="font-size:0.83rem"><b>' + esc(c.cat_plain || c.cat || '') + '</b> <span style="color:var(--dim)">· ' + esc(c.win_txt || '') + '</span>'
+          an += '<div style="padding:0.45rem 0.65rem;margin:0.35rem 0;background:rgba(255,255,255,0.02);border-radius:5px">';
+          an += '<div style="font-size:0.83rem"><b>' + esc(c.cat_plain || c.cat || '') + '</b> <span style="color:var(--dim)">· ' + esc(c.win_txt || '') + '</span>'
             + '<span style="font-size:0.72rem;color:var(--dim)"> · n=' + c.n + ' · Δ <span class="' + dbadge + '">' + (c.delta == null ? '—' : (c.delta > 0 ? '+' : '') + c.delta.toFixed(2)) + '€/Trade</span> · p=' + (c.p == null ? '—' : c.p.toFixed(4)) + ' · ' + (c.fdr_pass ? 'FDR ✅' : 'FDR —') + '</span></div>';
-          html += '<div style="font-size:0.78rem;line-height:1.5;margin-top:0.2rem">' + esc(c.desc || '') + '</div>';
+          an += '<div style="font-size:0.78rem;line-height:1.5;margin-top:0.2rem">' + esc(c.desc || '') + '</div>';
           if (c.hint) {
-            html += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.2rem">💡 ' + esc(c.hint) + '</div>';
+            an += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.2rem">💡 ' + esc(c.hint) + '</div>';
           }
-          html += '</div>';
+          an += '</div>';
         }
       }
     }
     if (lf.tracking) {
       const tr = lf.tracking;
-      html += '<div style="margin-top:0.9rem;font-size:0.82rem"><b>🔄 Fund-Tracking</b> — hält sich ein Fund über die Zeit? (Datenbasis ' + esc(tr.trades || '') + ', ' + (tr.n_runs || 0) + ' Auswertungsstände)</div>';
+      an += '<div style="margin-top:0.9rem;font-size:0.82rem"><b>🔄 Fund-Tracking</b> — hält sich ein Fund über die Zeit? (Datenbasis ' + esc(tr.trades || '') + ', ' + (tr.n_runs || 0) + ' Auswertungsstände)</div>';
       const tchip = function(ic, body, color) {
         return '<div style="padding:0.35rem 0.6rem;margin:0.25rem 0;background:rgba(255,255,255,0.02);border-left:3px solid ' + color + ';border-radius:4px;font-size:0.78rem">' + ic + ' ' + body + '</div>';
       };
       if (!(tr.stable || []).length && !(tr.fresh || []).length && !(tr.flips || []).length && !(tr.fading || []).length) {
-        html += '<div style="font-size:0.76rem;color:var(--dim);margin-top:0.2rem">Basisaufbau: Wiederkehr-Analyse ab dem 2. Auswertungsstand. Forward-Evidenz wächst automatisch (Shadow wöchentlich).</div>';
+        an += '<div style="font-size:0.76rem;color:var(--dim);margin-top:0.2rem">Basisaufbau: Wiederkehr-Analyse ab dem 2. Auswertungsstand. Forward-Evidenz wächst automatisch (Shadow wöchentlich).</div>';
       }
       for (const s of (tr.stable || []).slice(0, 8)) {
         const neg = (s.last_delta || 0) < 0;
-        html += tchip('✅', '<b>' + esc(s.label) + '</b> — ' + s.n_sig + '/' + s.n_runs + ' Läufe signifikant, letzter Δ ' + (s.last_delta > 0 ? '+' : '') + Number(s.last_delta).toFixed(2) + '€/Trade (p=' + Number(s.last_p).toFixed(4) + ') · 💡 ' + (neg ? 'Kandidat für Vertiefung über den Gate-Weg' : 'Fokus-Kandidat'), '#39b54a');
+        an += tchip('✅', '<b>' + esc(s.label) + '</b> — ' + s.n_sig + '/' + s.n_runs + ' Läufe signifikant, letzter Δ ' + (s.last_delta > 0 ? '+' : '') + Number(s.last_delta).toFixed(2) + '€/Trade (p=' + Number(s.last_p).toFixed(4) + ') · 💡 ' + (neg ? 'Kandidat für Vertiefung über den Gate-Weg' : 'Fokus-Kandidat'), '#39b54a');
       }
       for (const s of (tr.fresh || []).slice(0, 4)) {
-        html += tchip('🆕', '<b>' + esc(s.label) + '</b> — neu signifikant (Δ ' + (s.last_delta > 0 ? '+' : '') + Number(s.last_delta).toFixed(2) + '€, p=' + Number(s.last_p).toFixed(4) + ') — abwarten, ob es sich hält', '#5ba3d9');
+        an += tchip('🆕', '<b>' + esc(s.label) + '</b> — neu signifikant (Δ ' + (s.last_delta > 0 ? '+' : '') + Number(s.last_delta).toFixed(2) + '€, p=' + Number(s.last_p).toFixed(4) + ') — abwarten, ob es sich hält', '#5ba3d9');
       }
       for (const s of (tr.flips || []).slice(0, 4)) {
-        html += tchip('🔀', '<b>' + esc(s.label) + '</b> — Vorzeichen über die Zeit gedreht → instabil, NICHT anwenden', '#a05555');
+        an += tchip('🔀', '<b>' + esc(s.label) + '</b> — Vorzeichen über die Zeit gedreht → instabil, NICHT anwenden', '#a05555');
       }
       for (const s of (tr.fading || []).slice(0, 4)) {
-        html += tchip('📉', '<b>' + esc(s.label) + '</b> — war signifikant, zuletzt abgeschwächt — beobachten', '#888888');
+        an += tchip('📉', '<b>' + esc(s.label) + '</b> — war signifikant, zuletzt abgeschwächt — beobachten', '#888888');
       }
-      html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Hinweis: Bei retro/index sind „Läufe" verschiedene Methodik-Stände derselben Datenbasis; echte Forward-Wiederkehr entsteht mit jedem Shadow-Lauf (wöchentlich).</div>';
+      an += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">Hinweis: Bei retro/index sind „Läufe" verschiedene Methodik-Stände derselben Datenbasis; echte Forward-Wiederkehr entsteht mit jedem Shadow-Lauf (wöchentlich).</div>';
     }
     if (lf.blind_spots && (lf.blind_spots.clusters || []).length) {
-      html += '<div style="margin-top:0.9rem;font-size:0.82rem"><b>🔎 Blind-Spot-Suche</b> — ' + lf.blind_spots.n_unexplained + ' Trades (' + lf.blind_spots.pct + '%) liefen weiter als 24h von JEDEM bekannten Termin entfernt; verlustreichste Cluster:</div>';
-      html += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gruppierung</th><th>Fenster</th><th class="num">Trades</th><th class="num">Ø/Trade</th></tr></thead><tbody>';
+      an += '<div style="margin-top:0.9rem;font-size:0.82rem"><b>🔎 Blind-Spot-Suche</b> — ' + lf.blind_spots.n_unexplained + ' Trades (' + lf.blind_spots.pct + '%) liefen weiter als 24h von JEDEM bekannten Termin entfernt; verlustreichste Cluster:</div>';
+      an += '<div class="sl4-table-wrap"><table class="sl4-table"><thead><tr><th>Gruppierung</th><th>Fenster</th><th class="num">Trades</th><th class="num">Ø/Trade</th></tr></thead><tbody>';
       for (const b of lf.blind_spots.clusters) {
-        html += '<tr><td>' + esc(b.group) + '</td><td>' + esc(b.key) + '</td><td class="num">' + b.n + '</td><td class="num neg">' + (b.mean == null ? '—' : b.mean.toFixed(2) + '€') + '</td></tr>';
+        an += '<tr><td>' + esc(b.group) + '</td><td>' + esc(b.key) + '</td><td class="num">' + b.n + '</td><td class="num neg">' + (b.mean == null ? '—' : b.mean.toFixed(2) + '€') + '</td></tr>';
       }
-      html += '</tbody></table></div>';
-      html += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">💡 Diese Cluster sind Kandidaten für FEHLENDE Datenquellen im Kalender (z. B. Zinsauktionen, Öl-/Lagerberichte, Notenbank-Reden) — hier sucht die Engine gezielt nach dem fehlenden Event-Typ.</div>';
+      an += '</tbody></table></div>';
+      an += '<div style="font-size:0.73rem;color:var(--dim);margin-top:0.15rem">💡 Diese Cluster sind Kandidaten für FEHLENDE Datenquellen im Kalender (z. B. Zinsauktionen, Öl-/Lagerberichte, Notenbank-Reden) — hier sucht die Engine gezielt nach dem fehlenden Event-Typ.</div>';
     }
     if (lf.engine_health && lf.engine_health.sources) {
       const parts = lf.engine_health.sources.map(function(s) { return esc(s.name) + ': ' + (s.age_h == null ? '—' : Number(s.age_h).toFixed(1) + 'h'); });
-      html += '<div style="margin-top:0.6rem;font-size:0.73rem;color:var(--dim)">Engine-Selbstcheck · Quellen-Frische: ' + parts.join(' · ') + '</div>';
+      an += '<div style="margin-top:0.6rem;font-size:0.73rem;color:var(--dim)">Engine-Selbstcheck · Quellen-Frische: ' + parts.join(' · ') + '</div>';
     }
   }
+  if (an) html += '<details class="rd-diag"><summary>🔬 Analyse — Gate-Shadow · Einsparung · letzter Lauf</summary>' + an + '</details>';
   html += '<div style="margin-top:1rem;font-size:0.75rem;color:var(--dim)">Event Engine v' + (meta.engine_version || '?')
     + ' · Engine-Funde sind in-sample → Anwendung nur über Lab/WFO/Shadow (Spec §10) · Kommandos: Skill <code>event-engine</code></div>';
   el.innerHTML = html;
