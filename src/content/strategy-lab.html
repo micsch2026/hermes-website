@@ -372,7 +372,7 @@ function g6Badge(g6) {
   if (!g6) return '<span style="color:var(--dim)" title="Keine G6-Daten im Katalog">G6 —</span>';
   const cls = 'gate ' + (g6.status === 'pass' ? 'gate-pass'
     : (g6.status === 'warn' ? 'gate-warn' : (g6.status === 'fail' ? 'gate-fail' : 'gate-na')));
-  const label = g6.label || (g6.status === 'pass' ? 'G6 ✓'
+  const label = g6.label_full || g6.label || (g6.status === 'pass' ? 'G6 ✓'
     : g6.status === 'warn' ? 'G6 ⚠ (warn)'
     : g6.status === 'fail' ? 'G6 ✗ (fail)'
     : g6.status === 'insufficient' ? 'G6 n/a — insufficient (n_obs ' + (g6.n_obs != null ? g6.n_obs : '—') + ')'
@@ -398,11 +398,37 @@ function bewertbarSuffix(r) {
 }
 
 // P2 W2c: LCB90 aus lcb_report (per_sid) — sonst "—"
+// P2b: Nenner explizit — „Basis: N Strategie-Einträge" (per_sid), nie mit
+// dem Slot-Nenner (evidence_kpi) vermischen.
+function lcbBasisLabel() {
+  const rep = (typeof shadowData !== 'undefined' && shadowData) ? shadowData.lcb_report : null;
+  const n = (rep && rep.per_sid) ? Object.keys(rep.per_sid).length : null;
+  return 'Basis: ' + (n != null ? n : '—') + ' Strategie-Einträge';
+}
+// P2b W4-min-B: Rotations-Integritaet (letzter belegter Apply-Lauf).
+function rotationIntegrityHtml(ri) {
+  if (!ri || !ri.status || ri.status === 'unknown') {
+    return '<div style="font-size:0.78rem;color:var(--dim);margin-top:0.25rem">Letzter Apply-Lauf: <strong>unbekannt</strong> — kein Apply (applied/would_fill/apply_refused) in den Daten.</div>';
+  }
+  const ok = ri.base === 'ok';
+  const mark = ok ? '✓' : '✗';
+  const col = ok ? 'var(--green)' : 'var(--red)';
+  let txt = '<div style="font-size:0.78rem;margin-top:0.25rem"><span style="color:' + col + ';font-weight:700">' + mark + '</span> Letzter Apply-Lauf: <strong>' + esc(ri.run_id != null ? ri.run_id : '—') + '</strong> · ' + esc(ri.ts || '—');
+  if (ri.reason) txt += ' · reason ' + esc(ri.reason);
+  if (ri.status === 'stale') txt += ' · <span style="color:var(--yellow)">veraltet' + (ri.age_days != null ? ' (' + ri.age_days + ' d)' : '') + '</span>';
+  txt += '</div>';
+  return txt;
+}
+// P2b W3c/Nenner: „38 Kandidaten · 118 Zielzuordnungen".
+function rotationPoolLine(rp) {
+  if (!rp || !rp.available) return '— Kandidaten · — Zielzuordnungen';
+  return rp.pool_unique + ' Kandidaten · ' + rp.assignments + ' Zielzuordnungen';
+}
 function lcbCell(s) {
   const rep = (typeof shadowData !== 'undefined' && shadowData) ? shadowData.lcb_report : null;
   const ps = (rep && rep.per_sid) ? rep.per_sid : {};
   const row = ps[String(s.id)];
-  const title = 'LCB90 = Normalapproximation der 90%-Konfidenz-Untergrenze des mittleren Netto-PnL je Trade (mean − 1.645·std/√n). Keine anytime-Garantie.';
+  const title = 'LCB90 = Normalapproximation der 90%-Konfidenz-Untergrenze des mittleren Netto-PnL je Trade (mean − 1.645·std/√n). Keine anytime-Garantie. ' + lcbBasisLabel() + '.';
   if (!row || row.lcb90 == null) return '<span style="color:var(--dim)" title="' + title + '">—</span>';
   const v = row.lcb90;
   return '<span class="' + (v >= 0 ? 'pos' : 'neg') + '" title="' + title + '">LCB90 ' + (v >= 0 ? '+' : '') + v.toFixed(2) + ' (n=' + (row.n != null ? row.n : '—') + ')</span>';
@@ -645,9 +671,10 @@ function showDetail(row) {
     html += '</div>';
   } else {
     // Deploy-Kandidaten: Entscheidungs-Ampel & Details
+    // P2b W5: Wording stets „Kandidat unter Vorbehalt" (nie als „bestätigt").
     const ampel = (row.pf >= 1.25 && row.trades >= 50)
-      ? '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--green-dim);color:var(--green);font-weight:600">🟢 Top-Kandidat: Starker Profit-Faktor bei hoher statistischer Signifikanz</div>'
-      : '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--blue-dim);color:var(--blue);font-weight:600">🟡 Solider Kandidat: Erfüllt Basiskriterien für Shadow-Forward-Test</div>';
+      ? '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--green-dim);color:var(--green);font-weight:600">🟢 Kandidat unter Vorbehalt: starker Profit-Faktor bei hoher statistischer Signifikanz — Promotion erst nach Paritäts-/Rücknahme-Review</div>'
+      : '<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:var(--blue-dim);color:var(--blue);font-weight:600">🟡 Kandidat unter Vorbehalt: erfüllt Basiskriterien für den Shadow-Forward-Test</div>';
     html += ampel;
     if (row.basis) {
       const bbits = [];
@@ -658,7 +685,10 @@ function showDetail(row) {
     }
     html += '<div class="detail-grid">';
     const fields = [
-      ['ID', '#' + row.id], ['Score', row.score], ['PF', row.pf || row.best_pf],
+      ['ID', '#' + row.id],
+      // P2b W5: dimensionsloser Score NUR mit expliziter Einordnung (kein Erfolgsmaß).
+      ['Score (Rang, dimensionslos — kein Erfolgsmaß)', row.score + ' <span style="color:var(--dim);font-size:0.66rem">· Ordnungskriterium, keine Erfolgsaussage</span>'],
+      ['PF', row.pf || row.best_pf],
       ['PnL', (row.pnl>=0?'+':'') + (row.pnl||row.best_pnl) + '€'],
       ['€/Monat', row.pnl_per_month ? (row.pnl_per_month>0?'+':'') + row.pnl_per_month + '€' : '—'],
       ['Trades/Woche', row.trades_per_week != null ? row.trades_per_week : '—'],
@@ -699,6 +729,29 @@ function showDetail(row) {
       if (row.ho_status === 'passed') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ✅ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades</div>`;
       else if (row.ho_status === 'warning') html += `<div style="margin-top:0.25rem"><strong>Hold-Out:</strong> ⚠️ ${(row.ho_pnl>=0?'+':'')+row.ho_pnl}€ / ${row.ho_trades} Trades — negativ bei ausreichender Sample-Size</div>`;
       else html += `<div style="margin-top:0.25rem;color:var(--dim)"><strong>Hold-Out:</strong> ➖ ${row.ho_trades||0} Trades — zu wenige für Aussage</div>`;
+    }
+
+    // ── P2b W4-min-A: „wie hierher"-Kette (je deploytem Kandidaten) ──
+    //   Lab-Basis (engine_fp-Kürzel + Datum) → Shadow-Aufnahme (start/Tage)
+    //   → Rotationsentscheidung (letzter passender rotation_log-Eintrag:
+    //   action + reason + ts + guards). Fehlt etwas → „—" (nichts erfinden).
+    if (row.chain && (row.bot || row.chain.rotation || (row.chain.shadow && row.chain.shadow.text))) {
+      const ch = row.chain;
+      const lab = (ch.lab && ch.lab.text) ? esc(ch.lab.text) : '—';
+      const sh = (ch.shadow && ch.shadow.text) ? esc(ch.shadow.text) : '—';
+      let rot = '—';
+      if (ch.rotation) {
+        const g = ch.rotation.guards || {};
+        const _b = (v) => (v === true ? 'ok' : (v === false ? 'nein' : '—'));
+        rot = esc((ch.rotation.action || '?') + ' · ' + (ch.rotation.reason || '—') + ' · ' + (ch.rotation.ts || '—')
+          + ' · guards slot_open=' + _b(g.slot_open) + ', sortenrein_ok=' + _b(g.sortenrein_ok));
+      }
+      html += '<details style="margin-top:1rem"><summary style="cursor:pointer;font-size:0.78rem;color:var(--dim)">🔎 wie hierher — Lab-Basis → Shadow → Rotation</summary>';
+      html += '<div style="font-size:0.76rem;line-height:1.55;margin-top:0.35rem">';
+      html += '<div>🧪 <strong>Lab-Basis</strong>: ' + lab + '</div>';
+      html += '<div>📥 <strong>Shadow-Aufnahme</strong>: ' + sh + '</div>';
+      html += '<div>🔄 <strong>Rotationsentscheidung</strong>: ' + rot + '</div>';
+      html += '</div></details>';
     }
   }
 
@@ -807,7 +860,7 @@ function _updateShadowTableOnly() {
       {k:'assets', l:'Assets'},
       {k:'days_active', l:'Tage', num:true},
       {k:'net_pnl', l:'PnL', num:true},
-      {k:'lcb', l:'LCB90', nosort:true},
+      {k:'lcb', l:'LCB90 · '+lcbBasisLabel(), nosort:true},
       {k:'trades', l:'Trades', num:true},
       {k:'win_rate', l:'WR', num:true},
       {k:'shadow_avg_trade', l:'Ø€/Tr', num:true},
@@ -856,8 +909,15 @@ function _updateShadowTableOnly() {
 }
 
 // ── Belegungs-Empfehlungen (Allocation Advisor; Embed: sd.advisor) ──
-function _renderAdvisorSection(adv) {
-  if (!adv || !adv.fleet) return '';
+function _renderAdvisorSection(adv, minlotLine) {
+  // P2b: Min-Lot-Skip-Zeile (statisch, Freeze-Datum, risk_pct) — aus
+  // account_transfer_test.json; fehlt die Datei → „Min-Lot-Skip: —".
+  const _mlHtml = minlotLine
+    ? '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.35rem" title="Min-Lot-Skip = Anteil der Trades, die am Mindest-Lot des Zielkontos scheitern (statisch, Freeze-Datum).">⚖️ ' + esc(minlotLine) + '</div>'
+    : '';
+  if (!adv || !adv.fleet) {
+    return _mlHtml ? '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.6rem 0.9rem">' + _mlHtml + '</div>' : '';
+  }
   const AA_ICONS = {keep:'🟢', watch:'🟡', challenge_running:'⚔️', empty:'🎯', pull_candidate:'🟠', live_ok:'🟢', live_blocked:'🔴', observe:'🏆', parity_report:'🔍', promotion_candidate:'🎯'};
   const AA_LABELS = {keep:'behalten', watch:'beobachten', challenge_running:'Challenge läuft', empty:'unbesetzt', pull_candidate:'Rückstufen prüfen', live_ok:'live_ok', live_blocked:'live_blocked', observe:'beobachten (fest)', parity_report:'Paritäts-Report', promotion_candidate:'Promotion-Kandidat (Echtgeld)'};
   let ts = '';
@@ -865,6 +925,7 @@ function _renderAdvisorSection(adv) {
   let html = '<div class="rd-section-title">🎯 Belegungs-Empfehlungen — Fleet Allocation Advisor</div>';
   html += '<div class="rd-card" style="margin-bottom:0.9rem">';
   html += '<div style="font-size:0.75rem;color:var(--dim);margin-bottom:0.55rem">Stand: ' + esc(ts) + ' Uhr' + (adv.stale ? ' · <strong>⚫ Daten älter als 30 h</strong>' : '') + ' · read-only, keine automatische Aktion</div>';
+  html += _mlHtml;
   const _bots = Object.keys(adv.fleet).sort((a, b) => parseInt(a.slice(3)) - parseInt(b.slice(3)));
   const _groups = {live: [], multi: [], single: [], champ: []};
   for (const bk of _bots) {
@@ -967,13 +1028,40 @@ function renderShadowDashboard() {
       + '„ohne Trade" = Slots ohne einen einzigen Abschluss. Stand: ' + _stand;
     html += '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.6rem 0.9rem;border-left:3px solid var(--blue)">';
     html += '<div style="font-size:0.82rem" title="' + esc(_tip) + '">📊 <strong>' + _num('slots_total') + '</strong> Slots · <strong>' + _num('n_ge_20') + '</strong> mit n≥20 · <strong>' + _num('n_eq_0') + '</strong> ohne Trade';
-    html += ' <span style="color:var(--dim);font-size:0.72rem">(reguläre Abschlüsse · Quelle: evidence_kpi · Stand ' + esc(_stand) + ')</span></div>';
+    html += ' <span style="color:var(--dim);font-size:0.72rem">(100er-Basis = evidence_kpi · reguläre Abschlüsse · Stand ' + esc(_stand) + ')</span></div>';
+    // P2b: Shadow-Evidenz-Basis der Zahlen explizit (nie mit 1.870 Datei-Trades
+    // oder 13.743 Pool-Trade-Zeilen vermischen).
+    html += '<div style="font-size:0.7rem;color:var(--dim);margin-top:0.2rem">Shadow-Basis: 1.527 saubere Trades (tp/sl/timeout, |net|≤500 €, keine @-Instanzen)</div>';
+    html += '</div>';
+  }
+
+  // ── P2b W4-min-B: Kachel „Rotations-Integrität" (letzter belegter Apply-Lauf)
+  //    + W3c/Nenner: Pool-Zeile „38 Kandidaten · 118 Zielzuordnungen". Quelle:
+  //    catalog.json (rotation_integrity/rotation_pool). Kein Apply → unbekannt;
+  //    >7 d → veraltet. IMMER mit ts + run_id, keine Teil-Häkchen.
+  {
+    const _cd = (typeof catalogData !== 'undefined' && catalogData) ? catalogData : {};
+    const _ri = _cd.rotation_integrity || null;
+    const _rp = _cd.rotation_pool || null;
+    let _rpTip = '';
+    if (_rp && _rp.available) {
+      _rpTip = String(_rp.assignments) + ' = Bot/Slot-Zuordnungen, '
+        + String(_rp.pool_unique) + ' = eindeutige Strategien (Stand ' + (_rp.as_of || '—') + ')';
+      if (_rp.n_valid_trades != null) {
+        _rpTip += ' · ' + Number(_rp.n_valid_trades).toLocaleString('de-DE')
+          + ' = Trade-Zeilen im Rotations-Pool-Fenster (n_valid_trades)';
+      }
+    }
+    html += '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.6rem 0.9rem;border-left:3px solid var(--purple)">';
+    html += '<div style="font-size:0.82rem">🔄 <strong>Rotation</strong> · <span title="' + esc(_rpTip) + '">' + esc(rotationPoolLine(_rp)) + '</span></div>';
+    html += rotationIntegrityHtml(_ri);
     html += '</div>';
   }
 
   // ── Belegungs-Empfehlungen (Allocation Advisor, 2026-10-05) ──
   // Ganz oben: Entscheidungs-Sicht VOR den Diagnose-Sektionen (User-Vorgabe).
-  html += _renderAdvisorSection(sd.advisor);
+  html += _renderAdvisorSection(sd.advisor,
+    (typeof catalogData !== 'undefined' && catalogData) ? catalogData.minlot_skip_line : null);
 
   // ── Demo-Bots Übersicht (Kopfzeile) ──
   const botsData = sd.bots || {};
@@ -1388,7 +1476,7 @@ function renderShadowDashboard() {
     {k:'assets', l:'Assets'},
     {k:'days_active', l:'Tage', num:true},
     {k:'net_pnl', l:'PnL', num:true},
-    {k:'lcb', l:'LCB90', nosort:true},
+    {k:'lcb', l:'LCB90 · '+lcbBasisLabel(), nosort:true},
     {k:'trades', l:'Trades', num:true},
     {k:'win_rate', l:'WR', num:true},
     {k:'shadow_avg_trade', l:'Ø€/Tr', num:true},

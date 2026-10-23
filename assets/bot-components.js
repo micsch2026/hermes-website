@@ -800,7 +800,15 @@ function _renderRotationRadar(d, spById, nameById) {
   h += '<div style="font-weight:700;font-size:var(--text-md);margin-bottom:2px">🎯 Rotations-Radar</div>';
   h += '<div style="font-size:10px;color:var(--c-text-dim);margin-bottom:8px">Kandidaten-Pool ' +
     escHtml(r.target_class || '') + ' · Stand ' + fmtTime(r.generated_at) + ' · ' +
-    (r.pool_size || 0) + ' Kandidaten · Top ' + (r.shown != null ? r.shown : cands.length) +
+    (function(){
+      var uniq = (r.pool_unique != null) ? r.pool_unique : null;
+      var asg = (r.assignments != null) ? r.assignments : null;
+      if (uniq != null && asg != null) {
+        var tip = asg + ' = Bot/Slot-Zuordnungen, ' + uniq + ' = eindeutige Strategien (Stand ' + fmtTime(r.generated_at) + ')';
+        return '<span title="' + escHtml(tip) + '">' + uniq + ' Kandidaten · ' + asg + ' Zielzuordnungen</span>';
+      }
+      return (r.pool_size || 0) + ' Kandidaten';
+    })() + ' · Top ' + (r.shown != null ? r.shown : cands.length) +
     ' gezeigt (' + (r.excluded || 0) + ' exkludiert)</div>';
   h += _radarExclusionLine(r);
   h += _radarTimeline(r);
