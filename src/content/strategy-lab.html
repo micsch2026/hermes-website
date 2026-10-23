@@ -139,6 +139,13 @@
 .rd-kpi em { font-style: normal; color: var(--dim); font-weight: 400; }
 /* R&D Dashboard Visual */
 .rd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 0.9rem; margin-bottom: 0.9rem; }
+.rd-diag { margin: 0.6rem 0 1rem; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.012); }
+.rd-diag > summary { cursor: pointer; padding: 0.55rem 0.9rem; font-size: 0.82rem; font-weight: 600; color: var(--text); user-select: none; list-style: none; }
+.rd-diag > summary::-webkit-details-marker { display: none; }
+.rd-diag > summary::before { content: '▸ '; color: var(--dim); }
+.rd-diag[open] > summary::before { content: '▾ '; }
+.rd-diag[open] > summary { border-bottom: 1px solid var(--border); }
+.rd-diag > .rd-section-title:first-of-type { margin-top: 0.6rem; }
 .rd-grid-wide { grid-column: 1 / -1; }
 .rd-chart-wrap { position: relative; width: 100%; }
 .rd-chart-wrap.h200 { height: 200px; }
@@ -1236,6 +1243,7 @@ function renderShadowDashboard() {
   const _mr = corrData.matrix_rows;
   const _ar = corrData.alias_rows;
   const _hasCorr = highCorrs.length > 0 || _eb != null || _mr != null;
+  html += '<details class="rd-diag"><summary>🔧 Diagnose — Korrelation · Gate-Blocks · Parität</summary>';
   if (_hasCorr) {
     html += '<div class="rd-section-title">🚨 Klumpenrisiko-Audit (Korrelation ≥ 0.50)</div>';
     html += '<div class="rd-card" style="margin-bottom:0.9rem;border-left:3px solid var(--yellow);padding:0.65rem 0.9rem">';
@@ -1327,6 +1335,7 @@ function renderShadowDashboard() {
     }
     html += '</div>';
   }
+  html += '</details>';
 
   // ── Offene Positionen ──
   const botOnly = sd.bot_only_positions || [];
@@ -1525,7 +1534,8 @@ function renderShadowDashboard() {
   }
   html += '</tbody></table></div>';
 
-  // ── Charts Grid ──
+  // ── Charts Grid (Diagnose) ──
+  html += '<details class="rd-diag"><summary>📊 Verteilungen &amp; Charts — Asset-Klassen, Ränge, Health</summary>';
   html += '<div class="rd-grid">';
 
   // 1) PnL nach Asset-Klasse
@@ -1562,6 +1572,7 @@ function renderShadowDashboard() {
   html += '<div class="rd-card"><h3>🚪 Exit-Analyse (TP/SL/Timeout)</h3><div class="rd-chart-wrap h250"><canvas id="sh-exits"></canvas></div></div>';
 
   html += '</div>'; // close rd-grid
+  html += '</details>';
 
   // ── Deployed Bots: MIT den Detail-Kacheln oben zusammengeführt (2026-09-14,
   // User: Dopplung entfernt). Die Kacheln zeigen bereits Equity/PnL, Trades,
@@ -2027,7 +2038,8 @@ function renderRdLive() {
     html += `<div class="rd-card rd-grid-wide"><div class="rd-chart-wrap h280"><canvas id="rd-focus-shift"></canvas></div></div>`;
   }
 
-  // ── Charts Grid ──
+  // ── Charts Grid (Diagnose) ──
+  html += `<details class="rd-diag"><summary>🔧 Diagnose — Funnel · Coverage · Tier · Cluster · Tagesproduktion</summary>`;
   html += `<div class="rd-grid">`;
 
   // A) Strategie-Funnel
@@ -2068,6 +2080,7 @@ function renderRdLive() {
   }
 
   html += '</div>'; // close rd-grid
+  html += '</details>';
 
   // ── PHASEN-MARKER ──
   if (ch.weekly_focus && ch.weekly_focus.length > 0) {
@@ -2193,6 +2206,7 @@ function renderRdLive() {
   html += '</div></div>';
 
   // ── Approach-Blacklist ──
+  html += `<details class="rd-diag"><summary>🚫 Approach-Blacklist (${bl.length})</summary>`;
   html += `<div class="rd-section-title">🚫 Approach-Blacklist (${bl.length})</div>`;
   html += '<div class="rd-card">';
   if (bl.length === 0) { html += '<div style="color:var(--dim);font-size:0.8rem">Keine blacklisteten Approaches.</div>'; }
@@ -2206,6 +2220,7 @@ function renderRdLive() {
     html += '</tbody></table>';
   }
   html += '</div>';
+  html += '</details>';
 
   el.innerHTML = html;
 
