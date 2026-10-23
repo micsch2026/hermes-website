@@ -148,7 +148,6 @@ setTimeout(() => {
 
   const corrHtml = byId.has('chart-corr') ? byId.get('chart-corr').innerHTML : '';
   const monthlyHtml = byId.has('chart-monthly') ? byId.get('chart-monthly').innerHTML : '';
-  const fleetHtml = bySel.has('#fleet-table tbody') ? bySel.get('#fleet-table tbody').innerHTML : '';
   const equityHtml = byId.has('chart-equity') ? byId.get('chart-equity').innerHTML : '';
   const pnlHtml = byId.has('chart-pnl-daily') ? byId.get('chart-pnl-daily').innerHTML : '';
 
@@ -198,8 +197,7 @@ setTimeout(() => {
   check('(d) #chart-monthly enthält 3 verschiedene Monate', months === 3, 'ist: ' + months);
 
   // (e) Single-Home (23.10.2026): Fleet-Tabelle lebt auf /dashboard, nicht auf /
-  check('(e) keine Fleet-Tabelle mehr auf /', !raw.includes('id="fleet-table"'), 
-    'fleetHtml=' + fleetHtml.length);
+  check('(e) keine Fleet-Tabelle mehr auf /', !raw.includes('id="fleet-table"'));
 
   // defensive Pfad-Checks (kein Crash bei Hinweistexten)
   check('kein Fehler-/Guard-Hinweis im Equity-Chart (Lib-Stub geladen)',
