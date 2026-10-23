@@ -162,11 +162,15 @@ function renderStatus(d) {
   if (dot) dot.className = isPaused ? 'bot-status-dot gray' : dotClass(isActive);
 
   var statusEl = el(C.prefix + '-status');
-  if (statusEl) statusEl.textContent = isPaused
-    ? (d.status && d.status.message || '⏸ GEPARKT — kein Trading')
-    : (isActive
-        ? (d.status && d.status.message || 'Bot active')
-        : 'Bot inactive');
+  if (statusEl) {
+    var msg = (d.status && d.status.message) || '';
+    // Builder-Jargon ("Scanning 7 pairs") → Anzeige-Sprache.
+    var scan = /^Scanning\s+(\d+)\s+pairs?/i.exec(msg);
+    if (scan) msg = 'läuft · ' + scan[1] + (String(scan[1]) === '1' ? ' Asset' : ' Assets');
+    statusEl.textContent = isPaused
+      ? (msg || '⏸ GEPARKT — kein Trading')
+      : (isActive ? (msg || 'läuft') : 'gestört');
+  }
 
   var badge = el(C.prefix + '-mode-badge');
   if (badge) {
@@ -181,7 +185,7 @@ function renderStatus(d) {
   }
 
   var upd = el(C.prefix + '-last-update');
-  if (upd) upd.textContent = 'Updated: ' + fmtTime(d.timestamp || d.last_update);
+  if (upd) upd.textContent = 'Daten: ' + fmtTime(d.timestamp || d.last_update);
 
   // Health banner
   var banner = el(C.prefix + '-health-banner');
@@ -1186,7 +1190,10 @@ function renderSignals(d) {
 }
 
 /** Kontoverlauf (Chart.js) — reiner Kontoverlauf; optional + Kontokurven (blau) */
-function renderEquity(d) {
+/* Legacy-Renderer (bis 22.10.2026). Wird nicht mehr aufgerufen — der Cockpit-
+ * Renderer weiter unten (renderEquity) übernimmt. Bleibt für Vergleichszwecke
+ * im File, bis die Candlestick-Helfer separat aufgeräumt werden. */
+function renderEquityLegacy(d) {
   var canvas = el(C.prefix + '-equity-chart');
   if (!canvas) return;
   var data = d.equity_history || d.balance_history || {};
@@ -2354,17 +2361,20 @@ function loadDashboard() {
     if (!r.ok) throw new Error(r.status);
     return r.json();
   }).then(function(d) {
+    _lastDash = d;
     renderStatus(d);
-    renderKPIs(d);
-    renderPerformance(d);
+    renderAction(d);
+    renderAccounts(d);
     renderPositions(d);
     renderDataAge(d);
     renderHistory(d);
-    renderSlots(d);
+    renderBoard(d);
     if (C.hasEquity) renderEquity(d);
+    renderParity(C.prefix, d.parity);
+    renderParityChip(d);
     if (C.hasSignals) renderSignals(d);
     renderLab(d);
-    renderParity(C.prefix, d.parity);
+    renderSlots(d);
     // Fire custom render callback if set
     if (typeof C.onData === 'function') C.onData(d);
   }).catch(function(e) {
@@ -2390,12 +2400,811 @@ function init(config) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+ *  COCKPIT (23.10.2026) — ein Template für alle Bots
+ *  Reihenfolge: Kopf → Konten → Equity → Positionen → Historie →
+ *  Strategien → Details. Jedes Fakt genau eine Heimat; Langtexte
+ *  (Beschreibung, Tech, OOS, Parität) nur im Details-Bereich.
+ * ═══════════════════════════════════════════════════════════ */
+
+var _eqView = null;          // 'indexed' | 'demo' | 'live' | 'single'
+var _histFilter = 'all';     // 'all' | 'live' | 'demo'
+var _histAll = false;
+
+function _num(v, d) {
+  if (v == null || isNaN(v)) return '—';
+  return Number(v).toLocaleString('de-DE', {
+    minimumFractionDigits: d == null ? 2 : d,
+    maximumFractionDigits: d == null ? 2 : d
+  });
+}
+function _eur(v, sign) {
+  if (v == null || isNaN(v)) return '—';
+  if (Math.abs(Number(v)) < 0.005) v = 0;
+  var s = _num(v, 2) + ' €';
+  return (sign && Number(v) > 0) ? '+' + s : s;
+}
+function _pct(v, sign) {
+  if (v == null || isNaN(v)) return '—';
+  if (Math.abs(Number(v)) < 0.05) v = 0;
+  var s = _num(v, 1) + ' %';
+  return (sign && Number(v) > 0) ? '+' + s : s;
+}
+function _shortDate(iso) {
+  if (!iso) return '';
+  try {
+    var s = String(iso);
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+    return new Date(s).toLocaleDateString('de-DE', {
+      day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin'
+    });
+  } catch (e) { return ''; }
+}
+function _tsMs(iso) {
+  if (!iso) return null;
+  try {
+    var s = String(iso);
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+    var t = new Date(s).getTime();
+    return isNaN(t) ? null : t;
+  } catch (e) { return null; }
+}
+function _ptVal(p) {
+  if (!p) return null;
+  if (p.equity != null) return Number(p.equity);
+  if (p.balance != null) return Number(p.balance);
+  if (p.value != null) return Number(p.value);
+  return null;
+}
+
+/** Normalisierte Kontenliste: default + Zusatzkonten, inkl. Kurvenpunkte. */
+function _accounts(d) {
+  var list = Array.isArray(d.accounts) ? d.accounts.slice() : [];
+  var curves = d.curves || [];
+  if (!list.length) {
+    var acc = d.account || d.live_balance || {};
+    list.push({
+      ctid: String((acc && acc.ctid) || d.account_id || ''),
+      is_live: d.mode === 'live',
+      label: d.mode === 'live' ? 'Echtgeld' : 'Demo',
+      balance: acc.balance, equity: acc.equity, is_default: true, flows: null
+    });
+    var cards0 = d.account_cards || [];
+    for (var c0 = 0; c0 < cards0.length; c0++) {
+      var cc0 = cards0[c0] || {};
+      list.push({
+        ctid: String(cc0.ctid != null ? cc0.ctid : ''), is_live: cc0.is_live !== false,
+        label: cc0.label || (cc0.is_live !== false ? 'Echtgeld' : 'Demo'),
+        balance: cc0.balance, equity: cc0.equity, is_default: false, flows: null
+      });
+    }
+  }
+  var eh = d.equity_history;
+  if (eh && eh.snapshots) eh = eh.snapshots;
+  for (var i = 0; i < list.length; i++) {
+    var a = list[i];
+    var pts = [];
+    if (a.is_default) {
+      pts = Array.isArray(eh) ? eh : [];
+    } else {
+      for (var k = 0; k < curves.length; k++) {
+        if (String(curves[k].ctid) === String(a.ctid)) pts = curves[k].points || [];
+      }
+    }
+    a.points = Array.isArray(pts) ? pts : [];
+    a.flow = a.flows || null;
+  }
+  list.sort(function (x, y) {
+    if (!!x.is_live !== !!y.is_live) return x.is_live ? -1 : 1;
+    if (!!x.is_default !== !!y.is_default) return x.is_default ? -1 : 1;
+    return String(x.ctid).localeCompare(String(y.ctid));
+  });
+  return list;
+}
+
+/** Inline-Sparkline (SVG, keine Chart-Instanz). */
+var _sparkSeq = 0;
+function _spark(vals, color, w, h) {
+  w = w || 160; h = h || 34;
+  var v = (vals || []).filter(function (x) { return x != null && !isNaN(x); });
+  if (v.length < 2) return '';
+  var lo = Math.min.apply(null, v), hi = Math.max.apply(null, v);
+  var rng = (hi - lo) || 1;
+  var step = (w - 4) / (v.length - 1);
+  var pts = [];
+  for (var i = 0; i < v.length; i++) {
+    pts.push((2 + i * step).toFixed(1) + ',' + (h - 3 - (v[i] - lo) / rng * (h - 8)).toFixed(1));
+  }
+  var d = 'M' + pts.join(' L');
+  var gid = 'spk' + (++_sparkSeq);
+  return '<svg class="cp-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+    '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="' + color + '" stop-opacity=".26"/>' +
+    '<stop offset="1" stop-color="' + color + '" stop-opacity="0"/></linearGradient></defs>' +
+    '<path d="' + d + ' L' + (w - 2) + ',' + h + ' L2,' + h + ' Z" fill="url(#' + gid + ')"/>' +
+    '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>';
+}
+
+/** Tages-Delta (Berlin-Mitternacht) aus einer Punktliste. */
+function _dayDelta(pts) {
+  if (!pts || !pts.length) return null;
+  var last = null;
+  for (var i = pts.length - 1; i >= 0; i--) {
+    var v = _ptVal(pts[i]);
+    if (v != null) { last = v; break; }
+  }
+  if (last == null) return null;
+  var mid = new Date();
+  mid.setHours(0, 0, 0, 0);
+  // Berliner Mitternacht als UTC-Instant
+  var berlinMid = new Date(mid.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+  var cut = new Date(mid.getTime() - (berlinMid.getTime() - mid.getTime())).getTime();
+  var prev = null;
+  for (var j = 0; j < pts.length; j++) {
+    var t = _tsMs(pts[j].timestamp || pts[j].date);
+    var val = _ptVal(pts[j]);
+    if (t != null && t < cut && val != null) prev = val;
+  }
+  return prev == null ? null : last - prev;
+}
+
+/** Kontokarten (Echtgeld + Demo) mit Sparkline und Kapitalbewegungen. */
+function renderAccounts(d) {
+  var box = el(C.prefix + '-accounts');
+  if (!box) return;
+  var accts = _accounts(d);
+  if (!accts.length) { box.innerHTML = ''; return; }
+  var html = '';
+  for (var i = 0; i < accts.length; i++) {
+    var a = accts[i];
+    var live = !!a.is_live;
+    var col = live ? '#f0b940' : '#5b8def';
+    var bal = a.balance;
+    if (bal == null) {
+      for (var p = a.points.length - 1; p >= 0; p--) {
+        var pv = _ptVal(a.points[p]);
+        if (pv != null) { bal = pv; break; }
+      }
+    }
+    var vals = [];
+    for (var q = 0; q < a.points.length; q++) vals.push(_ptVal(a.points[q]));
+    var day = _dayDelta(a.points);
+    var first = null, last = null;
+    for (var f = 0; f < vals.length; f++) { if (vals[f] != null) { first = vals[f]; break; } }
+    for (var l = vals.length - 1; l >= 0; l--) { if (vals[l] != null) { last = vals[l]; break; } }
+    var since = (first && last) ? (last / first - 1) * 100 : null;
+    var sinceDate = a.points.length ? _shortDate(a.points[0].timestamp || a.points[0].date) : null;
+    var flowLine = '';
+    if (live && a.flow && a.flow.n_moves) {
+      var parts = [];
+      if (a.flow.einzahlungen_eur) parts.push('Einz. ' + _eur(a.flow.einzahlungen_eur));
+      if (a.flow.auszahlungen_eur) parts.push('Ausz. ' + _eur(a.flow.auszahlungen_eur));
+      if (a.flow.transfers_eur) parts.push('Transfers ' + _eur(a.flow.transfers_eur));
+      flowLine = '<div class="cp-acct-flow" title="Kapitalbewegungen seit Konto-Start">' +
+        parts.join(' · ') + ' · Netto ' + _eur(a.flow.netto_eur) + '</div>';
+    }
+    html += '<div class="cp-acct ' + (live ? 'live' : 'demo') + '">' +
+      '<div class="cp-acct-top"><span>' + (live ? '💰 ECHTGELD' : '🧪 DEMO') + '</span>' +
+      '<span class="cp-acct-id">' + escHtml(a.ctid || '—') + '</span></div>' +
+      '<div class="cp-acct-bal">' + _eur(bal) + '</div>' +
+      '<div class="cp-acct-row"><span>Equity ' + _eur(a.equity != null ? a.equity : bal) + '</span>' +
+      '<span class="' + (day == null ? 'muted' : (day >= 0 ? 'up' : 'down')) + '">' +
+      (day == null ? '—' : _eur(day, true)) + ' heute</span></div>' +
+      '<div class="cp-acct-spark">' + _spark(vals.slice(-260), col) + '</div>' +
+      '<div class="cp-acct-foot"><span>' + (sinceDate ? 'seit ' + sinceDate + ' · ' + _pct(since, true) : '—') +
+      '</span><span class="muted">' + a.points.length + ' Punkte</span></div>' +
+      flowLine + '</div>';
+  }
+  box.innerHTML = html;
+  box.className = 'cp-accts' + (accts.length === 1 ? ' single' : '');
+}
+
+/** Kopf-Aktion: was ist gerade zu tun (eine Zeile, keine Wiederholung). */
+function renderAction(d) {
+  var box = el(C.prefix + '-action');
+  if (!box) return;
+  var slots = d.slots || [];
+  var paused = !!(d.paused || (d.status && d.status.paused));
+  var blocked = [], ready = [], running = [];
+  for (var i = 0; i < slots.length; i++) {
+    var s = slots[i];
+    if (s.kind === 'planned') continue;
+    if (s.stage === 'live' && s.armed === false) blocked.push(s);
+    var ch = s.challenge || null;
+    if (ch) {
+      if (ch.ready && s.stage !== 'live') ready.push(s);
+      else running.push(s);
+    }
+  }
+  var cls = 'cp-action ok', txt = '✓ keine Aktion nötig';
+  if (paused) { cls = 'cp-action muted'; txt = '⏸ GEPARKT'; }
+  else if (blocked.length) {
+    cls = 'cp-action warn';
+    txt = '🔒 OK nötig: ' + blocked[0].slot_id + (blocked.length > 1 ? ' +' + (blocked.length - 1) : '');
+  } else if (ready.length) {
+    cls = 'cp-action warn';
+    txt = '⚡ bereit: ' + ready[0].slot_id;
+  } else if (running.length) {
+    cls = 'cp-action';
+    txt = '⏳ Automatik läuft · ' + running.length + ' Challenge' + (running.length > 1 ? 's' : '');
+  }
+  box.className = cls;
+  box.textContent = txt;
+}
+
+/** Paritäts-Chip im Kopf: nur wenn es JETZT etwas zu tun gibt. */
+function renderParityChip(d) {
+  var chip = el(C.prefix + '-parity-chip');
+  if (!chip) return;
+  var p = d.parity || {};
+  if (!p || p.status === 'kein_bot' || p.status === 'fehler' || !p.assets) {
+    chip.style.display = 'none';
+    return;
+  }
+  var cats = p.diagnosis_cats || [];
+  var structural = false;
+  for (var c = 0; c < cats.length; c++) {
+    if (cats[c] === 'sl_drift' || cats[c] === 'tp_drift' ||
+        cats[c] === 'risk_scaling' || cats[c] === 'entry_mismatch') structural = true;
+  }
+  var now = Date.now() / 1000, recent = 0;
+  for (var sym in p.assets) {
+    var ms = p.assets[sym].missed_shadow || [];
+    for (var m = 0; m < ms.length; m++) {
+      var row = ms[m] || {};
+      if (!row.excused && row.ts && (now - row.ts) < 3 * 86400) recent++;
+    }
+  }
+  if (structural) {
+    chip.style.display = '';
+    chip.className = 'cp-parity-chip red';
+    chip.textContent = '🛡 Parität: Struktur-Abweichung';
+    chip.title = (p.diagnosis || '');
+  } else if (recent > 0) {
+    chip.style.display = '';
+    chip.className = 'cp-parity-chip warn';
+    chip.textContent = '🛡 ' + recent + ' Shadow-Trade' + (recent > 1 ? 's' : '') + ' offen';
+    chip.title = 'Shadow handelte, Bot nicht — Details unter Details → Shadow-Parität';
+  } else {
+    chip.style.display = 'none';
+  }
+}
+
+/** Equity-Chart: indexiert (beide Konten) oder ein Konto absolut. */
+function renderEquity(d) {
+  var canvas = el(C.prefix + '-equity-chart');
+  if (!canvas) return;
+  var accts = _accounts(d).filter(function (a) { return a.points && a.points.length > 1; });
+  if (!accts.length) return;
+  var mixed = accts.length > 1;
+  var hasDemo = accts.some(function (a) { return !a.is_live; });
+  var hasLive = accts.some(function (a) { return a.is_live; });
+  if (!_eqView || (_eqView !== 'indexed' && _eqView !== 'demo' && _eqView !== 'live')) {
+    _eqView = mixed ? 'indexed' : (accts[0].is_live ? 'live' : 'demo');
+  }
+  if (_eqView === 'demo' && !hasDemo) _eqView = mixed ? 'indexed' : 'live';
+  if (_eqView === 'live' && !hasLive) _eqView = mixed ? 'indexed' : 'demo';
+
+  // Segmented control
+  var seg = el(C.prefix + '-eq-seg');
+  if (seg) {
+    var sh = '';
+    if (mixed) {
+      sh += '<button class="' + (_eqView === 'indexed' ? 'on' : '') + '" onclick="BotDash.setEquityView(\'indexed\')">Indexiert</button>';
+      if (hasDemo) sh += '<button class="' + (_eqView === 'demo' ? 'on' : '') + '" onclick="BotDash.setEquityView(\'demo\')">🧪 Demo</button>';
+      if (hasLive) sh += '<button class="' + (_eqView === 'live' ? 'on' : '') + '" onclick="BotDash.setEquityView(\'live\')">💰 Echtgeld</button>';
+    }
+    seg.innerHTML = sh;
+    seg.style.display = mixed ? '' : 'none';
+  }
+
+  var view = _eqView;
+  var series = [];
+  if (view === 'indexed') {
+    for (var i = 0; i < accts.length; i++) {
+      var a = accts[i], vals = [], base = null;
+      for (var j = 0; j < a.points.length; j++) {
+        var v = _ptVal(a.points[j]);
+        if (v == null) continue;
+        if (base == null) base = v || 1;
+        vals.push({ t: a.points[j].timestamp || a.points[j].date, v: v / base * 100 });
+      }
+      series.push({ a: a, vals: vals });
+    }
+  } else {
+    var wantLive = view === 'live';
+    var pick = accts.filter(function (x) { return !!x.is_live === wantLive; })[0] || accts[0];
+    var vv = [];
+    for (var k = 0; k < pick.points.length; k++) {
+      var pv = _ptVal(pick.points[k]);
+      if (pv != null) vv.push({ t: pick.points[k].timestamp || pick.points[k].date, v: pv });
+    }
+    series.push({ a: pick, vals: vv });
+  }
+
+  // Union-Labels (ISO-Strings sortieren) + Werte zuordnen; Lücken bleiben null.
+  var labels;
+  if (series.length > 1) {
+    var set = {};
+    for (var s1 = 0; s1 < series.length; s1++) {
+      for (var s2 = 0; s2 < series[s1].vals.length; s2++) set[series[s1].vals[s2].t] = true;
+    }
+    labels = Object.keys(set).sort();
+  } else {
+    labels = series[0].vals.map(function (x) { return x.t; });
+  }
+  var idxOf = {};
+  for (var li = 0; li < labels.length; li++) idxOf[labels[li]] = li;
+
+  var datasets = [];
+  for (var si = 0; si < series.length; si++) {
+    var sr = series[si];
+    var data = labels.map(function () { return null; });
+    for (var vi = 0; vi < sr.vals.length; vi++) {
+      var ix = idxOf[sr.vals[vi].t];
+      if (ix !== undefined) data[ix] = sr.vals[vi].v;
+    }
+    var isLive = !!sr.a.is_live;
+    datasets.push({
+      label: (isLive ? '💰 Echtgeld' : '🧪 Demo') + (sr.a.ctid ? ' ' + sr.a.ctid : ''),
+      data: data,
+      borderColor: isLive ? '#f0b940' : '#5b8def',
+      backgroundColor: isLive ? 'rgba(240,185,64,0.08)' : 'rgba(91,141,239,0.08)',
+      fill: series.length === 1,
+      tension: 0.25,
+      pointRadius: 0,
+      borderWidth: 2,
+      spanGaps: true
+    });
+  }
+
+  // Marker (Arming/Era) aus d.markers + curves[].markers
+  var markers = [];
+  function addMarkers(list) {
+    if (!Array.isArray(list)) return;
+    for (var mi = 0; mi < list.length; mi++) {
+      var mm = list[mi] || {};
+      var mts = mm.ts || mm.timestamp || '';
+      if (!mts) continue;
+      var at = -1;
+      for (var lj = 0; lj < labels.length; lj++) {
+        if (String(labels[lj]) >= String(mts)) { at = lj; break; }
+      }
+      if (at >= 0) markers.push({ idx: at, label: mm.label || '' });
+    }
+  }
+  addMarkers(d.markers);
+  var curvesM = d.curves || [];
+  for (var cm = 0; cm < curvesM.length; cm++) addMarkers(curvesM[cm].markers);
+  var markerPlugin = {
+    id: 'cpMarkers',
+    afterDatasetsDraw: function (chart) {
+      if (!markers.length) return;
+      var ctx = chart.ctx, xa = chart.scales && chart.scales.x, ya = chart.scales && chart.scales.y;
+      if (!ctx || !xa || !ya) return;
+      ctx.save();
+      for (var i2 = 0; i2 < markers.length; i2++) {
+        var x = xa.getPixelForValue(markers[i2].idx);
+        if (x == null || isNaN(x)) continue;
+        ctx.beginPath(); ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = 'rgba(156,163,175,0.8)'; ctx.lineWidth = 1;
+        ctx.moveTo(x, ya.top); ctx.lineTo(x, ya.bottom); ctx.stroke();
+        ctx.setLineDash([]);
+        if (markers[i2].label) {
+          ctx.fillStyle = '#9ca3af'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+          ctx.fillText(markers[i2].label, x + 3, ya.top + 10);
+        }
+      }
+      ctx.restore();
+    }
+  };
+
+  if (_chartInstances.equity) _chartInstances.equity.destroy();
+  _chartInstances.equity = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    plugins: [markerPlugin],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: datasets.length > 1,
+          position: 'top',
+          labels: { boxWidth: 10, boxHeight: 10, color: '#9ca3af', font: { size: 10 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var v = ctx.parsed.y;
+              return ctx.dataset.label + ': ' + (v == null ? '—' : _num(v, 1) + (view === 'indexed' ? '' : ' €'));
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#7d7899', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0,
+            callback: function (val) {
+              var l = this.getLabelForValue(val);
+              return _shortDate(l);
+            }
+          }
+        },
+        y: {
+          grid: { color: 'rgba(42,37,69,0.7)' },
+          ticks: {
+            color: '#7d7899', font: { size: 10 },
+            callback: function (v) { return view === 'indexed' ? _num(v, 0) : _num(v, 0) + ' €'; }
+          }
+        }
+      }
+    }
+  });
+
+  // Fußzeile: Start/aktuell je Serie
+  var foot = el(C.prefix + '-equity-summary');
+  if (foot) {
+    var bits = [];
+    for (var f2 = 0; f2 < series.length; f2++) {
+      var sr2 = series[f2], vv2 = sr2.vals;
+      if (!vv2.length) continue;
+      var firstV = vv2[0].v, lastV = vv2[vv2.length - 1].v;
+      var chg = view === 'indexed' ? (lastV - 100) : (lastV - firstV);
+      bits.push((sr2.a.is_live ? '💰 Echtgeld' : '🧪 Demo') +
+        (sr2.a.ctid ? ' ' + sr2.a.ctid : '') + ': ' +
+        (view === 'indexed'
+          ? _pct(chg, true) + ' seit ' + _shortDate(vv2[0].t)
+          : _eur(lastV) + ' (' + _eur(chg, true) + ' seit ' + _shortDate(vv2[0].t) + ')'));
+    }
+    foot.innerHTML = bits.join(' &nbsp;·&nbsp; ') +
+      (view === 'indexed' ? ' &nbsp;·&nbsp; <span class="muted">Kontostart = 100</span>' : '');
+  }
+}
+
+/** Historie: Filter, 12 Zeilen, „alle anzeigen". */
+function renderHistory(d) {
+  var tbody = el(C.prefix + '-history-body');
+  if (!tbody) return;
+  var all = (d.trade_history || d.round_trips || d.last_trades || []).slice();
+  all.sort(function (a, b) {
+    var ta = a.closed_at || a.timestamp || '';
+    var tb = b.closed_at || b.timestamp || '';
+    return String(tb).localeCompare(String(ta));
+  });
+
+  var nAll = all.length, nLive = 0, nDemo = 0;
+  for (var i0 = 0; i0 < all.length; i0++) {
+    if (all[i0].live === true) nLive++;
+    else if (all[i0].live === false) nDemo++;
+  }
+  var fbox = el(C.prefix + '-hist-filter');
+  if (fbox) {
+    fbox.innerHTML =
+      '<button class="' + (_histFilter === 'all' ? 'on' : '') + '" onclick="BotDash.setHistoryFilter(\'all\')">Alle ' + nAll + '</button>' +
+      (nLive ? '<button class="' + (_histFilter === 'live' ? 'on' : '') + '" onclick="BotDash.setHistoryFilter(\'live\')">💰 ' + nLive + '</button>' : '') +
+      (nDemo ? '<button class="' + (_histFilter === 'demo' ? 'on' : '') + '" onclick="BotDash.setHistoryFilter(\'demo\')">🧪 ' + nDemo + '</button>' : '');
+  }
+
+  var trades = all.filter(function (t) {
+    if (_histFilter === 'live') return t.live === true;
+    if (_histFilter === 'demo') return t.live === false;
+    return true;
+  });
+
+  var hc = el(C.prefix + '-hist-count');
+  if (hc) {
+    var perf = d.performance || {};
+    var pf = (perf.total_trades && perf.profit_factor != null) ? _num(perf.profit_factor, 2) : '—';
+    var wr = (perf.total_trades && perf.win_rate != null) ? _num(perf.win_rate, 1) + ' %' : '—';
+    var totalAll = perf.total_trades || nAll;
+    hc.textContent = perf.total_trades
+      ? totalAll + ' Trades · PF ' + pf + ' · WR ' + wr +
+        (nAll < totalAll ? ' · ' + nAll + ' geladen' : '')
+      : (nAll ? nAll + ' Trades · Testpfad (keine Strategie-Statistik)' : '');
+  }
+
+  var htbl = el(C.prefix + '-history-table');
+  if (htbl && htbl.classList) {
+    var hasExit = false;
+    for (var x = 0; x < trades.length; x++) {
+      if (trades[x].close_price || trades[x].exit_price || trades[x].current_price) { hasExit = true; break; }
+    }
+    if (hasExit) htbl.classList.remove('no-exit'); else htbl.classList.add('no-exit');
+  }
+
+  if (!trades.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="bot-no-data">' +
+      (_histFilter === 'all' ? 'Noch keine Trades' : 'Keine Trades in dieser Auswahl') + '</td></tr>';
+    var m0 = el(C.prefix + '-hist-more'); if (m0) m0.innerHTML = '';
+    return;
+  }
+
+  var limit = _histAll ? trades.length : Math.min(trades.length, 10);
+  var html = '';
+  for (var i = 0; i < limit; i++) {
+    var t = trades[i];
+    var dir = (t.direction || t.side || '').toLowerCase();
+    var isShort = (dir === 'sell' || dir === 'short');
+    var pnl = t.pnl != null ? t.pnl : (t.realized_pnl || t.profit || 0);
+    var dur = t.duration || (t.duration_hours != null ? _num(t.duration_hours, 1) + 'h' : '—');
+    var sym = t.symbol || t.pair || '—';
+    var sid = t.strategy_id;
+    var slot = (t.slot_id != null && t.slot_id !== '') ? t.slot_id : '';
+    var badge = _liveBadge(t);
+    var name = sid ? ('<b>#' + escHtml(sid) + '</b>' + (slot ? ' <span class="cp-slotmini">' + escHtml(slot) + '</span>' : ''))
+                   : '<span class="muted">' + escHtml(t.strategy || 'Testpfad') + '</span>';
+    html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + escHtml(sym) + '\')">' +
+      '<td class="cp-strat">' + (badge ? badge + ' ' : '') + name + '</td>' +
+      '<td>' + fmtTime(t.closed_at || t.timestamp) + '</td>' +
+      '<td><b>' + escHtml(sym) + '</b></td>' +
+      '<td>' + (isShort ? '<span class="bot-badge bot-badge-sell">SHORT</span>' : '<span class="bot-badge bot-badge-buy">LONG</span>') + '</td>' +
+      '<td class="num">' + fmtPrice(t.entry_price || t.open_price || t.entry, sym) + '</td>' +
+      '<td class="num">' + fmtPrice(t.close_price || t.exit_price || t.current_price, sym) + '</td>' +
+      '<td class="num ' + pnlClass(pnl) + '"><b>' + fmtPnl(pnl) + '</b></td>' +
+      '<td>' + dur + '</td>' +
+      '<td class="muted">' + fmtCloseReason(t.status, t.close_reason) + '</td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = html;
+
+  var more = el(C.prefix + '-hist-more');
+  if (more) {
+    more.innerHTML = trades.length > 10
+      ? '<button class="cp-more-btn" onclick="BotDash.toggleHistoryAll()">' +
+        (_histAll ? '▴ weniger anzeigen' : '▸ alle ' + trades.length + ' anzeigen') + '</button>'
+      : '<span class="muted">' + trades.length + ' Trades</span>';
+  }
+}
+
+/** Account-Scope je Slot: Live-Slot ≠ Demo-Ära. */
+function _slotStats(s) {
+  var st = s.stats || {};
+  var by = st.by_account || {};
+  var key = s.account_id != null ? String(s.account_id) : '';
+  if (key && by[key]) return by[key];
+  if (key && Object.keys(by).length) {
+    return { trades: 0, closed: 0, wins: 0, net_eur: null, win_rate: null,
+             pnl_7d: null, pnl_30d: null, _empty: true };
+  }
+  return st;
+}
+function _slotOther(s) {
+  var by = (s.stats || {}).by_account || {};
+  var key = s.account_id != null ? String(s.account_id) : '';
+  for (var k in by) if (k !== key) return { ctid: k, st: by[k] };
+  return null;
+}
+function _slotCurve(d, s) {
+  var rows = (d.last_trades || []).filter(function (t) {
+    if (String(t.slot_id) !== String(s.slot_id)) return false;
+    if (s.account_id != null && t.account_id != null &&
+        String(t.account_id) !== String(s.account_id)) return false;
+    return true;
+  });
+  if (rows.length < 2) return [];
+  rows.sort(function (a, b) {
+    return String(a.closed_at || a.timestamp).localeCompare(String(b.closed_at || b.timestamp));
+  });
+  var cum = 0, out = [];
+  for (var i = 0; i < rows.length; i++) {
+    cum += Number(rows[i].pnl || 0);
+    out.push(cum);
+  }
+  return out;
+}
+function _slotSince(d, s) {
+  var rows = (d.last_trades || []).filter(function (t) {
+    if (String(t.slot_id) !== String(s.slot_id)) return false;
+    if (s.account_id != null && t.account_id != null &&
+        String(t.account_id) !== String(s.account_id)) return false;
+    return true;
+  });
+  if (rows.length) {
+    rows.sort(function (a, b) {
+      return String(a.closed_at || a.timestamp).localeCompare(String(b.closed_at || b.timestamp));
+    });
+    return _shortDate(rows[0].closed_at || rows[0].timestamp);
+  }
+  return s.since ? _shortDate(s.since) : '—';
+}
+
+function _stagePill(s) {
+  if (s.stage === 'live') {
+    return '<span class="cp-pill gold">💰 LIVE' + (s.armed === false ? ' · OK nötig' : '') + '</span>';
+  }
+  if (s.stage === 'demo') return '<span class="cp-pill blue">🧪 DEMO</span>';
+  if (s.kind === 'planned') return '<span class="cp-pill dim">GEPLANT</span>';
+  return '<span class="cp-pill gray">🔵 SHADOW</span>';
+}
+
+function _spById(sp, id) {
+  if (!sp || !sp.strategies) return null;
+  for (var i = 0; i < sp.strategies.length; i++) {
+    if (String(sp.strategies[i].id) === String(id)) return sp.strategies[i];
+  }
+  return null;
+}
+
+/** Strategie-Board: Belegung, Zeilen, 30-Tage-Balken. */
+function renderBoard(d) {
+  var box = el(C.prefix + '-board');
+  if (!box) return;
+  var slots = d.slots || [];
+  if (!slots.length) {
+    box.innerHTML = '<div class="cp-empty">Keine Slot-Konfiguration — ' +
+      'dieser Bot hat noch keine Strategie- oder Rotationsplätze.</div>';
+    var oc0 = el(C.prefix + '-board-occ'); if (oc0) oc0.innerHTML = '';
+    var bb0 = el(C.prefix + '-board-bars'); if (bb0) bb0.innerHTML = '';
+    var sub0 = el(C.prefix + '-board-sub'); if (sub0) sub0.textContent = '';
+    return;
+  }
+  _loadShadowPortfolio(function (sp) { _renderBoardInner(d, sp); });
+}
+
+function _renderBoardInner(d, sp) {
+  var box = el(C.prefix + '-board');
+  if (!box) return;
+  var slots = d.slots || [];
+  var filled = [], doors = [], planned = [];
+  for (var i = 0; i < slots.length; i++) {
+    if (slots[i].kind === 'strategy') filled.push(slots[i]);
+    else if (slots[i].kind === 'rotation') doors.push(slots[i]);
+    else if (slots[i].kind === 'planned') planned.push(slots[i]);
+  }
+  var target = Math.max(d.slots_target || 0, slots.length);
+
+  var sub = el(C.prefix + '-board-sub');
+  if (sub) sub.textContent = filled.length + '/' + target + ' belegt';
+
+  // Belegung
+  var occ = el(C.prefix + '-board-occ');
+  if (occ) {
+    var oh = '';
+    for (var o = 0; o < slots.length; o++) {
+      var s0 = slots[o], cls = 'plan';
+      if (s0.stage === 'live') cls = 'live';
+      else if (s0.stage === 'demo') cls = 'demo';
+      else if (s0.kind === 'rotation') cls = 'door';
+      oh += '<i class="' + cls + '" title="' + escHtml(s0.slot_id) + ' · ' +
+        escHtml(s0.kind) + '"></i>';
+    }
+    for (var t2 = slots.length; t2 < target; t2++) oh += '<i class="plan"></i>';
+    occ.innerHTML = oh;
+  }
+
+  var html = '';
+  for (var f = 0; f < filled.length; f++) {
+    var s = filled[f];
+    var meta = _spById(sp, s.strategy_id) || {};
+    var desc = meta.desc || {};
+    var st = _slotStats(s);
+    var hasStats = !st._empty && (st.closed || 0) > 0;
+    var p30 = hasStats ? st.pnl_30d : null;
+    var wr = hasStats ? st.win_rate : null;
+    var other = s.stage === 'live' ? _slotOther(s) : null;
+    var era = '';
+    if (other && other.st && (other.st.closed || 0) > 0) {
+      era = '<span class="cp-era" title="Evidenz aus der Demo-Ära — zählt nicht als Live-Performance">Demo-Ära ' +
+        _eur(other.st.net_eur, true) + '</span>';
+    }
+    var nm = meta.name ? String(meta.name).replace(/^RCP-CLUSTER:\s*/, '')
+      .replace(/\s*\(\d{8}_\d{6}\)\s*$/, '') : ('#' + s.strategy_id);
+    var chal = s.challenge || null;
+    var stat = '';
+    if (chal) {
+      stat = (chal.ready ? '✅ bereit' : 'Challenge ' + (chal.trades || 0) + '/3') +
+        (chal.days_left != null ? ' · ' + chal.days_left + ' T' : '');
+    } else if (hasStats) {
+      stat = (s.stage === 'live' ? 'Live seit ' : 'seit ') + _slotSince(d, s);
+    } else if (s.stage === 'live') {
+      stat = 'noch keine Live-Trades';
+    } else if (s.stage === 'demo') {
+      stat = 'noch keine Trades';
+    }
+    html += '<div class="cp-srow">' +
+      '<div class="cp-slot">' + escHtml(s.slot_id) + '</div>' +
+      '<div class="cp-sname"><b>#' + escHtml(s.strategy_id) + ' ' + escHtml(nm) + '</b>' +
+      '<span>' + escHtml(desc.tag || '') + '</span>' + era + '</div>' +
+      '<div>' + _stagePill(s) + '</div>' +
+      '<div class="cp-snum ' + (p30 == null ? 'muted' : (p30 >= 0 ? 'up' : 'down')) + '">' +
+      (p30 == null ? '—' : _eur(p30, true)) + '<span>30 T · ' +
+      (s.stage === 'live' ? 'Live' : 'Demo') + '-Konto</span></div>' +
+      '<div class="cp-snum">' + (wr == null ? '—' : _num(wr, 1) + ' %') +
+      '<span>WR · ' + (st.closed || 0) + ' Trades</span></div>' +
+      '<div class="cp-sspark">' + (_spark(_slotCurve(d, s), s.stage === 'live' ? '#f0b940' : '#5b8def', 120, 26) ||
+        '<span class="muted">—</span>') + '</div>' +
+      '<div class="cp-sstat">' + stat + '</div>' +
+      '</div>';
+  }
+
+  for (var dr = 0; dr < doors.length; dr++) {
+    var sd = doors[dr], ch = sd.challenge || {};
+    var cand = _spById(sp, ch.candidate) || {};
+    var cnm = cand.name ? String(cand.name).replace(/^RCP-CLUSTER:\s*/, '')
+      .replace(/\s*\(\d{8}_\d{6}\)\s*$/, '') : ('#' + (ch.candidate != null ? ch.candidate : '?'));
+    var pct = Math.min(100, ((ch.trades || 0) / 3) * 100);
+    html += '<div class="cp-srow door">' +
+      '<div class="cp-slot">' + escHtml(sd.slot_id) + '</div>' +
+      '<div class="cp-sname"><b>' + escHtml(cnm) + '</b><span>Tür · Kandidat im Shadow</span></div>' +
+      '<div><span class="cp-pill gray">🔵 SHADOW</span></div>' +
+      '<div class="cp-snum muted">—<span>kein Slot-PnL</span></div>' +
+      '<div class="cp-snum">' + (ch.trades || 0) + '/3<span>Trades</span></div>' +
+      '<div class="cp-sspark"><div class="cp-prog"><i style="width:' + pct.toFixed(0) + '%"></i></div></div>' +
+      '<div class="cp-sstat">' + (ch.days_left != null ? ch.days_left + ' T Frist' : '—') + '</div>' +
+      '</div>';
+  }
+
+  if (!filled.length) {
+    html = '<div class="cp-empty">Noch keine Strategie deployt' +
+      (doors.length ? ' — Kandidaten laufen im Shadow.' : '.') + '</div>' + html;
+  }
+  if (planned.length) {
+    var ids = [];
+    for (var pl = 0; pl < planned.length; pl++) ids.push(planned[pl].slot_id);
+    html += '<div class="cp-planned"><b>' + planned.length + ' Reserve-Plätze</b> vorbereitet — ' +
+      'scharf erst nach Kandidat-Verdikt (' + escHtml(ids.join(', ')) + ')</div>';
+  }
+  if (!filled.length && !doors.length && !planned.length) {
+    html = '<div class="cp-empty">Noch keine Strategie deployt.</div>';
+  }
+  box.innerHTML = html;
+
+  // 30-Tage-Balken (account-scoped!)
+  var bars = el(C.prefix + '-board-bars');
+  if (bars) {
+    var vals = [], mx = 0;
+    for (var b = 0; b < filled.length; b++) {
+      var stb = _slotStats(filled[b]);
+      if (stb._empty || (stb.closed || 0) === 0 || stb.pnl_30d == null) continue;
+      vals.push([filled[b].slot_id, Number(stb.pnl_30d)]);
+      if (Math.abs(Number(stb.pnl_30d)) > mx) mx = Math.abs(Number(stb.pnl_30d));
+    }
+    if (vals.length) {
+      var bh = '<div class="cp-bars-head">Netto 30 Tage je Strategie</div>';
+      for (var v2 = 0; v2 < vals.length; v2++) {
+        var w = mx ? (Math.abs(vals[v2][1]) / mx * 46) : 0;
+        var left = vals[v2][1] >= 0 ? 50 : 50 - w;
+        bh += '<div class="cp-bar"><span class="cp-bl">' + escHtml(vals[v2][0]) + '</span>' +
+          '<div class="cp-btrack"><i class="' + (vals[v2][1] >= 0 ? 'pos' : 'neg') +
+          '" style="left:' + left.toFixed(1) + '%;width:' + w.toFixed(1) + '%"></i></div>' +
+          '<span class="cp-bv ' + (vals[v2][1] >= 0 ? 'up' : 'down') + '">' +
+          _eur(vals[v2][1], true) + '</span></div>';
+      }
+      bars.innerHTML = bh;
+    } else {
+      bars.innerHTML = '';
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
  *  PUBLIC API
  * ═══════════════════════════════════════════════════════════ */
+
+var _lastDash = null;
+
+function setEquityView(v) {
+  _eqView = v;
+  if (_lastDash) renderEquity(_lastDash);
+}
+function setHistoryFilter(f) {
+  _histFilter = f;
+  if (_lastDash) renderHistory(_lastDash);
+}
+function toggleHistoryAll() {
+  _histAll = !_histAll;
+  if (_lastDash) renderHistory(_lastDash);
+}
 
 window.BotDash = {
   init: init,
   loadDashboard: loadDashboard,
+  setEquityView: setEquityView,
+  setHistoryFilter: setHistoryFilter,
+  toggleHistoryAll: toggleHistoryAll,
   switchTab: switchTab,
   toggleParityDetail: toggleParityDetail,
   openChart: openChart,
@@ -2412,6 +3221,9 @@ window.BotDash = {
   config: C,
   // Expose renderers for bot-specific use
   renderStatus: renderStatus,
+  renderAccounts: renderAccounts,
+  renderAction: renderAction,
+  renderBoard: renderBoard,
   renderKPIs: renderKPIs,
   renderPerformance: renderPerformance,
   renderPositions: renderPositions,
@@ -2420,6 +3232,8 @@ window.BotDash = {
   renderSignals: renderSignals,
   renderEquity: renderEquity,
   renderLab: renderLab,
+  // Harness/Debug: Account-Scope-Auflösung je Slot
+  slotStats: _slotStats,
 };
 
 function renderParity(prefix, p) {
@@ -2448,23 +3262,33 @@ function renderParity(prefix, p) {
     banner.classList.add('warn');
     icon.textContent = '🟡';
     label.textContent = 'QUALIFIZIERUNG LÄUFT';
-  } else if (status === 'fehler') {
+  } else if (status === 'fehler' || status === 'kein_bot') {
     banner.classList.add('idle');
     icon.textContent = '⚫';
-    label.textContent = 'Parität nicht prüfbar';
+    label.textContent = (status === 'kein_bot')
+      ? 'Keine Paritätsprüfung — kein Deploy-Mapping für diesen Bot'
+      : 'Parität nicht prüfbar';
   } else {
     banner.classList.add('idle');
     icon.textContent = '⚪';
     label.textContent = 'Wartet auf erste Trades';
   }
 
-  // Inline-Asset-Übersicht
+  // Inline-Asset-Übersicht — BESTÄTIGT/OFFEN statt „17/3" (das las sich wie
+  // ein Bestehen, obwohl der Status rot war: 17 bestätigt von 3 nötigen).
   var minReq = (p && p.min_confirmed_per_asset) || 3;
   var parts = [];
   for (var sym in assets) {
     var a = assets[sym];
+    var missAll = a.missed_shadow || [];
+    var missOpen = 0;
+    for (var mm2 = 0; mm2 < missAll.length; mm2++) {
+      if (!(missAll[mm2] && missAll[mm2].excused)) missOpen++;
+    }
     var mark = a.status === 'bestaetigt' ? '✔' : (a.status === 'abweichung' ? '✗' : '⏳');
-    parts.push(mark + ' ' + sym + ' ' + a.confirmed_count + '/' + minReq);
+    parts.push(mark + ' ' + sym + ' ' + a.confirmed_count + ' bestätigt' +
+      (missOpen ? ' · ' + missOpen + ' offen' : '') +
+      (missAll.length > missOpen ? ' · ' + (missAll.length - missOpen) + ' entsch.' : ''));
   }
   inline.textContent = parts.join(' · ') + '  (≥' + minReq + ' Trades/Asset)';
 

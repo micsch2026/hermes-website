@@ -5,15 +5,15 @@ build_bot_pages.py — ONE builder for ALL bot dashboard pages.
 Reads template + per-bot JSON config → generates content HTML files
 that build.py can process into final pages.
 
-Struktur (Umbau 11.10.2026, Unified-Modell "Bot = Konto mit 1..N Slots"):
-  - Bot-Steckbrief: kompakte Chips (bot-level Fakten; Quelle botN.json: meta_chips)
-  - "Strategien & Slots": je Strategie EINE Karte (Daten aus dashboard.slots +
-    shadow_portfolio.json, gerendert von bot-components.js). Einzel-Bot = N=1.
-  - Asset-Monitor: Live je Paar + Asset-Performance (Heatmap-Widget).
-  - Tabs: Trades | Lab-Referenz (Validierung je Strategie + Benchmark + Re-Opt).
-Entfernt: Info-Tags, Config-Chips (doppelt), Konzept-Tab (doppelt zur Karte),
-Setup-Parameter-Tab (tote RSI-Tabelle), separater Backtest-Tab (war bei 8/10
-Bots leer → jetzt dynamischer Lab-Tab).
+Struktur (Cockpit 23.10.2026 — EIN Template für alle Bots):
+  - Kopf: Dot/Status/Mode/Fokus/ECHTGELD + eine Aktions-Zeile (Handlungsbedarf)
+  - Kontokarten: ALLE Konten (Echtgeld + Demo) mit Sparkline/Kapitalbewegungen
+  - Equity: indexiert auf Kontostart (umschaltbar Demo/Echtgeld absolut)
+  - Offene Positionen · Historie (10 Zeilen, Filter, „alle")
+  - Strategie-Board: Belegung, Zeile je Slot (account-scharfe PnL), Balken
+  - Details (Akkordeon): Assets, Parität, Mandat, Slot-Karten/Radar/Historie, Lab
+Daten: dashboard.json `accounts[]` + `slots[].stats.by_account` (fx-bot).
+Die frühere Karten-IA (11.10.2026) lebt nur noch im Details-Akkordeon.
 
 Usage:
     python3 build_bot_pages.py              # build all bots
@@ -28,6 +28,7 @@ Output:
 
 import json
 import os
+import re
 import sys
 import glob
 
@@ -62,6 +63,14 @@ def find_all_configs():
         with open(path, 'r') as f:
             configs.append(json.load(f))
     return configs
+
+
+def build_short_name(config):
+    """Kurzer Anzeigename für den Cockpit-Kopf (ohne Klammern/„— Hermes")."""
+    nm = str(config.get('name') or config.get('bot_id') or 'Bot')
+    nm = nm.replace(' — Hermes', '').strip()
+    nm = re.sub(r'\s*\([^()]*\)\s*$', '', nm).strip()
+    return nm or str(config.get('bot_id') or 'Bot')
 
 
 def build_meta_chips(chips):
@@ -390,6 +399,7 @@ def build_page(config, template):
     html = template
     html = html.replace('{{TITLE}}', config.get('title', 'Hermes'))
     html = html.replace('{{BOT_NAME}}', config.get('name', 'Bot'))
+    html = html.replace('{{BOT_SHORT_NAME}}', build_short_name(config))
     html = html.replace('{{BOT_ID}}', bot_id)
     html = html.replace('{{API_BASE}}', config.get('api_base', ''))
     html = html.replace('{{DASHBOARD_JSON}}', config.get('dashboard_json', ''))

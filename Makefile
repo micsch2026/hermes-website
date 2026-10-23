@@ -4,7 +4,7 @@
 #   tests/test_*.py            — Python-Checks (Overview-Builder, Seiten, ...)
 #   tests/verify_overview_charts.js — Node-vm-Harness der Kommandocenter-Charts
 #   tests/verify_radar.js      — Node-DOM-Stub-Harness des Rotations-Radars v2
-#   tests/verify_bot_curves.js — Node-Chart-Harness der Echtgeld-Konto-Kurven
+#   tests/verify_bot_cockpit.js — Node-Stub-Harness des Cockpit-Templates (Konten/Equity/Board)
 #
 # Konvention (Skill hermes-site-management): Neue Seiten/Builder bekommen eine
 # tests/test_<name>_*.py-Suite; damit laufen sie hier automatisch mit.
@@ -30,9 +30,9 @@ test:
 	  echo "== tests/verify_llm_chart.js"; \
 	  $(NODE) tests/verify_llm_chart.js || fail=1; \
 	fi; \
-	if [ -f tests/verify_bot_curves.js ]; then \
-	  echo "== tests/verify_bot_curves.js"; \
-	  $(NODE) tests/verify_bot_curves.js || fail=1; \
+	if [ -f tests/verify_bot_cockpit.js ]; then \
+	  echo "== tests/verify_bot_cockpit.js"; \
+	  $(NODE) tests/verify_bot_cockpit.js || fail=1; \
 	fi; \
 	if [ -f tests/verify_bot_readiness.js ]; then \
 	  echo "== tests/verify_bot_readiness.js"; \
