@@ -403,6 +403,12 @@ function pfCell(r) {
 }
 
 // P2 W2c: trades<20 → Suffix, NICHT ausblenden
+function bewertbarSuffixCompact(r) {
+  return ((r.trades || 0) < 20)
+    ? ' <span style="font-size:0.72rem;color:var(--yellow)" title="Weniger als 20 abgeschlossene Trades — keine belastbare Aussage (nicht bewertbar)">⚠</span>'
+    : '';
+}
+
 function bewertbarSuffix(r) {
   return ((r.trades || 0) < 20)
     ? ' <span style="font-size:0.65rem;color:var(--yellow)" title="Weniger als 20 abgeschlossene Trades — keine belastbare Aussage (nicht bewertbar)">· nicht bewertbar</span>'
@@ -1517,7 +1523,7 @@ function renderShadowDashboard() {
     html += '<tr onclick="showDetail('+JSON.stringify(s).replace(/"/g,'&quot;')+')">';
     html += '<td><strong>#'+s.id+'</strong>'+(s.shadow_flag==='deploy_ready'?' 🚀':'')+'</td>';
     html += '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(s.name)+'">'+esc((s.name||'').slice(0,35))+'</td>';
-    html += '<td style="font-size:0.7rem">'+(s.assets||[]).join(', ')+'</td>';
+    html += '<td style="font-size:0.7rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc((s.assets||[]).join(', '))+'">'+(s.assets||[]).join(', ')+'</td>';
     {
         const _dTxt = s.days_active ? Math.floor(s.days_active)+'d' : '';
         const _sE = s.shadow_entry ? new Date(s.shadow_entry) : null;
@@ -1525,9 +1531,9 @@ function renderShadowDashboard() {
         const _t = s.days_active ? (s.days_active).toFixed(1)+' Tage'+(s.days_source==='trade'?' (1. Trade)':'') : '';
         html += '<td class="num" title="'+_t+'">'+_dTxt+(_sD?'<br><span style="font-size:0.62rem;color:var(--dim);white-space:nowrap">seit '+_sD+'</span>':'')+'</td>';
       }
-    html += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span>'+bewertbarSuffix(s)+'</td>';
+    html += '<td class="num"><span class="'+pnlCls+'" style="font-weight:600">'+((s.net_pnl||0)>=0?'+':'')+(s.net_pnl||0).toFixed(2)+'€</span>'+bewertbarSuffixCompact(s)+'</td>';
     html += '<td class="num">'+lcbCell(s)+'</td>';
-    html += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+bewertbarSuffix(s)+'</td>';
+    html += '<td class="num">'+((s.trades||0)>0?s.trades:'—')+bewertbarSuffixCompact(s)+'</td>';
     html += '<td class="num">'+((s.trades||0)>0?(s.win_rate||0).toFixed(0)+'%':'—')+'</td>';
     html += '<td class="num">'+(s.shadow_avg_trade!=null?s.shadow_avg_trade+'€':'—')+'</td>';
     html += '<td class="num">'+(s.pnl_per_week!=null?'<span class="'+((s.pnl_per_week>=0)?'pos':'neg')+'">'+((s.pnl_per_week>=0)?'+':'')+s.pnl_per_week+'€</span>':'—')+'</td>';
