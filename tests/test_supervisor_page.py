@@ -33,6 +33,7 @@ REQUIRED_IDS = [
     "sv-llm", "sv-llm-since", "sv-llm-balance", "sv-llm-spent", "sv-llm-rates",
     "sv-llm-chart", "sv-llm-note",
     "sv-llm-usage", "sv-llm-usage-range", "sv-llm-usage-chart", "sv-llm-usage-note",
+    "sv-seed", "sv-seed-count", "sv-seed-body", "sv-seed-note",
     "sv-ops", "sv-sources",
 ]
 

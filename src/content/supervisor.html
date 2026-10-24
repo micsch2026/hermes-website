@@ -216,6 +216,12 @@
     </div>
   </section>
 
+  <section class="sv-sec" id="sv-seed">
+    <h2>🌱 Seed-Pipeline <span class="sv-count" id="sv-seed-count"></span></h2>
+    <div id="sv-seed-body"></div>
+    <div class="sv-cap" id="sv-seed-note"></div>
+  </section>
+
   <section class="sv-sec">
     <h2>🩺 Ops &amp; Datenfrische</h2>
     <div id="sv-ops"></div>
@@ -227,6 +233,7 @@
 (function () {
   var API = window.location.origin + '/api/supervisor/supervisor_status.json';
   var API_LLM = window.location.origin + '/api/openrouter/status.json';
+  var API_SEED = window.location.origin + '/api/strategy-lab/seed_pipeline.json';
   function $(id) { return document.getElementById(id); }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -617,6 +624,43 @@
     note.textContent = prefix + 'Quelle: OpenRouter API (credits + key) · letzter Abruf ' +
       dt(d.fetched_at) + ' (' + ageTxt + ')';
   }
+  function renderSeed(d) {
+    var sec = $('sv-seed'), body = $('sv-seed-body'), count = $('sv-seed-count'), note = $('sv-seed-note');
+    if (!sec) return;
+    if (!d || !d.available) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    var s = d.summary || {};
+    function ni(v) { return (v == null ? '—' : Number(v).toLocaleString('de-DE')); }
+    count.textContent = '· ' + ni(s.seeds_total) + ' Seeds';
+    function card(k, v, sub) {
+      return '<div class="sv-card"><div class="sv-k">' + esc(k) + '</div><div class="sv-v">' +
+        esc(v) + '</div><div class="sv-s">' + esc(sub || '') + '</div></div>';
+    }
+    var fams = (d.families || []).slice().sort(function (a, b) {
+      return (b.seeds || 0) - (a.seeds || 0);
+    }).slice(0, 3).map(function (f) {
+      return f.family + ' ' + ni(f.seeds) + ' Seeds/' + ni(f.strategies) + ' Strat./' + ni(f.B) + ' B';
+    }).join(' · ');
+    body.innerHTML = '<div class="sv-strip">' +
+      card('Seeds', ni(s.seeds_total), ni(s.seeds_with_strategy) + ' mit Strategie') +
+      card('≥1 B', ni(s.seeds_with_B), (s.pct_with_B == null ? '—' : String(s.pct_with_B).replace('.', ',') + ' %')) +
+      card('Zero-Yield', ni(s.zero_yield), ni(s.zero_yield_gt60) + ' >60 d') +
+      card('Alt-Data', ni(s.alt_data_seeds), 'Cluster ' + ni(s.clusters)) +
+      '</div><div class="sv-cap">Top-Familien: ' + esc(fams) +
+      ' · <a href="/strategy-lab">Details im Strategy Lab</a></div>';
+    note.textContent = 'Registry: ' + (d.generated_bz || '—') +
+      ' · B/100 = B je 100 Seeds (Yield, kein PnL) · Caps 5/Seed, 3/Familie, 12/Asset';
+  }
+  function loadSeed() {
+    fetch(API_SEED, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(renderSeed).catch(function () {
+      var sec = $('sv-seed');
+      if (sec) sec.style.display = 'none';
+    });
+  }
+
   function loadLlm() {
     fetch(API_LLM, { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -958,6 +1002,8 @@
   setInterval(load, 120000);
   loadLlm();
   setInterval(loadLlm, 120000);
+  loadSeed();
+  setInterval(loadSeed, 600000);
 })();
 </script>
 <!--/BODY-->
