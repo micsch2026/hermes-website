@@ -80,6 +80,13 @@
   .sv-barline .sv-bl-fill { height: 100%; background: var(--c-accent); }
   .sv-barline .sv-bl-n { text-align: right; color: var(--c-text-dim); font-family: monospace; }
   .sv-cap { color: var(--c-text-dim); font-size: var(--text-xs); }
+  .sv-chart-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: var(--s-2) 0 4px; }
+  .sv-chart-tools .sv-dim { margin-right: auto; }
+  .sv-chart-btn { background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-2); border-radius: 999px; padding: 2px 10px; font-size: var(--text-xs); cursor: pointer; }
+  .sv-chart-btn:hover { border-color: var(--c-border-2); color: var(--c-text); }
+  .sv-chart-btn.active { border-color: var(--c-accent); color: var(--c-text); background: var(--c-surface-2); }
+  .sv-chart-legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 var(--s-2); }
+  .sv-llm-usage { margin-top: var(--s-3); }
   .sv-mission details { margin-top: var(--s-2); }
   .sv-mission summary { cursor: pointer; color: var(--c-text-dim); font-size: var(--text-sm); }
 </style>
@@ -197,6 +204,16 @@
     </div>
     <div id="sv-llm-chart"></div>
     <div class="sv-cap" id="sv-llm-note"></div>
+    <div class="sv-llm-usage" id="sv-llm-usage">
+      <div class="sv-chart-tools" id="sv-llm-usage-range">
+        <span class="sv-dim">Token- &amp; Kosten-Historie</span>
+        <button type="button" class="sv-chart-btn" data-days="30">30 T</button>
+        <button type="button" class="sv-chart-btn active" data-days="90">90 T</button>
+        <button type="button" class="sv-chart-btn" data-days="365">1 J</button>
+      </div>
+      <div id="sv-llm-usage-chart"></div>
+      <div class="sv-cap" id="sv-llm-usage-note"></div>
+    </div>
   </section>
 
   <section class="sv-sec">
@@ -300,17 +317,25 @@
       timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit'
     });
   }
+  var llmHist = [];
+  var llmSeries = { remaining: true, used: false };
   function renderLlmChart(history) {
     var h = history || [];
+    llmHist = h;
     if (h.length < 2) {
       var first = h.length === 1 ? tsLabel(h[0][0]) : '—';
       return '<div class="sv-dim">«Historie wird aufgebaut — erster Messpunkt: ' +
         esc(first) + '»</div>';
     }
-    var W = 860, H = 190, L = 56, R = 12, T = 14, B = 22;
+    var W = 860, H = 210, L = 64, R = 14, T = 16, B = 24;
     var t0 = h[0][0], t1 = h[h.length - 1][0];
     var rem = h.map(function (p) { return p[1]; });
-    var mn = Math.min.apply(null, rem), mx = Math.max.apply(null, rem);
+    var used = h.map(function (p) { return p[2]; });
+    var vals = [];
+    if (llmSeries.remaining) vals = vals.concat(rem);
+    if (llmSeries.used) vals = vals.concat(used);
+    if (!vals.length) vals = rem;
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
     var pad = Math.max((mx - mn) * 0.08, 0.05);
     var ymin = mn - pad, ymax = mx + pad;
     function X(ts) {
@@ -319,20 +344,38 @@
     function Y(v) {
       return ymax > ymin ? T + (H - T - B) * (ymax - v) / (ymax - ymin) : T;
     }
-    var pts = h.map(function (p) {
-      return X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1);
-    });
+    function pts(arr) {
+      return h.map(function (p, i) {
+        return X(p[0]).toFixed(1) + ',' + Y(arr[i]).toFixed(1);
+      });
+    }
+    var rp = pts(rem), up = pts(used);
     var base = (H - B).toFixed(1);
-    var area = '<path fill="var(--c-accent)" fill-opacity="0.15" d="M' + pts[0] +
-      ' L' + pts.join(' L') + ' L' + X(t1).toFixed(1) + ',' + base +
-      ' L' + X(t0).toFixed(1) + ',' + base + ' Z"/>';
-    var poly = '<polyline fill="none" stroke="var(--c-accent)" stroke-width="2" points="' +
-      pts.join(' ') + '"/>';
+    var area = '';
+    if (llmSeries.remaining) {
+      area = '<path fill="var(--c-accent)" fill-opacity="0.12" d="M' + rp[0] +
+        ' L' + rp.join(' L') + ' L' + X(t1).toFixed(1) + ',' + base +
+        ' L' + X(t0).toFixed(1) + ',' + base + ' Z"/>';
+    }
+    var lineRem = llmSeries.remaining
+      ? '<polyline data-series="remaining" fill="none" stroke="var(--c-accent)" stroke-width="2" points="' + rp.join(' ') + '"/>'
+      : '';
+    var lineUsed = llmSeries.used
+      ? '<polyline data-series="used" fill="none" stroke="var(--c-text-2)" stroke-width="1.6" stroke-dasharray="5 3" points="' + up.join(' ') + '"/>'
+      : '';
+    var step = Math.max(1, Math.ceil(h.length / 320));
+    var dots = '';
+    for (var i = 0; i < h.length; i += step) {
+      var p = h[i];
+      var tip = tsLabel(p[0]) + ' · Guthaben ' + fmtUsd(p[1]) + ' · verbraucht ' + fmtUsd(p[2]);
+      dots += '<circle cx="' + X(p[0]).toFixed(1) + '" cy="' + Y(p[1]).toFixed(1) +
+        '" r="2.2" fill="var(--c-accent)"><title>' + esc(tip) + '</title></circle>';
+    }
     var last = h[h.length - 1];
-    var tip = tsLabel(last[0]) + ' · Guthaben ' + fmtUsd(last[1]) +
+    var lastTip = tsLabel(last[0]) + ' · Guthaben ' + fmtUsd(last[1]) +
       ' · verbraucht ' + fmtUsd(last[2]);
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto" ' +
-      'role="img" aria-label="Guthaben ueber Zeit">' + area + poly +
+      'role="img" aria-label="Guthaben und Verbrauch ueber Zeit">' + area + lineRem + lineUsed + dots +
       '<text x="' + (L - 6) + '" y="' + (T + 4) + '" font-size="12" ' +
       'fill="var(--c-text-dim)" text-anchor="end">' + esc(fmtUsd(mx)) + '</text>' +
       '<text x="' + (L - 6) + '" y="' + (H - B) + '" font-size="12" ' +
@@ -342,9 +385,143 @@
       '<text x="' + (W - R) + '" y="' + (H - 8) + '" font-size="12" ' +
       'fill="var(--c-text-dim)" text-anchor="end">' + esc(dayLabel(t1)) + '</text>' +
       '<circle cx="' + X(last[0]).toFixed(1) + '" cy="' + Y(last[1]).toFixed(1) +
-      '" r="3" fill="var(--c-accent)"><title>' + esc(tip) + '</title></circle></svg>';
-    return svg + '<div class="sv-cap">Absoluter Stand: Guthaben über Zeit in $ (' +
-      h.length + ' Messpunkte)</div>';
+      '" r="3.5" fill="var(--c-accent)"><title>' + esc(lastTip) + '</title></circle></svg>';
+    var legend = '<div class="sv-chart-legend">' +
+      '<button type="button" class="sv-chart-btn' + (llmSeries.remaining ? ' active' : '') +
+      '" data-llm-series="remaining">Guthaben</button>' +
+      '<button type="button" class="sv-chart-btn' + (llmSeries.used ? ' active' : '') +
+      '" data-llm-series="used">Verbraucht</button></div>';
+    return svg + legend + '<div class="sv-cap">Absoluter Stand in $ · ' +
+      h.length + ' Messpunkte · hover für Details</div>';
+  }
+  function wireLlmButtons() {
+    var root = $('sv-llm-chart');
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('[data-llm-series]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var k = btn.getAttribute('data-llm-series');
+        if (!k) return;
+        llmSeries[k] = !llmSeries[k];
+        if (!llmSeries.remaining && !llmSeries.used) llmSeries[k] = true;
+        $('sv-llm-chart').innerHTML = renderLlmChart(llmHist);
+        wireLlmButtons();
+      });
+    });
+  }
+  var usageRange = 90;
+  var usageSeries = { tokens: true, cost: true };
+  var lastUsage = [], lastCosts = [];
+  function fmtTok(v) {
+    if (v == null || isNaN(v)) return '—';
+    var n = Number(v);
+    if (n >= 1e9) return (n / 1e9).toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' Mrd';
+    if (n >= 1e6) return (n / 1e6).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' M';
+    if (n >= 1e3) return (n / 1e3).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' K';
+    return n.toLocaleString('de-DE');
+  }
+  function renderUsageChart(usage, costs, days) {
+    var u = (usage || []).slice(-days);
+    lastUsage = usage || [];
+    lastCosts = costs || [];
+    if (!u.length) {
+      return '<div class="sv-dim">«Noch keine lokale Token-Historie (state.db)»</div>';
+    }
+    var costMap = {};
+    (costs || []).forEach(function (c) { if (c && c.date) costMap[c.date] = c; });
+    var W = 860, H = 250, L = 70, R = 64, T = 18, B = 30;
+    var pw = W - L - R, ph = H - T - B;
+    var maxTok = Math.max.apply(null, u.map(function (d) { return d.tokens || 0; }).concat([1]));
+    var costVals = u.map(function (d) { return costMap[d.date] ? costMap[d.date].used : null; })
+      .filter(function (v) { return v != null; });
+    var maxCost = Math.max.apply(null, costVals.concat([0.01]));
+    function bx(i) { return u.length > 1 ? L + pw * i / (u.length - 1) : L + pw / 2; }
+    function ty(v) { return H - B - (v / maxTok) * ph; }
+    function cy(v) { return H - B - (v / maxCost) * ph; }
+    var bars = '';
+    if (usageSeries.tokens) {
+      var bw = Math.max(1, Math.min(14, (pw / Math.max(1, u.length)) * 0.65));
+      u.forEach(function (d, i) {
+        var h = Math.max(0, (d.tokens || 0) / maxTok * ph);
+        var x = bx(i) - bw / 2, y = H - B - h;
+        var tip = d.date + ' · ' + fmtTok(d.tokens) + ' Tokens · ' +
+          fmtTok(d.tokens_io) + ' IO / ' + fmtTok(d.tokens_cache) + ' Cache · ' +
+          (d.sessions || 0) + ' Sessions';
+        bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' +
+          bw.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="var(--c-accent)" ' +
+          'opacity="0.55"><title>' + esc(tip) + '</title></rect>';
+      });
+    }
+    var pts = [], dots = '';
+    if (usageSeries.cost) {
+      u.forEach(function (d, i) {
+        var c = costMap[d.date];
+        if (!c) return;
+        var x = bx(i), y = cy(c.used || 0);
+        pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+        dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" ' +
+          'fill="#f0b35b"><title>' + esc(d.date + ' · kumuliert ' + fmtUsd(c.used) +
+          ' · Guthaben ' + fmtUsd(c.remaining)) + '</title></circle>';
+      });
+    }
+    var line = pts.length >= 2
+      ? '<polyline fill="none" stroke="#f0b35b" stroke-width="2" points="' + pts.join(' ') + '"/>'
+      : '';
+    var grid = '';
+    for (var g = 0; g <= 3; g++) {
+      var yy = T + ph * g / 3;
+      grid += '<line x1="' + L + '" y1="' + yy.toFixed(1) + '" x2="' + (W - R) +
+        '" y2="' + yy.toFixed(1) + '" stroke="var(--c-border)" stroke-width="0.6" opacity="0.5"/>';
+    }
+    var first = u[0].date, last = u[u.length - 1].date;
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto" ' +
+      'role="img" aria-label="Token- und Kostenhistorie">' + grid + bars + line + dots +
+      '<text x="' + (L - 6) + '" y="' + (T + 4) + '" font-size="11" fill="var(--c-text-dim)" text-anchor="end">' +
+      esc(fmtTok(maxTok)) + '</text>' +
+      '<text x="' + (L - 6) + '" y="' + (H - B) + '" font-size="11" fill="var(--c-text-dim)" text-anchor="end">0</text>' +
+      '<text x="' + (W - R + 6) + '" y="' + (T + 4) + '" font-size="11" fill="#f0b35b">' +
+      esc(fmtUsd(maxCost)) + '</text>' +
+      '<text x="' + (W - R + 6) + '" y="' + (H - B) + '" font-size="11" fill="#f0b35b">0 $</text>' +
+      '<text x="' + L + '" y="' + (H - 8) + '" font-size="11" fill="var(--c-text-dim)">' +
+      esc(first) + '</text>' +
+      '<text x="' + (W - R) + '" y="' + (H - 8) + '" font-size="11" fill="var(--c-text-dim)" text-anchor="end">' +
+      esc(last) + '</text></svg>';
+    var legend = '<div class="sv-chart-legend">' +
+      '<button type="button" class="sv-chart-btn' + (usageSeries.tokens ? ' active' : '') +
+      '" data-usage-series="tokens">Tokens</button>' +
+      '<button type="button" class="sv-chart-btn' + (usageSeries.cost ? ' active' : '') +
+      '" data-usage-series="cost">Kosten kumuliert</button></div>';
+    return svg + legend + '<div class="sv-cap">Balken: Tokens/Tag (state.db, inkl. Cache) · ' +
+      'Linie: OpenRouter-Kosten kumuliert · hover für Details</div>';
+  }
+  function wireUsageButtons() {
+    var range = $('sv-llm-usage-range');
+    if (range && range.querySelectorAll) {
+      range.querySelectorAll('[data-days]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var d = parseInt(btn.getAttribute('data-days'), 10);
+          if (!isFinite(d) || d <= 0) return;
+          usageRange = d;
+          range.querySelectorAll('[data-days]').forEach(function (b) {
+            b.classList.toggle('active', b === btn);
+          });
+          $('sv-llm-usage-chart').innerHTML = renderUsageChart(lastUsage, lastCosts, usageRange);
+          wireUsageButtons();
+        });
+      });
+    }
+    var root = $('sv-llm-usage-chart');
+    if (root && root.querySelectorAll) {
+      root.querySelectorAll('[data-usage-series]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var k = btn.getAttribute('data-usage-series');
+          if (!k) return;
+          usageSeries[k] = !usageSeries[k];
+          if (!usageSeries.tokens && !usageSeries.cost) usageSeries[k] = true;
+          $('sv-llm-usage-chart').innerHTML = renderUsageChart(lastUsage, lastCosts, usageRange);
+          wireUsageButtons();
+        });
+      });
+    }
   }
   var LLM_CARDS = [
     ['sv-llm-balance', 'Guthaben'],
@@ -359,6 +536,10 @@
           '<div class="sv-v">—</div><div class="sv-s">nicht verfügbar</div>';
       }
     });
+    var uc = $('sv-llm-usage-chart');
+    if (uc) uc.innerHTML = '';
+    var un = $('sv-llm-usage-note');
+    if (un) un.textContent = '';
   }
   function renderLlm(d) {
     var balance = d && d.balance;
@@ -404,6 +585,21 @@
       : '';
 
     $('sv-llm-chart').innerHTML = renderLlmChart(hist);
+    wireLlmButtons();
+
+    var usage = (d && d.usage_history) || [];
+    var costs = (d && d.cost_history) || [];
+    $('sv-llm-usage-chart').innerHTML = renderUsageChart(usage, costs, usageRange);
+    wireUsageButtons();
+    var unote = $('sv-llm-usage-note');
+    if (unote) {
+      if (!usage.length) {
+        unote.textContent = 'Keine lokale Token-Historie (state.db)';
+      } else {
+        unote.textContent = 'Tokens: ' + usage.length + ' Tage (state.db, alle Sessions, inkl. Cache)' +
+          (costs.length ? ' · Kosten: OpenRouter kumuliert ab ' + costs[0].date : ' · Kosten: noch keine OpenRouter-Historie');
+      }
+    }
 
     var prefix = '';
     if (d.fetch_ok === false) {
@@ -431,6 +627,10 @@
       llmUnavailable();
       var ch = $('sv-llm-chart');
       if (ch) ch.innerHTML = '';
+      var uc = $('sv-llm-usage-chart');
+      if (uc) uc.innerHTML = '';
+      var un = $('sv-llm-usage-note');
+      if (un) un.textContent = '';
     });
   }
 

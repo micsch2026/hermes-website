@@ -32,6 +32,7 @@ REQUIRED_IDS = [
     "sv-week", "sv-demo", "sv-live", "sv-macro", "sv-lever",
     "sv-llm", "sv-llm-since", "sv-llm-balance", "sv-llm-spent", "sv-llm-rates",
     "sv-llm-chart", "sv-llm-note",
+    "sv-llm-usage", "sv-llm-usage-range", "sv-llm-usage-chart", "sv-llm-usage-note",
     "sv-ops", "sv-sources",
 ]
 

@@ -15,16 +15,19 @@ from __future__ import annotations
 import json
 import math
 import os
+import sqlite3
 import sys
 import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 SITE = Path(__file__).resolve().parent
 DEFAULT_ENV = Path("/root/.hermes/.env")
 DEFAULT_HISTORY = Path.home() / ".hermes/reports/openrouter/usage_history.jsonl"
+DEFAULT_STATE_DB = Path("/root/.hermes/state.db")
 DEFAULT_OUT = SITE / "api/openrouter/status.json"
 
 CREDITS_URL = "https://openrouter.ai/api/v1/credits"
@@ -33,6 +36,7 @@ KEY_URL = "https://openrouter.ai/api/v1/key"
 MAX_POINTS = 20000          # Obergrenze der persistierten Historie
 DOWNSAMPLE_LIMIT = 1500     # Obergrenze der an die Seite ausgelieferten Punkte
 HEARTBEAT_S = 3600          # Mindestabstand fuer einen Punkt ohne Wertaenderung
+TOKEN_HISTORY_DAYS = 400    # lokale Token-/Session-Historie (state.db)
 SCHEMA = "openrouter_v1"
 
 
@@ -188,6 +192,77 @@ def _write_history(path: Path, hist: list[dict]) -> None:
     os.replace(tmp, path)
 
 
+def _as_int(v) -> int:
+    """Robuste Ganzzahl; NULL/Text -> 0."""
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def load_token_history(state_db: Path, days: int = TOKEN_HISTORY_DAYS,
+                       now_ts: float | None = None) -> list[dict]:
+    """Tages-Aggregat aller lokalen Hermes-Sessions aus state.db (read-only).
+
+    Tokens = input + output + cache_read + cache_write (alle verarbeiteten Tokens).
+    Die Tagesgrenze ist Europe/Berlin (wie die Seite). Fehlt die DB oder die
+    Tabelle, wird [] geliefert — die OpenRouter-Sektion bleibt nutzbar.
+    """
+    path = Path(state_db)
+    if not path.exists():
+        return []
+    now = float(now_ts if now_ts is not None else time.time())
+    start = now - max(1, int(days)) * 86400
+    rows = []
+    try:
+        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=3)
+        try:
+            con.execute("PRAGMA query_only=ON")
+            rows = con.execute(
+                "SELECT started_at, COALESCE(input_tokens,0), COALESCE(output_tokens,0), "
+                "COALESCE(cache_read_tokens,0), COALESCE(cache_write_tokens,0) "
+                "FROM sessions WHERE started_at >= ? ORDER BY started_at",
+                (start,),
+            ).fetchall()
+        finally:
+            con.close()
+    except (sqlite3.Error, OSError):
+        return []
+
+    tz = ZoneInfo("Europe/Berlin")
+    by_day: dict[str, dict] = {}
+    for ts, inp, out, cr, cw in rows:
+        try:
+            day = datetime.fromtimestamp(float(ts), timezone.utc).astimezone(tz).date().isoformat()
+        except (TypeError, ValueError, OSError):
+            continue
+        tio = _as_int(inp) + _as_int(out)
+        tcache = _as_int(cr) + _as_int(cw)
+        rec = by_day.setdefault(day, {"date": day, "tokens": 0, "tokens_io": 0,
+                                      "tokens_cache": 0, "sessions": 0})
+        rec["tokens_io"] += tio
+        rec["tokens_cache"] += tcache
+        rec["tokens"] += tio + tcache
+        rec["sessions"] += 1
+    return [by_day[d] for d in sorted(by_day)]
+
+
+def build_cost_history(hist: list[dict], days: int = TOKEN_HISTORY_DAYS) -> list[dict]:
+    """Tages-Endstand von `used` aus der OpenRouter-Snapshot-Historie."""
+    tz = ZoneInfo("Europe/Berlin")
+    by_day: dict[str, dict] = {}
+    for e in hist:
+        try:
+            day = datetime.fromtimestamp(float(e["ts"]), timezone.utc).astimezone(tz).date().isoformat()
+            used = float(e["used"])
+        except (KeyError, TypeError, ValueError, OSError):
+            continue
+        by_day[day] = {"date": day, "used": round(used, 6),
+                       "remaining": round(float(e.get("remaining", 0.0)), 6)}
+    out = [by_day[d] for d in sorted(by_day)]
+    return out[-max(1, int(days)):]
+
+
 def _resolve(arg, env_name: str, default: Path) -> Path:
     if arg is not None:
         return Path(arg)
@@ -229,9 +304,13 @@ def _fail_soft(out_path: Path, now_iso: str, err: str) -> int:
             "history_n": 0,
             "history_first_iso": None,
             "history_last_iso": None,
+            "usage_history": [],
+            "cost_history": [],
         }
     else:
         doc = prev
+        doc.setdefault("usage_history", [])
+        doc.setdefault("cost_history", [])
         doc["schema"] = doc.get("schema", SCHEMA)
         doc["generated_at"] = now_iso
         doc["fetch_ok"] = False
@@ -243,10 +322,14 @@ def _fail_soft(out_path: Path, now_iso: str, err: str) -> int:
 
 
 def build(fetch=fetch_snapshot, env_file=None, history_path=None, out_path=None,
-          timeout=None, now_ts=None) -> int:
-    """Ein Zyklus: Fetch -> Snapshot -> Historie -> status.json. 0 ok / 1 Fehler."""
+          timeout=None, now_ts=None, state_db=None, token_history=None) -> int:
+    """Ein Zyklus: Fetch -> Snapshot -> Historie -> status.json. 0 ok / 1 Fehler.
+
+    token_history: optional injizierbar (Tests); default = state.db-Tagesaggregat.
+    """
     env_file = _resolve(env_file, "OPENROUTER_ENV_FILE", DEFAULT_ENV)
     history_path = _resolve(history_path, "OPENROUTER_HISTORY", DEFAULT_HISTORY)
+    state_db = _resolve(state_db, "HERMES_STATE_DB", DEFAULT_STATE_DB)
     out_path = _resolve(out_path, "OPENROUTER_OUT", DEFAULT_OUT)
     timeout = _timeout(timeout)
     now = float(now_ts) if now_ts is not None else time.time()
@@ -276,6 +359,9 @@ def build(fetch=fetch_snapshot, env_file=None, history_path=None, out_path=None,
     if _should_append(hist, point):
         hist = (hist + [point])[-MAX_POINTS:]
         _write_history(history_path, hist)
+
+    tokens = list(token_history) if token_history is not None else load_token_history(state_db, now_ts=now)
+    costs = build_cost_history(hist)
 
     used_pct = round(100 * total_usage / total_credits, 1) if total_credits > 0 else None
     burn = round(weekly / 7, 4)
@@ -308,10 +394,13 @@ def build(fetch=fetch_snapshot, env_file=None, history_path=None, out_path=None,
         "history_n": len(hist),
         "history_first_iso": hist[0]["iso"] if hist else None,
         "history_last_iso": hist[-1]["iso"] if hist else None,
+        "usage_history": tokens,
+        "cost_history": costs,
     }
     _atomic_write(out_path, doc)
     print(f"OK {out_path} ({out_path.stat().st_size} bytes) "
-          f"remaining={remaining:.2f} used={total_usage:.2f} points={len(hist)}")
+          f"remaining={remaining:.2f} used={total_usage:.2f} points={len(hist)} "
+          f"token_days={len(tokens)} cost_days={len(costs)}")
     return 0
 
 

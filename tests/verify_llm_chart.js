@@ -88,6 +88,16 @@ const LLM_OK = {
   history_n: 4,
   history_first_iso: '2026-06-15T10:00:00+00:00',
   history_last_iso: '2026-06-15T13:00:00+00:00',
+  usage_history: [
+    { date: '2026-10-22', tokens: 1000000, tokens_io: 200000, tokens_cache: 800000, sessions: 3 },
+    { date: '2026-10-23', tokens: 2000000, tokens_io: 400000, tokens_cache: 1600000, sessions: 5 },
+    { date: '2026-10-24', tokens: 1500000, tokens_io: 300000, tokens_cache: 1200000, sessions: 4 },
+  ],
+  cost_history: [
+    { date: '2026-10-22', used: 200.0, remaining: 30.0 },
+    { date: '2026-10-23', used: 202.0, remaining: 28.0 },
+    { date: '2026-10-24', used: 205.9, remaining: 24.04 },
+  ],
 };
 const LLM_ONE = Object.assign({}, LLM_OK, {
   history: [[1750010800.0, 17.251565, 32.748435]],
@@ -117,6 +127,15 @@ const LLM_ONE = Object.assign({}, LLM_OK, {
     bal.includes('14,6 Tage Reichweite'), bal.slice(0, 200));
   check('(A8) used_pct de-DE formatiert (65,5 %)',
     spent.includes('65,5 %'), spent.slice(0, 200));
+  const uch = A['sv-llm-usage-chart'] ? A['sv-llm-usage-chart'].innerHTML : '';
+  const unote = A['sv-llm-usage-note'] ? A['sv-llm-usage-note'].textContent : '';
+  check('(A9) Usage-Chart enthält <svg> + <rect>',
+    uch.includes('<svg') && uch.includes('<rect'), uch.slice(0, 120));
+  check('(A10) Usage-Chart Kost-Linie + Legende',
+    uch.includes('polyline') && uch.includes('Tokens') && uch.includes('Kosten kumuliert'),
+    uch.slice(0, 200));
+  check('(A11) Usage-Note nennt Tokens + OpenRouter-Kosten',
+    unote.includes('state.db') && unote.includes('OpenRouter'), unote);
 
   // ── Szenario B: Historie mit nur 1 Punkt → kein SVG ───────────────
   const B = await runScenario(LLM_ONE);

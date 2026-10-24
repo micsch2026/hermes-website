@@ -8,6 +8,7 @@ Ausfuehrung: cd site && /usr/bin/python3 tests/test_build_openrouter.py
 from __future__ import annotations
 
 import json
+import sqlite3
 import sys
 import tempfile
 from pathlib import Path
@@ -70,7 +71,7 @@ def main() -> int:
                     raise exc
                 return snap
             return b.build(fetch=fetch, env_file=env, history_path=hist,
-                           out_path=out, timeout=5, now_ts=ts)
+                           out_path=out, timeout=5, now_ts=ts, token_history=[])
 
         # ---- 2) Erster Lauf (leere History) ------------------------------
         rc = run(t0, _snap())
@@ -90,6 +91,8 @@ def main() -> int:
         check("Lauf 1: fetch_ok is True", d["fetch_ok"] is True)
         check("Lauf 1: History-Datei 1 Zeile", len(_lines(hist)) == 1, _lines(hist))
         check("Lauf 1: history-Feld 1 Punkt", len(d["history"]) == 1, d["history"])
+        check("Lauf 1: usage_history leer (injiziert)", d.get("usage_history") == [], d.get("usage_history"))
+        check("Lauf 1: cost_history 1 Tag", len(d.get("cost_history") or []) == 1, d.get("cost_history"))
 
         # ---- 3) Gleiche Werte, ts +300 s -> kein neuer Punkt -------------
         rc = run(t0 + 300, _snap())
@@ -127,12 +130,43 @@ def main() -> int:
         out2 = td / "frisch" / "status.json"
         rc = b.build(fetch=lambda k, t: (_ for _ in ()).throw(RuntimeError("kaputt")),
                      env_file=env, history_path=td / "h2.jsonl",
-                     out_path=out2, timeout=5, now_ts=t0)
+                     out_path=out2, timeout=5, now_ts=t0, token_history=[])
         check("Lauf 6 (kein Vorher-Dok): Rueckgabe 1", rc == 1, rc)
         d2 = _read(out2)
         check("Lauf 6: Minimal-Dokument (balance null, history [])",
               d2["balance"] is None and d2["history"] == [] and d2["history_n"] == 0
               and d2["fetch_ok"] is False, d2)
+
+        # ---- 6c) state.db Token-Tagesaggregat (read-only) ----------------
+        db = td / "state.db"
+        d0 = t0 - 12 * 3600  # noon-ish UTC, damit +1h nicht die Berliner Tagesgrenze kreuzt
+        con = sqlite3.connect(db)
+        con.execute("CREATE TABLE sessions (started_at REAL, input_tokens INT, output_tokens INT, "
+                    "cache_read_tokens INT, cache_write_tokens INT)")
+        con.executemany("INSERT INTO sessions VALUES (?,?,?,?,?)", [
+            (d0, 100, 20, 5, 1),
+            (d0 + 3600, 50, 10, 0, 0),
+            (d0 + 86400, 7, 3, 2, 0),
+        ])
+        con.commit()
+        con.close()
+        th = b.load_token_history(db, now_ts=t0 + 2 * 86400)
+        check("load_token_history: 2 Tage", len(th) == 2, th)
+        if len(th) == 2:
+            check("load_token_history: Tag 1 tokens_io == 180", th[0]["tokens_io"] == 180, th[0])
+            check("load_token_history: Tag 1 tokens == 186", th[0]["tokens"] == 186, th[0])
+            check("load_token_history: Tag 1 sessions == 2", th[0]["sessions"] == 2, th[0])
+            check("load_token_history: Tag 2 tokens == 12", th[1]["tokens"] == 12, th[1])
+        check("load_token_history: fehlende DB -> []",
+              b.load_token_history(td / "nope.db") == [])
+
+        ch = b.build_cost_history([
+            {"ts": t0, "used": 10.0, "remaining": 40.0},
+            {"ts": t0 + 60, "used": 10.5, "remaining": 39.5},
+            {"ts": t0 + 86400, "used": 12.0, "remaining": 38.0},
+        ])
+        check("build_cost_history: 2 Tage, letzter Tageswert gewinnt",
+              len(ch) == 2 and ch[0]["used"] == 10.5 and ch[1]["used"] == 12.0, ch)
 
         # ---- 7) _downsample mit 5000 synthetischen Punkten ---------------
         entries = [[1000.0 + i, float(100 + (i % 37) - 18), float(i)] for i in range(5000)]
