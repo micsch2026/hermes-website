@@ -1,18 +1,68 @@
 {
- "updated_at": "2026-10-24T17:20:07.216288+00:00",
+ "updated_at": "2026-10-25T02:01:20.306576+00:00",
  "available": true,
- "week": "2026-W43",
+ "week": "2026-W44",
  "status": "applied",
- "generated_at": "2026-10-18T11:55:22.086196+00:00",
- "model": "deepseek/deepseek-v4.1-flash",
- "summary_de": "W43-Fokus: FX-H4-Swing (h4_smc_fx, fx_swing_h4_fxonly, h4_swing_fx) und Metalle (hpf_gold_sessions, fx_swing_h4_metals).\n4 neue Seeds als Nachbarschaften der Shadow-Gewinner #194/#317/#672/#940 (Metals-Trend-Pullback H1, FX-Trend-Pullback H4, FX-ZScore-Pullback H4, Gold-Session-Pullback H1).\nShadow: 44 positiv / 28 negativ / 26 ohne Trades, netto +1612.8 EUR, 31 offene Positionen.\nKein retire_vorschlag moeglich: PF je Shadow-Strategie im Report nicht verfuegbar -> debug statt Retire.\nDeployte Verlustbringer (bot5/s775, bot1/s724, bot10/st2) als User-Anpassung markiert.\nGates: 63x 'no asset survived per-asset WFO' bei gleichzeitig 1149x near-miss PF 1.19 (h4_smc_fx) beobachten.",
+ "generated_at": "2026-10-25T02:00:34.560408+00:00",
+ "model": "deepseek/deepseek-v4.1-flash-1017",
+ "summary_de": "W44 laeuft im manuellen F5/F6/F7-Fokus (COT-Filter, Event-Drift, XS-Momentum) bis 31.10.2026; h4_swing_fx bleibt pausiert.\nShadow: 100 Strategien, 55 positiv / 21 negativ / 24 ohne Trades; Metalle-Sweep-Familie (auto_gold_sweep_rsi_session, 3x, +724EUR) und session_sweep_reversal (3x, +215EUR) sind die belegten Gewinner-Nachbarschaften.\nSeed-Registry: 1497 Seeds, 195 Zero-Yield >60d, 67 Orphan-Winner \u2014 Fokus auf Orphan-Ueberfuehrung (auto_gold_sweep_rsi_session, session_sweep_reversal, idx_weekend_gap_cont_h1) statt neuer Familien.\nVier neue Seeds: 2 Metalle/FX-Sweep-Nachbarschaften, 1 COT-Fokus-Seed (aktives Cluster), 1 Index-Gap-Orphan; alle sortenrein, max 3 Regeln + 1 Gate.\nSchwaechster Shadow: #775 idx_order_block_h1 (-103.4EUR, 100 Trades, WR 36%) \u2014 PF im Report nicht verfuegbar, daher debug statt Retire.\nKeine Retire-Vorschlaege: PF-Werte der Shadow-Strategien sind im Report nicht enthalten, Evidenzkriterium (PF<0.80) nicht belegbar.",
  "wochenfokus": [
   {
-   "cluster": "h4_smc_fx",
+   "cluster": "cot_filter_one_sided_fx_swing_h4",
    "priority": 1,
-   "reason": "Groesster near-miss-Block (1149 Laeufe PF 1.19) und 1042 profitable Yield-Laeufe (auto_h4_smc_liq_fvg); gleichzeitig 63 gate_fails 'no asset survived per-asset WFO' \u2014 SMC-Sweep/OB-Familie breit, aber WFO-selektiv.",
+   "reason": "Aktives Fokus-Cluster (config_state.fokus, Fenster bis 31.10.2026). Belege: research_cot_filter_fx_swing_h4 PF 1.41 / 265 Trades (Save 1036), research_cot_filter_gt10 PF 1.20 / 446 Trades (Save 1034); near_miss_gate zeigt 17 COT-Treffer bei PF 1.13.",
    "levers": [
     "seeds",
+    "tier1"
+   ],
+   "assets_hint": [
+    "EURUSD",
+    "USDJPY",
+    "GBPUSD"
+   ]
+  },
+  {
+   "cluster": "hpf_gold_sessions",
+   "priority": 1,
+   "reason": "Staerkste belegte Gewinner-Familie im Shadow: auto_gold_sweep_rsi_session 3x netto +724EUR (#946/#947/#948), zusaetzlich als Orphan-Winner (4 Strategien, 4B, mean_pf 1.315) ohne Cluster-Referenz. Baseline auto_metals_session_ob_trend PF 1.42 / 124 Trades (Save 1006).",
+   "levers": [
+    "seeds",
+    "tier1"
+   ],
+   "assets_hint": [
+    "XAUUSD",
+    "XAGUSD"
+   ]
+  },
+  {
+   "cluster": "hpf_stoprun_fx",
+   "priority": 2,
+   "reason": "session_sweep_reversal ist Orphan-Winner (4 Strategien, 4B, mean_pf 1.448, 20 Tage, unreferenced) und im Shadow 3x mit +215EUR vertreten \u2014 Ueberfuehrung in ein FX-Cluster steht aus.",
+   "levers": [
+    "seeds"
+   ],
+   "assets_hint": [
+    "EURUSD",
+    "GBPUSD"
+   ]
+  },
+  {
+   "cluster": "idx_w3_gap",
+   "priority": 2,
+   "reason": "idx_weekend_gap_cont_h1 ist Orphan-Winner (2 Strategien, 2B, mean_pf 1.21, 28 Tage, unreferenced, kein Cluster). Indizes tragen Spread \u2014 konservative Seeds noetig.",
+   "levers": [
+    "seeds"
+   ],
+   "assets_hint": [
+    "US500",
+    "GER40"
+   ]
+  },
+  {
+   "cluster": "fx_swing_h4_fxonly",
+   "priority": 2,
+   "reason": "Hoechster belegter Lab-Yield: 725 Runs / 718 profitable / 706 Tier-A (previous_advice), aktuell 68 Runs bei auto_h4_fx_rsi_bb_pin_ib. Bleibt aktives FX-Cluster, waehrend h4_swing_fx pausiert ist.",
+   "levers": [
     "tier1"
    ],
    "assets_hint": [
@@ -20,72 +70,18 @@
     "GBPUSD",
     "AUDUSD"
    ]
-  },
-  {
-   "cluster": "fx_swing_h4_fxonly",
-   "priority": 1,
-   "reason": "near-miss-Bloecke 121/85/20/2 Laeufe; Yield auto_rsi_bb_adx_meanrev 480 Laeufe profitabel. FX traegt Kommission -> H4 + weitere SL.",
-   "levers": [
-    "seeds",
-    "tier1"
-   ],
-   "assets_hint": [
-    "EURUSD",
-    "AUDCAD",
-    "EURAUD"
-   ]
-  },
-  {
-   "cluster": "hpf_gold_sessions",
-   "priority": 1,
-   "reason": "Aktives Fokus-Window (bis 2026-10-19 18:02 UTC), 2 frische Ansaetze, Score 11; Metalle kommissionsfrei -> enge SL ok, aber R:R >=2 verlangen.",
-   "levers": [
-    "seeds",
-    "tier1"
-   ],
-   "assets_hint": [
-    "XAUUSD",
-    "XAGUSD"
-   ]
-  },
-  {
-   "cluster": "fx_swing_h4_metals",
-   "priority": 1,
-   "reason": "Yield-Spitze: 5220 Laeufe, alle profitabel (fx_swing_h4_trend_pullback_metals); Shadow-Gewinner #194/#317/#940 (Metals Trend-Pullback H1) bestaetigen die Familie.",
-   "levers": [
-    "seeds",
-    "tier1"
-   ],
-   "assets_hint": [
-    "XAUUSD",
-    "XAGUSD"
-   ]
-  },
-  {
-   "cluster": "h4_swing_fx",
-   "priority": 2,
-   "reason": "near-miss 365 Laeufe PF 1.19 und Yield sb_w40_repair 528 Laeufe profitabel; Basis fuer FX-ZScore-Nachbarschaft, aber kein neuer Peak-Fit.",
-   "levers": [
-    "seeds",
-    "tier1"
-   ],
-   "assets_hint": [
-    "EURUSD",
-    "EURAUD",
-    "AUDCAD"
-   ]
   }
  ],
  "neue_seeds": [
   {
-   "name": "sb_metals_h1_trend_pullback_rsi",
-   "cluster": "metals_rv_h1",
+   "name": "sb_metals_h1_sweep_rsi_session",
+   "cluster": "hpf_gold_sessions",
    "timeframe": "1h",
    "assets": [
     "XAUUSD",
     "XAGUSD"
    ],
-   "rationale": "Nachbarschaft zu Shadow-Gewinnern #194 (Metals Trend-Pullback H1, +235.2 EUR) und #317 (+225.4 EUR): RSI-Pullback im EMA-Trend statt reiner EMA-Pullback, sortenrein Metalle, lockere Schwellen fuer >=50 Signale.",
+   "rationale": "Mechanismus: Liquidity-Sweep am Session-Rand laeuft in Mean-Reversion zurueck (Ueberreaktion im London-Fenster), RSI/BB-Position liefert die Ueberdehnungs-Bestaetigung. Datenquelle: market.db H1 OHLC + Session-Flags (session_london), ATR-Perzentil als Volatilitaets-Gate. Falsifikation: wenn PF<1.0 oder <50 Signale pro Asset ueber die volle Historie, ist die Sweep-Praemisse fuer Metalle H1 verworfen. Nachbarschaft zu Orphan-/Shadow-Gewinner auto_gold_sweep_rsi_session (+724EUR, 3 Strategien).",
    "seed": {
     "enter": {
      "signals": [
@@ -94,13 +90,13 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "price_vs_ema",
+         "indicator": "bb_position",
          "timeframe": "1h",
          "params": {
-          "period": 50
+          "period": 20
          },
-         "op": ">",
-         "value": 0
+         "op": "<",
+         "value": 0.25
         },
         {
          "indicator": "rsi",
@@ -110,6 +106,13 @@
          },
          "op": "<",
          "value": 45
+        },
+        {
+         "indicator": "session_london",
+         "timeframe": "1h",
+         "params": {},
+         "op": "==",
+         "value": 1
         }
        ],
        "direction": "long",
@@ -120,13 +123,13 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "price_vs_ema",
+         "indicator": "bb_position",
          "timeframe": "1h",
          "params": {
-          "period": 50
+          "period": 20
          },
-         "op": "<",
-         "value": 0
+         "op": ">",
+         "value": 0.75
         },
         {
          "indicator": "rsi",
@@ -136,18 +139,35 @@
          },
          "op": ">",
          "value": 55
+        },
+        {
+         "indicator": "session_london",
+         "timeframe": "1h",
+         "params": {},
+         "op": "==",
+         "value": 1
         }
        ],
        "direction": "short",
        "base_score": 50
       }
      ],
-     "gates": [],
+     "gates": [
+      {
+       "indicator": "atr_percentile",
+       "timeframe": "1h",
+       "params": {
+        "period": 14
+       },
+       "op": ">",
+       "value": 30
+      }
+     ],
      "min_score": 50
     },
     "exit": {
      "mode": "timeout",
-     "max_hold_hours": 48
+     "max_hold_hours": 24
     },
     "sl": {
      "mode": "atr",
@@ -166,21 +186,20 @@
    },
    "validation": {
     "ok": true,
-    "signals": 110,
+    "signals": 947,
     "asset_tested": "XAUUSD",
     "note": ""
    }
   },
   {
-   "name": "sb_fx_h4_trend_pullback_rsi",
-   "cluster": "fx_swing_h4_fxonly",
-   "timeframe": "4h",
+   "name": "sb_fx_h1_session_sweep_reversal",
+   "cluster": "hpf_stoprun_fx",
+   "timeframe": "1h",
    "assets": [
     "EURUSD",
-    "AUDCAD",
     "GBPUSD"
    ],
-   "rationale": "Nachbarschaft zu #672 fx1_4h_trend_pullback (+230.2 EUR, deployt bot7/s672): RSI-Pullback auf EMA-Slope-Trend, FX-only wegen Kommission (~6 EUR/100k) und H4-Zeitrahmen.",
+   "rationale": "Mechanismus: Stop-Run unter/ueber ein Session-Extrem wird von institutionellem Flow zurueckgekauft; Z-Score < -1.5 markiert die statistische Ueberdehnung, RSI bestaetigt, London-Session begrenzt auf liquide Stunden. Datenquelle: market.db H1 OHLC, zscore(20) und Session-Flags. Falsifikation: wenn nach Kommission (6EUR/100k) der Netto-PF<1.0 liegt oder <50 Signale/Asset, ist die FX-Sweep-Umkehr nicht handelbar. Ueberfuehrt Orphan-Winner session_sweep_reversal (mean_pf 1.448) in ein FX-Cluster; SL bewusst weiter (ATR 1.8) wegen FX-Kommission.",
    "seed": {
     "enter": {
      "signals": [
@@ -189,22 +208,29 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "ema_slope",
-         "timeframe": "4h",
+         "indicator": "zscore",
+         "timeframe": "1h",
          "params": {
-          "period": 50
+          "period": 20
          },
-         "op": ">",
-         "value": 0
+         "op": "<",
+         "value": -1.5
         },
         {
          "indicator": "rsi",
-         "timeframe": "4h",
+         "timeframe": "1h",
          "params": {
           "period": 14
          },
          "op": "<",
          "value": 45
+        },
+        {
+         "indicator": "session_london",
+         "timeframe": "1h",
+         "params": {},
+         "op": "==",
+         "value": 1
         }
        ],
        "direction": "long",
@@ -215,39 +241,56 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "ema_slope",
-         "timeframe": "4h",
+         "indicator": "zscore",
+         "timeframe": "1h",
          "params": {
-          "period": 50
+          "period": 20
          },
-         "op": "<",
-         "value": 0
+         "op": ">",
+         "value": 1.5
         },
         {
          "indicator": "rsi",
-         "timeframe": "4h",
+         "timeframe": "1h",
          "params": {
           "period": 14
          },
          "op": ">",
          "value": 55
+        },
+        {
+         "indicator": "session_london",
+         "timeframe": "1h",
+         "params": {},
+         "op": "==",
+         "value": 1
         }
        ],
        "direction": "short",
        "base_score": 50
       }
      ],
-     "gates": [],
+     "gates": [
+      {
+       "indicator": "atr_percentile",
+       "timeframe": "1h",
+       "params": {
+        "period": 14
+       },
+       "op": ">",
+       "value": 25
+      }
+     ],
      "min_score": 50
     },
     "exit": {
      "mode": "timeout",
-     "max_hold_hours": 72
+     "max_hold_hours": 24
     },
     "sl": {
      "mode": "atr",
      "period": 14,
-     "mult": 1.5
+     "mult": 1.8
     },
     "tp": {
      "mode": "r_multiple",
@@ -255,28 +298,26 @@
     },
     "pairs": [
      "EURUSD",
-     "AUDCAD",
      "GBPUSD"
     ],
     "risk_pct": 1.0
    },
    "validation": {
     "ok": true,
-    "signals": 48,
+    "signals": 1123,
     "asset_tested": "EURUSD",
     "note": ""
    }
   },
   {
-   "name": "sb_fx_h4_zscore_pullback",
-   "cluster": "h4_swing_fx",
+   "name": "sb_fx_h4_cot_extreme_pullback",
+   "cluster": "cot_filter_fx_swing_h4",
    "timeframe": "4h",
    "assets": [
     "EURUSD",
-    "EURAUD",
-    "AUDCAD"
+    "USDJPY"
    ],
-   "rationale": "Nachbarschaft zu den Gewinner-Familien split_214_kimi_fx_zscore_v2_h1 (n=2, +221.5 EUR) und botr16_206_zscore_fx (n=2, +129.1 EUR): Z-Score-Pullback im uebergeordneten EMA-Trend, FX-only, H4.",
+   "rationale": "Mechanismus: extremes spekulatives COT-Positioning (Perzentil <25 bzw. >75) markiert crowding; ein RSI-Pullback gegen die Crowd-Richtung mit intaktem EMA-Trendfilter liefert den Einstieg. Datenquelle: COT-Weekly (cot_net_percentile) + market.db H4 OHLC. Falsifikation: wenn der Netto-PF unter 1.0 faellt oder <50 Signale pro Asset, ist der einseitige COT-Filter als Timing-Signal untauglich. Stuetzt das aktive Fokus-Cluster (Save 1036 PF 1.41/265 Trades, Save 1034 PF 1.20/446 Trades); H4 wegen FX-Kommission.",
    "seed": {
     "enter": {
      "signals": [
@@ -285,13 +326,20 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "zscore",
+         "indicator": "cot_net_percentile",
+         "timeframe": "1d",
+         "params": {},
+         "op": "<",
+         "value": 25
+        },
+        {
+         "indicator": "rsi",
          "timeframe": "4h",
          "params": {
-          "period": 20
+          "period": 14
          },
          "op": "<",
-         "value": -1.0
+         "value": 45
         },
         {
          "indicator": "price_vs_ema",
@@ -311,13 +359,20 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "zscore",
+         "indicator": "cot_net_percentile",
+         "timeframe": "1d",
+         "params": {},
+         "op": ">",
+         "value": 75
+        },
+        {
+         "indicator": "rsi",
          "timeframe": "4h",
          "params": {
-          "period": 20
+          "period": 14
          },
          "op": ">",
-         "value": 1.0
+         "value": 55
         },
         {
          "indicator": "price_vs_ema",
@@ -333,7 +388,17 @@
        "base_score": 50
       }
      ],
-     "gates": [],
+     "gates": [
+      {
+       "indicator": "atr_percentile",
+       "timeframe": "4h",
+       "params": {
+        "period": 14
+       },
+       "op": ">",
+       "value": 20
+      }
+     ],
      "min_score": 50
     },
     "exit": {
@@ -351,26 +416,26 @@
     },
     "pairs": [
      "EURUSD",
-     "EURAUD",
-     "AUDCAD"
+     "USDJPY"
     ],
     "risk_pct": 1.0
    },
    "validation": {
-    "ok": true,
-    "signals": 149,
+    "ok": false,
+    "signals": 0,
     "asset_tested": "EURUSD",
-    "note": ""
+    "note": "nur 0 Signale (min 25) \u2014 zu selten f\u00fcr WFO"
    }
   },
   {
-   "name": "sb_gold_h1_session_trend_pullback",
-   "cluster": "hpf_gold_sessions",
+   "name": "sb_idx_h1_weekend_gap_cont",
+   "cluster": "idx_w3_gap",
    "timeframe": "1h",
    "assets": [
-    "XAUUSD"
+    "US500",
+    "GER40"
    ],
-   "rationale": "Aktives Fokus-Cluster hpf_gold_sessions; Nachbarschaft zu auto_gold_sweep_rsi_session (n=3, +65.4 EUR) und #940 auto_metals_ema_pullback_trend_tom (+150.5 EUR): Session-gefilterter Trend-Pullback, kommissionsfrei -> enger ATR-SL mit 2R-TP.",
+   "rationale": "Mechanismus: Wochenend-Gaps in Indizes tragen Informationsgehalt (Nachrichten-/Flow-Vorsprung) und werden am Montag in Gap-Richtung fortgesetzt, solange das kurzfristige Momentum bestaetigt. Datenquelle: market.db H1 OHLC inkl. gap und day_of_week. Falsifikation: wenn PF<1.0 oder <50 Signale pro Asset ueber die Historie, ist die Gap-Continuation fuer Indizes verworfen. Ueberfuehrt Orphan-Winner idx_weekend_gap_cont_h1 (2 Strategien, 2B, mean_pf 1.21) in ein Cluster; TP konservativ 1.8R wegen Index-Spread.",
    "seed": {
     "enter": {
      "signals": [
@@ -379,29 +444,27 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "hour_utc",
+         "indicator": "gap",
          "timeframe": "1h",
          "params": {},
-         "op": ">=",
-         "value": 7
+         "op": ">",
+         "value": 0.3
         },
         {
-         "indicator": "price_vs_ema",
+         "indicator": "momentum",
          "timeframe": "1h",
          "params": {
-          "period": 50
+          "period": 10
          },
          "op": ">",
          "value": 0
         },
         {
-         "indicator": "rsi",
+         "indicator": "day_of_week",
          "timeframe": "1h",
-         "params": {
-          "period": 14
-         },
-         "op": "<",
-         "value": 45
+         "params": {},
+         "op": "==",
+         "value": 1
         }
        ],
        "direction": "long",
@@ -412,41 +475,49 @@
        "condition": "AND",
        "rules": [
         {
-         "indicator": "hour_utc",
+         "indicator": "gap",
          "timeframe": "1h",
          "params": {},
-         "op": ">=",
-         "value": 7
+         "op": "<",
+         "value": -0.3
         },
         {
-         "indicator": "price_vs_ema",
+         "indicator": "momentum",
          "timeframe": "1h",
          "params": {
-          "period": 50
+          "period": 10
          },
          "op": "<",
          "value": 0
         },
         {
-         "indicator": "rsi",
+         "indicator": "day_of_week",
          "timeframe": "1h",
-         "params": {
-          "period": 14
-         },
-         "op": ">",
-         "value": 55
+         "params": {},
+         "op": "==",
+         "value": 1
         }
        ],
        "direction": "short",
        "base_score": 50
       }
      ],
-     "gates": [],
+     "gates": [
+      {
+       "indicator": "atr_percentile",
+       "timeframe": "1h",
+       "params": {
+        "period": 14
+       },
+       "op": ">",
+       "value": 20
+      }
+     ],
      "min_score": 50
     },
     "exit": {
      "mode": "timeout",
-     "max_hold_hours": 48
+     "max_hold_hours": 12
     },
     "sl": {
      "mode": "atr",
@@ -455,81 +526,72 @@
     },
     "tp": {
      "mode": "r_multiple",
-     "value": 2.0
+     "value": 1.8
     },
     "pairs": [
-     "XAUUSD"
+     "US500",
+     "GER40"
     ],
     "risk_pct": 1.0
    },
    "validation": {
-    "ok": true,
-    "signals": 82,
-    "asset_tested": "XAUUSD",
-    "note": ""
+    "ok": false,
+    "signals": 3,
+    "asset_tested": "US500",
+    "note": "nur 3 Signale (min 50) \u2014 zu selten f\u00fcr WFO"
    }
   }
  ],
  "anpassungen": [
   {
-   "target": "bot5/s775 (idx_order_block_h1)",
-   "change": "Deployment pruefen / aus Shadow-Portfolio entfernen",
-   "reason": "Deployt, Shadow netto -63.5 EUR bei 73 Trades, WR 38.4% \u2014 belegter Verlustbringer, Bot-/Deploy-Eingriff ausserhalb Lab-Autonomie."
+   "target": "config_state.fokus / recipe_clusters_FOKUS.json",
+   "change": "Fokus-Fenster endet 31.10.2026 23:59 UTC \u2014 entscheiden, ob der manuelle F5/F6/F7-Fokus verlaengert oder in die Auto-Rotation zurueckgegeben wird",
+   "reason": "Portfolio-Policy/User-Freigabe vom 24.10.2026; nicht autonom durch das Lab aenderbar. Betrifft 5 Cluster / 28 Approaches."
   },
   {
-   "target": "bot1/s724 (kb74_ob_precision)",
-   "change": "Deployment pruefen",
-   "reason": "Deployt, Shadow netto -42.5 EUR bei 25 Trades, WR 28.0% \u2014 Live-naher Eingriff, User-Entscheid."
-  },
-  {
-   "target": "bot10/st2 (stocks_us_mr_h1)",
-   "change": "Deployment pruefen",
-   "reason": "Deployt, Shadow netto -49.7 EUR bei 7 Trades, WR 28.6% \u2014 Live-naher Eingriff, User-Entscheid."
-  },
-  {
-   "target": "near_miss_gate h4_smc_fx",
-   "change": "Gate-Schwelle/Selektionskriterium pruefen (keine automatische Senkung)",
-   "reason": "1149 Laeufe bei PF 1.19 knapp unter Gate \u2014 groesster near-miss-Block; Gate-Policy ist User-Entscheid, kein autonomer Seed."
+   "target": "bot5 / Slot s775 (Shadow #775 idx_order_block_h1)",
+   "change": "Deploy-/Slot-Freigabe pruefen (Pause oder Entfernen aus dem Live-Slot)",
+   "reason": "Live-naher Eingriff: netto -103.4EUR bei 100 Trades, WR 36.0%, Assets AUS200/FRA40/US2000/US500 \u2014 schwaechster Shadow-Eintrag. PF ist im Report nicht ausgewiesen, daher keine automatische Retire-Evidenz."
   }
  ],
  "shadow_empfehlungen": [
   {
-   "strategy_id": 940,
+   "strategy_id": 672,
    "action": "variant",
-   "reason": "+150.5 EUR / 14 Trades, pnl/Woche 93.6 EUR, deployt bot7/m3 \u2014 EMA-Pullback-Trend-Nachbarschaft als Variante ausrollen (nicht durch neue_seeds abgedeckt)."
+   "reason": "Assets gemischt (AUDCAD, EURUSD, XAUUSD) \u2014 verletzt Sortenreinheit FX/Metall. Variante als FX-only-Nachbarschaft (AUDCAD/EURUSD) mit identischer Trend-Pullback-Logik; Basis: netto +230.2EUR, 23 Trades, WR 43.5%, deployt auf bot7/s672."
   },
   {
-   "strategy_id": 684,
+   "strategy_id": 775,
    "action": "debug",
-   "reason": "-102.8 EUR / 21 Trades, WR 19.0% \u2014 PF im Report nicht verfuegbar, daher keine Retire-Evidenz (>=20 Trades UND PF<0.80 nicht belegbar) -> automatische Beobachtung."
+   "reason": "Netto -103.4EUR bei 100 Trades, WR 36.0% \u2014 negativ, aber PF im Report nicht verfuegbar; Evidenzkriterium (kumulativ >=20 Trades UND PF<0.80) nicht belegbar, daher automatische Beobachtung statt Retire."
   },
   {
-   "strategy_id": 975,
+   "strategy_id": 972,
    "action": "debug",
-   "reason": "-85.2 EUR / 4 Trades, WR 0% \u2014 unter 20 Shadow-Trades, keine Retire-Evidenz -> debug."
+   "reason": "Netto -75.0EUR, nur 8 Trades, WR 25.0% (AVGO, V) \u2014 Stichprobe zu klein fuer Retire-Evidenz, PF nicht ausgewiesen; Beobachtung fortsetzen."
   },
   {
-   "strategy_id": 950,
+   "strategy_id": 1025,
    "action": "debug",
-   "reason": "-77.8 EUR / 3 Trades, WR 0% \u2014 unter 20 Shadow-Trades, keine Retire-Evidenz -> debug."
+   "reason": "BASELINE auto_h4_fx_rsi_bb_pin_ib seit 23.10. ohne Trades (zero_trades-Liste), offene EURUSD-Position long \u2014 Signalarmut beobachten, keine Retire-Evidenz."
   }
  ],
  "neuer_ansatz": {},
  "monitoring": [
-  "hpf_gold_sessions Fokus-Window endet 2026-10-19 18:02 UTC \u2014 2 frische Ansaetze (Score 11) beobachten.",
-  "31 offene Shadow-Positionen bei 98 Strategien \u2014 Klumpenrisiko in EURJPY (session_sweep_reversal 3x) und AUDCAD beobachten.",
-  "26 Shadow-Strategien ohne Trades (zero_trades) \u2014 Signalarmut/Deploy-Luecke beobachten.",
-  "gate_fails: 63x 'no asset survived per-asset WFO' vs. 1149x near-miss PF 1.19 (h4_smc_fx) \u2014 WFO-Strenge beobachten, kein Peak-Fitting.",
-  "near_dup_skips 15554 \u2014 hohe Duplikat-Dichte, Seed-Diversitaet beobachten.",
-  "fx_swing_h4_metals 5220 Laeufe, 100% profitabel \u2014 Yield-Basis auf Robustheit pruefen (kein Extrem-Schwellen-Fitting).",
-  "log_window_note: 150000-Zeilen-Limit erreicht (8 Dateien, 7d Rotation) \u2014 Log-Rotation pruefen."
+  "Seed-Registry: 195 Zero-Yield-Seeds >60d und 67 Orphan-Winner \u2014 naechste Woche zuerst auto_gold_sweep_rsi_session, session_sweep_reversal, idx_weekend_gap_cont_h1 und scalp_m15_vol_climax_reversal (102 Tage, 5B, mean_pf 1.66, unreferenced) auf Cluster-Mapping pruefen.",
+  "Shadow: 24 Strategien ohne Trades und 21 negative \u2014 naechste Woche PF-Werte je Strategie nachfordern, damit Retire-Evidenz (>=20 Trades UND PF<0.80) ueberhaupt belegbar wird.",
+  "Gate-Fails: 575x 'no asset survived per-asset WFO' dominiert \u2014 WFO-Strenge je Cluster beobachten, aber nicht aufweichen (Overfitting-Schutz).",
+  "near_dup_skips 12235 und 12235+ Auto-Seed-Zeilen: hohe Duplikatrate, besonders fx_swing_h4_fxonly (viele near_miss bei PF 1.10-1.19) \u2014 auf Signal-Minimum und Kosten achten, keine Schwellen-Schaerfung.",
+  "Metalle-Blacklist-Heat: 25 Pullback-/Session-Varianten mit je 4 Rejections (auto_metals_*, auto_gold_*) \u2014 keine weiteren Pullback-Varianten dieser Kombination vorschlagen.",
+  "h4_swing_fx bleibt laut config_state bis 31.10.2026 pausiert; fx_swing_h4_fxonly laeuft weiter (725 Runs / 718 profitable) \u2014 Yield-Entwicklung nach Fensterende beobachten.",
+  "Indizes: #775 idx_order_block_h1 und #787 auto_eustx50_london_sweep negativ \u2014 Index-Spread-Kosten in neuen Seeds konservativ ansetzen (TP <=1.8R)."
  ],
  "outcome": {
   "week": "2026-W43",
   "status": "applied",
-  "days_since": 6.1,
-  "saves_since": 42,
-  "promotions_since": 10,
+  "days_since": 6.6,
+  "saves_since": 47,
+  "promotions_since": 11,
   "per_recommendation": [
    {
     "type": "wochenfokus",
@@ -575,9 +637,9 @@
     "type": "wochenfokus",
     "target": "h4_swing_fx",
     "yield_delta": {
-     "runs": 291,
-     "profitable": 264,
-     "tier_a": 262
+     "runs": 297,
+     "profitable": 269,
+     "tier_a": 267
     },
     "note": ""
    },
@@ -608,6 +670,15 @@
   ]
  },
  "history": [
+  {
+   "week": "2026-W44",
+   "status": "applied",
+   "generated_at": "2026-10-25T02:00:34.560408+00:00",
+   "summary_de": "W44 laeuft im manuellen F5/F6/F7-Fokus (COT-Filter, Event-Drift, XS-Momentum) bis 31.10.2026; h4_swing_fx bleibt pausiert.\nShadow: 100 Strategien, 55 positiv / 21 negativ / 24 ohne Trades; Metalle-Sweep-Familie (auto_gold_sweep_rsi_session,",
+   "focus_count": 5,
+   "seed_count": 4,
+   "seeds_validated": 2
+  },
   {
    "week": "2026-W43",
    "status": "applied",
@@ -646,275 +717,183 @@
   }
  ],
  "applied": {
-  "at": "2026-10-18T11:55:22.081865+00:00",
-  "scope": "Seeds \u00fcbernommen 9 \u00b7 Cluster-Edits 20 \u00b7 tier1 +3 \u00b7 WATCH neu 2 \u00b7 WATCH geschlossen 1 \u00b7 Cooldowns 4 \u00b7 Fokus h4_smc_fx \u00b7 Fokus-Revert auf hpf_gold_sessions (Recovery, 18.10.)",
+  "at": "2026-10-25T02:00:34.302963+00:00",
+  "scope": "Seeds \u00fcbernommen 2 \u00b7 verworfen/\u00fcbersprungen 2 \u00b7 Cluster-Edits 6 \u00b7 tier1 +3 \u00b7 WATCH neu 3 \u00b7 WATCH geschlossen 3 \u00b7 Cooldowns 4 \u00b7 Fokus cot_filter_one_sided_fx_swing_h4 (lief bereits)",
   "seeds_new": [
-   "sb_metals_h1_ema_trend_pullback",
-   "sb_gold_h1_session_sweep_reclaim",
-   "sb_metals_h4_trend_pullback_ema",
-   "sb_fx_h4_trend_pullback_ema",
-   "sb_fx_h1_bb_rsi_meanrev",
-   "sb_metals_h1_trend_pullback_rsi",
-   "sb_fx_h4_trend_pullback_rsi",
-   "sb_fx_h4_zscore_pullback",
-   "sb_gold_h1_session_trend_pullback"
+   "sb_metals_h1_sweep_rsi_session",
+   "sb_fx_h1_session_sweep_reversal"
   ],
-  "seeds_skipped": [],
+  "seeds_skipped": [
+   [
+    "sb_fx_h4_cot_extreme_pullback",
+    "nicht validiert (nur 0 Signale (min 25) \u2014 zu selten f\u00fcr WFO)"
+   ],
+   [
+    "sb_idx_h1_weekend_gap_cont",
+    "nicht validiert (nur 3 Signale (min 50) \u2014 zu selten f\u00fcr WFO)"
+   ]
+  ],
   "cluster_edits": [
    [
     "recipe_clusters_FOKUS.json",
-    "hpf_gold_sessions",
-    "sb_metals_h1_ema_trend_pullback"
+    "event_drift_metals",
+    "sb_metals_h1_sweep_rsi_session"
    ],
    [
     "recipe_clusters_FOKUS.json",
-    "hpf_gold_sessions",
-    "sb_gold_h1_session_sweep_reclaim"
+    "event_drift_fx_multi",
+    "sb_fx_h1_session_sweep_reversal"
    ],
    [
     "recipe_clusters.json",
-    "gold_hub_composite",
-    "sb_metals_h1_ema_trend_pullback"
-   ],
-   [
-    "recipe_clusters.json",
-    "fresh_innovations_metals",
-    "sb_metals_h1_ema_trend_pullback"
-   ],
-   [
-    "recipe_clusters.json",
-    "gold_hub_composite",
-    "sb_gold_h1_session_sweep_reclaim"
-   ],
-   [
-    "recipe_clusters.json",
-    "hpf_gold_sessions",
-    "sb_gold_h1_session_sweep_reclaim"
-   ],
-   [
-    "recipe_clusters.json",
-    "mm_sweep_cont_gold",
-    "sb_metals_h4_trend_pullback_ema"
-   ],
-   [
-    "recipe_clusters.json",
-    "fx_swing_h4_metals",
-    "sb_metals_h4_trend_pullback_ema"
-   ],
-   [
-    "recipe_clusters.json",
-    "fx_swing_h4_fxonly",
-    "sb_fx_h4_trend_pullback_ema"
-   ],
-   [
-    "recipe_clusters.json",
-    "h4_smc_fx",
-    "sb_fx_h4_trend_pullback_ema"
-   ],
-   [
-    "recipe_clusters.json",
-    "fresh_innovations",
-    "sb_fx_h1_bb_rsi_meanrev"
-   ],
-   [
-    "recipe_clusters.json",
-    "eur_cross_mr_basket",
-    "sb_fx_h1_bb_rsi_meanrev"
+    "smc_metals",
+    "sb_metals_h1_sweep_rsi_session"
    ],
    [
     "recipe_clusters.json",
     "fresh_innovations_metals",
-    "sb_metals_h1_trend_pullback_rsi"
+    "sb_metals_h1_sweep_rsi_session"
    ],
    [
     "recipe_clusters.json",
-    "gold_hub_composite",
-    "sb_metals_h1_trend_pullback_rsi"
+    "event_drift_fx_multi",
+    "sb_fx_h1_session_sweep_reversal"
    ],
    [
     "recipe_clusters.json",
-    "fx_swing_h4_fxonly",
-    "sb_fx_h4_trend_pullback_rsi"
-   ],
-   [
-    "recipe_clusters.json",
-    "h4_smc_fx",
-    "sb_fx_h4_trend_pullback_rsi"
-   ],
-   [
-    "recipe_clusters.json",
-    "fresh_innovations",
-    "sb_fx_h4_zscore_pullback"
-   ],
-   [
-    "recipe_clusters.json",
-    "fx_swing_h4_fxonly",
-    "sb_fx_h4_zscore_pullback"
-   ],
-   [
-    "recipe_clusters.json",
-    "metals_rv_h1",
-    "sb_gold_h1_session_trend_pullback"
-   ],
-   [
-    "recipe_clusters.json",
-    "hpf_gold_sessions",
-    "sb_gold_h1_session_trend_pullback"
+    "regime_volatility",
+    "sb_fx_h1_session_sweep_reversal"
    ]
   ],
   "tiers_added": [
-   "fresh_innovations_metals",
-   "fx_swing_h4_metals",
-   "mm_sweep_cont_gold"
+   "event_drift_fx_multi",
+   "event_drift_metals",
+   "smc_metals"
   ],
   "focus": {
-   "cluster": "h4_smc_fx",
-   "window_end": "2026-10-20T11:55:22.063372+00:00",
-   "approaches": 2,
-   "previous": "hpf_gold_sessions",
-   "reverted_at": "2026-10-18T11:56:42Z",
-   "reverted_to": "hpf_gold_sessions",
-   "revert_reason": "Recovery-ReRun 18.10. soll laufendes 48h-Fenster nicht unterbrechen"
+   "cluster": "cot_filter_one_sided_fx_swing_h4",
+   "skipped": "Fokus laeuft bereits (idempotent)"
   },
   "cooldowns_reset": [
-   "eur_cross_mr_basket",
-   "fx_swing_h4_fxonly",
-   "fx_swing_h4_metals",
-   "hpf_gold_sessions"
+   "cot_filter_one_sided_fx_swing_h4",
+   "event_drift_fx_multi",
+   "event_drift_metals",
+   "smc_metals"
   ],
-  "assets_added": [
-   [
-    "h4_smc_fx",
-    [
-     "AUDUSD"
-    ]
-   ]
-  ],
+  "assets_added": [],
   "tier_promoted": null,
   "retires_applied": [],
   "retires_skipped": [],
   "watches_added": [
    {
-    "sid": 950,
+    "sid": 775,
     "kind": "debug"
    },
    {
-    "sid": 975,
+    "sid": 972,
+    "kind": "debug"
+   },
+   {
+    "sid": 1025,
     "kind": "debug"
    }
   ],
   "watches_closed": [
    {
-    "sid": 775,
+    "sid": 684,
+    "kind": "debug",
+    "reason": "SID handelt wieder (Trade nach Watch-Start)"
+   },
+   {
+    "sid": 950,
+    "kind": "debug",
+    "reason": "SID handelt wieder (Trade nach Watch-Start)"
+   },
+   {
+    "sid": 975,
     "kind": "debug",
     "reason": "SID handelt wieder (Trade nach Watch-Start)"
    }
   ],
   "changed": [
-   "data/seeds/sb_metals_h1_ema_trend_pullback.json",
-   "data/seeds/sb_gold_h1_session_sweep_reclaim.json",
-   "data/seeds/sb_metals_h4_trend_pullback_ema.json",
-   "data/seeds/sb_fx_h4_trend_pullback_ema.json",
-   "data/seeds/sb_fx_h1_bb_rsi_meanrev.json",
-   "data/clusters/recipe_clusters_FOKUS.json::hpf_gold_sessions",
-   "data/clusters/recipe_clusters.json::gold_hub_composite",
+   "data/seeds/sb_metals_h1_sweep_rsi_session.json",
+   "data/seeds/sb_fx_h1_session_sweep_reversal.json",
+   "data/clusters/recipe_clusters_FOKUS.json::event_drift_metals",
+   "data/clusters/recipe_clusters_FOKUS.json::event_drift_fx_multi",
+   "data/clusters/recipe_clusters.json::smc_metals",
    "data/clusters/recipe_clusters.json::fresh_innovations_metals",
-   "data/clusters/recipe_clusters.json::hpf_gold_sessions",
-   "data/clusters/recipe_clusters.json::mm_sweep_cont_gold",
-   "data/clusters/recipe_clusters.json::fx_swing_h4_metals",
-   "data/clusters/recipe_clusters.json::fx_swing_h4_fxonly",
-   "data/clusters/recipe_clusters.json::h4_smc_fx",
-   "data/clusters/recipe_clusters.json::fresh_innovations",
-   "data/clusters/recipe_clusters.json::eur_cross_mr_basket",
+   "data/clusters/recipe_clusters.json::event_drift_fx_multi",
+   "data/clusters/recipe_clusters.json::regime_volatility",
    "data/cluster_tiers.json",
    "data/cluster_cooldown.json",
-   "data/strategy_board/watchlist.json",
-   "data/seeds/sb_metals_h1_trend_pullback_rsi.json",
-   "data/seeds/sb_fx_h4_trend_pullback_rsi.json",
-   "data/seeds/sb_fx_h4_zscore_pullback.json",
-   "data/seeds/sb_gold_h1_session_trend_pullback.json",
-   "data/clusters/recipe_clusters.json::metals_rv_h1",
-   "data/clusters/recipe_clusters_FOKUS.json",
-   "data/clusters/recipe_clusters.json (assets)"
+   "data/strategy_board/watchlist.json"
   ],
-  "manifest": "applied_2026-W43.json"
+  "manifest": "applied_2026-W44.json"
  },
  "decisions": [
   {
    "kind": "anpassung",
-   "title": "bot5/s775 (idx_order_block_h1)",
-   "detail": "Deployment pruefen / aus Shadow-Portfolio entfernen",
-   "reason": "Deployt, Shadow netto -63.5 EUR bei 73 Trades, WR 38.4% \u2014 belegter Verlustbringer, Bot-/Deploy-Eingriff ausserhalb Lab-Autonomie."
+   "title": "config_state.fokus / recipe_clusters_FOKUS.json",
+   "detail": "Fokus-Fenster endet 31.10.2026 23:59 UTC \u2014 entscheiden, ob der manuelle F5/F6/F7-Fokus verlaengert oder in die Auto-Rotation zurueckgegeben wird",
+   "reason": "Portfolio-Policy/User-Freigabe vom 24.10.2026; nicht autonom durch das Lab aenderbar. Betrifft 5 Cluster / 28 Approaches."
   },
   {
    "kind": "anpassung",
-   "title": "bot1/s724 (kb74_ob_precision)",
-   "detail": "Deployment pruefen",
-   "reason": "Deployt, Shadow netto -42.5 EUR bei 25 Trades, WR 28.0% \u2014 Live-naher Eingriff, User-Entscheid."
-  },
-  {
-   "kind": "anpassung",
-   "title": "bot10/st2 (stocks_us_mr_h1)",
-   "detail": "Deployment pruefen",
-   "reason": "Deployt, Shadow netto -49.7 EUR bei 7 Trades, WR 28.6% \u2014 Live-naher Eingriff, User-Entscheid."
-  },
-  {
-   "kind": "anpassung",
-   "title": "near_miss_gate h4_smc_fx",
-   "detail": "Gate-Schwelle/Selektionskriterium pruefen (keine automatische Senkung)",
-   "reason": "1149 Laeufe bei PF 1.19 knapp unter Gate \u2014 groesster near-miss-Block; Gate-Policy ist User-Entscheid, kein autonomer Seed."
+   "title": "bot5 / Slot s775 (Shadow #775 idx_order_block_h1)",
+   "detail": "Deploy-/Slot-Freigabe pruefen (Pause oder Entfernen aus dem Live-Slot)",
+   "reason": "Live-naher Eingriff: netto -103.4EUR bei 100 Trades, WR 36.0%, Assets AUS200/FRA40/US2000/US500 \u2014 schwaechster Shadow-Eintrag. PF ist im Report nicht ausgewiesen, daher keine automatische Retire-Evidenz."
   }
  ],
  "auto_aktionen": [
   {
-   "sid": 940,
+   "sid": 672,
    "action": "variant",
    "status": "seed",
-   "reason": "+150.5 EUR / 14 Trades, pnl/Woche 93.6 EUR, deployt bot7/m3 \u2014 EMA-Pullback-Trend-Nachbarschaft als Variante ausrollen (nicht durch neue_seeds abgedeckt)."
+   "reason": "Assets gemischt (AUDCAD, EURUSD, XAUUSD) \u2014 verletzt Sortenreinheit FX/Metall. Variante als FX-only-Nachbarschaft (AUDCAD/EURUSD) mit identischer Trend-Pullback-Logik; Basis: netto +230.2EUR, 23 Trades, WR 43.5%, deployt auf bot7/s672."
   },
   {
-   "sid": 684,
+   "sid": 775,
    "action": "debug",
    "status": "watched",
-   "reason": "-102.8 EUR / 21 Trades, WR 19.0% \u2014 PF im Report nicht verfuegbar, daher keine Retire-Evidenz (>=20 Trades UND PF<0.80 nicht belegbar) -> automatische Beobachtung."
+   "reason": "Netto -103.4EUR bei 100 Trades, WR 36.0% \u2014 negativ, aber PF im Report nicht verfuegbar; Evidenzkriterium (kumulativ >=20 Trades UND PF<0.80) nicht belegbar, daher automatische Beobachtung statt Retire."
   },
   {
-   "sid": 975,
+   "sid": 972,
    "action": "debug",
    "status": "watched",
-   "reason": "-85.2 EUR / 4 Trades, WR 0% \u2014 unter 20 Shadow-Trades, keine Retire-Evidenz -> debug."
+   "reason": "Netto -75.0EUR, nur 8 Trades, WR 25.0% (AVGO, V) \u2014 Stichprobe zu klein fuer Retire-Evidenz, PF nicht ausgewiesen; Beobachtung fortsetzen."
   },
   {
-   "sid": 950,
+   "sid": 1025,
    "action": "debug",
    "status": "watched",
-   "reason": "-77.8 EUR / 3 Trades, WR 0% \u2014 unter 20 Shadow-Trades, keine Retire-Evidenz -> debug."
+   "reason": "BASELINE auto_h4_fx_rsi_bb_pin_ib seit 23.10. ohne Trades (zero_trades-Liste), offene EURUSD-Position long \u2014 Signalarmut beobachten, keine Retire-Evidenz."
   }
  ],
  "watchlist": [
   {
-   "sid": 684,
+   "sid": 775,
    "kind": "debug",
-   "since": "2026-10-04T01:02:07.195477+00:00",
-   "n": 9,
-   "pf": 0.8568579974362625,
-   "reason": "Bottom-Shadow (9 Trades, net_pnl -20.1, WR 22.2). Zu wenige Trades fuer Retire-Evidenz (<20), daher Debug."
+   "since": "2026-10-25T02:00:34.302231+00:00",
+   "n": 100,
+   "pf": 0.7538406573776346,
+   "reason": "Netto -103.4EUR bei 100 Trades, WR 36.0% \u2014 negativ, aber PF im Report nicht verfuegbar; Evidenzkriterium (kumulativ >=20 Trades UND PF<0.80) nicht belegbar, daher automatische Beobachtung statt Retire."
   },
   {
-   "sid": 950,
+   "sid": 972,
    "kind": "debug",
-   "since": "2026-10-18T01:00:57.333989+00:00",
-   "n": 3,
-   "pf": 0.0,
-   "reason": "Netto -77,8\u20ac, aber nur n=3 Trades \u2014 Evidenz-Schwelle von 20 Shadow-Trades nicht erreicht, Retire unzulaessig."
+   "since": "2026-10-25T02:00:34.302231+00:00",
+   "n": 8,
+   "pf": 0.4528549551520455,
+   "reason": "Netto -75.0EUR, nur 8 Trades, WR 25.0% (AVGO, V) \u2014 Stichprobe zu klein fuer Retire-Evidenz, PF nicht ausgewiesen; Beobachtung fortsetzen."
   },
   {
-   "sid": 975,
+   "sid": 1025,
    "kind": "debug",
-   "since": "2026-10-18T01:00:57.333989+00:00",
-   "n": 4,
-   "pf": 0.0,
-   "reason": "Netto -85,2\u20ac, n=4 Trades (unter 20); widerspruechlich dazu Katalog-Eintrag #975 validated PF 1.22 / 1000 Trades -> Debug statt Retire."
+   "since": "2026-10-25T02:00:34.302231+00:00",
+   "n": 0,
+   "pf": null,
+   "reason": "BASELINE auto_h4_fx_rsi_bb_pin_ib seit 23.10. ohne Trades (zero_trades-Liste), offene EURUSD-Position long \u2014 Signalarmut beobachten, keine Retire-Evidenz."
   }
  ]
 }
