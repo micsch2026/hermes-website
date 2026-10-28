@@ -1366,8 +1366,9 @@ function renderShadowDashboard() {
       if (h > 0) return h + 'h ' + (m % 60) + 'm';
       return m + 'm';
     };
-    html += '<div class="rd-section-title">📍 Offene Positionen (' + (openPos.length + botOnly.length) + ')</div>';
-    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Zeile mit GLEICHEN Spalten wie Shadow (Broker-Fill) — direkt vergleichbar. Ampel im ID-Feld: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min (Details: Hover). Toleranz: FX 3p / Metalle 50p / Indizes 30p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung). ⚠️-Zeilen am Tabellenende = Bot-Positionen OHNE Shadow-Pendant. 💶 ECHTGELD = Position auf einem Echtgeld-Konto (Konto im Hover).</div>';
+    const nBotRows = openPos.reduce((n,p)=>n+(((p.bots&&p.bots.length)?p.bots.length:(p.bot?1:0))),0);
+    html += '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ' Shadow' + (nBotRows ? ' · ' + nBotRows + ' Bot-Spiegel' : '') + (botOnly.length ? ' · ' + botOnly.length + ' ohne Pendant' : '') + ')</div>';
+    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Zeile mit GLEICHEN Spalten wie Shadow (Broker-Fill) — direkt vergleichbar. Ampel im ID-Feld: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min (Details: Hover). Toleranz: FX 3p / Metalle 50p / Indizes 30p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung). ⚠️-Zeilen am Tabellenende = Bot-Positionen OHNE Shadow-Pendant. 💶 ECHTGELD = Broker-Position auf einem Echtgeld-Konto (nur 🤖-Zeile; Shadow-Zeilen sind virtuell). Gleicher Bot mehrfach = verschiedene Slots/Positionen — Slot steht in der 🤖-Zeile.</div>';
     html += '<div class="rd-card" style="overflow-x:auto;margin-bottom:1rem">';
     html += '<table class="sl4-table"><thead><tr>';
     html += '<th># ID</th><th>Symbol</th><th>Richtung</th><th>Dauer</th><th class="num">Margin</th><th class="num">SL (ATR)</th><th class="num">TP (ATR)</th><th class="num">R:R</th><th class="num">Unrealized PnL</th>';
@@ -1402,7 +1403,7 @@ function renderShadowDashboard() {
       for (const bm of bms) {
         const bIcon = bm.sync === 'sync' ? '🟢' : (bm.sync === 'drift' ? '🟡' : (bm.sync === 'missing' ? '🔴' : '⚫'));
         const bTxt = bm.sync === 'sync' ? 'Sync' : (bm.sync === 'drift' ? 'Drift' : (bm.sync === 'missing' ? 'fehlt' : 'stale'));
-        const bTitle = '🤖 Bot-Spiegel (' + bTxt + (bm.diff_pips != null ? ', ' + bm.diff_pips + 'p' : '') + (bm.gap_h != null ? ', Fill +' + bm.gap_h + 'h' : '') + ')';
+        const bTitle = '🤖 Bot-Spiegel ' + bm.name + (bm.slot ? ' · ' + bm.slot : '') + ' (' + bTxt + (bm.diff_pips != null ? ', ' + bm.diff_pips + 'p' : '') + (bm.gap_h != null ? ', Fill +' + bm.gap_h + 'h' : '') + ')';
         const bDir = (bm.direction||'').toLowerCase();
         const bDirColor = bDir === 'long' ? 'var(--green)' : 'var(--red)';
         const bDirIcon = bDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
@@ -1414,7 +1415,8 @@ function renderShadowDashboard() {
           const bPipsSign = (bm.unrealized_pips || 0) >= 0 ? '+' : '';
           const bLive = bm.is_live ? ' <span class="sl-live-badge" title="Echtgeld-Konto '+esc(bm.account_id||'')+'">💶 ECHTGELD</span>' : '';
           html += '<tr'+(bm.is_live?' class="sl-live-row"':'')+' style="font-size:0.8rem" title="'+esc(bTitle)+'">';
-          html += '<td style="color:var(--dim)">🤖 <strong>' + esc(bm.name) + '</strong> ' + bIcon + (bm.stale ? ' ⚫' : '') + bLive + '</td>';
+          const bSlot = bm.slot ? ' <span style="font-size:0.64rem;color:var(--dim);border:1px solid var(--border);border-radius:3px;padding:0 0.22rem">' + esc(bm.slot) + '</span>' : '';
+          html += '<td style="color:var(--dim)">🤖 <strong>' + esc(bm.name) + '</strong>' + bSlot + ' ' + bIcon + (bm.stale ? ' ⚫' : '') + bLive + '</td>';
           html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
           html += '<td style="color:'+bDirColor+';font-weight:700">'+bDirIcon+'</td>';
           html += '<td>' + fmtDur(bm.hold_seconds) + '</td>';
