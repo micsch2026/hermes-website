@@ -732,12 +732,12 @@ def _live_deal_stats(fx_root, now_dt):
     FX-Eröffnungs-Legs tragen Kommission als Netto != 0). Fenster 7d/30d ueber
     die Close-Zeit (nur Positionen mit >=2 Deals = geschlossen).
     Read-only + fail-soft (fehlende DB -> leere Dicts)."""
-    stats, wht = {}, {}
+    stats, wht, refund = {}, {}, {}
     db = os.path.join(fx_root, "data", "real_costs_and_taxes.db")
     try:
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     except sqlite3.Error:
-        return stats, wht
+        return stats, wht, refund
     try:
         con.row_factory = sqlite3.Row
         by = {}
@@ -770,11 +770,16 @@ def _live_deal_stats(fx_root, now_dt):
                 "WHERE operation_type LIKE 'WHT%' AND time_berlin >= ? "
                 "GROUP BY account_id", (f"{now_dt.year}-01-01",)):
             wht[str(r["account_id"])] = _round2(r["s"])
+        for r in con.execute(
+                "SELECT account_id, SUM(delta_eur) s FROM broker_tax_cashflows "
+                "WHERE operation_type LIKE 'TAX_SETTLEMENT%' AND time_berlin >= ? "
+                "GROUP BY account_id", (f"{now_dt.year}-01-01",)):
+            refund[str(r["account_id"])] = _round2(r["s"])
     except sqlite3.Error:
         pass
     finally:
         con.close()
-    return stats, wht
+    return stats, wht, refund
 
 
 def _capital_basis(fx_root, now_dt):
@@ -826,7 +831,7 @@ def _live_accounts(fx_root, registry, now_dt):
     botN_balance), Round-Trip-PnL 7d/30d + WHT YTD (Steuer-DB), offene
     Positionen (account_id-gefiltert aus den Bot-Positionsdateien)."""
     reg = registry if isinstance(registry, dict) else {}
-    deal_stats, wht = _live_deal_stats(fx_root, now_dt)
+    deal_stats, wht, refund = _live_deal_stats(fx_root, now_dt)
     basis = _capital_basis(fx_root, now_dt)
     entries = []
     for bot, cfg in (reg.get("bots") or {}).items():
@@ -867,6 +872,10 @@ def _live_accounts(fx_root, registry, now_dt):
             "open": [{"symbol": p.get("symbol"), "side": p.get("side")}
                      for p in open_pos],
             "wht_ytd": wht.get(aid),
+            "tax_refund_ytd": refund.get(aid),
+            "tax_net_ytd": (_round2((wht.get(aid) or 0.0) + (refund.get(aid) or 0.0))
+                             if (wht.get(aid) is not None or refund.get(aid) is not None)
+                             else None),
         })
     return out
 

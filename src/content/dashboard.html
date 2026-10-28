@@ -357,15 +357,19 @@
       ' · Slot-Hosts ' + fmtEur(kpis.equity_live_hosts) + '</div>' +
       (function () {
         // v4 (16.10.2026): absoluter Echtgeld-G/V seit Einzahlung (Summe Live-Konten)
-        var absSum = null, depSum = null;
+        var absSum = null, depSum = null, whtSum = null, refSum = null;
         (((d.live || {}).accounts) || []).forEach(function (a) {
           if (has(a.abs_pnl)) absSum = (absSum || 0) + a.abs_pnl;
           if (has(a.deposits_eur)) depSum = (depSum || 0) + a.deposits_eur;
+          if (has(a.wht_ytd)) whtSum = (whtSum || 0) + a.wht_ytd;
+          if (has(a.tax_refund_ytd)) refSum = (refSum || 0) + a.tax_refund_ytd;
         });
         if (!has(absSum)) return '';
+        var taxTxt = (has(whtSum) || has(refSum))
+          ? ' · Steuern netto ' + fmtEur((whtSum || 0) + (refSum || 0), true) : '';
         return '<div class="db-s">Absolut seit Einzahlung: <span class="' + pnlCls(absSum) +
           '">' + fmtEur(absSum, true) + '</span> <span class="db-dim">(Einz. ' +
-          fmtEur(depSum) + ')</span></div>';
+          fmtEur(depSum) + taxTxt + ')</span></div>';
       })();
     $('db-perf-total').innerHTML = card(kpis.equity_total, kpis.pnl_7d, kpis.pnl_30d,
       { k: 'GESAMT', foot: '<div class="db-s">' +
@@ -795,12 +799,14 @@
       el.innerHTML = '<span class="db-dim">keine Live-Konten</span>';
       return;
     }
-    var sumBal = 0, sum7 = null, sumAbs = null, sumDep = null;
+    var sumBal = 0, sum7 = null, sumAbs = null, sumDep = null, sumWht = null, sumRef = null;
     accts.forEach(function (a) {
       if (has(a.balance)) sumBal += a.balance;
       if (has(a.pnl_7d)) sum7 = (sum7 || 0) + a.pnl_7d;
       if (has(a.abs_pnl)) sumAbs = (sumAbs || 0) + a.abs_pnl;
       if (has(a.deposits_eur)) sumDep = (sumDep || 0) + a.deposits_eur;
+      if (has(a.wht_ytd)) sumWht = (sumWht || 0) + a.wht_ytd;
+      if (has(a.tax_refund_ytd)) sumRef = (sumRef || 0) + a.tax_refund_ytd;
     });
     var head = '<div class="db-acct db-acct-head"><span>Konto</span>' +
       '<span class="db-num">Stand</span><span class="db-num">7d</span>' +
@@ -819,7 +825,9 @@
         ' · Trades seit Start: ' + (has(a.n_total) ? a.n_total : '—') + '">' +
         fmtEur(a.pnl_7d, true) + '</span>' +
         '<span class="db-num ' + pnlCls(a.abs_pnl) + '" title="Absolut seit Einzahlung: Einzahlungen ' +
-        (has(a.deposits_eur) ? fmtEur(a.deposits_eur) : '—') + '">' +
+        (has(a.deposits_eur) ? fmtEur(a.deposits_eur) : '—') +
+        (has(a.wht_ytd) ? ' · WHT ' + fmtEur(a.wht_ytd, true) : '') +
+        (has(a.tax_refund_ytd) ? ' · Rück ' + fmtEur(a.tax_refund_ytd, true) : '') + '">' +
         (has(a.abs_pnl) ? fmtEur(a.abs_pnl, true) : '—') + '</span>' +
         '<span class="db-dim">' + esc(openTxt) + '</span></div>';
     }).join('');
@@ -828,9 +836,15 @@
         fmtEur(sumDep) + '</span>' +
       '<span class="db-num">' + fmtEur(sumBal) + '</span>' +
       '<span class="db-num ' + pnlCls(sum7) + '">' + fmtEur(sum7, true) + '</span>' +
-      '<span class="db-num ' + pnlCls(sumAbs) + '" title="Absoluter Echtgeld-Gewinn/-Verlust über alle Live-Konten">' +
+      '<span class="db-num ' + pnlCls(sumAbs) + '" title="Absoluter Echtgeld-Gewinn/-Verlust über alle Live-Konten (nach Steuern)">' +
         fmtEur(sumAbs, true) + '</span>' +
-      '<span></span></div>';
+      '<span></span></div>' +
+      '<div class="db-acct db-acct-tax"><span>Steuern YTD</span>' +
+      '<span class="db-num">WHT ' + fmtEur(sumWht, true) + '</span>' +
+      '<span class="db-num">Rück ' + fmtEur(sumRef, true) + '</span>' +
+      '<span class="db-num ' + pnlCls((sumWht || 0) + (sumRef || 0)) + '">netto ' +
+        fmtEur((sumWht || 0) + (sumRef || 0), true) + '</span>' +
+      '<span class="db-dim">in Abs. enthalten</span></div>';
   }
   function renderFeed(d) {
     var el = $('db-feed');
