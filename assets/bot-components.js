@@ -1512,8 +1512,11 @@ function renderEquityLegacy(d) {
 var _chartFocus = null;              // aktives Fokus-Objekt
 var _focusStore = { pos: {}, hist: {} };
 var _focusSeq = 0;
-var _chartTF = 'auto';               // 'auto' | 900 | 3600 | 14400
+var _chartTF = 'base';               // 'base' (Strategie-TF) | 3600 | 14400 | 86400
 var _chartTFUsed = 900;
+var _baseTFUsed = 0;
+var _stratTFUsed = 0;
+var _chartRangeTouched = false;
 var _showIndicators = true;
 var _lastChartData = null;
 var _lastChartPair = null;
@@ -1531,10 +1534,18 @@ function _epochOf(v) {
 
 function _tfSeconds(tf) {
   if (typeof tf === 'number') return tf;
-  var s = String(tf || 'M15').toUpperCase();
-  if (s.charAt(0) === 'M') return Math.max(60, parseInt(s.slice(1), 10) * 60);
-  if (s.charAt(0) === 'H') return parseInt(s.slice(1), 10) * 3600;
-  if (s.charAt(0) === 'D') return parseInt(s.slice(1), 10) * 86400;
+  var s = String(tf || 'M15').trim().toUpperCase();
+  // Beide Schreibweisen: Engine/Trees nutzen "4h"/"1h", Dashboard "H1".
+  var m = s.match(/^(\d+)\s*([MHD])$/);
+  if (m) {
+    var n = parseInt(m[1], 10);
+    return m[2] === 'M' ? Math.max(60, n * 60) : (m[2] === 'H' ? n * 3600 : n * 86400);
+  }
+  m = s.match(/^([MHD])(\d+)$/);
+  if (m) {
+    var k = parseInt(m[2], 10);
+    return m[1] === 'M' ? Math.max(60, k * 60) : (m[1] === 'H' ? k * 3600 : k * 86400);
+  }
   return 900;
 }
 
@@ -1605,6 +1616,64 @@ function _putFocus(kind, obj) {
   return key;
 }
 
+function _slotTF(d, key) {
+  var fallback = (d && d.timeframe) || 'H1';
+  if (!d || !d.slots || key === null || key === undefined || key === '') return fallback;
+  var k = String(key);
+  for (var i = 0; i < d.slots.length; i++) {
+    var s = d.slots[i];
+    if (String(s.slot_id) === k || String(s.strategy_id) === k) {
+      return s.timeframe || fallback;
+    }
+  }
+  return fallback;
+}
+
+/** Bot-TF für die Übersicht: häufigste Slot-TF (nicht der H1-Default). */
+function _botTF(d) {
+  if (!d || !d.slots || !d.slots.length) return (d && d.timeframe) || 'H1';
+  var counts = {}, best = null, bestN = 0;
+  for (var i = 0; i < d.slots.length; i++) {
+    var tf = d.slots[i].timeframe;
+    if (!tf) continue;
+    counts[tf] = (counts[tf] || 0) + 1;
+    if (counts[tf] > bestN) { bestN = counts[tf]; best = tf; }
+  }
+  return best || d.timeframe || 'H1';
+}
+
+/** Daten-TF aus den Bars (Median-Diff) — das Chart-JSON-Label ist nur Fallback. */
+function _inferTF(bars) {
+  if (!bars || bars.length < 3) return 900;
+  var counts = {}, best = 0, bestTF = 900;
+  for (var i = 1; i < Math.min(bars.length, 240); i++) {
+    var dt = bars[i].time - bars[i - 1].time;
+    if (dt <= 0 || dt > 7 * 86400) continue;
+    counts[dt] = (counts[dt] || 0) + 1;
+    if (counts[dt] > best) { best = counts[dt]; bestTF = dt; }
+  }
+  return bestTF;
+}
+
+function _strategyBaseTF(d, f) {
+  var tf = (f && f.tf) || (f ? _slotTF(d, f.slot_id || f.strategy_id) : _botTF(d));
+  return _tfSeconds(tf || (d && d.timeframe) || 'H1');
+}
+
+function _tfOptions(base) {
+  var opts = [{ v: 'base', l: _tfLabel(base) }];
+  if (base < 3600) opts.push({ v: 3600, l: '1H' });
+  if (base < 14400) opts.push({ v: 14400, l: '4H' });
+  if (base < 86400) opts.push({ v: 86400, l: '1D' });
+  return opts;
+}
+
+function _defaultRangeDays(base) {
+  if (base >= 86400) return 90;
+  if (base >= 14400) return 14;
+  return 3;
+}
+
 function _slotTech(d, slotId) {
   if (!slotId || !d || !d.slots) return '';
   for (var i = 0; i < d.slots.length; i++) {
@@ -1632,6 +1701,7 @@ function _focusFromPosition(d, p) {
     slot_id: p.slot_id || '',
     account_id: p.account_id || '',
     live: p.live,
+    tf: _slotTF(d, p.slot_id || p.strategy_id),
     tech: _slotTech(d, p.slot_id)
   };
 }
@@ -1655,6 +1725,7 @@ function _focusFromTrade(d, t) {
     slot_id: t.slot_id || '',
     account_id: t.account_id || '',
     live: t.live,
+    tf: _slotTF(d, t.slot_id || t.strategy_id),
     tech: _slotTech(d, t.slot_id)
   };
 }
@@ -1670,7 +1741,9 @@ function openChart(pair, focusKey) {
   if (focusKey) f = _focusStore.pos[focusKey] || _focusStore.hist[focusKey] || null;
   if (f) f.symbol = pair;
   _chartFocus = f;
-  _chartTF = 'auto';
+  _chartTF = 'base';
+  _baseTFUsed = 0;
+  _stratTFUsed = 0;
   _lastChartData = null;
   _lastChartPair = pair;
   _currentPair = pair;
@@ -1728,23 +1801,26 @@ function _paintRangeNav() {
   if (!nav) return;
   var html = '';
   if (_chartFocus) {
-    var opts = [{ v: 'auto', l: 'Auto' }, { v: 900, l: '15m' }, { v: 3600, l: '1H' }, { v: 14400, l: '4H' }];
+    var _base = _baseTFUsed || _strategyBaseTF(_lastDash || _lastChartData, _chartFocus);
+    var opts = _tfOptions(_base);
     for (var i = 0; i < opts.length; i++) {
       html += '<span class="bot-range-chip' + (_chartTF === opts[i].v ? ' bot-range-active' : '') +
         '" onclick="BotDash.setChartTF(\'' + opts[i].v + '\')">' + opts[i].l + '</span>';
     }
-    html += '<span class="btf-tf-note">' + (_chartTF === 'auto' ? 'Auto: ' + _tfLabel(_chartTFUsed) : '') + '</span>';
+    html += '<span class="btf-tf-note">Signal-TF ' + _tfLabel(_stratTFUsed || _base) + ' · Chart ' + _tfLabel(_chartTFUsed || _base) + '</span>';
   } else {
     var r = [{ d: 1, l: '1T' }, { d: 3, l: '3T' }, { d: 7, l: '7T' }, { d: 14, l: '14T' }, { d: 0, l: 'All' }];
     for (var j = 0; j < r.length; j++) {
       html += '<span class="bot-range-chip' + (_chartRange === r[j].d ? ' bot-range-active' : '') +
         '" data-days="' + r[j].d + '" onclick="BotDash.setRange(' + r[j].d + ')">' + r[j].l + '</span>';
     }
+    html += '<span class="btf-tf-note">Chart-TF ' + _tfLabel(_baseTFUsed || _strategyBaseTF(_lastDash, null)) + '</span>';
   }
   nav.innerHTML = html;
 }
 
 function _tfLabel(tf) {
+  if (tf >= 86400) return '1D';
   if (tf >= 14400) return '4H';
   if (tf >= 3600) return '1H';
   return '15m';
@@ -1771,14 +1847,16 @@ function _paintLegend() {
 }
 
 function setChartTF(tf) {
-  _chartTF = (tf === 'auto' || tf === 900 || tf === 3600 || tf === 14400) ? tf : 'auto';
+  _chartTF = (tf === 'base' || tf === 3600 || tf === 14400 || tf === 86400) ? tf : 'base';
   _paintRangeNav();
   if (_lastChartData) _renderCandlestick(_lastChartData);
 }
 
 function clearFocus() {
   _chartFocus = null;
-  _chartTF = 'auto';
+  _chartTF = 'base';
+  _baseTFUsed = 0;
+  _stratTFUsed = 0;
   var panel = el(C.prefix + '-chart-panel');
   if (panel) panel.className = 'bot-chart-panel active';
   _paintChartChrome();
@@ -1806,15 +1884,6 @@ function _focusExitTs(f) {
     if (s && f.entry_ts) return f.entry_ts + s;
   }
   return null;
-}
-
-function _autoTF(f, exitTs) {
-  if (!f || !f.entry_ts) return 900;
-  var end = exitTs || Math.floor(Date.now() / 1000);
-  var dur = Math.max(0, end - f.entry_ts);
-  if (dur <= 36 * 3600) return 900;
-  if (dur <= 10 * 86400) return 3600;
-  return 14400;
 }
 
 function _focusWindow(f, exitTs, tf, raw) {
@@ -1922,7 +1991,9 @@ function _renderCandlestick(d) {
   var f = _chartFocus;
   var cfg = d.config || {};
   var pip = _pipOf(d);
-  var baseTF = _tfSeconds(d.timeframe || 'M15');
+  var rawTF = _inferTF(raw);
+  var stratTF = _strategyBaseTF(_lastDash || d, f);
+  var baseTF = Math.max(stratTF, rawTF);
 
   // Chart-JSON ist die Wahrheit für Entry/Exit-Zeiten (Historie hat kein closed_at)
   if (f) {
@@ -1939,10 +2010,17 @@ function _renderCandlestick(d) {
   if (f && !f.entry_ts) f.entry_ts = raw[raw.length - 1].time - 24 * 3600;
 
   var exitTs = f ? _focusExitTs(f) : null;
-  var tf = _chartTF;
-  if (tf === 'auto') tf = f ? _autoTF(f, exitTs) : baseTF;
+  var tf = _chartTF === 'base' ? baseTF : Math.max(Number(_chartTF) || 0, baseTF);
   if (tf < baseTF) tf = baseTF;
   _chartTFUsed = tf;
+  _baseTFUsed = baseTF;
+  _stratTFUsed = stratTF;
+  _paintRangeNav();
+
+  if (!f && !_chartRangeTouched && baseTF >= 14400 && _chartRange === 3) {
+    _chartRange = _defaultRangeDays(baseTF);
+    _paintRangeNav();
+  }
 
   var win = f ? _focusWindow(f, exitTs, tf, raw) : _overviewWindow(raw, _chartRange);
   var bars = _sliceBars(raw, win, tf);
@@ -2101,8 +2179,9 @@ function _renderCandlestick(d) {
     candleSeries.setMarkers([]);
   }
 
-  // ── Indikatoren (BB/KC) ──
-  if (_showIndicators) _drawIndicatorLines(_candleChart, bars);
+  // ── Indikatoren (BB/KC/RSI) auf der ANGEZEIGTEN TF ──
+  var _ind = _calcIndicators(bars, cfg);
+  if (_showIndicators) _drawIndicatorLines(_candleChart, bars, _ind);
 
   // ── X-Achse: exakt das Trade-Fenster ──
   if (f) {
@@ -2127,7 +2206,7 @@ function _renderCandlestick(d) {
   }
 
   // ── RSI ──
-  _renderRsi(d, bars, cfg, rsiContainer, rsiLabel);
+  _renderRsi(d, bars, cfg, _ind, rsiContainer, rsiLabel);
 
   // ── Config-Chips (nur Übersicht) ──
   var configEl = el(C.prefix + '-chart-config');
@@ -2171,27 +2250,119 @@ function _drawBand(chart, bars, price, base, color) {
   ]);
 }
 
-function _indData(bars, key) {
+function _valData(bars, vals) {
   var out = [];
   for (var i = 0; i < bars.length; i++) {
-    if (bars[i][key] !== null && bars[i][key] !== undefined) {
-      out.push({ time: bars[i].time, value: bars[i][key] });
+    if (vals[i] !== null && vals[i] !== undefined && isFinite(vals[i])) {
+      out.push({ time: bars[i].time, value: vals[i] });
     }
   }
   return out;
 }
 
-function _drawIndicatorLines(chart, bars) {
-  var up = _indData(bars, 'bb_upper');
-  var mid = _indData(bars, 'bb_middle');
-  var lo = _indData(bars, 'bb_lower');
+function _smaAt(vals, p) {
+  var out = new Array(vals.length).fill(null), sum = 0;
+  for (var i = 0; i < vals.length; i++) {
+    sum += vals[i];
+    if (i >= p) sum -= vals[i - p];
+    if (i >= p - 1) out[i] = sum / p;
+  }
+  return out;
+}
+
+function _emaAt(vals, p) {
+  var out = new Array(vals.length).fill(null);
+  if (vals.length < p) return out;
+  var sum = 0, i;
+  for (i = 0; i < p; i++) sum += vals[i];
+  out[p - 1] = sum / p;
+  var k = 2 / (p + 1);
+  for (i = p; i < vals.length; i++) out[i] = vals[i] * k + out[i - 1] * (1 - k);
+  return out;
+}
+
+function _rsiAt(closes, p) {
+  var out = new Array(closes.length).fill(null);
+  if (closes.length <= p) return out;
+  var gain = 0, loss = 0, i, ch;
+  for (i = 1; i <= p; i++) {
+    ch = closes[i] - closes[i - 1];
+    if (ch >= 0) gain += ch; else loss -= ch;
+  }
+  gain /= p; loss /= p;
+  out[p] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+  for (i = p + 1; i < closes.length; i++) {
+    ch = closes[i] - closes[i - 1];
+    var g = ch > 0 ? ch : 0, l = ch < 0 ? -ch : 0;
+    gain = (gain * (p - 1) + g) / p;
+    loss = (loss * (p - 1) + l) / p;
+    out[i] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+  }
+  return out;
+}
+
+function _atrAt(highs, lows, closes, p) {
+  var out = new Array(closes.length).fill(null);
+  if (closes.length <= p) return out;
+  var tr = [0], i;
+  for (i = 1; i < closes.length; i++) {
+    tr[i] = Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1]));
+  }
+  var sum = 0;
+  for (i = 1; i <= p; i++) sum += tr[i];
+  out[p] = sum / p;
+  for (i = p + 1; i < closes.length; i++) out[i] = (out[i - 1] * (p - 1) + tr[i]) / p;
+  return out;
+}
+
+/** Indikatoren für die ANGEZEIGTEN Bars (nicht die Basis-TF) — bei 4H-Aggregation
+ *  müssen BB/KC/RSI aus 4H-Kerzen kommen, sonst zeigt der Chart H1-Werte im 4H-Mantel. */
+function _calcIndicators(bars, cfg) {
+  var closes = [], highs = [], lows = [];
+  for (var i = 0; i < bars.length; i++) {
+    closes.push(bars[i].close);
+    highs.push(bars[i].high);
+    lows.push(bars[i].low);
+  }
+  var p = cfg || {};
+  var rp = p.rsi_period || 14;
+  var bp = p.bb_period || 20;
+  var bm = p.bb_mult || 2;
+  var kp = p.kc_period || 14;
+  var km = p.kc_mult || 1.5;
+  var rsi = _rsiAt(closes, rp);
+  var mid = _smaAt(closes, bp);
+  var up = new Array(bars.length).fill(null);
+  var lo = new Array(bars.length).fill(null);
+  for (var j = bp - 1; j < closes.length; j++) {
+    var mean = mid[j], sq = 0;
+    for (var q = j - bp + 1; q <= j; q++) { var dv = closes[q] - mean; sq += dv * dv; }
+    var sd = Math.sqrt(sq / bp);
+    up[j] = mean + bm * sd;
+    lo[j] = mean - bm * sd;
+  }
+  var ema = _emaAt(closes, kp);
+  var atr = _atrAt(highs, lows, closes, kp);
+  var ku = new Array(bars.length).fill(null);
+  var kl = new Array(bars.length).fill(null);
+  for (var z = 0; z < bars.length; z++) {
+    if (ema[z] !== null && atr[z] !== null) { ku[z] = ema[z] + km * atr[z]; kl[z] = ema[z] - km * atr[z]; }
+  }
+  return { rsi: rsi, bb_up: up, bb_mid: mid, bb_lo: lo, kc_up: ku, kc_lo: kl };
+}
+
+function _drawIndicatorLines(chart, bars, ind) {
+  if (!ind) return;
+  var up = _valData(bars, ind.bb_up);
+  var mid = _valData(bars, ind.bb_mid);
+  var lo = _valData(bars, ind.bb_lo);
   if (up.length > 1 && lo.length > 1) {
     _addLine(chart, up, 'rgba(96,165,250,0.55)', 1, 0);
     _addLine(chart, lo, 'rgba(96,165,250,0.55)', 1, 0);
     _addLine(chart, mid, 'rgba(96,165,250,0.28)', 1, 2);
   }
-  var ku = _indData(bars, 'kc_upper');
-  var kl = _indData(bars, 'kc_lower');
+  var ku = _valData(bars, ind.kc_up);
+  var kl = _valData(bars, ind.kc_lo);
   if (ku.length > 1 && kl.length > 1) {
     _addLine(chart, ku, 'rgba(192,132,252,0.45)', 1, 0);
     _addLine(chart, kl, 'rgba(192,132,252,0.45)', 1, 0);
@@ -2207,8 +2378,8 @@ function _addLine(chart, data, color, width, style) {
   s.setData(data);
 }
 
-function _renderRsi(d, bars, cfg, container, label) {
-  var data = _indData(bars, 'rsi');
+function _renderRsi(d, bars, cfg, ind, container, label) {
+  var data = (ind && ind.rsi) ? _valData(bars, ind.rsi) : [];
   if (!container || !_showIndicators || data.length < 2) {
     if (container) { container.style.display = 'none'; }
     if (label) { label.style.display = 'none'; }
@@ -2293,6 +2464,8 @@ function _renderFocusBar(d) {
   var prog = reward ? move / reward : null;
   var rr = risk ? reward / risk : null;
   var exc = (d && d.bars && entry) ? _excursion(d.bars, f.entry_ts, endTs, f.side, entry) : null;
+  // Live-Kurs kann frischer sein als der letzte Chart-Bar → MFE/MAE damit erweitern.
+  if (exc) { exc.mfe = Math.max(exc.mfe, move); exc.mae = Math.max(exc.mae, -move); }
 
   var dp = pip;
   var pips = (pip && cur !== null && entry !== null) ? move / pip : null;
@@ -2315,6 +2488,7 @@ function _renderFocusBar(d) {
       '<span class="btf-dir ' + (isLong ? 'buy' : 'sell') + '">' + (isLong ? 'LONG' : 'SHORT') + '</span>' +
       '<b class="btf-sym">' + escHtml(f.symbol || _currentPair || '') + '</b>' +
       (f.strategy_id ? '<span class="btf-id">#' + escHtml(f.strategy_id) + (f.slot_id ? ' · ' + escHtml(f.slot_id) : '') + '</span>' : '') +
+      '<span class="btf-id">TF ' + _tfLabel(_stratTFUsed || _strategyBaseTF(d, f)) + '</span>' +
       '<span class="btf-when">' + (f.entry_ts ? fmtTime(f.entry_ts) : '—') +
         (f.kind === 'trade' ? ' → ' + (f.exit_ts ? fmtTime(f.exit_ts) : 'Ende') : ' → jetzt') + '</span>' +
     '</div>' +
@@ -2534,6 +2708,7 @@ function closeChart() {
 
 function setRange(days) {
   _chartRange = Number(days) || 0;
+  _chartRangeTouched = true;
   _paintRangeNav();
   if (_lastChartData) _renderCandlestick(_lastChartData);
 }
@@ -3751,6 +3926,15 @@ window.BotDash = {
   renderLab: renderLab,
   // Harness/Debug: Account-Scope-Auflösung je Slot
   slotStats: _slotStats,
+  // Harness: TF-Logik (Chart muss zur Strategie-TF passen)
+  _tf: {
+    seconds: _tfSeconds,
+    label: _tfLabel,
+    infer: _inferTF,
+    options: _tfOptions,
+    aggregate: _aggregateBars,
+    defaultRange: _defaultRangeDays
+  },
 };
 
 function renderParity(prefix, p) {

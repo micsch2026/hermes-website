@@ -38,6 +38,10 @@ test:
 	  echo "== tests/verify_bot_readiness.js"; \
 	  $(NODE) tests/verify_bot_readiness.js || fail=1; \
 	fi; \
+	if [ -f tests/verify_trade_focus.js ]; then \
+	  echo "== tests/verify_trade_focus.js"; \
+	  $(NODE) tests/verify_trade_focus.js || fail=1; \
+	fi; \
 	if [ $$fail -eq 0 ]; then echo "SITE TESTS OK"; else echo "SITE TESTS FAILED"; exit 1; fi
 
 .PHONY: test
