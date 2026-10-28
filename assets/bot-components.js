@@ -1603,6 +1603,12 @@ function _fmtPips(v) {
   return (n > 0 ? '+' : '') + n.toFixed(1) + ' p';
 }
 
+function _fmtEur(v) {
+  if (v === null || v === undefined || isNaN(Number(v))) return '—';
+  var n = Number(v);
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + ' \u20ac';
+}
+
 function _fmtR(v) {
   if (v === null || v === undefined || isNaN(Number(v))) return '—';
   var n = Number(v);
@@ -1696,6 +1702,8 @@ function _focusFromPosition(d, p) {
     entry_ts: _epochOf(p.opened_at || p.entry_time || p.timestamp),
     current: Number(p.live_price) || null,
     pnl: (p.pnl !== null && p.pnl !== undefined) ? Number(p.pnl) : null,
+    risk_eur: Number(p.risk_eur) || null,
+    reward_eur: Number(p.reward_eur) || null,
     volume: p.volume,
     strategy_id: p.strategy_id || '',
     slot_id: p.slot_id || '',
@@ -1719,6 +1727,8 @@ function _focusFromTrade(d, t) {
     entry_ts: _epochOf(t.timestamp || t.opened_at || t.entry_time),
     exit_ts: _epochOf(t.closed_at || t.exit_time),
     pnl: (t.pnl !== null && t.pnl !== undefined) ? Number(t.pnl) : null,
+    risk_eur: Number(t.risk_eur) || null,
+    reward_eur: Number(t.reward_eur) || null,
     duration: t.duration,
     close_reason: t.close_reason || t.status || '',
     strategy_id: t.strategy_id || '',
@@ -2103,14 +2113,17 @@ function _renderCandlestick(d) {
   if (f && entry && sl && tp && entry > 0) {
     _drawBand(_candleChart, bars, sl, entry, 'rgba(239,68,68,0.10)');
     _drawBand(_candleChart, bars, tp, entry, 'rgba(34,197,94,0.10)');
+    var _slEur = (f.risk_eur != null) ? ' -' + Number(f.risk_eur).toFixed(2) + ' \u20ac' : '';
+    var _tpEur = (f.reward_eur != null) ? ' +' + Number(f.reward_eur).toFixed(2) + ' \u20ac' : '';
+    var _pnlEur = (f.pnl != null) ? ' ' + fmtPnl(f.pnl) + ' \u20ac' : '';
     candleSeries.createPriceLine({ price: entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'EINTRITT' });
-    candleSeries.createPriceLine({ price: sl, color: '#ef4444', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'SL' });
-    candleSeries.createPriceLine({ price: tp, color: '#22c55e', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'TP' });
+    candleSeries.createPriceLine({ price: sl, color: '#ef4444', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'SL' + _slEur });
+    candleSeries.createPriceLine({ price: tp, color: '#22c55e', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'TP' + _tpEur });
     if (f.kind === 'trade' && exitP) {
-      candleSeries.createPriceLine({ price: exitP, color: '#e2e8f0', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: 'EXIT' });
+      candleSeries.createPriceLine({ price: exitP, color: '#e2e8f0', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: 'EXIT' + _pnlEur });
     }
     if (f.kind === 'position' && current) {
-      candleSeries.createPriceLine({ price: current, color: '#facc15', lineWidth: 3, lineStyle: 0, axisLabelVisible: true, title: 'JETZT' });
+      candleSeries.createPriceLine({ price: current, color: '#facc15', lineWidth: 3, lineStyle: 0, axisLabelVisible: true, title: 'JETZT' + _pnlEur });
     }
   }
 
@@ -2143,6 +2156,7 @@ function _renderCandlestick(d) {
       pnl: Number(f.pnl) || 0, pnlEur: Number(f.pnl) || 0,
       symbol: f.symbol || _currentPair || '',
       sl: sl, tp: tp,
+      riskEur: f.risk_eur, rewardEur: f.reward_eur,
       strategy: f.strategy_id ? '#' + f.strategy_id : '',
       closeReason: f.close_reason || (f.kind === 'position' ? 'offen' : ''),
       isProfit: (Number(f.pnl) || 0) >= 0
@@ -2504,11 +2518,13 @@ function _renderFocusBar(d) {
     '<div class="btf-cell"><span>' + (f.kind === 'position' ? 'Jetzt' : 'Exit') + '</span><b class="' + (move >= 0 ? 'up' : 'down') + '">' + _fmtP(cur, dp) + '</b><small>' +
       (pips !== null ? _fmtPips(pips) + ' · ' : '') + _fmtR(r) + '</small></div>' +
     '<div class="btf-cell"><span>Stop-Loss</span><b class="down">' + _fmtP(sl, dp) + '</b><small>' +
-      (slPips !== null ? _fmtPips(slPips) + ' · ' : '') + (risk ? _fmtR(-1) : '—') + '</small></div>' +
+      (slPips !== null ? _fmtPips(slPips) + ' · ' : '') + (f.risk_eur != null ? _fmtEur(-Math.abs(f.risk_eur)) + ' · ' : '') + (risk ? _fmtR(-1) : '—') + '</small></div>' +
     '<div class="btf-cell"><span>Take-Profit</span><b class="up">' + _fmtP(tp, dp) + '</b><small>' +
-      (tpPips !== null ? _fmtPips(tpPips) + ' · ' : '') + (reward ? _fmtR(1) : '—') + '</small></div>' +
+      (tpPips !== null ? _fmtPips(tpPips) + ' · ' : '') + (f.reward_eur != null ? _fmtEur(Math.abs(f.reward_eur)) + ' · ' : '') + (reward ? _fmtR(1) : '—') + '</small></div>' +
     '<div class="btf-cell"><span>R:R</span><b>' + (rr !== null ? rr.toFixed(2) : '—') + '</b><small>' +
-      (risk && pip ? 'Risiko ' + Math.abs(risk / pip).toFixed(1) + ' p' : '') + '</small></div>' +
+      (f.risk_eur != null || f.reward_eur != null
+        ? 'Risiko ' + _fmtEur(-Math.abs(f.risk_eur || 0)) + ' / ' + _fmtEur(Math.abs(f.reward_eur || 0))
+        : (risk && pip ? 'Risiko ' + Math.abs(risk / pip).toFixed(1) + ' p' : '')) + '</small></div>' +
     '<div class="btf-cell"><span>Dauer</span><b>' + _fmtDurSec(dur) + '</b><small>' +
       (f.pnl !== null && f.pnl !== undefined ? fmtPnl(f.pnl) + ' €' : (f.kind === 'position' ? 'offen' : '—')) + '</small></div>' +
   '</div>';
@@ -2521,7 +2537,7 @@ function _renderFocusBar(d) {
         '<div class="btf-entry-tick" style="left:' + entryTick.toFixed(1) + '%"></div>' +
         '<div class="btf-mk ' + mkCls + '" style="left:' + mkPos.toFixed(1) + '%"></div>' +
       '</div>' +
-      '<div class="btf-scale"><span>SL ' + _fmtP(sl, dp) + '</span><span class="btf-entry">Einstieg ' + _fmtP(entry, dp) + '</span><span>TP ' + _fmtP(tp, dp) + '</span></div>' +
+      '<div class="btf-scale"><span>SL ' + _fmtP(sl, dp) + (f.risk_eur != null ? ' \u00b7 ' + _fmtEur(-Math.abs(f.risk_eur)) : '') + '</span><span class="btf-entry">Einstieg ' + _fmtP(entry, dp) + '</span><span>TP ' + _fmtP(tp, dp) + (f.reward_eur != null ? ' \u00b7 ' + _fmtEur(Math.abs(f.reward_eur)) : '') + '</span></div>' +
     '</div>';
   }
 
@@ -2671,6 +2687,10 @@ function _subscribeLiveTooltip(chart, container) {
         html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#ef4444\">SL</span><span>" + nearest.sl.toFixed(5) + "</span></div>";
       if (nearest.tp)
         html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#22c55e\">TP</span><span>" + nearest.tp.toFixed(5) + "</span></div>";
+      if (nearest.riskEur != null)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Risiko</span><span>-" + Number(nearest.riskEur).toFixed(2) + " \u20ac</span></div>";
+      if (nearest.rewardEur != null)
+        html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Chance</span><span>+" + Number(nearest.rewardEur).toFixed(2) + " \u20ac</span></div>";
       if (nearest.score != null)
         html += "<div style=\"display:flex;justify-content:space-between;gap:16px\"><span style=\"color:#8b8b9e\">Score</span><span>" + nearest.score + "</span></div>";
       if (nearest.rsi != null)
