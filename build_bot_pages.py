@@ -236,6 +236,7 @@ def build_candlestick_section(features, bot_id):
   <div class="bot-chart-legend" id="{bot_id}-chart-legend" style="display:flex;gap:var(--s-3);flex-wrap:wrap;margin-bottom:var(--s-2);font-size:var(--text-xs);color:var(--c-text-dim)">
     <span class="muted">Lade Chart…</span>
   </div>
+  <div class="bot-level-legend" id="{bot_id}-level-legend" style="display:none"></div>
   <div class="bot-chart-wrap">
     <div id="{bot_id}-candle-chart" style="height:320px"></div>
     <div class="bot-trade-tooltip" id="{bot_id}-trade-tooltip"></div>

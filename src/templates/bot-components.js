@@ -2113,17 +2113,17 @@ function _renderCandlestick(d) {
   if (f && entry && sl && tp && entry > 0) {
     _drawBand(_candleChart, bars, sl, entry, 'rgba(239,68,68,0.10)');
     _drawBand(_candleChart, bars, tp, entry, 'rgba(34,197,94,0.10)');
-    var _slEur = (f.risk_eur != null) ? ' -' + Number(f.risk_eur).toFixed(2) + ' \u20ac' : '';
-    var _tpEur = (f.reward_eur != null) ? ' +' + Number(f.reward_eur).toFixed(2) + ' \u20ac' : '';
-    var _pnlEur = (f.pnl != null) ? ' ' + fmtPnl(f.pnl) + ' \u20ac' : '';
-    candleSeries.createPriceLine({ price: entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'EINTRITT' });
-    candleSeries.createPriceLine({ price: sl, color: '#ef4444', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'SL' + _slEur });
-    candleSeries.createPriceLine({ price: tp, color: '#22c55e', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'TP' + _tpEur });
+    // Keine In-Plot-Titel: Die Titel zeichnete LightweightCharts rechts IN die
+    // Kerzenfläche und verdeckte genau den aktuellen Bereich. Preise bleiben als
+    // Achsen-Label, die Zuordnung Preis+EUR steht in der Level-Leiste über dem Chart.
+    candleSeries.createPriceLine({ price: entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: '' });
+    candleSeries.createPriceLine({ price: sl, color: '#ef4444', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: '' });
+    candleSeries.createPriceLine({ price: tp, color: '#22c55e', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: '' });
     if (f.kind === 'trade' && exitP) {
-      candleSeries.createPriceLine({ price: exitP, color: '#e2e8f0', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: 'EXIT' + _pnlEur });
+      candleSeries.createPriceLine({ price: exitP, color: '#e2e8f0', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: '' });
     }
     if (f.kind === 'position' && current) {
-      candleSeries.createPriceLine({ price: current, color: '#facc15', lineWidth: 3, lineStyle: 0, axisLabelVisible: true, title: 'JETZT' + _pnlEur });
+      candleSeries.createPriceLine({ price: current, color: '#facc15', lineWidth: 3, lineStyle: 0, axisLabelVisible: true, title: '' });
     }
   }
 
@@ -2445,6 +2445,31 @@ function _setupLine(d, f) {
   return bits.slice(0, 6).join(' · ');
 }
 
+function _renderLevelLegend(f) {
+  var box = el(C.prefix + '-level-legend');
+  if (!box) return;
+  if (!f) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  var pip = _pipOf(_lastChartData);
+  var isLong = _isLong(f.side);
+  var cur = (f.kind === 'position')
+    ? (Number(f.current) || Number(_lastChartData && _lastChartData.live_price) || null)
+    : (Number(f.exit_price) || null);
+  var h = '<span class="bll-item"><i style="background:#38bdf8"></i>EINTRITT <b>' + _fmtP(f.entry, pip) + '</b></span>';
+  h += '<span class="bll-item"><i style="background:#ef4444"></i>SL <b>' + _fmtP(f.sl, pip) + '</b>' +
+    (f.risk_eur != null ? ' <span class="bll-eur down">' + _fmtEur(-Math.abs(f.risk_eur)) + '</span>' : '') + '</span>';
+  h += '<span class="bll-item"><i style="background:#22c55e"></i>TP <b>' + _fmtP(f.tp, pip) + '</b>' +
+    (f.reward_eur != null ? ' <span class="bll-eur up">' + _fmtEur(Math.abs(f.reward_eur)) + '</span>' : '') + '</span>';
+  if (f.kind === 'position' && cur) {
+    h += '<span class="bll-item"><i style="background:#facc15"></i>JETZT <b>' + _fmtP(cur, pip) + '</b>' +
+      (f.pnl != null ? ' <span class="bll-eur ' + (Number(f.pnl) >= 0 ? 'up' : 'down') + '">' + fmtPnl(f.pnl) + ' €</span>' : '') + '</span>';
+  } else if (f.kind === 'trade' && cur) {
+    h += '<span class="bll-item"><i style="background:#e2e8f0"></i>EXIT <b>' + _fmtP(cur, pip) + '</b>' +
+      (f.pnl != null ? ' <span class="bll-eur ' + (Number(f.pnl) >= 0 ? 'up' : 'down') + '">' + fmtPnl(f.pnl) + ' €</span>' : '') + '</span>';
+  }
+  box.innerHTML = h;
+  box.style.display = '';
+}
+
 function _renderFocusBar(d) {
   var box = el(C.prefix + '-trade-focus');
   if (!box) return;
@@ -2452,6 +2477,7 @@ function _renderFocusBar(d) {
   if (!f) {
     box.style.display = 'none';
     box.innerHTML = '';
+    _renderLevelLegend(null);
     return;
   }
   box.style.display = 'block';
@@ -2550,6 +2576,7 @@ function _renderFocusBar(d) {
   '</div>';
 
   box.innerHTML = h;
+  _renderLevelLegend(f);
 }
 
 /* ── Overlays ─────────────────────────────────────────────── */
