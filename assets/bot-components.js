@@ -1510,6 +1510,10 @@ function renderEquityLegacy(d) {
  * ═══════════════════════════════════════════════════════════ */
 
 var _chartFocus = null;              // aktives Fokus-Objekt
+var _chartLiveBar = false;           // letzte Kerze = laufende Teilkerze
+var _candleSeries = null;            // aktive Candlestick-Serie (Live-Update)
+var _botChartBars = null;            // gerenderte Bars inkl. Live-Teilkerze
+var _livePriceLine = null;           // JETZT-Preislinie fuer applyOptions()
 var _focusStore = { pos: {}, hist: {} };
 var _focusSeq = 0;
 var _chartTF = 'base';               // 'base' (Strategie-TF) | 3600 | 14400 | 86400
@@ -1945,7 +1949,33 @@ function _aggregateBars(bars, tf) {
     if (b.rsi != null) cur.rsi = b.rsi;
     if (b.bb_upper != null) { cur.bb_upper = b.bb_upper; cur.bb_middle = b.bb_middle; cur.bb_lower = b.bb_lower; }
     if (b.kc_upper != null) { cur.kc_upper = b.kc_upper; cur.kc_lower = b.kc_lower; }
+    if (b.partial) cur.partial = true;
   }
+  return out;
+}
+
+/* Laufende (noch nicht geschlossene) Kerze anhängen.
+   History_1h liefert nur geschlossene Bars; ohne diesen Schritt endet der Chart
+   eine Stunde in der Vergangenheit. High/Low sind Näherung aus letztem Close +
+   Live-Kurs (echte Intra-Bar-Extreme liefert die H1-Historie nicht). */
+function _withLiveBar(bars, d, liveOverride) {
+  if (!bars || !bars.length || !d) return bars;
+  var live = Number(liveOverride) || Number(d.live_price);
+  if (!live) return bars;
+  if (d.market_open === false) return bars;
+  var step = _tfSeconds(d.timeframe) || _inferTF(bars);
+  if (!step || step < 60) return bars;
+  var now = Math.floor(Date.now() / 1000);
+  var bucket = Math.floor(now / step) * step;
+  var last = bars[bars.length - 1];
+  if (bucket <= last.time) return bars;
+  if (bucket - last.time > step * 6) return bars;   // Wochenende/Feiertag/Stale
+  var open = Number(last.close);
+  var out = bars.slice();
+  out.push({
+    time: bucket, open: open, high: Math.max(open, live),
+    low: Math.min(open, live), close: live, volume: 0, partial: true
+  });
   return out;
 }
 
@@ -1994,11 +2024,14 @@ function _renderCandlestick(d) {
   if (_candleChart) { _candleChart.remove(); _candleChart = null; }
   if (_rsiChart) { _rsiChart.remove(); _rsiChart = null; }
   if (_chartResizeObs) { _chartResizeObs.disconnect(); _chartResizeObs = null; }
-
-  var raw = d.bars || [];
-  if (!raw.length) return;
+  _candleSeries = null; _livePriceLine = null; _botChartBars = null;
 
   var f = _chartFocus;
+  var _srcBars = d.bars || [];
+  var _liveNow = (f && f.kind === 'position' && Number(f.current)) ? Number(f.current) : null;
+  var raw = _withLiveBar(_srcBars, d, _liveNow);
+  _chartLiveBar = raw.length > _srcBars.length;
+  if (!raw.length) return;
   var cfg = d.config || {};
   var pip = _pipOf(d);
   var rawTF = _inferTF(raw);
@@ -2123,7 +2156,7 @@ function _renderCandlestick(d) {
       candleSeries.createPriceLine({ price: exitP, color: '#e2e8f0', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: '' });
     }
     if (f.kind === 'position' && current) {
-      candleSeries.createPriceLine({ price: current, color: '#facc15', lineWidth: 3, lineStyle: 0, axisLabelVisible: true, title: '' });
+      _livePriceLine = candleSeries.createPriceLine({ price: current, color: '#facc15', lineWidth: 3, lineStyle: 0, axisLabelVisible: true, title: '' });
     }
   }
 
@@ -2209,8 +2242,14 @@ function _renderCandlestick(d) {
     _candleChart.timeScale().fitContent();
   }
 
+  _candleSeries = candleSeries;
+  _botChartBars = bars;
   // Test-/Diagnose-Hook (E2E: Preisachse, Serien, Fenster ohne Canvas-OCR prüfen)
-  window.__botChart = { chart: _candleChart, series: candleSeries, bars: bars, focus: f, tf: tf };
+  window.__botChart = {
+    chart: _candleChart, series: candleSeries, bars: bars, focus: f, tf: tf,
+    updateLive: _updateLiveChart,
+    setLive: function (v) { if (_chartFocus) _chartFocus.current = Number(v) || _chartFocus.current; _updateLiveChart(); }
+  };
 
   if (typeof ResizeObserver !== 'undefined') {
     _chartResizeObs = new ResizeObserver(function () {
@@ -2218,6 +2257,7 @@ function _renderCandlestick(d) {
     });
     _chartResizeObs.observe(container);
   }
+  if (f) _renderLevelLegend(f);
 
   // ── RSI ──
   _renderRsi(d, bars, cfg, _ind, rsiContainer, rsiLabel);
@@ -2392,6 +2432,36 @@ function _addLine(chart, data, color, width, style) {
   s.setData(data);
 }
 
+/* Live-Update der letzten Kerze + JETZT-Linie (Dashboard-Refresh, 60s).
+   Chart-JSON ist ein Snapshot; der frische Kurs kommt aus der offenen Position. */
+function _updateLiveChart() {
+  if (!_candleSeries || !_botChartBars || !_chartLiveBar || !_chartFocus) return;
+  if (_chartFocus.kind !== 'position') return;
+  var live = Number(_chartFocus.current);
+  if (!live) return;
+  var bars = _botChartBars;
+  var last = bars[bars.length - 1];
+  if (!last) return;
+  var tf = _chartTFUsed || 3600;
+  var bucket = Math.floor(Date.now() / 1000 / tf) * tf;
+  if (last.partial && bucket === last.time) {
+    var high = Math.max(last.high, live), low = Math.min(last.low, live);
+    _candleSeries.update({ time: bucket, open: last.open, high: high, low: low, close: live });
+    last.high = high; last.low = low; last.close = live;
+  } else if (bucket > last.time) {
+    var open = last.close;
+    var bar = {
+      time: bucket, open: open, high: Math.max(open, live),
+      low: Math.min(open, live), close: live, volume: 0, partial: true
+    };
+    _candleSeries.update(bar);
+    bars.push(bar);
+  } else {
+    return;
+  }
+  if (_livePriceLine) _livePriceLine.applyOptions({ price: live });
+}
+
 function _renderRsi(d, bars, cfg, ind, container, label) {
   var data = (ind && ind.rsi) ? _valData(bars, ind.rsi) : [];
   if (!container || !_showIndicators || data.length < 2) {
@@ -2465,6 +2535,10 @@ function _renderLevelLegend(f) {
   } else if (f.kind === 'trade' && cur) {
     h += '<span class="bll-item"><i style="background:#e2e8f0"></i>EXIT <b>' + _fmtP(cur, pip) + '</b>' +
       (f.pnl != null ? ' <span class="bll-eur ' + (Number(f.pnl) >= 0 ? 'up' : 'down') + '">' + fmtPnl(f.pnl) + ' €</span>' : '') + '</span>';
+  }
+  if (_chartLiveBar) {
+    h += '<span class="bll-item" title="Letzte Kerze = laufende Teilkerze (High/Low aus letztem Close + Live-Kurs)">' +
+      '<i style="background:#facc15"></i>LIVE</span>';
   }
   box.innerHTML = h;
   box.style.display = '';
@@ -3099,6 +3173,7 @@ function loadDashboard() {
     renderAction(d);
     renderAccounts(d);
     renderPositions(d);
+    if (typeof _updateLiveChart === 'function') _updateLiveChart();
     renderDataAge(d);
     renderHistory(d);
     renderBoard(d);
