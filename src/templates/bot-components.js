@@ -34,7 +34,6 @@ var _rsiChart = null;
 var _currentPair = null;
 var _allPairs = [];
 var _showTradeLines = true;
-var _currentRangeDays = 90;
 
 /* ═══════════════════════════════════════════════════════════
  *  HELPERS
@@ -454,10 +453,12 @@ function renderPositions(d) {
   }
 
   var html = '';
+  _focusStore.pos = {};
   for (var i = 0; i < pos.length; i++) {
     var p = pos[i];
     var sym = p.symbol || p.pair || '—';
-    html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
+    var fk = _putFocus('pos', _focusFromPosition(d, p));
+    html += '<tr class="bot-pos-row" title="Chart mit Trade-Fokus öffnen" onclick="BotDash.openTradeChart(\'' + escHtml(sym) + '\',\'' + fk + '\')">';
     for (var c = 0; c < cols.length; c++) {
       var col = cols[c];
       var val = _resolveField(p, col.field || col.key);
@@ -551,7 +552,8 @@ function _renderPositionsLegacy(tbody, pos) {
     var upnl = p.unrealized_pnl != null ? p.unrealized_pnl : (p.pnl || 0);
     var sym = p.symbol || p.pair || '—';
     var stratId = p.strategy_id || '—';
-    html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + sym + '\')">';
+    var fkL = _putFocus('pos', _focusFromPosition({}, p));
+    html += '<tr class="bot-pos-row" title="Chart mit Trade-Fokus öffnen" onclick="BotDash.openTradeChart(\'' + escHtml(sym) + '\',\'' + fkL + '\')">';
     var _lbLeg = _liveBadge(p);
     html += '<td style="font-size:var(--text-xs);color:var(--c-text-dim)">' + (_lbLeg ? _lbLeg + ' ' : '') + stratId + '</td>';
     html += '<td><b>' + sym + '</b></td>';
@@ -1497,458 +1499,965 @@ function renderEquityLegacy(d) {
  *  CANDLESTICK CHART (LightweightCharts)
  * ═══════════════════════════════════════════════════════════ */
 
-function openChart(pair) {
+/* ═══════════════════════════════════════════════════════════
+ *  CANDLESTICK CHART — Trade-Fokus (2026-10-28)
+ *
+ *  Ein Chart für zwei Aufgaben:
+ *   1. Übersicht (Pair-Chips): Kerzen + offene Positionen + Trade-Marker
+ *   2. Trade-Fokus (Klick auf Position/Historie): genau EIN Trade,
+ *      automatisches Zeitfenster + Timeframe, Entry/SL/TP/JETZT/Exit
+ *      als beschriftete PreislInien, Risiko-/Chance-Zonen, Kurzprofil.
+ * ═══════════════════════════════════════════════════════════ */
+
+var _chartFocus = null;              // aktives Fokus-Objekt
+var _focusStore = { pos: {}, hist: {} };
+var _focusSeq = 0;
+var _chartTF = 'auto';               // 'auto' | 900 | 3600 | 14400
+var _chartTFUsed = 900;
+var _showIndicators = true;
+var _lastChartData = null;
+var _lastChartPair = null;
+var _chartRange = 3;                 // Tage in der Übersicht (Default 3T)
+var _chartResizeObs = null;
+
+function _epochOf(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v > 1e12 ? Math.floor(v / 1000) : Math.floor(v);
+  var s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/[Zz]|[+\-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+  var t = new Date(s).getTime();
+  return isNaN(t) ? null : Math.floor(t / 1000);
+}
+
+function _tfSeconds(tf) {
+  if (typeof tf === 'number') return tf;
+  var s = String(tf || 'M15').toUpperCase();
+  if (s.charAt(0) === 'M') return Math.max(60, parseInt(s.slice(1), 10) * 60);
+  if (s.charAt(0) === 'H') return parseInt(s.slice(1), 10) * 3600;
+  if (s.charAt(0) === 'D') return parseInt(s.slice(1), 10) * 86400;
+  return 900;
+}
+
+function _isLong(side) {
+  var s = String(side || '').toLowerCase();
+  return !(s === 'sell' || s === 'short');
+}
+
+function _parseDuration(s) {
+  if (s === null || s === undefined) return 0;
+  if (typeof s === 'number') return s * 3600;
+  var total = 0, found = false;
+  var re = /(\d+(?:[.,]\d+)?)\s*(d|h|m|s)/gi, m;
+  while ((m = re.exec(String(s)))) {
+    var n = parseFloat(m[1].replace(',', '.'));
+    var u = m[2].toLowerCase();
+    total += n * (u === 'd' ? 86400 : u === 'h' ? 3600 : u === 'm' ? 60 : 1);
+    found = true;
+  }
+  return found ? total : 0;
+}
+
+function _fmtDurSec(sec) {
+  if (sec === null || sec === undefined) return '—';
+  if (sec < 60) return Math.round(sec) + 's';
+  var m = Math.floor(sec / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d > 0) return d + 'd ' + (h % 24) + 'h';
+  if (h > 0) return h + 'h ' + (m % 60) + 'm';
+  return m + 'm';
+}
+
+function _pipOf(d) {
+  return Number((d && d.config && d.config.pip_size) || 0) || 0;
+}
+
+function _decimals(pip, price) {
+  if (pip > 0) {
+    var dec = Math.round(-Math.log(pip) / Math.LN10);
+    return Math.max(0, Math.min(6, dec + 1));
+  }
+  var p = Math.abs(Number(price) || 1);
+  if (p < 10) return 5;
+  if (p < 1000) return 3;
+  return 2;
+}
+
+function _fmtP(v, pip) {
+  if (v === null || v === undefined || isNaN(Number(v))) return '—';
+  return Number(v).toFixed(_decimals(pip, v));
+}
+
+function _fmtPips(v) {
+  if (v === null || v === undefined || isNaN(Number(v))) return '—';
+  var n = Number(v);
+  return (n > 0 ? '+' : '') + n.toFixed(1) + ' p';
+}
+
+function _fmtR(v) {
+  if (v === null || v === undefined || isNaN(Number(v))) return '—';
+  var n = Number(v);
+  return (n > 0 ? '+' : '') + n.toFixed(2) + 'R';
+}
+
+function _putFocus(kind, obj) {
+  var store = _focusStore[kind] || (_focusStore[kind] = {});
+  var key = (kind === 'pos' ? 'p' : 'h') + (++_focusSeq);
+  store[key] = obj;
+  return key;
+}
+
+function _slotTech(d, slotId) {
+  if (!slotId || !d || !d.slots) return '';
+  for (var i = 0; i < d.slots.length; i++) {
+    if (String(d.slots[i].slot_id) === String(slotId)) {
+      return (d.slots[i].tech && d.slots[i].tech.summary) || '';
+    }
+  }
+  return '';
+}
+
+/** Fokus-Objekt aus einer offenen Position (dashboard.positions.open[]). */
+function _focusFromPosition(d, p) {
+  return {
+    kind: 'position',
+    symbol: p.symbol || p.pair || '',
+    entry: Number(p.entry_price || p.entry || p.price) || null,
+    sl: Number(p.sl_price || p.sl) || null,
+    tp: Number(p.tp_price || p.tp) || null,
+    side: p.direction || p.side || 'long',
+    entry_ts: _epochOf(p.opened_at || p.entry_time || p.timestamp),
+    current: Number(p.live_price) || null,
+    pnl: (p.pnl !== null && p.pnl !== undefined) ? Number(p.pnl) : null,
+    volume: p.volume,
+    strategy_id: p.strategy_id || '',
+    slot_id: p.slot_id || '',
+    account_id: p.account_id || '',
+    live: p.live,
+    tech: _slotTech(d, p.slot_id)
+  };
+}
+
+/** Fokus-Objekt aus einer Historie-Zeile (dashboard.last_trades[]). */
+function _focusFromTrade(d, t) {
+  return {
+    kind: 'trade',
+    symbol: t.symbol || t.pair || '',
+    entry: Number(t.entry_price || t.entry || t.open_price || t.price) || null,
+    sl: Number(t.sl_price || t.sl) || null,
+    tp: Number(t.tp_price || t.tp) || null,
+    exit_price: Number(t.exit_price || t.close_price || t.current_price) || null,
+    side: t.direction || t.side || 'long',
+    entry_ts: _epochOf(t.timestamp || t.opened_at || t.entry_time),
+    exit_ts: _epochOf(t.closed_at || t.exit_time),
+    pnl: (t.pnl !== null && t.pnl !== undefined) ? Number(t.pnl) : null,
+    duration: t.duration,
+    close_reason: t.close_reason || t.status || '',
+    strategy_id: t.strategy_id || '',
+    slot_id: t.slot_id || '',
+    account_id: t.account_id || '',
+    live: t.live,
+    tech: _slotTech(d, t.slot_id)
+  };
+}
+
+function openTradeChart(pair, key) {
+  openChart(pair, key);
+}
+
+function openChart(pair, focusKey) {
   var panel = el(C.prefix + '-chart-panel');
   if (!panel) return;
-  panel.className = 'bot-chart-panel active';
+  var f = null;
+  if (focusKey) f = _focusStore.pos[focusKey] || _focusStore.hist[focusKey] || null;
+  if (f) f.symbol = pair;
+  _chartFocus = f;
+  _chartTF = 'auto';
+  _lastChartData = null;
+  _lastChartPair = pair;
   _currentPair = pair;
+  panel.className = 'bot-chart-panel active' + (f ? ' focus' : '');
 
-  // Highlight active signal card
+  // Signal-Karten markieren
   var cards = document.querySelectorAll('.bot-signal-card');
   for (var i = 0; i < cards.length; i++) {
-    cards[i].classList.toggle('bot-active-card', cards[i].getAttribute('data-pair') === pair);
+    if (cards[i].classList) cards[i].classList.toggle('bot-active-card', cards[i].getAttribute('data-pair') === pair);
   }
 
-  // Update pair name
-  var pairName = el(C.prefix + '-chart-pair');
-  if (pairName) pairName.textContent = pair;
+  _paintChartChrome();
+  setTimeout(function () { panel.scrollIntoView({ behavior: 'smooth', block: f ? 'start' : 'nearest' }); }, 100);
+  _loadChart(pair);
+}
 
-  // Build pair nav chips
-  var nav = el(C.prefix + '-pair-nav');
-  if (nav && _allPairs.length > 0) {
-    var html = '';
-    for (var i = 0; i < _allPairs.length; i++) {
-      var active = _allPairs[i] === pair ? ' bot-pair-active' : '';
-      html += '<span class="bot-pair-chip' + active + '" onclick="BotDash.openChart(\'' + _allPairs[i] + '\')">' + _allPairs[i] + '</span>';
-    }
-    nav.innerHTML = html;
-  }
-
-  setTimeout(function() { panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
-
-  // Load chart data
-  safeFetch(C.chartsPath + pair + '.json').then(function(r) {
+function _loadChart(pair) {
+  safeFetch(C.chartsPath + pair + '.json').then(function (r) {
     if (!r.ok) throw new Error(r.status);
     return r.json();
-  }).then(function(d) {
+  }).then(function (d) {
+    if (_currentPair !== pair) return;
+    _lastChartData = d;
     _renderCandlestick(d);
-  }).catch(function(e) {
+  }).catch(function (e) {
     console.warn('Chart load failed:', e);
   });
 }
 
+function _paintChartChrome() {
+  var f = _chartFocus;
+  var pn = el(C.prefix + '-chart-pair');
+  if (pn) pn.textContent = (_currentPair || '—') + (f ? ' · Trade-Fokus' : '');
+  var st = el(C.prefix + '-chart-strategy');
+  if (st) {
+    if (f) {
+      var s = f.strategy_id ? '#' + f.strategy_id : '';
+      if (f.slot_id) s += (s ? ' · ' : '') + f.slot_id;
+      st.textContent = s || 'Trade';
+      st.style.display = '';
+    } else {
+      st.textContent = '';
+      st.style.display = 'none';
+    }
+  }
+  _paintRangeNav();
+  _paintLegend();
+  var tt = el(C.prefix + '-trade-toggle');
+  if (tt) tt.style.display = f ? 'none' : '';
+  _renderFocusBar(_lastChartData);
+}
+
+function _paintRangeNav() {
+  var nav = el(C.prefix + '-range-nav');
+  if (!nav) return;
+  var html = '';
+  if (_chartFocus) {
+    var opts = [{ v: 'auto', l: 'Auto' }, { v: 900, l: '15m' }, { v: 3600, l: '1H' }, { v: 14400, l: '4H' }];
+    for (var i = 0; i < opts.length; i++) {
+      html += '<span class="bot-range-chip' + (_chartTF === opts[i].v ? ' bot-range-active' : '') +
+        '" onclick="BotDash.setChartTF(\'' + opts[i].v + '\')">' + opts[i].l + '</span>';
+    }
+    html += '<span class="btf-tf-note">' + (_chartTF === 'auto' ? 'Auto: ' + _tfLabel(_chartTFUsed) : '') + '</span>';
+  } else {
+    var r = [{ d: 1, l: '1T' }, { d: 3, l: '3T' }, { d: 7, l: '7T' }, { d: 14, l: '14T' }, { d: 0, l: 'All' }];
+    for (var j = 0; j < r.length; j++) {
+      html += '<span class="bot-range-chip' + (_chartRange === r[j].d ? ' bot-range-active' : '') +
+        '" data-days="' + r[j].d + '" onclick="BotDash.setRange(' + r[j].d + ')">' + r[j].l + '</span>';
+    }
+  }
+  nav.innerHTML = html;
+}
+
+function _tfLabel(tf) {
+  if (tf >= 14400) return '4H';
+  if (tf >= 3600) return '1H';
+  return '15m';
+}
+
+function _paintLegend() {
+  var lg = el(C.prefix + '-chart-legend');
+  if (!lg) return;
+  var h = '';
+  if (_chartFocus) {
+    h += '<span><i class="btf-dot" style="background:#38bdf8"></i>Einstieg</span>';
+    h += '<span><i class="btf-dot" style="background:#ef4444"></i>SL</span>';
+    h += '<span><i class="btf-dot" style="background:#22c55e"></i>TP</span>';
+    if (_chartFocus.kind === 'position') h += '<span><i class="btf-dot" style="background:#facc15"></i>Jetzt</span>';
+    else h += '<span><i class="btf-dot" style="background:#e2e8f0"></i>Exit</span>';
+    h += '<span class="muted">Risiko-/Chance-Zone schattiert</span>';
+  } else {
+    h += '<span><i class="btf-dot" style="background:#22c55e"></i>▲ Long</span>';
+    h += '<span><i class="btf-dot" style="background:#ef4444"></i>▼ Short</span>';
+    h += '<span><i class="btf-dot" style="background:#94a3b8"></i>○ Exit</span>';
+    h += '<span class="muted">Offene Position = Linien · Klick auf Zeile = Trade-Fokus</span>';
+  }
+  lg.innerHTML = h;
+}
+
+function setChartTF(tf) {
+  _chartTF = (tf === 'auto' || tf === 900 || tf === 3600 || tf === 14400) ? tf : 'auto';
+  _paintRangeNav();
+  if (_lastChartData) _renderCandlestick(_lastChartData);
+}
+
+function clearFocus() {
+  _chartFocus = null;
+  _chartTF = 'auto';
+  var panel = el(C.prefix + '-chart-panel');
+  if (panel) panel.className = 'bot-chart-panel active';
+  _paintChartChrome();
+  if (_lastChartData) _renderCandlestick(_lastChartData);
+}
+
+function toggleIndicators() {
+  _showIndicators = !_showIndicators;
+  var b = el(C.prefix + '-ind-toggle');
+  if (b) {
+    b.textContent = _showIndicators ? '📈 Indikatoren: ON' : '📈 Indikatoren: OFF';
+    b.style.color = _showIndicators ? '#22c55e' : 'var(--c-text-dim)';
+  }
+  if (_lastChartData) _renderCandlestick(_lastChartData);
+}
+
+/* ── Zeitfenster / Timeframe / Aggregation ─────────────────── */
+
+function _focusExitTs(f) {
+  if (!f) return null;
+  if (f.kind === 'position') return Math.floor(Date.now() / 1000);
+  if (f.exit_ts) return f.exit_ts;
+  if (f.duration) {
+    var s = _parseDuration(f.duration);
+    if (s && f.entry_ts) return f.entry_ts + s;
+  }
+  return null;
+}
+
+function _autoTF(f, exitTs) {
+  if (!f || !f.entry_ts) return 900;
+  var end = exitTs || Math.floor(Date.now() / 1000);
+  var dur = Math.max(0, end - f.entry_ts);
+  if (dur <= 36 * 3600) return 900;
+  if (dur <= 10 * 86400) return 3600;
+  return 14400;
+}
+
+function _focusWindow(f, exitTs, tf, raw) {
+  var lastBar = raw[raw.length - 1].time;
+  var hardEnd = lastBar + (f.kind === 'position' ? 12 : 6) * tf;
+  var end = Math.min(exitTs || hardEnd, hardEnd);
+  var pre = 40 * tf, post = (f.kind === 'position' ? 12 : 20) * tf;
+  var start = (f.entry_ts || end - 40 * tf) - pre;
+  var stop = end + post;
+  if (stop - start < 45 * tf) {
+    var mid = (start + stop) / 2;
+    start = mid - 22 * tf;
+    stop = mid + 22 * tf;
+  }
+  return { start: start, end: stop };
+}
+
+function _overviewWindow(raw, days) {
+  var end = raw[raw.length - 1].time + 900;
+  if (!days) return { start: raw[0].time, end: end };
+  return { start: Math.max(raw[0].time, end - days * 86400), end: end };
+}
+
+function _sliceBars(raw, win, tf) {
+  var out = [], i;
+  for (i = 0; i < raw.length; i++) {
+    if (raw[i].time >= win.start - tf && raw[i].time <= win.end + tf) out.push(raw[i]);
+  }
+  if (out.length < 8) out = raw.slice(-200);
+  return _aggregateBars(out, tf);
+}
+
+function _aggregateBars(bars, tf) {
+  if (!tf || tf <= 900) return bars.slice();
+  var out = [], cur = null, i;
+  for (i = 0; i < bars.length; i++) {
+    var b = bars[i];
+    var bt = Math.floor(b.time / tf) * tf;
+    if (!cur || cur.time !== bt) {
+      cur = { time: bt, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume || 0 };
+      out.push(cur);
+    } else {
+      if (b.high > cur.high) cur.high = b.high;
+      if (b.low < cur.low) cur.low = b.low;
+      cur.close = b.close;
+      cur.volume += b.volume || 0;
+    }
+    // Indikatoren: letzter M15-Wert im Bucket (Stand Bucket-Schluss)
+    if (b.rsi != null) cur.rsi = b.rsi;
+    if (b.bb_upper != null) { cur.bb_upper = b.bb_upper; cur.bb_middle = b.bb_middle; cur.bb_lower = b.bb_lower; }
+    if (b.kc_upper != null) { cur.kc_upper = b.kc_upper; cur.kc_lower = b.kc_lower; }
+  }
+  return out;
+}
+
+function _matchChartTrade(d, f) {
+  if (!f || !d) return null;
+  var arr = (d.live_trades || []).concat(d.open_positions || []);
+  var best = null, bestDiff = 6 * 3600;
+  var tol = Math.max(0.00001, Math.abs(Number(f.entry) || 0) * 0.002);
+  for (var i = 0; i < arr.length; i++) {
+    var t = arr[i];
+    if (!t || !t.entry_time) continue;
+    if (f.side && t.side && _isLong(f.side) !== _isLong(t.side)) continue;
+    if (Math.abs(Number(t.price) - Number(f.entry)) > tol) continue;
+    var dt = f.entry_ts ? Math.abs(t.entry_time - f.entry_ts) : 0;
+    if (dt < bestDiff) { bestDiff = dt; best = t; }
+  }
+  return best;
+}
+
+function _excursion(bars, entryTs, exitTs, side, entry) {
+  if (!bars || !bars.length || !entryTs) return null;
+  var hi = -Infinity, lo = Infinity;
+  for (var i = 0; i < bars.length; i++) {
+    var b = bars[i];
+    if (b.time < entryTs - 900 || (exitTs && b.time > exitTs + 900)) continue;
+    if (b.high > hi) hi = b.high;
+    if (b.low < lo) lo = b.low;
+  }
+  if (hi === -Infinity) return null;
+  var isLong = _isLong(side);
+  return {
+    mfe: isLong ? hi - entry : entry - lo,
+    mae: isLong ? entry - lo : hi - entry
+  };
+}
+
+/* ── Chart rendern ─────────────────────────────────────────── */
+
 function _renderCandlestick(d) {
   var container = el(C.prefix + '-candle-chart');
   var rsiContainer = el(C.prefix + '-rsi-chart');
+  var rsiLabel = el(C.prefix + '-rsi-label');
   if (!container) return;
+  if (typeof LightweightCharts === 'undefined') return;
 
-  // Destroy previous
   if (_candleChart) { _candleChart.remove(); _candleChart = null; }
   if (_rsiChart) { _rsiChart.remove(); _rsiChart = null; }
+  if (_chartResizeObs) { _chartResizeObs.disconnect(); _chartResizeObs = null; }
 
-  var bars = d.bars || [];
-  if (bars.length === 0) return;
+  var raw = d.bars || [];
+  if (!raw.length) return;
 
-  // Extract per-bar indicators into separate arrays if not already top-level
-  if (!d.rsi && bars.length > 0 && bars[0].rsi != null) {
-    d.rsi = bars.map(function(b) { return { time: b.time, value: b.rsi }; });
-    d.rsi_oversold = d.rsi_oversold || 35;
-    d.rsi_overbought = d.rsi_overbought || 65;
+  var f = _chartFocus;
+  var cfg = d.config || {};
+  var pip = _pipOf(d);
+  var baseTF = _tfSeconds(d.timeframe || 'M15');
+
+  // Chart-JSON ist die Wahrheit für Entry/Exit-Zeiten (Historie hat kein closed_at)
+  if (f) {
+    var match = _matchChartTrade(d, f);
+    if (match) {
+      if (!f.entry_ts) f.entry_ts = match.entry_time;
+      if (!f.entry) f.entry = Number(match.price) || null;
+      if (!f.sl && match.sl) f.sl = Number(match.sl) || null;
+      if (!f.tp && match.tp) f.tp = Number(match.tp) || null;
+      if (!f.exit_price && match.exit_price) f.exit_price = Number(match.exit_price) || null;
+      if (f.kind === 'trade' && !f.exit_ts) f.exit_ts = _epochOf(match.exit_time);
+    }
   }
-  if (!d.bb_upper && bars.length > 0 && bars[0].bb_upper != null) {
-    d.bb_upper = bars.map(function(b) { return { time: b.time, value: b.bb_upper }; });
-    d.bb_lower = bars.map(function(b) { return { time: b.time, value: b.bb_lower }; });
-    d.bb_middle = bars.map(function(b) { return { time: b.time, value: b.bb_middle }; });
+  if (f && !f.entry_ts) f.entry_ts = raw[raw.length - 1].time - 24 * 3600;
+
+  var exitTs = f ? _focusExitTs(f) : null;
+  var tf = _chartTF;
+  if (tf === 'auto') tf = f ? _autoTF(f, exitTs) : baseTF;
+  if (tf < baseTF) tf = baseTF;
+  _chartTFUsed = tf;
+
+  var win = f ? _focusWindow(f, exitTs, tf, raw) : _overviewWindow(raw, _chartRange);
+  var bars = _sliceBars(raw, win, tf);
+  if (!bars.length) return;
+
+  var isLong = _isLong(f ? f.side : 'long');
+  var entry = f ? Number(f.entry) : null;
+  var sl = f ? Number(f.sl) : null;
+  var tp = f ? Number(f.tp) : null;
+  var exitP = f ? Number(f.exit_price) : null;
+  var current = null;
+  if (f) {
+    current = (f.kind === 'position')
+      ? (Number(f.current) || Number(d.live_price) || bars[bars.length - 1].close)
+      : exitP;
   }
 
-  var _visibleStart = 0;
-  // Filter by range
-  if (_currentRangeDays > 0) {
-    var cutoff = Math.floor(Date.now() / 1000) - _currentRangeDays * 86400;
-    bars = bars.filter(function(b) { return b.time >= cutoff; });
-    _visibleStart = cutoff;
-  }
+  var dec = _decimals(pip, bars[bars.length - 1].close);
+  container.style.height = f ? '380px' : '300px';
 
   _candleChart = LightweightCharts.createChart(container, {
-    width: container.clientWidth,
-    height: container.clientHeight || 400,
-    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b8b9e' },
-    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
-    crosshair: { mode: 0 },
-    timeScale: { timeVisible: true },
+    width: container.clientWidth || 800,
+    height: container.clientHeight || (f ? 380 : 300),
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 11 },
+    grid: {
+      vertLines: { color: 'rgba(255,255,255,0.045)' },
+      horzLines: { color: 'rgba(255,255,255,0.045)' }
+    },
+    crosshair: {
+      mode: 0,
+      vertLine: { color: 'rgba(226,232,240,0.30)', width: 1, style: 2, labelBackgroundColor: '#334155' },
+      horzLine: { color: 'rgba(226,232,240,0.30)', width: 1, style: 2, labelBackgroundColor: '#334155' }
+    },
+    rightPriceScale: {
+      borderColor: 'rgba(255,255,255,0.10)',
+      scaleMargins: { top: 0.08, bottom: 0.08 }
+    },
+    timeScale: {
+      borderColor: 'rgba(255,255,255,0.10)',
+      timeVisible: true, secondsVisible: false, rightOffset: 5,
+      barSpacing: f ? 8 : 4
+    }
   });
 
   var candleSeries = _candleChart.addCandlestickSeries({
-    upColor: '#145c32', downColor: '#7a1f1f',
-    borderUpColor: '#145c32', borderDownColor: '#7a1f1f',
-    wickUpColor: '#145c32', wickDownColor: '#7a1f1f',
+    upColor: '#1f7a4d', downColor: '#9b2c2c',
+    borderUpColor: '#26a65b', borderDownColor: '#c0392b',
+    wickUpColor: '#26a65b', wickDownColor: '#c0392b',
+    priceFormat: { type: 'price', precision: dec, minMove: Math.pow(10, -dec) },
+    priceLineVisible: !f,
+    lastValueVisible: !f
   });
-  candleSeries.setData(bars.map(function(b) {
+
+  candleSeries.setData(bars.map(function (b) {
     return { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close };
   }));
 
-
-  // Apply backtest markers (trade entry arrows) — only when trades visible
-  if (_showTradeLines && d.markers && d.markers.length > 0) {
-    var visMarkers = d.markers;
-    if (_currentRangeDays > 0) {
-      var mc = Math.floor(Date.now() / 1000) - _currentRangeDays * 86400;
-      visMarkers = d.markers.filter(function(m) { return m.time >= mc; });
+  // ── Y-Achse: Trade-Level müssen immer sichtbar sein ──
+  if (f) {
+    var lo = Infinity, hi = -Infinity, i;
+    for (i = 0; i < bars.length; i++) {
+      if (bars[i].low < lo) lo = bars[i].low;
+      if (bars[i].high > hi) hi = bars[i].high;
     }
-    candleSeries.setMarkers(visMarkers);
-  }
-  // BB overlay
-  if (d.bb_upper) {
-    var bbUp = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
-    var bbLo = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
-    var bbMid = _candleChart.addLineSeries({ color: 'rgba(91,141,239,0.08)', lineWidth: 1, lineStyle: 2, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
-    bbUp.setData(d.bb_upper.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
-    bbLo.setData(d.bb_lower.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
-    bbMid.setData(d.bb_middle.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
-  }
-
-  // EMA overlay
-  if (d.ema_fast) {
-    var emaF = _candleChart.addLineSeries({ color: 'rgba(240,185,64,0.4)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
-    var emaS = _candleChart.addLineSeries({ color: 'rgba(100,149,237,0.4)', lineWidth: 1, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
-    emaF.setData(d.ema_fast.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
-    emaS.setData(d.ema_slow.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; }));
-  }
-
-  // Trade lines overlay (backtest — only visible at narrow ranges)
-  // At 90T/30T the lines are < 5% chart width → invisible. Show at 14T and below.
-  var showLines = _showTradeLines && _currentRangeDays <= 14;
-  if (showLines && d.trade_lines) {
-    _renderTradeLines(_candleChart, candleSeries, d.trade_lines, bars, 0.7, _visibleStart);
-  }
-
-  // Live trades overlay (actual bot trades — bold)
-  if (d.live_trades && d.live_trades.length > 0) {
-    _renderLiveTrades(_candleChart, candleSeries, d.live_trades, bars, _visibleStart);
-  }
-
-  // Open position overlay (entry/SL/TP lines)
-  if (d.open_positions && d.open_positions.length > 0) {
-    _renderOpenPositions(_candleChart, d.open_positions, bars, _visibleStart);
-  }
-
-  _candleChart.timeScale().fitContent();
-
-  // ResizeObserver to fix width=0 bug
-  new ResizeObserver(function() {
-    if (_candleChart && container.clientWidth > 0) {
-      _candleChart.applyOptions({ width: container.clientWidth });
+    var lv = [entry, sl, tp, current, exitP];
+    for (i = 0; i < lv.length; i++) {
+      var v = Number(lv[i]);
+      if (isFinite(v) && v > 0) { if (v < lo) lo = v; if (v > hi) hi = v; }
     }
-  }).observe(container);
-
-  // RSI sub-chart
-  if (rsiContainer && d.rsi) {
-    _rsiChart = LightweightCharts.createChart(rsiContainer, {
-      width: rsiContainer.clientWidth,
-      height: rsiContainer.clientHeight || 120,
-      layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b8b9e' },
-      grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
-      timeScale: { visible: false },
-    });
-    var rsiSeries = _rsiChart.addLineSeries({ color: '#a78bfa', lineWidth: 1.5, priceLineVisible: false, autoscaleInfoProvider: function() { return null; } });
-    var rsiData = d.rsi.filter(function(p) { return p.value != null; }).map(function(p) { return { time: p.time, value: p.value }; });
-    rsiSeries.setData(rsiData);
-
-    // OS/OB lines
-    var os = d.rsi_oversold || 35;
-    var ob = d.rsi_overbought || 65;
-    rsiSeries.createPriceLine({ price: os, color: 'rgba(34,197,94,0.4)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'OS' });
-    rsiSeries.createPriceLine({ price: ob, color: 'rgba(239,68,68,0.4)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'OB' });
-    rsiSeries.createPriceLine({ price: 50, color: 'rgba(255,255,255,0.1)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
-
-    new ResizeObserver(function() {
-      if (_rsiChart && rsiContainer.clientWidth > 0) {
-        _rsiChart.applyOptions({ width: rsiContainer.clientWidth });
-      }
-    }).observe(rsiContainer);
-  }
-
-  // Config chips
-  var configEl = el(C.prefix + '-chart-config');
-  if (configEl && d.config) {
-    var chips = '';
-    var cfg = d.config;
-    for (var k in cfg) {
-      if (cfg.hasOwnProperty(k)) {
-        chips += '<span class="bot-config-chip">' + k + ': ' + cfg[k] + '</span>';
-      }
-    }
-    configEl.innerHTML = chips;
-  }
-}
-
-function _renderTradeLines(chart, candleSeries, tradeLines, bars, alpha, visibleStart) {
-  // Clear previous markers
-  if (typeof _allTradeMarkers !== "undefined") _allTradeMarkers = [];
-  // Store trade data for hover tooltips
-  var _tradeMarkers = _allTradeMarkers;
-
-  for (var i = 0; i < tradeLines.length; i++) {
-    var tl = tradeLines[i];
-    // Skip trades outside visible range (check ORIGINAL time, not snapped)
-    if (visibleStart && tl.entry_time < visibleStart) continue;
-    var entryTime = findNearestBarTime(bars, tl.entry_time);
-    var exitTime = findNearestBarTime(bars, tl.exit_time);
-    if (!entryTime) continue;
-
-    var pnl = tl.pnl_pips || tl.pnl || 0;
-    var isProfit = pnl >= 0;
-    var isTimeout = tl.status === 'timeout' || tl.result === 'timeout' || tl.close_reason === 'timeout';
-    var _a = (typeof alpha === 'number') ? alpha : 1.0;
-    var lineColor = tl.color || (isProfit ? 'rgba(34,197,94,' + _a + ')' : 'rgba(239,68,68,' + _a + ')');
-    var lineAlpha = isProfit ? 'rgba(34,197,94,' : 'rgba(239,68,68,';
-
-    // Entry → exit line (THICKER: lineWidth 3)
-    if (exitTime) {
-      var lineSeries = chart.addLineSeries({
-        color: lineColor,
-        lineWidth: 2,
-        lineStyle: isTimeout ? 2 : 0, // dashed for timeout
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-      lineSeries.setData([
-        { time: entryTime, value: tl.entry_price || tl.price || tl.entry },
-        { time: exitTime, value: tl.exit_price || tl.price || tl.entry }
-      ]);
-
-      // Store trade info for tooltip
-      _tradeMarkers.push({
-        entryTime: entryTime,
-        exitTime: exitTime,
-        entryPrice: tl.entry_price || tl.price || tl.entry,
-        exitPrice: tl.exit_price || tl.price || tl.entry,
-        direction: tl.direction || tl.side || 'long',
-        margin: tl.margin || tl.margin_eur || (tl.sl_pips ? Math.round(tl.sl_pips * 0.092 * 0.02 * 1000) : 20),
-        pnl: pnl,
-        pnlEur: tl.pnl_eur || pnl,
-        symbol: tl.symbol || '',
-        sl: tl.sl,
-        tp: tl.tp,
-        score: tl.score,
-        rsi: tl.rsi,
-        strategy: tl.strategy || tl.strategy_id || '',
-        holdBars: tl.hold_bars,
-        closeReason: tl.result || tl.close_reason || '',
-        isProfit: isProfit,
-        isTimeout: isTimeout,
+    if (isFinite(lo) && isFinite(hi) && hi > lo) {
+      var pad = Math.max((hi - lo) * 0.09, Math.abs(hi) * 0.0002);
+      var yLo = lo - pad, yHi = hi + pad;
+      candleSeries.applyOptions({
+        autoscaleInfoProvider: function () { return { priceRange: { minValue: yLo, maxValue: yHi } }; }
       });
     }
+  }
 
-    // SL/TP horizontal lines (slightly more visible)
-    if (tl.sl) {
-      var slLine = chart.addLineSeries({
-        color: lineAlpha + (0.15 * _a) + ')', lineWidth: 1, lineStyle: 2,
-        priceLineVisible: false, lastValueVisible: false, autoscaleInfoProvider: function() { return null; } });
-      slLine.setData([{ time: entryTime, value: tl.sl }, { time: exitTime || entryTime + 3600, value: tl.sl }]);
+  // ── Zonen + Preislinien ──
+  if (f && entry && sl && tp && entry > 0) {
+    _drawBand(_candleChart, bars, sl, entry, 'rgba(239,68,68,0.10)');
+    _drawBand(_candleChart, bars, tp, entry, 'rgba(34,197,94,0.10)');
+    candleSeries.createPriceLine({ price: entry, color: '#38bdf8', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'EINTRITT' });
+    candleSeries.createPriceLine({ price: sl, color: '#ef4444', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'SL' });
+    candleSeries.createPriceLine({ price: tp, color: '#22c55e', lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: 'TP' });
+    if (f.kind === 'trade' && exitP) {
+      candleSeries.createPriceLine({ price: exitP, color: '#e2e8f0', lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: 'EXIT' });
     }
-    if (tl.tp) {
-      var tpLine = chart.addLineSeries({
-        color: 'rgba(34,197,94,' + (0.15 * _a) + ')', lineWidth: 1, lineStyle: 2,
-        priceLineVisible: false, lastValueVisible: false, autoscaleInfoProvider: function() { return null; } });
-      tpLine.setData([{ time: entryTime, value: tl.tp }, { time: exitTime || entryTime + 3600, value: tl.tp }]);
+    if (f.kind === 'position' && current) {
+      candleSeries.createPriceLine({ price: current, color: '#facc15', lineWidth: 3, lineStyle: 0, axisLabelVisible: true, title: 'JETZT' });
     }
   }
 
-  // Unified tooltip (covers backtest + live + open)
-  _subscribeLiveTooltip(chart, container);
-}
-
-/** Format EUR amount for chart labels */
-function _fmtEur(val) {
-  if (val === undefined || val === null) return '';
-  var sign = val >= 0 ? '+' : '';
-  return sign + val.toFixed(2) + ' €';
-}
-
-/** Render open position entry/SL/TP as horizontal lines on the chart */
-function _renderOpenPositions(chart, positions, bars, visibleStart) {
-  if (!bars || bars.length === 0) return;
-  var lastBarTime = bars[bars.length - 1].time;
-  var chartLabels = (C && C.chart_labels) ? C.chart_labels : [];
-
-  for (var i = 0; i < positions.length; i++) {
-    var p = positions[i];
-    var entryTime = findNearestBarTime(bars, p.entry_time || p.timestamp) || bars[Math.max(0, bars.length - 50)].time;
-    // Skip trades outside visible range
-    if (visibleStart && entryTime < visibleStart) continue;
-    var isShort = (p.side === 'sell' || p.side === 'short');
-
-    // Extend lines left (24h before entry) so they're visible on longer charts
-    var lookback = 24 * 60 * 60; // 24h in seconds
-    var lineStart = Math.max(bars[0].time, entryTime - lookback);
-
-    // Entry line — solid, prominent
-    var entryLine = chart.addLineSeries({
-      color: isShort ? '#ef4444' : '#22c55e',
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-    entryLine.setData([
-      { time: lineStart, value: p.entry_price || p.price || p.entry },
-      { time: lastBarTime, value: p.entry_price || p.price || p.entry }
-    ]);
-
-    // SL line — red dashed
-    if (p.sl) {
-      var slLine = chart.addLineSeries({
-        color: 'rgba(239,68,68,0.6)',
-        lineWidth: 1,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-      slLine.setData([
-        { time: lineStart, value: p.sl },
-        { time: lastBarTime, value: p.sl }
-      ]);
+  // ── Marker + Tooltip-Daten ──
+  _allTradeMarkers = [];
+  var markers = [];
+  if (f) {
+    var et = findNearestBarTime(bars, f.entry_ts);
+    if (et) {
+      markers.push({
+        time: et, position: isLong ? 'belowBar' : 'aboveBar',
+        color: isLong ? '#22c55e' : '#ef4444',
+        shape: isLong ? 'arrowUp' : 'arrowDown', text: 'EINTRITT'
+      });
     }
-
-    // TP line — green dashed
-    if (p.tp) {
-      var tpLine = chart.addLineSeries({
-        color: 'rgba(34,197,94,0.6)',
-        lineWidth: 1,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-      tpLine.setData([
-        { time: lineStart, value: p.tp },
-        { time: lastBarTime, value: p.tp }
-      ]);
+    if (f.kind === 'trade' && f.exit_ts) {
+      var xt = findNearestBarTime(bars, f.exit_ts);
+      if (xt) {
+        markers.push({
+          time: xt, position: isLong ? 'aboveBar' : 'belowBar',
+          color: (Number(f.pnl) >= 0 ? '#22c55e' : '#ef4444'),
+          shape: 'circle', text: 'EXIT'
+        });
+      }
     }
-
-    // Config-driven chart labels (EUR amounts for SL/TP, etc.)
-    for (var li = 0; li < chartLabels.length; li++) {
-      var lbl = chartLabels[li];
-      var val = p[lbl.field];
-      if (val !== undefined && val !== null && entryLine) {
-        // Determine which price level to attach the label to
-        var priceLevel = null;
-        if (lbl.field === 'sl_eur' && p.sl) priceLevel = p.sl;
-        else if (lbl.field === 'tp_eur' && p.tp) priceLevel = p.tp;
-        // Future: add more field-to-price mappings here
-
-        if (priceLevel !== null) {
-          var labelText = (lbl.prefix || '') + _fmtEur(val) + (lbl.suffix || '');
-          entryLine.createPriceLine({
-            price: priceLevel,
-            color: lbl.color || 'rgba(150,150,150,0.5)',
-            lineWidth: 1,
-            lineStyle: 2,
-            axisLabelVisible: true,
-            title: labelText,
-          });
-        }
+    _allTradeMarkers.push({
+      entryTime: f.entry_ts, exitTime: f.exit_ts || f.entry_ts,
+      entryPrice: entry, exitPrice: exitP || entry,
+      direction: isLong ? 'long' : 'short',
+      pnl: Number(f.pnl) || 0, pnlEur: Number(f.pnl) || 0,
+      symbol: f.symbol || _currentPair || '',
+      sl: sl, tp: tp,
+      strategy: f.strategy_id ? '#' + f.strategy_id : '',
+      closeReason: f.close_reason || (f.kind === 'position' ? 'offen' : ''),
+      isProfit: (Number(f.pnl) || 0) >= 0
+    });
+  } else if (_showTradeLines) {
+    markers = _renderLiveMarkers(candleSeries, d.live_trades || [], bars, d.open_positions || []);
+    if (_chartRange <= 14 && d.trade_lines && d.trade_lines.length) {
+      _renderTradeLines(_candleChart, candleSeries, d.trade_lines, bars, 0.7);
+    }
+    if (d.open_positions && d.open_positions.length) {
+      _renderOpenPositions(_candleChart, d.open_positions, bars);
+    }
+    // Backtest-/OPEN-Marker aus dem Builder (nur wenn Trades eingeblendet)
+    if (d.markers && d.markers.length) {
+      for (var m = 0; m < d.markers.length; m++) {
+        var mm = d.markers[m];
+        if (mm.type && mm.type !== 'trade') continue;
+        var mt = findNearestBarTime(bars, mm.time);
+        if (!mt) continue;
+        markers.push({
+          time: mt,
+          position: mm.position || (mm.side === 'long' ? 'belowBar' : 'aboveBar'),
+          color: mm.color || '#94a3b8',
+          shape: mm.shape || 'arrowUp',
+          text: mm.text || ''
+        });
       }
     }
   }
-}
-
-/** Render live trades (actual bot trades) with bold entry/SL/TP lines */
-function _renderLiveTrades(chart, candleSeries, liveTrades, bars, visibleStart) {
-  if (!bars || bars.length === 0 || !liveTrades) return;
-  var lastBarTime = bars[bars.length - 1].time;
-
-  for (var i = 0; i < liveTrades.length; i++) {
-    var t = liveTrades[i];
-    var entryPrice = t.entry || 0;
-    var sl = t.sl || 0;
-    var tp = t.tp || 0;
-    var exitPrice = t.exit_price || 0;
-    var pnl = t.pnl || 0;
-    var isShort = (t.side === 'sell' || t.side === 'short');
-    var isProfit = pnl >= 0;
-    var entryTime = findNearestBarTime(bars, t.timestamp) || bars[Math.max(0, bars.length - 50)].time;
-    // Skip trades outside visible range
-    if (visibleStart && entryTime < visibleStart) continue;
-    var exitTime = findNearestBarTime(bars, t.closed_at) || lastBarTime;
-
-    // Entry line — solid, prominent
-    var entryLine = chart.addLineSeries({
-      color: isShort ? '#ef4444' : '#22c55e',
-      lineWidth: 3,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-    entryLine.setData([
-      { time: entryTime, value: entryPrice },
-      { time: exitTime, value: entryPrice }
-    ]);
-
-    // SL line — red dashed
-    if (sl) {
-      var slLine = chart.addLineSeries({
-        color: 'rgba(239,68,68,0.7)',
-        lineWidth: 2,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-      slLine.setData([
-        { time: entryTime, value: sl },
-        { time: exitTime, value: sl }
-      ]);
-    }
-
-    // TP line — green dashed
-    if (tp) {
-      var tpLine = chart.addLineSeries({
-        color: 'rgba(34,197,94,0.7)',
-        lineWidth: 2,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-      tpLine.setData([
-        { time: entryTime, value: tp },
-        { time: exitTime, value: tp }
-      ]);
-    }
-
-    // Exit marker — thick bar at exit point
-    if (exitPrice && exitTime) {
-      var exitColor = isProfit ? '#22c55e' : '#ef4444';
-      var exitMarker = chart.addLineSeries({
-        color: exitColor,
-        lineWidth: 4,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false, autoscaleInfoProvider: function() { return null; } });
-      exitMarker.setData([
-        { time: Math.max(entryTime, exitTime - 3600), value: exitPrice },
-        { time: exitTime, value: exitPrice }
-      ]);
-    }
-
-    // Register for tooltip
-    _allTradeMarkers.push({
-      entryTime: entryTime,
-      exitTime: exitTime,
-      entryPrice: entryPrice,
-      exitPrice: exitPrice || entryPrice,
-      direction: isShort ? 'short' : 'long',
-      pnl: pnl,
-      pnlEur: pnl,
-      symbol: t.symbol || '',
-      sl: sl,
-      tp: tp,
-      isProfit: isProfit,
-      isTimeout: false,
-      isLive: true,
-    });
+  if (markers.length) {
+    markers.sort(function (a, b) { return a.time - b.time; });
+    candleSeries.setMarkers(markers);
+  } else {
+    candleSeries.setMarkers([]);
   }
 
-  // Subscribe to crosshair for live trade tooltips (if not already subscribed)
-  _subscribeLiveTooltip(chart, container);
+  // ── Indikatoren (BB/KC) ──
+  if (_showIndicators) _drawIndicatorLines(_candleChart, bars);
+
+  // ── X-Achse: exakt das Trade-Fenster ──
+  if (f) {
+    _candleChart.timeScale().setVisibleRange({ from: win.start, to: win.end });
+  } else if (_chartRange > 0) {
+    _candleChart.timeScale().setVisibleRange({
+      from: Math.max(bars[0].time, win.start),
+      to: Math.max(bars[bars.length - 1].time, win.end)
+    });
+  } else {
+    _candleChart.timeScale().fitContent();
+  }
+
+  // Test-/Diagnose-Hook (E2E: Preisachse, Serien, Fenster ohne Canvas-OCR prüfen)
+  window.__botChart = { chart: _candleChart, series: candleSeries, bars: bars, focus: f, tf: tf };
+
+  if (typeof ResizeObserver !== 'undefined') {
+    _chartResizeObs = new ResizeObserver(function () {
+      if (_candleChart && container.clientWidth > 0) _candleChart.applyOptions({ width: container.clientWidth });
+    });
+    _chartResizeObs.observe(container);
+  }
+
+  // ── RSI ──
+  _renderRsi(d, bars, cfg, rsiContainer, rsiLabel);
+
+  // ── Config-Chips (nur Übersicht) ──
+  var configEl = el(C.prefix + '-chart-config');
+  if (configEl) {
+    if (f) {
+      configEl.innerHTML = '';
+      configEl.style.display = 'none';
+    } else {
+      configEl.style.display = '';
+      var chips = '';
+      for (var k in cfg) {
+        if (Object.prototype.hasOwnProperty.call(cfg, k) && cfg[k] !== '' && cfg[k] !== null) {
+          chips += '<span class="bot-config-chip">' + k + ': ' + cfg[k] + '</span>';
+        }
+      }
+      configEl.innerHTML = chips;
+    }
+  }
+
+  _renderFocusBar(d);
+  _subscribeLiveTooltip(_candleChart, container);
 }
+
+function _drawBand(chart, bars, price, base, color) {
+  if (!chart.addBaselineSeries || !bars.length) return;
+  var s = chart.addBaselineSeries({
+    baseValue: { type: 'price', price: base },
+    topLineColor: 'rgba(0,0,0,0)',
+    bottomLineColor: 'rgba(0,0,0,0)',
+    topFillColor1: color, topFillColor2: color,
+    bottomFillColor1: color, bottomFillColor2: color,
+    lineWidth: 1,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+    autoscaleInfoProvider: function () { return null; }
+  });
+  s.setData([
+    { time: bars[0].time, value: price },
+    { time: bars[bars.length - 1].time, value: price }
+  ]);
+}
+
+function _indData(bars, key) {
+  var out = [];
+  for (var i = 0; i < bars.length; i++) {
+    if (bars[i][key] !== null && bars[i][key] !== undefined) {
+      out.push({ time: bars[i].time, value: bars[i][key] });
+    }
+  }
+  return out;
+}
+
+function _drawIndicatorLines(chart, bars) {
+  var up = _indData(bars, 'bb_upper');
+  var mid = _indData(bars, 'bb_middle');
+  var lo = _indData(bars, 'bb_lower');
+  if (up.length > 1 && lo.length > 1) {
+    _addLine(chart, up, 'rgba(96,165,250,0.55)', 1, 0);
+    _addLine(chart, lo, 'rgba(96,165,250,0.55)', 1, 0);
+    _addLine(chart, mid, 'rgba(96,165,250,0.28)', 1, 2);
+  }
+  var ku = _indData(bars, 'kc_upper');
+  var kl = _indData(bars, 'kc_lower');
+  if (ku.length > 1 && kl.length > 1) {
+    _addLine(chart, ku, 'rgba(192,132,252,0.45)', 1, 0);
+    _addLine(chart, kl, 'rgba(192,132,252,0.45)', 1, 0);
+  }
+}
+
+function _addLine(chart, data, color, width, style) {
+  var s = chart.addLineSeries({
+    color: color, lineWidth: width, lineStyle: style || 0,
+    priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+    autoscaleInfoProvider: function () { return null; }
+  });
+  s.setData(data);
+}
+
+function _renderRsi(d, bars, cfg, container, label) {
+  var data = _indData(bars, 'rsi');
+  if (!container || !_showIndicators || data.length < 2) {
+    if (container) { container.style.display = 'none'; }
+    if (label) { label.style.display = 'none'; }
+    return;
+  }
+  container.style.display = '';
+  if (label) label.style.display = '';
+
+  _rsiChart = LightweightCharts.createChart(container, {
+    width: container.clientWidth || 800,
+    height: container.clientHeight || 100,
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#8b8b9e', fontSize: 10 },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.025)' }, horzLines: { color: 'rgba(255,255,255,0.025)' } },
+    timeScale: { visible: false },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)', scaleMargins: { top: 0.1, bottom: 0.1 } }
+  });
+  var s = _rsiChart.addLineSeries({
+    color: '#a78bfa', lineWidth: 1.5,
+    priceLineVisible: false, lastValueVisible: false,
+    autoscaleInfoProvider: function () { return { priceRange: { minValue: 0, maxValue: 100 } }; }
+  });
+  s.setData(data);
+  var os = cfg.rsi_oversold || 30;
+  var ob = cfg.rsi_overbought || 70;
+  s.createPriceLine({ price: os, color: 'rgba(34,197,94,0.45)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'OS' });
+  s.createPriceLine({ price: ob, color: 'rgba(239,68,68,0.45)', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'OB' });
+  s.createPriceLine({ price: 50, color: 'rgba(255,255,255,0.10)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+
+  if (label) {
+    label.textContent = 'RSI ' + (cfg.rsi_period || 14) + ' · ' + data[data.length - 1].value.toFixed(1);
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    var obs = new ResizeObserver(function () {
+      if (_rsiChart && container.clientWidth > 0) _rsiChart.applyOptions({ width: container.clientWidth });
+    });
+    obs.observe(container);
+  }
+}
+
+/* ── Kurzprofil über dem Chart ─────────────────────────────── */
+
+function _setupLine(d, f) {
+  var bits = [];
+  if (f && f.tech) bits.push(f.tech);
+  var c = (d && d.config) || {};
+  if (c.rsi_period) bits.push('RSI ' + c.rsi_period + ' (' + (c.rsi_oversold || 30) + '/' + (c.rsi_overbought || 70) + ')');
+  if (c.bb_period) bits.push('BB ' + c.bb_period + '/' + (c.bb_mult || 2));
+  if (c.kc_period) bits.push('KC ' + c.kc_period + '/' + (c.kc_mult || 1.5));
+  return bits.slice(0, 6).join(' · ');
+}
+
+function _renderFocusBar(d) {
+  var box = el(C.prefix + '-trade-focus');
+  if (!box) return;
+  var f = _chartFocus;
+  if (!f) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  box.style.display = 'block';
+
+  var pip = _pipOf(d);
+  var entry = Number(f.entry) || null;
+  var sl = Number(f.sl) || null;
+  var tp = Number(f.tp) || null;
+  var exitP = Number(f.exit_price) || null;
+  var isLong = _isLong(f.side);
+  var cur = entry;
+  if (f.kind === 'position') {
+    cur = Number(f.current) || Number(d && d.live_price) ||
+      (d && d.bars && d.bars.length ? d.bars[d.bars.length - 1].close : entry);
+  } else {
+    cur = exitP || entry;
+  }
+  var endTs = _focusExitTs(f);
+  var dur = (endTs && f.entry_ts) ? Math.max(0, endTs - f.entry_ts) : 0;
+  var risk = (entry && sl) ? Math.abs(entry - sl) : 0;
+  var reward = (entry && tp) ? Math.abs(tp - entry) : 0;
+  var move = (cur !== null && entry !== null) ? (isLong ? cur - entry : entry - cur) : 0;
+  var r = risk ? move / risk : null;
+  var prog = reward ? move / reward : null;
+  var rr = risk ? reward / risk : null;
+  var exc = (d && d.bars && entry) ? _excursion(d.bars, f.entry_ts, endTs, f.side, entry) : null;
+
+  var dp = pip;
+  var pips = (pip && cur !== null && entry !== null) ? move / pip : null;
+  var slPips = (pip && sl && entry) ? (isLong ? sl - entry : entry - sl) / pip : null;
+  var tpPips = (pip && tp && entry) ? (isLong ? tp - entry : entry - tp) / pip : null;
+
+  var resTxt, resCls;
+  if (f.kind === 'position') { resTxt = 'OFFEN'; resCls = 'open'; }
+  else if (f.pnl !== null && f.pnl !== undefined && !isNaN(Number(f.pnl))) {
+    resTxt = Number(f.pnl) >= 0 ? 'GEWINN' : 'VERLUST';
+    resCls = Number(f.pnl) >= 0 ? 'win' : 'loss';
+  } else { resTxt = 'GESCHLOSSEN'; resCls = 'open'; }
+
+  var entryTick = (risk && reward) ? (risk / (risk + reward)) * 100 : 50;
+  var mkPos = (prog === null) ? entryTick : Math.max(0, Math.min(100, prog * 100));
+  var mkCls = (prog !== null && prog < 0) ? 'down' : 'up';
+
+  var h = '<div class="btf-head">' +
+    '<div class="btf-title">' +
+      '<span class="btf-dir ' + (isLong ? 'buy' : 'sell') + '">' + (isLong ? 'LONG' : 'SHORT') + '</span>' +
+      '<b class="btf-sym">' + escHtml(f.symbol || _currentPair || '') + '</b>' +
+      (f.strategy_id ? '<span class="btf-id">#' + escHtml(f.strategy_id) + (f.slot_id ? ' · ' + escHtml(f.slot_id) : '') + '</span>' : '') +
+      '<span class="btf-when">' + (f.entry_ts ? fmtTime(f.entry_ts) : '—') +
+        (f.kind === 'trade' ? ' → ' + (f.exit_ts ? fmtTime(f.exit_ts) : 'Ende') : ' → jetzt') + '</span>' +
+    '</div>' +
+    '<div class="btf-actions">' +
+      '<span class="btf-res ' + resCls + '">' + resTxt + '</span>' +
+      (f.close_reason ? '<span class="btf-id">' + escHtml(f.close_reason) + '</span>' : '') +
+      '<button class="btf-btn" onclick="BotDash.clearFocus()">◀ Übersicht</button>' +
+    '</div>' +
+  '</div>';
+
+  h += '<div class="btf-grid">' +
+    '<div class="btf-cell"><span>Einstieg</span><b>' + _fmtP(entry, dp) + '</b><small>' + (f.entry_ts ? fmtTime(f.entry_ts) : '—') + '</small></div>' +
+    '<div class="btf-cell"><span>' + (f.kind === 'position' ? 'Jetzt' : 'Exit') + '</span><b class="' + (move >= 0 ? 'up' : 'down') + '">' + _fmtP(cur, dp) + '</b><small>' +
+      (pips !== null ? _fmtPips(pips) + ' · ' : '') + _fmtR(r) + '</small></div>' +
+    '<div class="btf-cell"><span>Stop-Loss</span><b class="down">' + _fmtP(sl, dp) + '</b><small>' +
+      (slPips !== null ? _fmtPips(slPips) + ' · ' : '') + (risk ? _fmtR(-1) : '—') + '</small></div>' +
+    '<div class="btf-cell"><span>Take-Profit</span><b class="up">' + _fmtP(tp, dp) + '</b><small>' +
+      (tpPips !== null ? _fmtPips(tpPips) + ' · ' : '') + (reward ? _fmtR(1) : '—') + '</small></div>' +
+    '<div class="btf-cell"><span>R:R</span><b>' + (rr !== null ? rr.toFixed(2) : '—') + '</b><small>' +
+      (risk && pip ? 'Risiko ' + Math.abs(risk / pip).toFixed(1) + ' p' : '') + '</small></div>' +
+    '<div class="btf-cell"><span>Dauer</span><b>' + _fmtDurSec(dur) + '</b><small>' +
+      (f.pnl !== null && f.pnl !== undefined ? fmtPnl(f.pnl) + ' €' : (f.kind === 'position' ? 'offen' : '—')) + '</small></div>' +
+  '</div>';
+
+  if (risk && reward) {
+    h += '<div class="btf-track">' +
+      '<div class="btf-bar">' +
+        '<div class="btf-zone-loss" style="width:' + entryTick.toFixed(1) + '%"></div>' +
+        '<div class="btf-zone-win" style="left:' + entryTick.toFixed(1) + '%"></div>' +
+        '<div class="btf-entry-tick" style="left:' + entryTick.toFixed(1) + '%"></div>' +
+        '<div class="btf-mk ' + mkCls + '" style="left:' + mkPos.toFixed(1) + '%"></div>' +
+      '</div>' +
+      '<div class="btf-scale"><span>SL ' + _fmtP(sl, dp) + '</span><span class="btf-entry">Einstieg ' + _fmtP(entry, dp) + '</span><span>TP ' + _fmtP(tp, dp) + '</span></div>' +
+    '</div>';
+  }
+
+  h += '<div class="btf-foot">' +
+    '<span>Fortschritt <b class="' + (r !== null && r < 0 ? 'down' : 'up') + '">' + _fmtR(r) + '</b>' +
+      (prog !== null ? ' · ' + (prog * 100).toFixed(0) + '% Richtung TP' : '') + '</span>' +
+    (exc ? '<span>Max. Buchgewinn <b class="up">' + _fmtR(risk ? exc.mfe / risk : null) + '</b></span>' +
+      '<span>Max. Gegenwind <b class="down">' + _fmtR(risk ? -exc.mae / risk : null) + '</b></span>' : '') +
+    '<span class="btf-setup">' + escHtml(_setupLine(d, f)) + '</span>' +
+  '</div>';
+
+  box.innerHTML = h;
+}
+
+/* ── Overlays ─────────────────────────────────────────────── */
+
+function _renderLiveMarkers(candleSeries, liveTrades, bars, openPos) {
+  if (!bars || !bars.length) return [];
+  var markers = [];
+  var i;
+  for (i = 0; i < liveTrades.length; i++) {
+    var t = liveTrades[i];
+    var entryPrice = Number(t.price) || 0;
+    if (!entryPrice) continue;
+    var isLongT = _isLong(t.side);
+    var et = findNearestBarTime(bars, t.entry_time);
+    if (!et) continue;
+    var xt = t.exit_time ? findNearestBarTime(bars, t.exit_time) : null;
+    var win = (Number(t.pnl_pips) || 0) >= 0;
+    markers.push({
+      time: et, position: isLongT ? 'belowBar' : 'aboveBar',
+      color: win ? '#22c55e' : '#ef4444',
+      shape: isLongT ? 'arrowUp' : 'arrowDown', text: ''
+    });
+    if (xt && xt > et) {
+      markers.push({ time: xt, position: isLongT ? 'aboveBar' : 'belowBar', color: win ? '#22c55e' : '#ef4444', shape: 'circle', text: '' });
+    }
+    _allTradeMarkers.push({
+      entryTime: t.entry_time, exitTime: t.exit_time || t.entry_time,
+      entryPrice: entryPrice, exitPrice: Number(t.exit_price) || entryPrice,
+      direction: isLongT ? 'long' : 'short',
+      pnl: Number(t.pnl_eur) || 0, pnlEur: Number(t.pnl_eur) || 0,
+      symbol: t.symbol || _currentPair || '',
+      sl: t.sl, tp: t.tp,
+      strategy: '', closeReason: t.result || '',
+      isProfit: win
+    });
+  }
+  // Offene Positionen bekommen ihren OPEN-Pfeil aus d.markers (Builder).
+  return markers;
+}
+
+function _renderTradeLines(chart, candleSeries, tradeLines, bars, alpha) {
+  for (var i = 0; i < tradeLines.length; i++) {
+    var tl = tradeLines[i];
+    var et = findNearestBarTime(bars, tl.entry_time);
+    var xt = findNearestBarTime(bars, tl.exit_time);
+    if (!et) continue;
+    var pnl = Number(tl.pnl_pips) || 0;
+    var isWin = pnl >= 0;
+    var clr = isWin ? 'rgba(34,197,94,' + alpha + ')' : 'rgba(239,68,68,' + alpha + ')';
+    var line = chart.addLineSeries({
+      color: clr, lineWidth: 2, lineStyle: tl.dashed ? 2 : 0,
+      priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      autoscaleInfoProvider: function () { return null; }
+    });
+    line.setData([
+      { time: et, value: Number(tl.price) || Number(tl.entry_price) },
+      { time: xt || et, value: Number(tl.exit_price) || Number(tl.price) || Number(tl.entry_price) }
+    ]);
+  }
+}
+
+function _renderOpenPositions(chart, positions, bars) {
+  if (!bars || !bars.length) return;
+  var lastBarTime = bars[bars.length - 1].time;
+  for (var i = 0; i < positions.length; i++) {
+    var p = positions[i];
+    var entry = Number(p.price || p.entry_price || p.entry);
+    if (!entry) continue;
+    var et = findNearestBarTime(bars, p.entry_time) || bars[Math.max(0, bars.length - 50)].time;
+    var lineStart = Math.max(bars[0].time, et - 24 * 3600);
+    var isLong = _isLong(p.side);
+
+    var entryLine = chart.addLineSeries({
+      color: isLong ? '#22c55e' : '#ef4444', lineWidth: 2,
+      priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      autoscaleInfoProvider: function () { return null; }
+    });
+    entryLine.setData([{ time: lineStart, value: entry }, { time: lastBarTime, value: entry }]);
+
+    if (p.sl) {
+      var slLine = chart.addLineSeries({
+        color: 'rgba(239,68,68,0.65)', lineWidth: 1, lineStyle: 2,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+        autoscaleInfoProvider: function () { return null; }
+      });
+      slLine.setData([{ time: lineStart, value: Number(p.sl) }, { time: lastBarTime, value: Number(p.sl) }]);
+    }
+    if (p.tp) {
+      var tpLine = chart.addLineSeries({
+        color: 'rgba(34,197,94,0.65)', lineWidth: 1, lineStyle: 2,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+        autoscaleInfoProvider: function () { return null; }
+      });
+      tpLine.setData([{ time: lineStart, value: Number(p.tp) }, { time: lastBarTime, value: Number(p.tp) }]);
+    }
+  }
+}
+
 
 /** Subscribe to crosshair for live trade tooltips */ 
 function _subscribeLiveTooltip(chart, container) { 
@@ -2016,16 +2525,17 @@ function closeChart() {
   if (panel) panel.className = 'bot-chart-panel';
   if (_candleChart) { _candleChart.remove(); _candleChart = null; }
   if (_rsiChart) { _rsiChart.remove(); _rsiChart = null; }
+  if (_chartResizeObs) { _chartResizeObs.disconnect(); _chartResizeObs = null; }
   _currentPair = null;
+  _chartFocus = null;
+  _lastChartData = null;
+  _lastChartPair = null;
 }
 
 function setRange(days) {
-  _currentRangeDays = days;
-  var chips = document.querySelectorAll('.bot-range-chip');
-  for (var i = 0; i < chips.length; i++) {
-    chips[i].classList.toggle('bot-range-active', parseInt(chips[i].getAttribute('data-days')) === days);
-  }
-  if (_currentPair) openChart(_currentPair);
+  _chartRange = Number(days) || 0;
+  _paintRangeNav();
+  if (_lastChartData) _renderCandlestick(_lastChartData);
 }
 
 function toggleTradeLines() {
@@ -2035,7 +2545,8 @@ function toggleTradeLines() {
     btn.textContent = _showTradeLines ? '📊 Trades: ON' : '📊 Trades: OFF';
     btn.style.color = _showTradeLines ? '#22c55e' : 'var(--c-text-dim)';
   }
-  if (_currentPair) openChart(_currentPair);
+  _paintLegend();
+  if (_lastChartData) _renderCandlestick(_lastChartData);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -2924,6 +3435,7 @@ function renderHistory(d) {
 
   var limit = _histAll ? trades.length : Math.min(trades.length, 10);
   var html = '';
+  _focusStore.hist = {};
   for (var i = 0; i < limit; i++) {
     var t = trades[i];
     var dir = (t.direction || t.side || '').toLowerCase();
@@ -2936,7 +3448,8 @@ function renderHistory(d) {
     var badge = _liveBadge(t);
     var name = sid ? ('<b>#' + escHtml(sid) + '</b>' + (slot ? ' <span class="cp-slotmini">' + escHtml(slot) + '</span>' : ''))
                    : '<span class="muted">' + escHtml(t.strategy || 'Testpfad') + '</span>';
-    html += '<tr class="bot-pos-row" onclick="BotDash.openChart(\'' + escHtml(sym) + '\')">' +
+    var fkH = _putFocus('hist', _focusFromTrade(d, t));
+    html += '<tr class="bot-pos-row" title="Kerzenchart mit SL/TP und Dauer öffnen" onclick="BotDash.openTradeChart(\'' + escHtml(sym) + '\',\'' + fkH + '\')">' +
       '<td class="cp-strat">' + (badge ? badge + ' ' : '') + name + '</td>' +
       '<td>' + fmtTime(t.closed_at || t.timestamp) + '</td>' +
       '<td><b>' + escHtml(sym) + '</b></td>' +
@@ -3208,6 +3721,10 @@ window.BotDash = {
   switchTab: switchTab,
   toggleParityDetail: toggleParityDetail,
   openChart: openChart,
+  openTradeChart: openTradeChart,
+  clearFocus: clearFocus,
+  setChartTF: setChartTF,
+  toggleIndicators: toggleIndicators,
   closeChart: closeChart,
   setRange: setRange,
   toggleTradeLines: toggleTradeLines,

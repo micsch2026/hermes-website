@@ -210,6 +210,11 @@ def build_candlestick_section(features, bot_id):
       <span class="bot-badge bot-badge-signal" id="{bot_id}-chart-strategy" style="margin-left:8px"></span>
     </div>
     <div style="display:flex;gap:var(--s-2);align-items:center">
+      <button id="{bot_id}-ind-toggle" class="bot-chart-close"
+        onclick="BotDash.toggleIndicators()"
+        style="background:rgba(56,189,248,0.12);color:#38bdf8;border:1px solid rgba(56,189,248,0.3)">
+        📈 Indikatoren: ON
+      </button>
       <button id="{bot_id}-trade-toggle" class="bot-chart-close"
         onclick="BotDash.toggleTradeLines()"
         style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)">
@@ -218,26 +223,23 @@ def build_candlestick_section(features, bot_id):
       <button class="bot-chart-close" onclick="BotDash.closeChart()">✕ Close</button>
     </div>
   </div>
+  <div class="bot-trade-focus" id="{bot_id}-trade-focus" style="display:none"></div>
   <div class="bot-pair-nav" id="{bot_id}-pair-nav"></div>
   <div class="bot-range-nav" id="{bot_id}-range-nav">
     <span class="bot-range-chip" data-days="0" onclick="BotDash.setRange(0)">All</span>
-    <span class="bot-range-chip bot-range-active" data-days="90" onclick="BotDash.setRange(90)">3M</span>
-    <span class="bot-range-chip" data-days="30" onclick="BotDash.setRange(30)">1M</span>
-    <span class="bot-range-chip" data-days="14" onclick="BotDash.setRange(14)">2W</span>
-    <span class="bot-range-chip" data-days="7" onclick="BotDash.setRange(7)">1W</span>
+    <span class="bot-range-chip" data-days="14" onclick="BotDash.setRange(14)">14T</span>
+    <span class="bot-range-chip" data-days="7" onclick="BotDash.setRange(7)">7T</span>
+    <span class="bot-range-chip bot-range-active" data-days="3" onclick="BotDash.setRange(3)">3T</span>
+    <span class="bot-range-chip" data-days="1" onclick="BotDash.setRange(1)">1T</span>
   </div>
   <div class="bot-chart-config" id="{bot_id}-chart-config"></div>
-  <div class="bot-chart-legend" style="display:flex;gap:var(--s-3);flex-wrap:wrap;margin-bottom:var(--s-2);font-size:var(--text-xs);color:var(--c-text-dim)">
-    <span><span style="color:#22c55e">━</span> Profit</span>
-    <span><span style="color:#ef4444">━</span> Loss</span>
-    <span><span style="color:#22c55e">┈</span> Timeout (profit)</span>
-    <span><span style="color:#ef4444">┈</span> Timeout (loss)</span>
-    <span style="opacity:0.6">Each arrow = one simulated backtest trade</span>
+  <div class="bot-chart-legend" id="{bot_id}-chart-legend" style="display:flex;gap:var(--s-3);flex-wrap:wrap;margin-bottom:var(--s-2);font-size:var(--text-xs);color:var(--c-text-dim)">
+    <span class="muted">Lade Chart…</span>
   </div>
   <div class="bot-chart-wrap">
     <div id="{bot_id}-candle-chart" style="height:320px"></div>
     <div class="bot-trade-tooltip" id="{bot_id}-trade-tooltip"></div>
-    <div class="bot-chart-rsi-label">RSI</div>
+    <div class="bot-chart-rsi-label" id="{bot_id}-rsi-label">RSI</div>
     <div id="{bot_id}-rsi-chart" style="height:100px"></div>
   </div>
 </div>'''
