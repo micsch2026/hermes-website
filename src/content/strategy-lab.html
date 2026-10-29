@@ -198,6 +198,8 @@
     <button class="sl4-filter" data-filter="tier-a">⭐ Tier A</button>
     <button class="sl4-filter" data-filter="ho-passed">✅ HO bestanden</button>
     <button class="sl4-filter" data-filter="fire">🔥 Feuer-Test</button>
+    <button class="sl4-filter" data-filter="b6-ready">🟢 B6 ready</button>
+    <button class="sl4-filter" data-filter="b6-repair">🛠 B6 repair</button>
   </div>
   <div id="sl4-content"></div>
 </div>
@@ -217,6 +219,9 @@ let currentTab = 'deploy';
 let currentFilter = 'all';
 let sortCol = 'id';
 let sortDir = 'desc';
+// Strategien-Tabelle: 165+ Zeilen sind unübersichtlich. Default Top 50,
+// "Alle anzeigen" bleibt ein Klick — keine Daten versteckt, nur gestaffelt.
+let deployShowAll = false;
 let searchTerm = '';
 
 function esc(s) {
@@ -334,6 +339,8 @@ function renderTable() {
     if (currentFilter === 'tier-a' && row.tier !== 'A' && currentTab === 'deploy') return false;
     if (currentFilter === 'ho-passed' && row.ho_status !== 'passed' && currentTab === 'deploy') return false;
     if (currentFilter === 'fire' && !row.fire_test && currentTab === 'deploy') return false;
+    if (currentFilter === 'b6-ready' && currentTab === 'deploy' && (!row.b6 || row.b6.verdict !== 'shadow_ready')) return false;
+    if (currentFilter === 'b6-repair' && currentTab === 'deploy' && (!row.b6 || row.b6.verdict !== 'repair')) return false;
     if (searchTerm) {
       const hay = JSON.stringify(row).toLowerCase();
       if (!hay.includes(searchTerm.toLowerCase())) return false;
@@ -350,6 +357,11 @@ function renderTable() {
     return va < vb ? 1 : -1;
   });
 
+  // Staffelung nur in der Strategien-Tabelle (Shadow bleibt voll offen).
+  const totalRows = data.length;
+  const staged = currentTab === 'deploy' && !deployShowAll && data.length > 50;
+  if (staged) data = data.slice(0, 50);
+
   let html = '<table class="sl4-table"><thead><tr>';
   for (const col of columns) {
     const cls = sortCol === col.key ? 'sorted-' + sortDir : '';
@@ -365,6 +377,12 @@ function renderTable() {
   }
   if (data.length === 0) html += '<tr><td colspan="' + columns.length + '" style="text-align:center;color:var(--dim);padding:2rem">Keine Ergebnisse</td></tr>';
   html += '</tbody></table>';
+  if (currentTab === 'deploy' && totalRows > 50) {
+    html += '<div style="display:flex;align-items:center;justify-content:center;gap:0.7rem;padding:0.7rem;font-size:0.8rem;color:var(--dim)">'
+      + '<span>Zeige <strong>' + data.length + '</strong> von <strong>' + totalRows + '</strong> Kandidaten</span>'
+      + '<button class="sl4-filter" style="cursor:pointer" onclick="deployShowAll=' + (!deployShowAll) + ';renderTable()">'
+      + (deployShowAll ? 'Nur Top 50' : 'Alle ' + totalRows + ' anzeigen') + '</button></div>';
+  }
   document.getElementById('sl4-content').innerHTML = html;
 }
 
@@ -2507,6 +2525,22 @@ function renderStrategeBoard() {
   html += '<div class="sb-meta">Modell: ' + esc(b.model || '—') + ' · Erstellt: ' + (b.generated_at ? new Date(b.generated_at).toLocaleString('de-DE') : '—') + '</div>';
   if (b.summary_de) html += '<div class="sb-summary">' + esc(b.summary_de) + '</div>';
   html += '</div>';
+
+  // 🔬 B6/Repair-Status (29.10.2026): der Stratege muss wissen, was das
+  // Lab gerade an den Shadow übergibt — und was in der Repair-Queue liegt.
+  var b6 = b.b6 || {};
+  if (b6.available) {
+    var b6r = b6.ready || [], b6p = b6.repair || [], b6c = b6.counts || {};
+    html += '<div class="sb-sec" style="border-left:3px solid #58a6ff;padding-left:0.6rem">';
+    html += '<div class="sb-sec-title">🔬 Lab-Pipeline (B6) — ' + (b6.active ? 'Gate scharf' : 'Schattenmodus') + '</div>';
+    html += '<div class="sb-summary">' + (b6.reviewed || 0) + ' bewertet · <b>' + b6r.length + '</b> shadow-ready' +
+      (b6r.length ? ' (' + b6r.map(function (r) { return '#' + r.id; }).join(', ') + ')' : '') +
+      ' · <b>' + b6p.length + '</b> repair' +
+      (b6p.length ? ' (' + b6p.map(function (r) { return '#' + r.id; }).join(', ') + ')' : '') +
+      ' · ' + (b6c.reject || 0) + ' reject · ' + (b6c.variant || 0) + ' variant</div>';
+    html += '<div class="sb-card-sub">B6 ist das Eingangs-Gate; der Shadow-Bestand bleibt unberührt. Repair: ' + esc(b6.next_repair_run || '—') + '. Nur shadow_ready wird übergeben.</div>';
+    html += '</div>';
+  }
 
   // 🙋 Entscheidungen, die der Stratege bewusst NICHT selbst trifft
   var dec = b.decisions || [];

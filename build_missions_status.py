@@ -15,6 +15,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import b6_status
+
 try:
     from zoneinfo import ZoneInfo
     BERLIN = ZoneInfo("Europe/Berlin")
@@ -256,6 +258,7 @@ def main():
         },
         "missions": missions,
         "proposals": proposals,
+        "b6": b6_status.load_b6_status(),
         "sources": [
             {"name": "missions", "path": str(BASE), "age_s": _age_s(BASE)},
             {"name": "mission_log", "path": str(LOG), "age_s": _age_s(LOG)},

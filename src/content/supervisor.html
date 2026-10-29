@@ -104,6 +104,11 @@
 
   <div class="sv-kpis" id="sv-kpis"></div>
 
+  <section class="sv-sec" id="sv-b6">
+    <h2>🔬 Lab-Pipeline (B6) <span class="sv-count" id="sv-b6-count"></span> <a class="sv-count" href="/strategy-lab">Details →</a></h2>
+    <div id="sv-b6"></div>
+  </section>
+
   <section class="sv-sec" id="sv-autonomy">
     <h2>🎛️ Autonomie &amp; nächste Schritte</h2>
     <div class="sv-strip">
@@ -705,6 +710,37 @@
     ((rk.unmapped_7d || 0) > 0 ? ' · ' + rk.unmapped_7d + ' Trade(s) ohne Region-Zuordnung ignoriert' : '') + '</div>';
   }
 
+  function renderB6(d) {
+    var b = d.b6 || {};
+    if (!b.available) {
+      $('sv-b6').innerHTML = '<div class="sv-dim">Noch kein B6-Lauf. Der Dienst <code>strategy-lab-deep-pass</code> läuft 6×/Tag.</div>';
+      $('sv-b6-count').textContent = '';
+      return;
+    }
+    var ready = b.ready || [], repair = b.repair || [];
+    var counts = b.counts || {};
+    var active = !!b.active;
+    $('sv-b6-count').textContent = b.reviewed ? (b.reviewed + ' Reviews') : '';
+    var html = '<div class="sv-strip">'
+      + '<div class="sv-card ' + (active ? 'ok' : 'warn') + '"><div class="sv-k">B6-Gate</div><div class="sv-v">' + (active ? 'scharf' : 'Schattenmodus') + '</div><div class="sv-s">ab ' + esc((b.enforce_after || '—').slice(0, 10)) + '</div></div>'
+      + '<div class="sv-card"><div class="sv-k">Bewertet</div><div class="sv-v">' + (b.reviewed || 0) + '</div><div class="sv-s">' + (counts.reject || 0) + ' reject · ' + (counts.variant || 0) + ' variant · ' + (counts.park || 0) + ' park</div></div>'
+      + '<div class="sv-card ok"><div class="sv-k">Shadow-ready</div><div class="sv-v">' + ready.length + '</div><div class="sv-s">' + (ready.length ? ready.map(function (r) { return '#' + r.id; }).join(', ') : 'keiner') + '</div></div>'
+      + '<div class="sv-card ' + (repair.length ? 'warn' : '') + '"><div class="sv-k">Repair-Queue</div><div class="sv-v">' + repair.length + '</div><div class="sv-s">' + (b.next_repair_run || '—') + '</div></div>'
+      + '</div>';
+    if (ready.length) {
+      html += '<div class="sv-cap">Übergabe: ' + ready.map(function (r) {
+        return '<b>#' + r.id + '</b> ' + esc((r.name || '').slice(0, 38));
+      }).join(' · ') + '</div>';
+    }
+    if (repair.length) {
+      html += '<div class="sv-cap">Repair: ' + repair.map(function (r) {
+        return '<b>#' + r.id + '</b> ' + esc((r.name || '').slice(0, 38));
+      }).join(' · ') + ' — max. 2 Varianten, Parent bleibt Benchmark.</div>';
+    }
+    html += '<div class="sv-cap">B6 prüft nur den Eingang; der Shadow-Bestand bleibt unberührt.</div>';
+    $('sv-b6').innerHTML = html;
+  }
+
   function render(d) {
     var recs = d.recommendations || { n: 0, items: [] };
     var rot = d.rotation || {};
@@ -722,6 +758,8 @@
     var applied = auto.applied || {};
     var wait = auto.waiting_user || {};
     var ar = auto.auto_releases || {};
+
+    renderB6(d);
 
     $('sv-meta').innerHTML = 'Woche <b>' + esc(d.week) + '</b> · Datenstand <b>' +
       dt(d.generated_at) + '</b>' + (d.next_board_run

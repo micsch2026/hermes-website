@@ -105,6 +105,11 @@
     <div class="mi-s" id="mi-next-run-note">Slots täglich 06/11/17 UTC (BZ)</div>
   </div>
 
+  <section class="mi-sec" id="mi-b6">
+    <h2>🔬 Lab-Pipeline (B6) <span class="mi-count" id="mi-b6-count"></span></h2>
+    <div id="mi-b6"></div>
+  </section>
+
   <section class="mi-sec">
     <h2>Aktive Missionen <span class="mi-count" id="mi-active-count"></span></h2>
     <div id="mi-active"></div>
@@ -116,8 +121,10 @@
   </section>
 
   <section class="mi-sec">
-    <h2>Abgeschlossen <span class="mi-count" id="mi-done-count"></span></h2>
-    <div id="mi-done"></div>
+    <details>
+      <summary style="cursor:pointer;font-size:var(--text-lg);font-weight:600;padding:0.2rem 0">Abgeschlossen <span class="mi-count" id="mi-done-count"></span> <span style="font-size:0.72rem;color:var(--c-text-dim);font-weight:400">aufklappen</span></summary>
+      <div id="mi-done" style="margin-top:0.6rem"></div>
+    </details>
   </section>
 
   <section class="mi-sec">
@@ -321,8 +328,31 @@
       '</div>';
   }
 
+  function renderB6(d) {
+    var b = d.b6 || {};
+    if (!b.available) {
+      $('mi-b6').innerHTML = '<div class="mi-dim">Noch kein B6-Lauf.</div>';
+      $('mi-b6-count').textContent = '';
+      return;
+    }
+    var ready = b.ready || [], repair = b.repair || [], c = b.counts || {};
+    $('mi-b6-count').textContent = '(' + (b.reviewed || 0) + ' Reviews)';
+    $('mi-b6').innerHTML =
+      '<div class="mi-li">' +
+        (b.active ? '🟢 <b>Gate scharf</b>' : '🟡 <b>Schattenmodus</b>') +
+        ' · <b>' + (b.reviewed || 0) + '</b> bewertet · <b>' + ready.length + '</b> shadow-ready' +
+        (ready.length ? ' (' + ready.map(function (r) { return '#' + r.id; }).join(', ') + ')' : '') +
+        ' · <b>' + repair.length + '</b> repair' +
+        (repair.length ? ' (' + repair.map(function (r) { return '#' + r.id; }).join(', ') + ')' : '') +
+        ' · ' + (c.reject || 0) + ' reject · ' + (c.variant || 0) + ' variant' +
+      '</div>' +
+      '<div class="mi-s">B6 ist das Eingangs-Gate; der Shadow-Bestand bleibt unberührt. Repair: ' +
+        esc(b.next_repair_run || '—') + '.</div>';
+  }
+
   function render(d) {
     var k = d.kpis || {};
+    renderB6(d);
     $('mi-meta').innerHTML = 'Datenstand <b>' + dt(d.generated_at) +
       '</b> · Auto-Refresh 120 s · Missionslayer (Supervisor)';
     var inProg = (k.stages_total || 0) > 0

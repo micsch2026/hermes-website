@@ -20,6 +20,8 @@ from collections import Counter
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 
+import b6_status
+
 try:
     from zoneinfo import ZoneInfo
     BERLIN = ZoneInfo("Europe/Berlin")
@@ -502,6 +504,7 @@ def main() -> int:
             "proposals_open": proposals_open,
         },
         "ops": ops,
+        "b6": b6_status.load_b6_status(),
     }
 
     _atomic_write(OUT, doc)
