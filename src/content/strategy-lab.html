@@ -47,6 +47,13 @@
   background:rgba(245,158,11,0.16); color:#f59e0b; border:1px solid rgba(245,158,11,0.45);
   font-size:0.62rem; font-weight:700; letter-spacing:0.4px; vertical-align:middle; white-space:nowrap; }
 .sl4-table tr.sl-live-row td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+.sl-demo-badge { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px;
+  background:rgba(148,163,184,0.14); color:#94a3b8; border:1px solid rgba(148,163,184,0.32);
+  font-size:0.62rem; font-weight:700; letter-spacing:0.4px; vertical-align:middle; white-space:nowrap; }
+/* Belegungs-Empfehlungen: dichte Entscheidungstabelle (29.10.2026) */
+.sl4-advisor { font-size:0.76rem; }
+.sl4-advisor th { padding:0.3rem 0.45rem; }
+.sl4-advisor td { padding:0.28rem 0.45rem; line-height:1.3; }
 .sl4-table .tier-a { color: var(--green); font-weight: 600; }
 .sl4-table .tier-b { color: var(--yellow); }
 .sl4-table .tier-c { color: var(--dim); }
@@ -967,6 +974,9 @@ function showDetail(row) {
 
 let shadowSortCol = 'net_pnl';
 let shadowSortDir = 'desc';
+// Offene Positionen: eigener Sort-State (Klick in den Spaltenkopf, wie Shadow-Tabelle).
+let shadowPosSortCol = null;   // null = Builder-Reihenfolge (neueste zuerst)
+let shadowPosSortDir = 'desc';
 
 function _sparkSVG(curve) {
   if (!Array.isArray(curve) || curve.length < 2) return '—';
@@ -1070,87 +1080,329 @@ function _updateShadowTableOnly() {
 }
 
 // ── Belegungs-Empfehlungen (Allocation Advisor; Embed: sd.advisor) ──
+// Kompakt (29.10.2026): Entscheidungs-Sicht — nur handlungsrelevante Slots als
+// dichte Tabelle, "behalten/beobachten" als eine Zeile, Begründungen eingeklappt.
+function _advBz(iso) {
+  try {
+    return new Date(iso).toLocaleString('de-DE', {timeZone:'Europe/Berlin', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+  } catch (e) { return String(iso || '—').slice(0, 16).replace('T', ' '); }
+}
+
+function _advStageBadge(bk, s, sd) {
+  const stage = s.stage || (
+    (sd.bots && sd.bots[bk] && sd.bots[bk].is_live) ? 'live' :
+    ((sd.bots && sd.bots[bk] && (sd.bots[bk].live_slots || []).indexOf(s.slot_id) >= 0) ? 'live' : 'demo')
+  );
+  if (stage === 'live') return ' <span class="sl-live-badge" title="Live-Konto' + (s.account_id ? ' ' + esc(String(s.account_id)) : '') + '">LIVE</span>';
+  return ' <span class="sl-demo-badge" title="Demo-Konto' + (s.account_id ? ' ' + esc(String(s.account_id)) : '') + '">DEMO</span>';
+}
+
 function _renderAdvisorSection(adv, minlotLine) {
-  // P2b: Min-Lot-Skip-Zeile (statisch, Freeze-Datum, risk_pct) — aus
-  // account_transfer_test.json; fehlt die Datei → „Min-Lot-Skip: —".
   const _mlHtml = minlotLine
-    ? '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.35rem" title="Min-Lot-Skip = Anteil der Trades, die am Mindest-Lot des Zielkontos scheitern (statisch, Freeze-Datum).">⚖️ ' + esc(minlotLine) + '</div>'
+    ? '<div style="font-size:0.7rem;color:var(--dim);margin-top:0.3rem" title="Min-Lot-Skip = Anteil der Trades, die am Mindest-Lot des Zielkontos scheitern (statisch, Freeze-Datum).">⚖️ ' + esc(minlotLine) + '</div>'
     : '';
   if (!adv || !adv.fleet) {
-    return _mlHtml ? '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.6rem 0.9rem">' + _mlHtml + '</div>' : '';
+    return _mlHtml ? '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.55rem 0.9rem">' + _mlHtml + '</div>' : '';
   }
   const AA_ICONS = {keep:'🟢', watch:'🟡', challenge_running:'⚔️', empty:'🎯', pull_candidate:'🟠', live_ok:'🟢', live_evidence:'⏳', live_blocked:'🔴', observe:'🏆', parity_report:'🔍', promotion_candidate:'🎯'};
-  const AA_LABELS = {keep:'behalten', watch:'beobachten', challenge_running:'Challenge läuft', empty:'unbesetzt', pull_candidate:'Rückstufen prüfen', live_ok:'live_ok', live_evidence:'Evidenz offen (Live)', live_blocked:'live_blocked', observe:'beobachten (fest)', parity_report:'Paritäts-Report', promotion_candidate:'Promotion-Kandidat (Echtgeld)'};
-  let ts = '';
-  try { ts = new Date(adv.generated_at).toLocaleString('de-DE', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}); } catch (e) { ts = adv.generated_at || ''; }
-  let html = '<div class="rd-section-title">🎯 Belegungs-Empfehlungen — Fleet Allocation Advisor</div>';
-  html += '<div class="rd-card" style="margin-bottom:0.9rem">';
-  html += '<div style="font-size:0.75rem;color:var(--dim);margin-bottom:0.55rem">Stand: ' + esc(ts) + ' Uhr' + (adv.stale ? ' · <strong>⚫ Daten älter als 30 h</strong>' : '') + ' · read-only, keine automatische Aktion</div>';
-  html += _mlHtml;
-  const _bots = Object.keys(adv.fleet).sort((a, b) => parseInt(a.slice(3)) - parseInt(b.slice(3)));
-  const _groups = {live: [], multi: [], single: [], champ: []};
-  for (const bk of _bots) {
+  const AA_LABELS = {keep:'behalten', watch:'beobachten', challenge_running:'Challenge läuft', empty:'unbesetzt', pull_candidate:'Rückstufen prüfen', live_ok:'live_ok', live_evidence:'Evidenz offen (Live)', live_blocked:'LIVE blockiert', observe:'beobachten (fest)', parity_report:'Paritäts-Report', promotion_candidate:'Promotion-Kandidat'};
+  const _order = {live_blocked:0, pull_candidate:1, promotion_candidate:2, empty:3, challenge_running:4, live_evidence:5, watch:6, parity_report:7, keep:8, observe:9, live_ok:10};
+  const sd = shadowData || {};
+  const rows = [];
+  const keepBits = [];
+  const cnt = {};
+  let nHigh = 0, nTotal = 0;
+  const botKeys = Object.keys(adv.fleet).sort((a, b) => parseInt(a.slice(3)) - parseInt(b.slice(3)));
+  for (const bk of botKeys) {
     const it = adv.fleet[bk] || {};
-    const g = it.role === 'live' ? 'live' : (it.type === 'multibot' ? 'multi' : (it.role === 'champion' ? 'champ' : 'single'));
-    _groups[g].push(bk);
+    for (const s of (it.slots || [])) {
+      const rec = s.recommendation || {};
+      const a = rec.action || '?';
+      cnt[a] = (cnt[a] || 0) + 1;
+      nTotal++;
+      if (rec.priority === 'high') nHigh++;
+      if (a === 'keep' || a === 'observe' || a === 'live_ok') {
+        keepBits.push(bk + ' ' + s.slot_id);
+        continue;
+      }
+      rows.push({bk: bk, it: it, s: s, rec: rec, a: a});
+    }
   }
-  const _gdefs = [['live', '🔴 LIVE — ECHTGELD'], ['multi', '🧩 SLOT-BOTS (sortenrein)'], ['single', '🎯 EINZELBOTS (Pipeline)'], ['champ', '🏆 CHAMPIONS (fest)']];
-  for (const [gk, glabel] of _gdefs) {
-    if (!_groups[gk].length) continue;
-    html += '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin:0.5rem 0 0.3rem">' + glabel + '</div>';
-    for (const bk of _groups[gk]) {
-      const it = adv.fleet[bk];
-      const slots = it.slots || [];
-      const _high = slots.some(s => ((s.recommendation || {}).priority === 'high'));
-      html += '<div style="border:1px solid rgba(128,128,128,0.25);border-radius:6px;padding:0.45rem 0.6rem;margin-bottom:0.4rem' + (_high ? ';border-left:3px solid #e05252' : '') + '">';
-      html += '<div style="font-weight:700;font-size:0.85rem">' + esc(bk) + ' <span style="color:var(--dim);font-weight:400">· ' + esc(it.asset_class || '') + ' · ' + (it.type === 'multibot' ? 'Multibot' : 'Einzelbot') + '</span></div>';
-      for (const s of slots) {
-        const rec = s.recommendation || {};
-        const ic = AA_ICONS[rec.action] || '⚪';
-        let line = '<div style="font-size:0.8rem;margin:0.15rem 0">' + ic + ' <strong>' + esc(s.slot_id) + '</strong>';
-        if (s.holder != null) line += ' · Halter #' + esc(String(s.holder));
-        if (s.challenge && s.challenge.candidate != null) line += ' · Challenge #' + esc(String(s.challenge.candidate)) + ' (Tag ' + (s.challenge.day || 1) + '/' + (s.challenge.of || 14) + ')';
-        line += ' · ' + esc(AA_LABELS[rec.action] || rec.action || '');
-        if (rec.summary) line += ' <span style="color:var(--dim)">— ' + esc(rec.summary) + '</span>';
-        line += (rec.priority === 'high' ? ' · <strong style="color:#e05252">HIGH</strong>' : '') + '</div>';
-        html += line;
+  rows.sort((x, y) => {
+    const px = x.rec.priority === 'high' ? 0 : 1, py = y.rec.priority === 'high' ? 0 : 1;
+    if (px !== py) return px - py;
+    const ox = _order[x.a] != null ? _order[x.a] : 99, oy = _order[y.a] != null ? _order[y.a] : 99;
+    if (ox !== oy) return ox - oy;
+    const bx = parseInt(x.bk.slice(3)), by = parseInt(y.bk.slice(3));
+    if (bx !== by) return bx - by;
+    return String(x.s.slot_id).localeCompare(String(y.s.slot_id));
+  });
+  let html = '<div class="rd-section-title">🎯 Belegungs-Empfehlungen — Fleet Allocation Advisor</div>';
+  html += '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.55rem 0.9rem">';
+  html += '<div style="display:flex;align-items:center;gap:0.35rem 0.7rem;flex-wrap:wrap;font-size:0.72rem;color:var(--dim)">';
+  html += '<strong style="font-size:0.8rem;color:var(--text)">' + nHigh + '× HIGH</strong>';
+  const _chips = [['live_blocked','🔴'],['pull_candidate','🟠'],['promotion_candidate','🎯'],['empty','🎯'],['challenge_running','⚔️'],['watch','🟡'],['live_evidence','⏳']];
+  for (const [k, ic] of _chips) {
+    if (!cnt[k]) continue;
+    html += '<span>' + ic + ' ' + esc(AA_LABELS[k] || k) + ' <strong style="color:var(--text)">' + cnt[k] + '</strong></span>';
+  }
+  html += '<span>· ' + nTotal + ' Slots · Stand ' + esc(_advBz(adv.generated_at)) + ' Uhr</span>';
+  if (adv.stale) html += '<span style="color:var(--red)">⚫ Daten &gt;30 h alt</span>';
+  html += '<span>read-only</span>';
+  html += '</div>';
+  if (_mlHtml) html += _mlHtml;
+  if (rows.length) {
+    html += '<div style="overflow-x:auto;margin-top:0.45rem"><table class="sl4-table sl4-advisor">';
+    html += '<thead><tr><th>Bot</th><th>Slot</th><th>Halter</th><th>Status</th><th>Prio</th><th>Kurzgrund</th></tr></thead><tbody>';
+    for (const r of rows) {
+      const rec = r.rec, s = r.s;
+      const ic = AA_ICONS[rec.action] || '⚪';
+      const status = AA_LABELS[rec.action] || rec.action || '';
+      const prio = rec.priority === 'high' ? '<strong style="color:#e05252">HIGH</strong>' : '<span style="color:var(--dim)">mid</span>';
+      let holder = s.holder != null ? '#' + esc(String(s.holder)) : '—';
+      if (s.challenge && s.challenge.candidate != null) {
+        holder = '⚔️ #' + esc(String(s.challenge.candidate)) + ' <span style="color:var(--dim)">T' + (s.challenge.day || 1) + '/' + (s.challenge.of || 14) + '</span>';
       }
-      html += '<details style="margin-top:0.25rem"><summary style="cursor:pointer;font-size:0.75rem;color:var(--dim)">Begründungen &amp; Kandidaten</summary>';
-      for (const s of slots) {
-        const rec = s.recommendation || {};
-        const rr = s.reasons || {};
-        html += '<div style="font-size:0.78rem;margin:0.45rem 0 0.2rem;font-weight:600">' + (AA_ICONS[rec.action] || '⚪') + ' ' + esc(s.slot_id) + ' — ' + esc(AA_LABELS[rec.action] || rec.action || '') + '</div>';
-        html += '<div style="font-size:0.76rem;line-height:1.45">';
-        html += '<div>📊 ' + esc(rr.evidence || '—') + '</div>';
-        html += '<div>🧩 ' + esc(rr.diversification || '—') + '</div>';
-        html += '<div>⚖️ ' + esc(rr.risk || '—') + '</div>';
-        if (s.parity && s.parity.status) {
-          html += '<div>🔗 Parität: ' + esc(s.parity.status) + ' — ' + (s.parity.matched || 0) + '/' + (s.parity.confirmed || 0) + ' Paare sauber';
-          if (s.parity.missed_count) html += ' · ' + s.parity.missed_count + '× Shadow ohne Bot-Gegenstück';
-          html += '</div>';
-          for (const m of (s.parity.missed || [])) {
-            html += '<div style="font-size:0.72rem;color:var(--dim);margin-left:0.9rem">• ' + esc(m.symbol || '') + ' ' + esc(m.direction || '') + (m.ts_bz ? ', ' + esc(m.ts_bz) : '') + ' — ohne Bot-Gegenstück' + (m.exit_reason ? ' (Shadow: ' + esc(m.exit_reason) + ')' : '') + '</div>';
-          }
-          const _kl = Object.entries(s.parity.klassen || {});
-          if (_kl.length) html += '<div style="font-size:0.72rem;color:var(--dim);margin-left:0.9rem">Klasse (14-T-Report): ' + esc(_kl.map(function(kv){return kv[0] + ' (' + kv[1] + ')';}).join(', ')) + '</div>';
-          if (s.parity.diagnosis) html += '<div style="font-size:0.72rem;color:var(--dim);margin-left:0.9rem">' + esc(s.parity.diagnosis) + '</div>';
-        }
-        html += '<div>🚫 ' + esc(rr.countercheck || '—') + '</div>';
-        html += '<div>🎯 ' + esc(rr.action || '—') + '</div>';
+      const sum = rec.summary ? String(rec.summary) : '';
+      html += '<tr>';
+      html += '<td style="white-space:nowrap"><strong>' + esc(r.bk) + '</strong>' + _advStageBadge(r.bk, s, sd) + '</td>';
+      html += '<td style="white-space:nowrap"><strong>' + esc(s.slot_id) + '</strong></td>';
+      html += '<td style="white-space:nowrap">' + holder + '</td>';
+      html += '<td style="white-space:nowrap">' + ic + ' ' + esc(status) + '</td>';
+      html += '<td>' + prio + '</td>';
+      html += '<td style="max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(sum) + '">' + (sum ? esc(sum.length > 130 ? sum.slice(0, 130) + '…' : sum) : '<span style="color:var(--dim)">—</span>') + '</td>';
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+  } else {
+    html += '<div style="font-size:0.78rem;color:var(--green);margin-top:0.35rem">🟢 Keine Handlungs-Empfehlung — alle Slots behalten/beobachten.</div>';
+  }
+  if (keepBits.length) {
+    html += '<div style="font-size:0.7rem;color:var(--dim);margin-top:0.4rem">🟢 unauffällig: <strong style="color:var(--text)">' + keepBits.length + '</strong> Slots — ' + esc(keepBits.join(' · ')) + '</div>';
+  }
+  if (rows.length) {
+    html += '<details style="margin-top:0.35rem"><summary style="cursor:pointer;font-size:0.74rem;color:var(--dim)">Begründungen &amp; Kandidaten (' + rows.length + ' handlungsrelevante Slots)</summary>';
+    for (const r of rows) {
+      const rec = r.rec, s = r.s, rr = s.reasons || {};
+      const ic = AA_ICONS[rec.action] || '⚪';
+      html += '<div style="font-size:0.76rem;margin:0.45rem 0 0.15rem;font-weight:600">' + ic + ' ' + esc(r.bk) + ' ' + esc(s.slot_id) + ' — ' + esc(AA_LABELS[rec.action] || rec.action || '') + (rec.priority === 'high' ? ' · HIGH' : '') + '</div>';
+      html += '<div style="font-size:0.73rem;line-height:1.45;color:var(--dim)">';
+      html += '<div>📊 ' + esc(rr.evidence || '—') + '</div>';
+      html += '<div>🧩 ' + esc(rr.diversification || '—') + '</div>';
+      html += '<div>⚖️ ' + esc(rr.risk || '—') + '</div>';
+      if (s.parity && s.parity.status) {
+        html += '<div>🔗 Parität: ' + esc(s.parity.status) + ' — ' + (s.parity.matched || 0) + '/' + (s.parity.confirmed || 0) + ' Paare sauber';
+        if (s.parity.missed_count) html += ' · ' + s.parity.missed_count + '× Shadow ohne Bot-Gegenstück';
         html += '</div>';
-        const cands = s.candidates || [];
-        if (cands.length) {
-          html += '<div style="font-size:0.74rem;color:var(--dim);margin:0.2rem 0 0.3rem">Kandidaten: ';
-          html += cands.map(c => '#' + esc(String(c.sid)) + ' — ' + esc(c.why || '') + (c.ko ? ' (KO: ' + esc(c.ko) + ')' : '')).join(' · ');
-          html += '</div>';
+        for (const m of (s.parity.missed || [])) {
+          html += '<div style="font-size:0.7rem;margin-left:0.8rem">• ' + esc(m.symbol || '') + ' ' + esc(m.direction || '') + (m.ts_bz ? ', ' + esc(m.ts_bz) : '') + ' — ohne Bot-Gegenstück' + (m.exit_reason ? ' (Shadow: ' + esc(m.exit_reason) + ')' : '') + '</div>';
         }
       }
-      html += '</details>';
+      html += '<div>🚫 ' + esc(rr.countercheck || '—') + '</div>';
+      html += '<div>🎯 ' + esc(rr.action || '—') + '</div>';
+      const cands = s.candidates || [];
+      if (cands.length) {
+        html += '<div>Kandidaten: ' + cands.map(c => '#' + esc(String(c.sid)) + ' — ' + esc(c.why || '') + (c.ko ? ' (KO: ' + esc(c.ko) + ')' : '')).join(' · ') + '</div>';
+      }
       html += '</div>';
     }
+    html += '</details>';
   }
   html += '</div>';
   return html;
+}
+
+// ── Offene Positionen: sortierbar (Klick in den Spaltenkopf) ────────────────
+// Sortiert wird nur die Shadow-Referenz; 🤖-Spiegelzeilen bleiben direkt unter
+// ihrer Referenz (gleiche Spalten, Broker-Fill). Bot-only-Zeilen bleiben am Ende.
+function _fmtDurPos(sec) {
+  if (sec == null) return '—';
+  if (!sec || sec < 60) return '< 1m';
+  const m = Math.floor(sec / 60), h = Math.floor(m / 60), d = Math.floor(h / 24);
+  if (d > 0) return d + 'd ' + (h % 24) + 'h';
+  if (h > 0) return h + 'h ' + (m % 60) + 'm';
+  return m + 'm';
+}
+
+function setShadowPosSort(col) {
+  if (shadowPosSortCol === col) {
+    shadowPosSortDir = shadowPosSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    shadowPosSortCol = col;
+    shadowPosSortDir = (col === 'id' || col === 'symbol' || col === 'direction') ? 'asc' : 'desc';
+  }
+  _updateShadowPosTableOnly();
+}
+
+function _posSortVal(p, col) {
+  if (col === 'direction') {
+    const d = String(p.direction || '').toLowerCase();
+    return d === 'long' ? 0 : (d === 'short' ? 1 : 2);
+  }
+  if (col === 'id') return p.id != null ? Number(p.id) : null;
+  const v = p[col];
+  if (typeof v === 'number') return v;
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return isNaN(n) ? String(v).toLowerCase() : n;
+}
+
+function _sortPosRows(rows, col, dir) {
+  if (!col) return rows;
+  return rows.map(function(p, i) { return {p: p, i: i}; }).sort(function(a, b) {
+    const va = _posSortVal(a.p, col), vb = _posSortVal(b.p, col);
+    if (va == null && vb == null) return a.i - b.i;
+    if (va == null) return 1;              // leere Werte immer ans Ende
+    if (vb == null) return -1;
+    let c;
+    if (typeof va === 'string' || typeof vb === 'string') {
+      c = String(va).localeCompare(String(vb), 'de');
+    } else {
+      c = va < vb ? -1 : (va > vb ? 1 : 0);
+    }
+    if (c === 0) return a.i - b.i;         // stabil
+    return dir === 'asc' ? c : -c;
+  }).map(function(x) { return x.p; });
+}
+
+function _openPosTableHtml() {
+  const sd = shadowData || {};
+  const openPos = _sortPosRows((sd.open_positions || []).slice(), shadowPosSortCol, shadowPosSortDir);
+  const botOnly = _sortPosRows((sd.bot_only_positions || []).slice(), shadowPosSortCol, shadowPosSortDir);
+  const cols = [
+    {k:'id', l:'# ID'},
+    {k:'symbol', l:'Symbol'},
+    {k:'direction', l:'Richtung'},
+    {k:'hold_seconds', l:'Dauer'},
+    {k:'margin_eur', l:'Margin', num:true},
+    {k:'sl_atr', l:'SL (ATR)', num:true},
+    {k:'tp_atr', l:'TP (ATR)', num:true},
+    {k:'rr', l:'R:R', num:true},
+    {k:'unrealized_pnl', l:'Unrealized PnL', num:true}
+  ];
+  let html = '<table class="sl4-table"><thead><tr>';
+  for (const c of cols) {
+    const cls = (c.num ? 'num ' : '') + (shadowPosSortCol === c.k ? 'sorted-' + shadowPosSortDir : '');
+    html += '<th class="' + cls.trim() + '" title="Klicken zum Sortieren" data-col="' + c.k + '" onclick="setShadowPosSort(this.dataset.col)">' + c.l + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  for (const p of openPos) {
+    const dir = (p.direction || '').toLowerCase();
+    const dirColor = dir === 'long' ? 'var(--green)' : 'var(--red)';
+    const dirIcon = dir === 'long' ? '🟢 LONG' : '🔴 SHORT';
+    const pnl = p.unrealized_pnl || 0;
+    const pnlCls = pnl >= 0 ? 'pos' : 'neg';
+    const pnlSign = pnl >= 0 ? '+' : '';
+    const pipsSign = (p.unrealized_pips || 0) >= 0 ? '+' : '';
+    const slAtr = p.sl_atr != null ? p.sl_atr.toFixed(1) + 'x' : '—';
+    const tpAtr = p.tp_atr != null ? p.tp_atr.toFixed(1) + 'x' : '—';
+    const rrStr = p.rr != null ? p.rr.toFixed(1) : '—';
+    const durStr = _fmtDurPos(p.hold_seconds);
+    const marginStr = (p.margin_eur != null ? p.margin_eur.toFixed(1) : '—') + '€';
+    const liveBadge = p.is_live ? '<span class="sl-live-badge" title="Echtgeld-Konto ' + esc((p.live_accounts || []).join(', ')) + '">💶 ECHTGELD</span>' : '';
+
+    html += '<tr' + (p.is_live ? ' class="sl-live-row"' : '') + '>';
+    html += '<td><strong>#' + p.id + '</strong>' + liveBadge + '</td>';
+    html += '<td><strong>' + esc(p.symbol) + '</strong></td>';
+    html += '<td style="color:' + dirColor + ';font-weight:700">' + dirIcon + '</td>';
+    html += '<td>' + durStr + '</td>';
+    html += '<td class="num">' + marginStr + '</td>';
+    html += '<td class="num" style="color:var(--red)">' + slAtr + '</td>';
+    html += '<td class="num" style="color:var(--green)">' + tpAtr + '</td>';
+    html += '<td class="num">' + rrStr + '</td>';
+    html += '<td class="num"><strong class="' + pnlCls + '">' + pnlSign + pnl.toFixed(2) + '€ (' + pipsSign + (p.unrealized_pips || 0) + 'p)</strong></td>';
+    html += '</tr>';
+    const bms = (p.bots && p.bots.length) ? p.bots : (p.bot ? [p.bot] : []);
+    for (const bm of bms) {
+      const bIcon = bm.sync === 'sync' ? '🟢' : (bm.sync === 'drift' ? '🟡' : (bm.sync === 'missing' ? '🔴' : '⚫'));
+      const bTxt = bm.sync === 'sync' ? 'Sync' : (bm.sync === 'drift' ? 'Drift' : (bm.sync === 'missing' ? 'fehlt' : 'stale'));
+      const bTitle = '🤖 Bot-Spiegel (' + bTxt + (bm.diff_pips != null ? ', ' + bm.diff_pips + 'p' : '') + (bm.gap_h != null ? ', Fill +' + bm.gap_h + 'h' : '') + ')';
+      const bDir = (bm.direction || '').toLowerCase();
+      const bDirColor = bDir === 'long' ? 'var(--green)' : 'var(--red)';
+      const bDirIcon = bDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
+      if (bm.entry != null) {
+        const bPnl = bm.unrealized_pnl;
+        const bHasPnl = bPnl != null;
+        const bPnlCls = bHasPnl ? (bPnl >= 0 ? 'pos' : 'neg') : '';
+        const bPnlSign = bHasPnl && bPnl >= 0 ? '+' : '';
+        const bPipsSign = (bm.unrealized_pips || 0) >= 0 ? '+' : '';
+        const bLive = bm.is_live ? ' <span class="sl-live-badge" title="Echtgeld-Konto ' + esc(bm.account_id || '') + '">💶 ECHTGELD</span>' : '';
+        html += '<tr' + (bm.is_live ? ' class="sl-live-row"' : '') + ' style="font-size:0.8rem" title="' + esc(bTitle) + '">';
+        html += '<td style="color:var(--dim)">🤖 <strong>' + esc(bm.name) + (bm.slot ? ' · ' + esc(bm.slot) : '') + '</strong> ' + bIcon + (bm.stale ? ' ⚫' : '') + bLive + '</td>';
+        html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
+        html += '<td style="color:' + bDirColor + ';font-weight:700">' + bDirIcon + '</td>';
+        html += '<td>' + _fmtDurPos(bm.hold_seconds) + '</td>';
+        html += '<td class="num" style="color:var(--dim)">' + (bm.margin_eur != null ? bm.margin_eur.toFixed(1) + '€' : '—') + '</td>';
+        html += '<td class="num" style="color:var(--red)">' + (bm.sl_atr != null ? bm.sl_atr.toFixed(1) + 'x' : '—') + '</td>';
+        html += '<td class="num" style="color:var(--green)">' + (bm.tp_atr != null ? bm.tp_atr.toFixed(1) + 'x' : '—') + '</td>';
+        html += '<td class="num">' + (bm.rr != null ? bm.rr.toFixed(1) : '—') + '</td>';
+        const bPnlCell = bHasPnl
+          ? '<strong class="' + bPnlCls + '">' + bPnlSign + bPnl.toFixed(2) + '€ (' + bPipsSign + (bm.unrealized_pips || 0) + 'p)</strong>'
+          : '<span style="color:var(--dim)">—</span>';
+        html += '<td class="num">' + bPnlCell + '</td>';
+        html += '</tr>';
+      } else {
+        html += '<tr style="font-size:0.8rem">';
+        html += '<td style="color:var(--dim)">🤖 ' + esc(bm.name) + (bm.stale ? ' ⚫' : '') + '</td>';
+        html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
+        html += '<td>' + bIcon + ' ' + bTxt + '</td>';
+        html += '<td colspan="6" style="color:var(--dim)">keine Broker-Position</td>';
+        html += '</tr>';
+      }
+    }
+  }
+  // Bot-Positionen OHNE Shadow-Pendant — eigene volle Zeilen am Tabellenende.
+  if (botOnly.length > 0) {
+    html += '<tr><td colspan="9" style="color:var(--yellow);font-size:0.75rem;border-top:2px solid var(--yellow);padding-top:0.4rem">⚠️ Bot-Positionen ohne Shadow-Pendant (' + botOnly.length + ') — Bot handelt, Shadow hat (noch) keine Position:</td></tr>';
+    for (const bo of botOnly) {
+      const boDir = (bo.direction || '').toLowerCase();
+      const boDirColor = boDir === 'long' ? 'var(--green)' : 'var(--red)';
+      const boDirIcon = boDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
+      const boPnl = bo.unrealized_pnl;
+      const boHasPnl = boPnl != null;
+      const boPnlCls = boHasPnl ? (boPnl >= 0 ? 'pos' : 'neg') : '';
+      const boPnlSign = boHasPnl && boPnl >= 0 ? '+' : '';
+      const boPipsSign = (bo.unrealized_pips || 0) >= 0 ? '+' : '';
+      const boTitle = '🤖 ' + bo.bot + ' — Bot-Position ohne Shadow-Spiegel'
+        + (bo.stale ? ' (positions_live >30min stale)' : '')
+        + (bo.entry != null ? ', Entry @' + bo.entry : '')
+        + ' — Broker-Sicht (positions_live)';
+      const boLive = bo.is_live ? ' <span class="sl-live-badge" title="Echtgeld-Konto ' + esc(bo.account_id || '') + '">💶 ECHTGELD</span>' : '';
+      html += '<tr' + (bo.is_live ? ' class="sl-live-row"' : '') + ' style="font-size:0.8rem" title="' + esc(boTitle) + '">';
+      html += '<td style="color:var(--yellow)">🤖 <strong>' + esc(bo.bot) + '</strong> ⚠️' + boLive + '</td>';
+      html += '<td style="color:var(--dim)">' + esc(bo.symbol) + '</td>';
+      html += '<td style="color:' + boDirColor + ';font-weight:700">' + boDirIcon + '</td>';
+      html += '<td>' + _fmtDurPos(bo.hold_seconds) + '</td>';
+      html += '<td class="num" style="color:var(--dim)">' + (bo.margin_eur != null ? bo.margin_eur.toFixed(1) + '€' : '—') + '</td>';
+      html += '<td class="num" style="color:var(--dim)">—</td>';
+      html += '<td class="num" style="color:var(--dim)">—</td>';
+      html += '<td class="num">' + (bo.rr != null ? bo.rr.toFixed(1) : '—') + '</td>';
+      const boPnlCell = boHasPnl
+        ? '<strong class="' + boPnlCls + '">' + boPnlSign + boPnl.toFixed(2) + '€ (' + boPipsSign + (bo.unrealized_pips || 0) + 'p)</strong>'
+        : '<span style="color:var(--dim)" title="Keine frische Preisquelle (Spot stale/fehlt, keine Bars) — Anzeige-Doktrin: lieber — als Phantom-Wert">—</span>';
+      html += '<td class="num">' + boPnlCell + '</td>';
+      html += '</tr>';
+    }
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+function _openPosSectionHtml() {
+  const sd = shadowData || {};
+  const openPos = sd.open_positions || [];
+  const botOnly = sd.bot_only_positions || [];
+  if (!openPos.length && !botOnly.length) return '';
+  const nBotRows = openPos.reduce(function(n, p) { return n + (((p.bots && p.bots.length) ? p.bots.length : (p.bot ? 1 : 0))); }, 0);
+  let html = '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ' Shadow' + (nBotRows ? ' · ' + nBotRows + ' Bot-Spiegel' : '') + (botOnly.length ? ' · ' + botOnly.length + ' ohne Pendant' : '') + ')</div>';
+  html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.35rem">🤖 = Bot-Spiegel (gleiche Spalten, Broker-Fill) · Ampel: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min · 💶 Echtgeld · <span title="Toleranz: FX 3p / Metalle 50p / Indizes 30p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung). ⚠️-Zeilen = Bot-Positionen ohne Shadow-Pendant. Spaltenkopf klicken = sortieren.">ⓘ Details</span></div>';
+  html += '<div class="rd-card" id="sl4-pos-card" style="overflow-x:auto;margin-bottom:1rem">' + _openPosTableHtml() + '</div>';
+  return html;
+}
+
+function _updateShadowPosTableOnly() {
+  const card = document.getElementById('sl4-pos-card');
+  if (card) card.innerHTML = _openPosTableHtml();
 }
 
 // ── Shadow Dashboard ──
@@ -1173,70 +1425,51 @@ function renderShadowDashboard() {
     if (shadowSortDir === 'asc') return va > vb ? 1 : (va < vb ? -1 : 0);
     return va < vb ? 1 : (va > vb ? -1 : 0);
   });
-  const openPos = shadowData.open_positions || [];
   const sd = shadowData;
   let html = '';
 
+  // ── Belegungs-Empfehlungen: Entscheidungs-Sicht zuerst (29.10.2026) ──
+  html += _renderAdvisorSection(sd.advisor,
+    (typeof catalogData !== 'undefined' && catalogData) ? catalogData.minlot_skip_line : null);
+
   // ── B6-Übergabe (29.10.2026): Eingangs-Gate, Bestand unberührt ──
-  // Zeigt nur Kandidaten, die NICHT bereits im Shadow sind. Die 120 Slots
-  // darunter sind der laufende OOS-Test und werden von B6 nicht angefasst.
+  // Kompakt: eine Statuszeile, Kandidaten/Begründung hinter "Details".
   const b6h = sd.b6_handover;
   if (b6h) {
     const ready = b6h.ready || [];
     const bench = b6h.bench || [];
     const active = !!b6h.active;
     const ea = b6h.enforce_after ? String(b6h.enforce_after).slice(0, 10) : '—';
-    html += '<div class="rd-card" style="border-left:3px solid #58a6ff;margin-bottom:0.8rem">';
-    html += '<div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;margin-bottom:0.35rem">'
-         + '<strong>🧪 B6-Übergabe an den Shadow</strong>'
+    html += '<div class="rd-card" style="border-left:3px solid #58a6ff;margin-bottom:0.7rem;padding:0.5rem 0.9rem">';
+    html += '<div style="display:flex;align-items:center;gap:0.35rem 0.7rem;flex-wrap:wrap;font-size:0.78rem">'
+         + '<strong>🧪 B6-Eingang</strong>'
          + '<span class="rd-pill ' + (active ? 'ok' : 'dim') + '">' + (active ? 'Gate aktiv' : 'Schattenmodus') + '</span>'
-         + '<span style="font-size:0.72rem;color:var(--dim)">Aktiv ab ' + ea + ' · Lauf ' + esc(String(b6h.generated_at || '—').slice(0, 16).replace('T', ' ')) + '</span>'
+         + '<span><strong>' + ready.length + '</strong> ready · <strong>' + bench.length + '</strong> Bench · <strong>' + (b6h.total_slots ?? 120) + '</strong> Bestands-Slots unverändert</span>'
+         + '<span style="color:var(--dim);font-size:0.7rem">seit ' + esc(ea) + ' · Lauf ' + esc(_advBz(b6h.generated_at)) + ' BZ</span>'
          + '</div>';
-    html += '<div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">'
-         + 'Bestehende Slots: <strong>' + (b6h.total_slots ?? 120) + '</strong> — unverändert. '
-         + 'B6 prüft nur den <strong>Eingang</strong> (Hold-out, Tradeability, Fire-Test, Kern-Neuheit). '
-         + '<strong>' + ready.length + '</strong> ready · <strong>' + bench.length + '</strong> Bench (slow/repair).'
-         + '</div>';
+    html += '<details style="margin-top:0.25rem"><summary style="cursor:pointer;font-size:0.72rem;color:var(--dim)">Kandidaten &amp; Begründung</summary>';
+    html += '<div style="font-size:0.74rem;color:var(--dim);margin-top:0.3rem;line-height:1.45">B6 prüft nur den <strong>Eingang</strong> (Hold-out, Tradeability, Fire-Test, Kern-Neuheit). Die bestehenden Slots reifen unverändert weiter.</div>';
     if (ready.length) {
-      html += '<div style="font-size:0.8rem;margin-bottom:0.25rem">🟢 <strong>Shadow-ready:</strong> ';
-      html += ready.slice(0, 6).map(r => '#<strong>' + r.id + '</strong> ' + esc((r.name || '').slice(0, 34))
-        + (r.holdout_pf != null ? ' <span style="color:var(--dim)">(HO PF ' + r.holdout_pf + ')</span>' : '')).join(' · ');
-      html += '</div>';
+      html += '<div style="font-size:0.76rem;margin-top:0.25rem">🟢 Shadow-ready: ' + ready.slice(0, 6).map(r => '#<strong>' + r.id + '</strong> ' + esc((r.name || '').slice(0, 40)) + (r.holdout_pf != null ? ' <span style="color:var(--dim)">(HO PF ' + r.holdout_pf + ')</span>' : '')).join(' · ') + '</div>';
     } else {
-      html += '<div style="font-size:0.8rem;color:var(--dim);margin-bottom:0.25rem">🟢 Kein neuer Kandidat shadow-ready — der Bestand reift weiter.</div>';
+      html += '<div style="font-size:0.76rem;color:var(--dim);margin-top:0.25rem">🟢 Kein neuer Kandidat shadow-ready.</div>';
     }
     if (bench.length) {
-      html += '<div style="font-size:0.75rem;color:var(--dim)">🛠 Bench: '
-        + bench.slice(0, 5).map(r => '#' + r.id + ' ' + (r.verdict === 'repair' ? 'repair' : 'slow')).join(' · ')
-        + '</div>';
+      html += '<div style="font-size:0.74rem;color:var(--dim);margin-top:0.15rem">🛠 Bench: ' + bench.slice(0, 5).map(r => '#' + r.id + ' ' + (r.verdict === 'repair' ? 'repair' : 'slow')).join(' · ') + '</div>';
     }
-    html += '</div>';
+    html += '</details></div>';
   }
 
-  // ── P2 W3a (23.10.2026): ehrliche Nenner im Shadow-Kopf ──
-  // Zahlen NUR aus evidence_kpi (nie aus der aktuell gerenderten Liste neu
-  // zaehlen); fehlende Felder → „—".
+  // ── P2 W3a/W4-min-B: kompakter Status (Evidenz + Rotation) ──
+  // Zahlen NUR aus evidence_kpi (nie aus der gerenderten Liste neu zaehlen).
   {
     const _kpi = sd.evidence_kpi || null;
     const _num = (k) => (_kpi && _kpi[k] != null) ? _kpi[k] : '—';
-    const _stand = (_kpi && _kpi.generated) ? String(_kpi.generated) : '—';
+    const _standRaw = (_kpi && _kpi.generated) ? String(_kpi.generated) : '—';
+    const _stand = _advBz(_standRaw);
     const _tip = 'Evidenz-Nenner aus evidence_kpi.json (Tool shadow_evidence_kpi.py). '
       + '„mit n≥20" = Slots mit mindestens 20 regulären Abschlüssen (geschlossene Trades); '
-      + '„ohne Trade" = Slots ohne einen einzigen Abschluss. Stand: ' + _stand;
-    html += '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.6rem 0.9rem;border-left:3px solid var(--blue)">';
-    html += '<div style="font-size:0.82rem" title="' + esc(_tip) + '">📊 <strong>' + _num('slots_total') + '</strong> Slots · <strong>' + _num('n_ge_20') + '</strong> mit n≥20 · <strong>' + _num('n_eq_0') + '</strong> ohne Trade';
-    html += ' <span style="color:var(--dim);font-size:0.72rem">(100er-Basis = evidence_kpi · reguläre Abschlüsse · Stand ' + esc(_stand) + ')</span></div>';
-    // P2b: Shadow-Evidenz-Basis der Zahlen explizit (nie mit 1.870 Datei-Trades
-    // oder 13.743 Pool-Trade-Zeilen vermischen).
-    html += '<div style="font-size:0.7rem;color:var(--dim);margin-top:0.2rem">Shadow-Basis: 1.527 saubere Trades (tp/sl/timeout, |net|≤500 €, keine @-Instanzen)</div>';
-    html += '</div>';
-  }
-
-  // ── P2b W4-min-B: Kachel „Rotations-Integrität" (letzter belegter Apply-Lauf)
-  //    + W3c/Nenner: Pool-Zeile „38 Kandidaten · 118 Zielzuordnungen". Quelle:
-  //    catalog.json (rotation_integrity/rotation_pool). Kein Apply → unbekannt;
-  //    >7 d → veraltet. IMMER mit ts + run_id, keine Teil-Häkchen.
-  {
+      + '„ohne Trade" = Slots ohne einen einzigen Abschluss. Stand: ' + _standRaw;
     const _cd = (typeof catalogData !== 'undefined' && catalogData) ? catalogData : {};
     const _ri = _cd.rotation_integrity || null;
     const _rp = _cd.rotation_pool || null;
@@ -1249,179 +1482,11 @@ function renderShadowDashboard() {
           + ' = Trade-Zeilen im Rotations-Pool-Fenster (n_valid_trades)';
       }
     }
-    html += '<div class="rd-card" style="margin-bottom:0.9rem;padding:0.6rem 0.9rem;border-left:3px solid var(--purple)">';
-    html += '<div style="font-size:0.82rem">🔄 <strong>Rotation</strong> · <span title="' + esc(_rpTip) + '">' + esc(rotationPoolLine(_rp)) + '</span></div>';
+    html += '<div class="rd-card" style="margin-bottom:0.7rem;padding:0.5rem 0.9rem;border-left:3px solid var(--blue)">';
+    html += '<div style="font-size:0.8rem" title="' + esc(_tip) + '">📊 <strong>' + _num('slots_total') + '</strong> Slots · <strong>' + _num('n_ge_20') + '</strong> mit n≥20 · <strong>' + _num('n_eq_0') + '</strong> ohne Trade <span style="color:var(--dim);font-size:0.7rem">· 100er-Basis evidence_kpi · Stand ' + esc(_stand) + ' BZ</span></div>';
+    html += '<div style="font-size:0.8rem;margin-top:0.2rem">🔄 <strong>Rotation</strong> · <span title="' + esc(_rpTip) + '">' + esc(rotationPoolLine(_rp)) + '</span></div>';
     html += rotationIntegrityHtml(_ri);
-    html += '</div>';
-  }
-
-  // ── Belegungs-Empfehlungen (Allocation Advisor, 2026-10-05) ──
-  // Ganz oben: Entscheidungs-Sicht VOR den Diagnose-Sektionen (User-Vorgabe).
-  html += _renderAdvisorSection(sd.advisor,
-    (typeof catalogData !== 'undefined' && catalogData) ? catalogData.minlot_skip_line : null);
-
-  // ── Demo-Bots Übersicht (Kopfzeile) ──
-  const botsData = sd.bots || {};
-  const botKeys = Object.keys(botsData).sort((a,b)=>parseInt(a.slice(3))-parseInt(b.slice(3)));
-  if (botKeys.length > 0) {
-    // Gruppen (14.10.2026): LIVE → LIVE/DEMO-SPLIT (Live-Slots auf Echtgeld,
-    // bots[].live_split vom Portfolio-Builder) → DEMO. Innerhalb numerisch.
-    const liveKeys = botKeys.filter(k => botsData[k].is_live);
-    const splitKeys = botKeys.filter(k => !botsData[k].is_live && botsData[k].live_split);
-    const demoKeys = botKeys.filter(k => !botsData[k].is_live && !botsData[k].live_split);
-    const ordered = liveKeys.map(k=>['live',k]).concat(splitKeys.map(k=>['split',k])).concat(demoKeys.map(k=>['demo',k]));
-
-  // Multibot-Kennzeichnung (2026-09-28; erweitert 01.10.26: auch >=2 fixe
-  // Slots = MULTI, 'max N Slots' aus bots[].slots_target): fixe Slots aus
-  // strategies[].deployed_bots + Rotationsslots aus bot_rotation_slots. Kein Hardcode.
-  const rotMap = sd.bot_rotation_slots || {};
-  const slotAgg = {};
-  for (const s of strats) {
-    for (const db of (s.deployed_bots || [])) {
-      if (db && db.bot) (slotAgg[db.bot] = slotAgg[db.bot] || []).push({slot: db.slot || null, id: s.id});
-    }
-  }
-  function _multiSlotsLine(bk) {
-    const parts = [];
-    const _fx = (slotAgg[bk] || []).slice().sort(function(a, b) { return String(a.slot || '').localeCompare(String(b.slot || '')); });
-    for (const e of _fx) parts.push((e.slot ? e.slot + ' ' : '') + '#' + e.id);
-    for (const rs of (rotMap[bk] || [])) {
-      let t = rs.slot_id || 'rot';
-      const ch = rs.challenge || {};
-      if (ch.candidate != null) t += ' → #' + ch.candidate + ' (Tag ' + (ch.day || 1) + '/' + (ch.days_total || 14) + ')';
-      else if (rs.holder != null) t += ' → #' + rs.holder;
-      else t += ' (frei)';
-      parts.push(t);
-    }
-    const _planned = (botsData[bk] && botsData[bk].slots_planned) || [];
-    for (const p of _planned) parts.push(p + ' (geplant)');
-    if (botsData[bk] && botsData[bk].slots_target) {
-      const _shown = (slotAgg[bk] || []).filter(function(e) { return e.slot; }).length
-                    + (rotMap[bk] || []).length + _planned.length;
-      parts.push('max ' + Math.max(botsData[bk].slots_target, _shown) + ' Slots');
-    }
-    return parts.join(' · ');
-  }
-
-  html += '<div class="rd-section-title">🤖 Fleet-Radar (Echtgeld-Messkonten &amp; Demo-Ansatz-Matrix)</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:0.6rem;margin-bottom:0.9rem">';
-  let _lastGroup = null;
-  for (const [grp, bk] of ordered) {
-    if (grp !== _lastGroup) {
-      html += '<div style="grid-column:1/-1;font-size:0.72rem;font-weight:700;letter-spacing:0.06em;color:var(--dim);margin-top:0.35rem">'+(grp==='live' ? '🔴 LIVE — ECHTGELD-MESSKONTEN' : (grp==='split' ? '🔴/🟡 LIVE + DEMO-SPLIT — LIVE-SLOTS AUF ECHTGELD' : '🧪 DEMO — ANSATZ-MATRIX'))+'</div>';
-      _lastGroup = grp;
-    }
-    const b = botsData[bk];
-    const _rotSlots = rotMap[bk] || [];
-    const _plannedSlots = (b && b.slots_planned) || [];
-    const _isMulti = _rotSlots.length > 0 || (slotAgg[bk] || []).length >= 2 || _plannedSlots.length > 0;
-      const pnl = b.pnl || 0;
-      const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-      const pnlSign = pnl >= 0 ? '+' : '';
-      const bhMap = {strong: '🟢', ok: '🟡', weak: '🔴', new: '⚪'};
-      const bhIcon = bhMap[b.bot_health] || '⚪';
-      const parStatus = b.parity_status || 'ungeprueft';
-      const parIcon = parStatus === 'bestaetigt' ? '🟢' : (parStatus === 'qualifizierung' ? '🟡' : (parStatus === 'abweichung' ? '🔴' : '⚪'));
-      const parTxt = parStatus === 'bestaetigt' ? 'Parität OK' : (parStatus === 'qualifizierung' ? 'Qualifizierung' : (parStatus === 'abweichung' ? 'Abweichung' : (parStatus === 'wartet' ? 'Wartet auf erste Trades' : 'Ungeprüft')));
-
-      html += '<div class="rd-card" style="padding:0.6rem 0.8rem;border-top:3px solid '+(pnl>=0?'var(--green)':'var(--red)')+';cursor:pointer" data-href="/'+bk+'" onclick="location.href=this.dataset.href" title="Zur Bot-Seite">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem">';
-      html += '<strong>'+bk.toUpperCase()+(b.is_live ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.15);color:var(--red,#ff6b6b);border:1px solid rgba(255,90,90,0.35);border-radius:3px;padding:0.02rem 0.3rem">LIVE</span>' : (b.live_split ? ' <span style="font-size:0.6rem;font-weight:700;background:rgba(255,90,90,0.10);color:var(--yellow,#d29922);border:1px solid rgba(255,150,90,0.35);border-radius:3px;padding:0.02rem 0.3rem" title="Live-Slots auf Echtgeld: '+esc((b.live_slots||[]).join(', '))+'">LIVE-SLOT</span>' : ''))+'</strong>';
-      html += '<span style="font-size:0.75rem">'+bhIcon+' Health</span>';
-      html += '</div>';
-
-      const _noStrat = !b.strategy_id;
-      const _nameTxt = _noStrat ? 'Noch keine Strategie deployt' : ('#' + b.strategy_id + ' ' + (b.strategy_name || ''));
-      const _nameHtml = _noStrat ? '<span style="color:var(--dim);font-weight:500">' + _nameTxt + '</span>' : esc(_nameTxt);
-      html += '<div style="font-size:0.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.35rem" title="'+esc(_nameTxt)+'">';
-      html += _nameHtml;
-      html += '</div>';
-
-      // Multibot: Slot-Zeile (fixe Slots + Rotationsslot mit Challenge-Status)
-      if (_isMulti) {
-        const _sl = _multiSlotsLine(bk);
-        html += '<div style="font-size:0.7rem;color:var(--dim);margin-bottom:0.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(_sl)+'">🧩 '+esc(_sl)+'</div>';
-      }
-
-      // Plakative Strategie-Beschreibung: tag als Badge + was als Einzeiler
-      const bd = b.desc||{};
-      if (bd.tag || bd.was) {
-        html += '<div style="margin-bottom:0.35rem">';
-        if (bd.tag) html += '<div style="display:inline-block;font-size:0.66rem;font-weight:700;background:rgba(120,180,255,0.12);color:var(--blue,#7ab4ff);border:1px solid rgba(120,180,255,0.25);border-radius:3px;padding:0.05rem 0.35rem;margin-bottom:0.2rem">'+esc(bd.tag)+'</div>';
-        if (bd.was) html += '<div style="font-size:0.7rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(bd.was)+'">'+esc(bd.was)+'</div>';
-        html += '</div>';
-      }
-
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.85rem" title="Realisierter PnL der aktuellen Strategie (seit Deploy). Kontostand = gesamtes Demo-/Live-Konto.">';
-      html += '<span style="color:'+pnlColor+';font-weight:700">'+pnlSign+pnl.toFixed(2)+'€ <span style="font-size:0.62rem;color:var(--dim);font-weight:400">Strategie</span></span>';
-      html += '<span style="font-size:0.75rem;color:var(--dim)">Konto '+(b.equity!=null?b.equity.toFixed(2)+'€':'—')+(b.open_trades ? ' · <span style="color:var(--yellow)">'+b.open_trades+' offen</span>' : '')+'</span>';
-      html += '</div>';
-
-      // Kontostand-Kurve (2026-09-21, User: "Equity-Curve vom jeweiligen
-      // Kontostand innerhalb der Botkachel"). Balance statt equity —
-      // Floating-PnL-Skalierung bei Metallen 1000x (Bug offen).
-      const _ec = b.equity_curve || [];
-      const _ecm = b.equity_curve_meta || {};
-      if (_ec.length >= 2) {
-        const _ecD = (_ec[_ec.length-1][1] - _ec[0][1]);
-        const _ecCol = _ecD >= 0 ? 'var(--green)' : 'var(--red)';
-        const _ecSign = _ecD >= 0 ? '+' : '';
-        const _ecPct = _ec[0][1] > 0 ? ((_ecD / _ec[0][1]) * 100) : 0;
-        html += '<div style="margin:0.25rem 0 0.15rem">';
-        html += '<div style="height:38px"><canvas id="shb-c-'+bk+'"></canvas></div>';
-        html += '<div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--dim);margin-top:0.15rem">';
-        const _fromD = _ecm.from ? new Date(_ecm.from) : null;
-        const _fromS = _fromD && !isNaN(_fromD) ? _fromD.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) : '?';
-        html += '<span>Konto seit '+_fromS+'</span>';
-        html += '<span style="color:'+_ecCol+';font-weight:600">'+_ecSign+_ecPct.toFixed(1)+'%</span>';
-        html += '</div></div>';
-      }
-
-      // Detail-Zeile: WR + 7-Tage-Statistik (2026-09-17: 5d→7d)
-      const p7 = b.pnl_7d!=null ? b.pnl_7d : (b.pnl_5d||0), p7c = p7>=0?'var(--green)':'var(--red)';
-      html += '<div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--dim);margin-top:0.25rem">';
-      html += '<span>WR '+(b.win_rate!=null?b.win_rate.toFixed(0)+'% ('+(b.wins||0)+'W/'+(b.losses||0)+'L · '+(b.trades||0)+'Tr)':'—')+'</span>';
-      html += '<span>7d: <span style="color:'+p7c+';font-weight:600">'+(p7>=0?'+':'')+p7.toFixed(2)+'€ / '+(b.trades_7d||b.trades_5d||0)+' Tr</span></span>';
-      html += '</div>';
-
-      // Offene Positionen (Symbol, Richtung, Dauer)
-      const ops = b.open_positions||[];
-      if (ops.length > 0) {
-        const fmtBtDur = s => { if(!s) return '—'; const m=Math.floor(s/60),h=Math.floor(m/60),d=Math.floor(h/24); if(d>0) return d+'d '+(h%24)+'h'; if(h>0) return h+'h '+(m%60)+'m'; return m+'m'; };
-        html += '<div style="margin-top:0.3rem;border-top:1px dashed var(--border);padding-top:0.25rem">';
-        for (const op of ops.slice(0,3)) {
-          const dIcon = (op.direction==='long'||op.direction==='buy')?'🟢▲':'🔴▼';
-          html += '<div style="font-size:0.7rem;display:flex;justify-content:space-between">';
-          html += '<span>'+dIcon+' '+esc(op.symbol||'?')+' <span style="color:var(--dim)">@ '+(op.entry!=null?op.entry:'—')+'</span></span>';
-          html += '<span style="color:var(--dim)">'+fmtBtDur(op.hold_seconds)+'</span>';
-          html += '</div>';
-        }
-        if (ops.length > 3) html += '<div style="font-size:0.68rem;color:var(--dim)">+'+(ops.length-3)+' weitere…</div>';
-        html += '</div>';
-      }
-
-      // Letzter Trade
-      if (b.last_trade) {
-        html += '<div style="font-size:0.7rem;color:var(--dim);margin-top:0.25rem">letzt.: '+esc(b.last_trade)+'</div>';
-      }
-
-      html += '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.35rem;border-top:1px solid var(--border);padding-top:0.3rem">';
-      html += parIcon + ' ' + parTxt + ' (' + (b.parity_pairs_ok||0) + '/' + (b.parity_pairs_total||0) + ' Paare)';
-      if ((b.parity_missed_shadow||0) > 0) {
-        html += '<div style="color:var(--yellow);font-size:0.68rem;margin-top:0.15rem" title="'+esc(b.parity_diagnosis||'')+'">⚠️ '+(b.parity_missed_shadow)+' Shadow-Trade(s) ohne Bot-Gegenstück</div>';
-      }
-      html += '</div>';
-
-      // Alternative Strategie bei nicht-starker Health
-      if (b.bot_health !== 'strong' && b.bot_alternative) {
-        const a = b.bot_alternative;
-        html += '<div style="font-size:0.7rem;margin-top:0.25rem;color:var(--yellow)" title="'+esc(a.name||'')+'">';
-        html += '💡 Alt: <strong>#'+(a.id||'?')+'</strong> ' + esc((a.name||'').slice(0,28)) + ' <span style="color:var(--green)">+'+(a.net_pnl||0).toFixed(0)+'€</span> ('+(a.trades||0)+' Tr)';
-        html += '</div>';
-      }
-
-      html += '</div>';
-    }
+    html += '<div style="font-size:0.68rem;color:var(--dim);margin-top:0.15rem">Shadow-Basis: 1.527 saubere Trades (tp/sl/timeout, |net|≤500 €, keine @-Instanzen)</div>';
     html += '</div>';
   }
 
@@ -1527,129 +1592,8 @@ function renderShadowDashboard() {
   }
   html += '</details>';
 
-  // ── Offene Positionen ──
-  const botOnly = sd.bot_only_positions || [];
-  if (openPos.length > 0 || botOnly.length > 0) {
-    const fmtDur = sec => {
-      if (sec == null) return '—';   // FIX 2026-10-14: unbekannte Dauer nicht als '< 1m' ausgeben
-      if (!sec || sec < 60) return '< 1m';
-      const m = Math.floor(sec / 60);
-      const h = Math.floor(m / 60);
-      const d = Math.floor(h / 24);
-      if (d > 0) return d + 'd ' + (h % 24) + 'h';
-      if (h > 0) return h + 'h ' + (m % 60) + 'm';
-      return m + 'm';
-    };
-    const nBotRows = openPos.reduce((n,p)=>n+(((p.bots&&p.bots.length)?p.bots.length:(p.bot?1:0))),0);
-    html += '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ' Shadow' + (nBotRows ? ' · ' + nBotRows + ' Bot-Spiegel' : '') + (botOnly.length ? ' · ' + botOnly.length + ' ohne Pendant' : '') + ')</div>';
-    html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.4rem">🤖 = Bot-Zeile mit GLEICHEN Spalten wie Shadow (Broker-Fill) — direkt vergleichbar. Ampel im ID-Feld: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min (Details: Hover). Toleranz: FX 3p / Metalle 50p / Indizes 30p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung). ⚠️-Zeilen am Tabellenende = Bot-Positionen OHNE Shadow-Pendant. 💶 ECHTGELD = Broker-Position auf einem Echtgeld-Konto (nur 🤖-Zeile; Shadow-Zeilen sind virtuell). Gleicher Bot mehrfach = verschiedene Slots/Positionen — Slot steht in der 🤖-Zeile.</div>';
-    html += '<div class="rd-card" style="overflow-x:auto;margin-bottom:1rem">';
-    html += '<table class="sl4-table"><thead><tr>';
-    html += '<th># ID</th><th>Symbol</th><th>Richtung</th><th>Dauer</th><th class="num">Margin</th><th class="num">SL (ATR)</th><th class="num">TP (ATR)</th><th class="num">R:R</th><th class="num">Unrealized PnL</th>';
-    html += '</tr></thead><tbody>';
-    for (const p of openPos) {
-      const dir = (p.direction||'').toLowerCase();
-      const dirColor = dir === 'long' ? 'var(--green)' : 'var(--red)';
-      const dirIcon = dir === 'long' ? '🟢 LONG' : '🔴 SHORT';
-      const pnl = p.unrealized_pnl || 0;
-      const pnlCls = pnl >= 0 ? 'pos' : 'neg';
-      const pnlSign = pnl >= 0 ? '+' : '';
-      const pipsSign = (p.unrealized_pips || 0) >= 0 ? '+' : '';
-      const slAtr = p.sl_atr != null ? p.sl_atr.toFixed(1) + 'x' : '—';
-      const tpAtr = p.tp_atr != null ? p.tp_atr.toFixed(1) + 'x' : '—';
-      const rrStr = p.rr != null ? p.rr.toFixed(1) : '—';
-      const durStr = fmtDur(p.hold_seconds);
-      const marginStr = (p.margin_eur != null ? p.margin_eur.toFixed(1) : '—') + '€';
-      const liveBadge = p.is_live ? '<span class="sl-live-badge" title="Echtgeld-Konto '+esc((p.live_accounts||[]).join(', '))+'">💶 ECHTGELD</span>' : '';
-
-      html += '<tr'+(p.is_live?' class="sl-live-row"':'')+'>';
-      html += '<td><strong>#'+p.id+'</strong>'+liveBadge+'</td>';
-      html += '<td><strong>'+esc(p.symbol)+'</strong></td>';
-      html += '<td style="color:'+dirColor+';font-weight:700">'+dirIcon+'</td>';
-      html += '<td>'+durStr+'</td>';
-      html += '<td class="num">'+marginStr+'</td>';
-      html += '<td class="num" style="color:var(--red)">'+slAtr+'</td>';
-      html += '<td class="num" style="color:var(--green)">'+tpAtr+'</td>';
-      html += '<td class="num">'+rrStr+'</td>';
-      html += '<td class="num"><strong class="'+pnlCls+'">'+pnlSign+pnl.toFixed(2)+'€ ('+pipsSign+(p.unrealized_pips||0)+'p)</strong></td>';
-      html += '</tr>';
-      const bms = (p.bots && p.bots.length) ? p.bots : (p.bot ? [p.bot] : []);
-      for (const bm of bms) {
-        const bIcon = bm.sync === 'sync' ? '🟢' : (bm.sync === 'drift' ? '🟡' : (bm.sync === 'missing' ? '🔴' : '⚫'));
-        const bTxt = bm.sync === 'sync' ? 'Sync' : (bm.sync === 'drift' ? 'Drift' : (bm.sync === 'missing' ? 'fehlt' : 'stale'));
-        const bTitle = '🤖 Bot-Spiegel (' + bTxt + (bm.diff_pips != null ? ', ' + bm.diff_pips + 'p' : '') + (bm.gap_h != null ? ', Fill +' + bm.gap_h + 'h' : '') + ')';
-        const bDir = (bm.direction||'').toLowerCase();
-        const bDirColor = bDir === 'long' ? 'var(--green)' : 'var(--red)';
-        const bDirIcon = bDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
-        if (bm.entry != null) {
-          const bPnl = bm.unrealized_pnl;
-          const bHasPnl = bPnl != null;
-          const bPnlCls = bHasPnl ? (bPnl >= 0 ? 'pos' : 'neg') : '';
-          const bPnlSign = bHasPnl && bPnl >= 0 ? '+' : '';
-          const bPipsSign = (bm.unrealized_pips || 0) >= 0 ? '+' : '';
-          const bLive = bm.is_live ? ' <span class="sl-live-badge" title="Echtgeld-Konto '+esc(bm.account_id||'')+'">💶 ECHTGELD</span>' : '';
-          html += '<tr'+(bm.is_live?' class="sl-live-row"':'')+' style="font-size:0.8rem" title="'+esc(bTitle)+'">';
-          html += '<td style="color:var(--dim)">🤖 <strong>' + esc(bm.name) + (bm.slot ? ' · ' + esc(bm.slot) : '') + '</strong> ' + bIcon + (bm.stale ? ' ⚫' : '') + bLive + '</td>';
-          html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
-          html += '<td style="color:'+bDirColor+';font-weight:700">'+bDirIcon+'</td>';
-          html += '<td>' + fmtDur(bm.hold_seconds) + '</td>';
-          html += '<td class="num" style="color:var(--dim)">' + (bm.margin_eur != null ? bm.margin_eur.toFixed(1) + '€' : '—') + '</td>';
-          html += '<td class="num" style="color:var(--red)">' + (bm.sl_atr != null ? bm.sl_atr.toFixed(1) + 'x' : '—') + '</td>';
-          html += '<td class="num" style="color:var(--green)">' + (bm.tp_atr != null ? bm.tp_atr.toFixed(1) + 'x' : '—') + '</td>';
-          html += '<td class="num">' + (bm.rr != null ? bm.rr.toFixed(1) : '—') + '</td>';
-          const bPnlCell = bHasPnl
-            ? '<strong class="'+bPnlCls+'">'+bPnlSign+bPnl.toFixed(2)+'€ ('+bPipsSign+(bm.unrealized_pips||0)+'p)</strong>'
-            : '<span style="color:var(--dim)">—</span>';
-          html += '<td class="num">' + bPnlCell + '</td>';
-          html += '</tr>';
-        } else {
-          html += '<tr style="font-size:0.8rem">';
-          html += '<td style="color:var(--dim)">🤖 ' + esc(bm.name) + (bm.stale ? ' ⚫' : '') + '</td>';
-          html += '<td style="color:var(--dim)">' + esc(p.symbol) + '</td>';
-          html += '<td>' + bIcon + ' ' + bTxt + '</td>';
-          html += '<td colspan="6" style="color:var(--dim)">keine Broker-Position</td>';
-          html += '</tr>';
-        }
-      }
-    }
-    // Bot-Positionen OHNE Shadow-Pendant — eigene VOLLE Zeilen am Tabellenende
-    // (User-Regel: Vergleichszeilen mit denselben Spalten wie die Referenz).
-    // SL/TP (ATR) bleiben '—' (kein Shadow-ATR-Bezug); Dauer/Margin/R:R/PnL
-    // liefert der Builder (shadow_portfolio_builder.py) aus positions_live.
-    if (botOnly.length > 0) {
-      html += '<tr><td colspan="9" style="color:var(--yellow);font-size:0.75rem;border-top:2px solid var(--yellow);padding-top:0.4rem">⚠️ Bot-Positionen ohne Shadow-Pendant (' + botOnly.length + ') — Bot handelt, Shadow hat (noch) keine Position:</td></tr>';
-      for (const bo of botOnly) {
-        const boDir = (bo.direction||'').toLowerCase();
-        const boDirColor = boDir === 'long' ? 'var(--green)' : 'var(--red)';
-        const boDirIcon = boDir === 'long' ? '🟢 LONG' : '🔴 SHORT';
-        const boPnl = bo.unrealized_pnl;
-        const boHasPnl = boPnl != null;
-        const boPnlCls = boHasPnl ? (boPnl >= 0 ? 'pos' : 'neg') : '';
-        const boPnlSign = boHasPnl && boPnl >= 0 ? '+' : '';
-        const boPipsSign = (bo.unrealized_pips || 0) >= 0 ? '+' : '';
-        const boTitle = '🤖 ' + bo.bot + ' — Bot-Position ohne Shadow-Spiegel'
-          + (bo.stale ? ' (positions_live >30min stale)' : '')
-          + (bo.entry != null ? ', Entry @' + bo.entry : '')
-          + ' — Broker-Sicht (positions_live)';
-        const boLive = bo.is_live ? ' <span class="sl-live-badge" title="Echtgeld-Konto '+esc(bo.account_id||'')+'">💶 ECHTGELD</span>' : '';
-        html += '<tr'+(bo.is_live?' class="sl-live-row"':'')+' style="font-size:0.8rem" title="' + esc(boTitle) + '">';
-        html += '<td style="color:var(--yellow)">🤖 <strong>' + esc(bo.bot) + '</strong> ⚠️' + boLive + '</td>';
-        html += '<td style="color:var(--dim)">' + esc(bo.symbol) + '</td>';
-        html += '<td style="color:' + boDirColor + ';font-weight:700">' + boDirIcon + '</td>';
-        html += '<td>' + fmtDur(bo.hold_seconds) + '</td>';
-        html += '<td class="num" style="color:var(--dim)">' + (bo.margin_eur != null ? bo.margin_eur.toFixed(1) + '€' : '—') + '</td>';
-        html += '<td class="num" style="color:var(--dim)">—</td>';
-        html += '<td class="num" style="color:var(--dim)">—</td>';
-        html += '<td class="num">' + (bo.rr != null ? bo.rr.toFixed(1) : '—') + '</td>';
-        const boPnlCell = boHasPnl
-          ? '<strong class="' + boPnlCls + '">' + boPnlSign + boPnl.toFixed(2) + '€ (' + boPipsSign + (bo.unrealized_pips||0) + 'p)</strong>'
-          : '<span style="color:var(--dim)" title="Keine frische Preisquelle (Spot stale/fehlt, keine Bars) — Anzeige-Doktrin: lieber — als Phantom-Wert">—</span>';
-        html += '<td class="num">' + boPnlCell + '</td>';
-        html += '</tr>';
-      }
-    }
-    html += '</tbody></table></div>';
-  }
+  // ── Offene Positionen (sortierbar; Tabelle in _openPosSectionHtml) ──
+  html += _openPosSectionHtml();
 
   // ── KPI Row ──
   const totalPnl = strats.reduce((s,x) => s + (x.net_pnl||0), 0);
