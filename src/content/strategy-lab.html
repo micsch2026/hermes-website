@@ -458,6 +458,23 @@ function lcbCell(s) {
 }
 
 
+function b6Badge(b) {
+  // B6 = Entscheidungsstufe vor Shadow. Nie "validated" mit "ready" verwechseln.
+  if (!b || !b.verdict) return '<span style="color:var(--dim)" title="noch kein B6-Review">—</span>';
+  const M = {
+    shadow_ready: ['gate-pass', '🟢 ready', 'shadow-ready: alle harten Gates grün'],
+    slow_track:   ['gate-na',   '🟡 slow',  'slow_track: zu selten für den Standard-Slot'],
+    repair:       ['gate-na',   '🛠 repair','repair: weicher Mangel, Reparatur-Hinweis'],
+    park:         ['gate-na',   '⏸ park',  'park: Evidenz unvollständig'],
+    variant:      ['gate-na',   '♻ variant','variant: gleicher Signalkern wie Bestand'],
+    reject:       ['gate-fail', '🔴 reject','reject: hartes Gate verletzt'],
+  };
+  const m = M[b.verdict] || ['gate-na', b.verdict, ''];
+  const reasons = (b.reasons || []).map(x => x.text).filter(Boolean).slice(0, 3).join(' · ');
+  const title = (m[2] + (reasons ? ' — ' + reasons : '') + (b.at ? ' · ' + b.at : '')).replace(/"/g, '&quot;');
+  return `<span class="gate ${m[0]}" title="${title}">${m[1]}</span>`;
+}
+
 const deployCols = [
   {key:'id', label:'ID', render: r => `<strong>#${r.id}</strong>`},
   {key:'basis_key', label:'Basis', title:'Bewertungsbasis der Kennzahlen: era (root|b4) + engine-fp; gelb/⚠ = stale (>14 d alt oder fp passt nicht zur aktuellen Engine)', render: r => basisBadge(r.basis)},
@@ -480,6 +497,7 @@ const deployCols = [
     if (r.ho_status === 'warning') return '<span class="gate gate-fail">⚠️</span>';
     return '<span style="color:var(--dim)">➖</span>';
   }},
+  {key:'b6', label:'B6', title:'B6 Deep Pass: Entscheidungsstufe zwischen WFO und Shadow. Nur "ready" ist shadow-fähig; "variant" = gleicher Signalkern wie Bestand.', render: r => b6Badge(r.b6)},
   // P2 W1: G6 je Zeile — wahrheitsgemaess (siehe g6Badge)
   {key:'g6', label:'G6', render: r => g6Badge(r.g6)},
 ];
@@ -612,6 +630,35 @@ function showDetail(row) {
   const m = document.getElementById('sl4-modal-content');
   let html = `<span class="close" onclick="document.getElementById('sl4-modal-overlay').classList.remove('show')">×</span>`;
   html += `<h2>${row.name || row.label || '#' + row.id}</h2>`;
+
+  // B6 Deep Pass (29.10.2026): Entscheidungsstufe vor Shadow — auch im
+  // Deploy-Modal sichtbar, damit "validated" nicht mit "shadow-ready"
+  // verwechselt wird. Daten kommen aus catalog.deploy[].b6.
+  if (row.b6) {
+    const b = row.b6, mm = b.metrics || {}, gg = b.gates || {};
+    const reasons = (b.reasons || []).map(x => x.text).filter(Boolean);
+    const gateBits = Object.entries(gg).map(([k, v]) => {
+      const st = (v && v.status) || '?';
+      const ic = st === 'pass' ? '✅' : (st === 'fail' ? '❌' : (st === 'warn' ? '⚠️' : '➖'));
+      return `<span title="${(v && v.note) || ''}" style="margin-right:0.5rem;white-space:nowrap">${ic} ${k}</span>`;
+    }).join('');
+    html += `<div style="padding:0.6rem 0.8rem;margin-bottom:0.8rem;border-radius:6px;background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.25)">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">
+        <strong>🧪 B6 Deep Pass</strong> ${b6Badge(b)}
+        ${b.score != null ? `<span style="color:var(--dim);font-size:0.75rem">Score ${b.score}</span>` : ''}
+        ${b.at ? `<span style="color:var(--dim);font-size:0.7rem;margin-left:auto">${esc(String(b.at).slice(0,16).replace('T',' '))}</span>` : ''}
+      </div>
+      <div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.3rem">
+        Hold-out: ${mm.holdout_trades != null ? `${mm.holdout_trades} T · ${mm.holdout_pnl != null ? mm.holdout_pnl + '€' : '—'} · PF ${mm.holdout_pf ?? '—'}` : '—'}
+        · Frequenz: ${mm.freq_per_week != null ? mm.freq_per_week + '/Woche' : '—'}
+        · Tradeability: ${mm.tradeability_available ? (mm.tradeability_ok && mm.tradeability_ok.length ? '✅ ' + mm.tradeability_ok.length + ' Assets' : '❌ blockiert') : '—'}
+      </div>
+      <div style="font-size:0.72rem;color:var(--dim);margin-bottom:0.3rem">${gateBits}</div>
+      ${reasons.length ? `<div style="font-size:0.76rem;color:var(--yellow)">⚠️ ${esc(reasons.join(' · '))}</div>` : '<div style="font-size:0.76rem;color:var(--green)">Alle harten Gates grün.</div>'}
+      ${b.repair_hint ? `<div style="font-size:0.74rem;color:var(--blue);margin-top:0.3rem">🛠 ${esc(b.repair_hint)}</div>` : ''}
+      ${b.variant_of ? `<div style="font-size:0.72rem;color:var(--dim);margin-top:0.25rem">♻ Variante von #${b.variant_of} (gleicher Signalkern)</div>` : ''}
+    </div>`;
+  }
 
   if (currentTab === 'shadow') {
     // Shadow-spezifischer Header: Live-Forward-Test vs OOS-Referenz
@@ -1038,6 +1085,42 @@ function renderShadowDashboard() {
   const openPos = shadowData.open_positions || [];
   const sd = shadowData;
   let html = '';
+
+  // ── B6-Übergabe (29.10.2026): Eingangs-Gate, Bestand unberührt ──
+  // Zeigt nur Kandidaten, die NICHT bereits im Shadow sind. Die 120 Slots
+  // darunter sind der laufende OOS-Test und werden von B6 nicht angefasst.
+  const b6h = sd.b6_handover;
+  if (b6h) {
+    const ready = b6h.ready || [];
+    const bench = b6h.bench || [];
+    const active = !!b6h.active;
+    const ea = b6h.enforce_after ? String(b6h.enforce_after).slice(0, 10) : '—';
+    html += '<div class="rd-card" style="border-left:3px solid #58a6ff;margin-bottom:0.8rem">';
+    html += '<div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;margin-bottom:0.35rem">'
+         + '<strong>🧪 B6-Übergabe an den Shadow</strong>'
+         + '<span class="rd-pill ' + (active ? 'ok' : 'dim') + '">' + (active ? 'Gate aktiv' : 'Schattenmodus') + '</span>'
+         + '<span style="font-size:0.72rem;color:var(--dim)">Aktiv ab ' + ea + ' · Lauf ' + esc(String(b6h.generated_at || '—').slice(0, 16).replace('T', ' ')) + '</span>'
+         + '</div>';
+    html += '<div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.4rem">'
+         + 'Bestehende Slots: <strong>' + (b6h.total_slots ?? 120) + '</strong> — unverändert. '
+         + 'B6 prüft nur den <strong>Eingang</strong> (Hold-out, Tradeability, Fire-Test, Kern-Neuheit). '
+         + '<strong>' + ready.length + '</strong> ready · <strong>' + bench.length + '</strong> Bench (slow/repair).'
+         + '</div>';
+    if (ready.length) {
+      html += '<div style="font-size:0.8rem;margin-bottom:0.25rem">🟢 <strong>Shadow-ready:</strong> ';
+      html += ready.slice(0, 6).map(r => '#<strong>' + r.id + '</strong> ' + esc((r.name || '').slice(0, 34))
+        + (r.holdout_pf != null ? ' <span style="color:var(--dim)">(HO PF ' + r.holdout_pf + ')</span>' : '')).join(' · ');
+      html += '</div>';
+    } else {
+      html += '<div style="font-size:0.8rem;color:var(--dim);margin-bottom:0.25rem">🟢 Kein neuer Kandidat shadow-ready — der Bestand reift weiter.</div>';
+    }
+    if (bench.length) {
+      html += '<div style="font-size:0.75rem;color:var(--dim)">🛠 Bench: '
+        + bench.slice(0, 5).map(r => '#' + r.id + ' ' + (r.verdict === 'repair' ? 'repair' : 'slow')).join(' · ')
+        + '</div>';
+    }
+    html += '</div>';
+  }
 
   // ── P2 W3a (23.10.2026): ehrliche Nenner im Shadow-Kopf ──
   // Zahlen NUR aus evidence_kpi (nie aus der aktuell gerenderten Liste neu
@@ -1924,6 +2007,55 @@ function _mkSparkline(canvasId, pts, color) {
   return chart;
 }
 
+function b6RdSection(dp) {
+  if (!dp || dp.available === false || !dp.reviews) {
+    return `<div class="rd-card" style="border-left:3px solid #58a6ff">
+      <div style="font-weight:700;margin-bottom:0.3rem">🧪 B6 Deep Pass — Gate vor Shadow</div>
+      <div style="font-size:0.78rem;color:var(--dim)">Noch kein B6-Lauf. Der Dienst <code>strategy-lab-deep-pass</code> startet automatisch; bis dahin bleibt der Shadow-Bestand unverändert.</div>
+    </div>`;
+  }
+  const c = dp.counts || {};
+  const pol = dp.policy || {};
+  const verdicts = ['shadow_ready','slow_track','repair','park','variant','reject'];
+  const chips = verdicts.map(v => {
+    const n = c[v] || 0;
+    return `<span class="rd-pill ${v === 'shadow_ready' ? 'ok' : (v === 'reject' ? 'dim' : '')}" style="margin-right:0.35rem">${b6Badge({verdict:v})} ${n}</span>`;
+  }).join('');
+  const active = !!dp.active;
+  const ea = dp.enforce_after ? String(dp.enforce_after).slice(0,10) : '—';
+  const rows = (dp.reviews || []).slice(0, 10).map(r => {
+    const m = r.metrics || {};
+    const reasons = (r.reasons || []).map(x => x.text).filter(Boolean).slice(0,2).join(' · ');
+    return `<tr>
+      <td><strong>#${r.strategy_id}</strong></td>
+      <td>${b6Badge({verdict:r.verdict, reasons:r.reasons, at:r.created_at})}</td>
+      <td>${r.tier || '—'}</td>
+      <td class="num">${r.score ?? '—'}</td>
+      <td class="num">${m.holdout_trades != null ? `${m.holdout_trades}T · PF ${m.holdout_pf ?? '—'}` : '—'}</td>
+      <td class="num">${m.freq_per_week != null ? m.freq_per_week + '/W' : '—'}</td>
+      <td style="font-size:0.72rem;color:var(--dim)">${esc(reasons || '—')}</td>
+      <td style="font-size:0.72rem">${esc((r.name || '').slice(0, 42))}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="rd-card" style="border-left:3px solid #58a6ff;margin-bottom:0.9rem">
+    <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.4rem">
+      <strong>🧪 B6 Deep Pass — Gate vor Shadow</strong>
+      <span class="rd-pill ${active ? 'ok' : 'dim'}">${active ? 'Gate aktiv' : 'Schattenmodus'}</span>
+      <span style="font-size:0.72rem;color:var(--dim)">Aktiv ab ${ea} · Lauf ${esc(String(dp.generated_at || '—').slice(0,16).replace('T',' '))}</span>
+    </div>
+    <div style="font-size:0.78rem;color:var(--dim);margin-bottom:0.45rem">
+      ${esc(pol.version ? 'Policy v' + pol.version + ' · ' : '')}B6 prüft Kandidaten gegen Hold-out, Tradeability, Fire-Test und Kern-Neuheit.
+      Der bestehende Shadow-Bestand bleibt unberührt; nur <strong>shadow_ready</strong> wird übergeben.
+    </div>
+    <div style="margin-bottom:0.55rem">${chips}</div>
+    <div style="overflow-x:auto"><table class="sl4-table" style="font-size:0.74rem">
+      <thead><tr><th>ID</th><th>Verdikt</th><th>Tier</th><th>Score</th><th>Hold-out</th><th>Freq</th><th>Grund</th><th>Strategie</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:var(--dim)">Keine Reviews im letzten Lauf</td></tr>'}</tbody>
+    </table></div>
+    <div style="font-size:0.7rem;color:var(--dim)">Legende: 🟢 ready = Shadow-Slot-Kandidat · 🟡 slow = eigener Slow-Track · 🛠 repair = eine gezielte Variante · ⏸ park = Evidenz unvollständig · ♻ variant = gleicher Signalkern · 🔴 reject = hartes Gate verletzt.</div>
+  </div>`;
+}
+
 function renderRdLive() {
   _destroyRdCharts();
   const el = document.getElementById('sl4-content');
@@ -1972,6 +2104,9 @@ function renderRdLive() {
       + `<span class="rd-kpi" title="Ansätze auf der Blacklist">🚫 Blacklist ${eff.blacklist_size ?? '—'}</span>`
       + `</div>`;
   }
+
+  // ── B6 Deep Pass (29.10.2026): Entscheidungsstufe vor Shadow ──
+  html += b6RdSection(rdData.deep_pass);
 
   // ── AKTUELLER FOKUS ── (2026-09-26: Drop-in-fenster-aware — zeigt das ECHTE
   // laufende Fenster aus RECIPE_CLUSTER_CONFIG; FOKUS-Datei nur noch als
