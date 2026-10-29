@@ -119,6 +119,21 @@
 .sl4-summary .stat { text-align: center; }
 .sl4-summary .stat-value { font-size: 1.4rem; font-weight: 700; }
 .sl4-summary .stat-label { font-size: 0.75rem; color: var(--dim); }
+/* Seed-Pipeline (24.10.2026, restauriert 29.10.2026) */
+.sl4-seed { background: rgba(88,166,255,0.04); border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.8rem 1rem; margin: 0 0 1rem; }
+.sl4-seed-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.sl4-seed-head h2 { font-size: 1rem; margin: 0; }
+.sl4-seed-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.5rem; margin-bottom: 0.6rem; }
+.sl4-seed-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.4rem 0.6rem; }
+.sl4-seed-stat .v { font-size: 1.2rem; font-weight: 700; }
+.sl4-seed-stat .k { font-size: 0.7rem; color: var(--dim); }
+.sl4-seed-note { color: var(--dim); font-size: 0.72rem; margin-top: 0.4rem; line-height: 1.4; }
+.sl4-seed .sl4-table { font-size: 0.8rem; }
+.sl4-seed .sl4-table th { padding: 0.3rem 0.5rem; }
+.sl4-seed .sl4-table td { padding: 0.25rem 0.5rem; }
 /* R&D Live */
 .rd-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 0.6rem; padding: 0.9rem 1rem; margin-bottom: 0.9rem; }
 .rd-card h3 { margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--dim); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -184,6 +199,15 @@
     <div id="sl4-pipeline-status" style="margin-top:0.5rem;font-size:0.8rem;"></div>
   </div>
   <div class="sl4-summary" id="sl4-summary"></div>
+  <div class="sl4-seed" id="sl4-seed">
+    <div class="sl4-seed-head">
+      <h2>🌱 Seed-Pipeline</h2>
+      <span class="sl4-seed-note" id="sl4-seed-updated"></span>
+    </div>
+    <div class="sl4-seed-grid" id="sl4-seed-stats"></div>
+    <div id="sl4-seed-families"></div>
+    <div class="sl4-seed-note" id="sl4-seed-note"></div>
+  </div>
   <div class="sl4-tabs">
     <button class="sl4-tab active" data-tab="deploy">🚀 Strategien <span class="badge" id="badge-deploy">0</span></button>
     <button class="sl4-tab" data-tab="rdlive">🔬 R&D Live <span class="badge" id="badge-rdlive">0</span></button>
@@ -223,6 +247,7 @@ let sortDir = 'desc';
 // "Alle anzeigen" bleibt ein Klick — keine Daten versteckt, nur gestaffelt.
 let deployShowAll = false;
 let searchTerm = '';
+let seedPipeline = null;
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -256,6 +281,11 @@ async function loadData() {
     const ev = await fetch('/api/strategy-lab/events_engine.json?_=' + Date.now());
     eventsData = await ev.json();
   } catch(e) { eventsData = null; }
+  // Load Seed-Pipeline (24.10.2026)
+  try {
+    const sp = await fetch('/api/strategy-lab/seed_pipeline.json?_=' + Date.now());
+    seedPipeline = await sp.json();
+  } catch(e) { seedPipeline = null; }
   render();
 }
 
@@ -320,7 +350,50 @@ function render() {
     const _n24 = (eventsData.calendar_next14d || []).filter(e => e.epoch <= Date.now()/1000 + 86400).length;
     document.getElementById('badge-events').textContent = _n24;
   }
+  renderSeedPipeline();
   renderTable();
+}
+
+function renderSeedPipeline() {
+  const el = document.getElementById('sl4-seed');
+  if (!el) return;
+  if (!seedPipeline || !seedPipeline.available) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const s = seedPipeline.summary || {};
+  const n = (v) => (v == null ? '—' : Number(v).toLocaleString('de-DE'));
+  const pct = (v) => (v == null ? '—' : Number(v).toLocaleString('de-DE', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' %');
+  document.getElementById('sl4-seed-updated').textContent =
+    seedPipeline.generated_bz ? ('Registry: ' + seedPipeline.generated_bz) : '';
+  const stats = [
+    ['Seeds', n(s.seeds_total), ''],
+    ['≥1 Strategie', n(s.seeds_with_strategy), pct(s.pct_with_strategy)],
+    ['≥1 B', n(s.seeds_with_B), pct(s.pct_with_B)],
+    ['Zero-Yield', n(s.zero_yield), n(s.zero_yield_gt60) + ' >60 d'],
+    ['Alt-Data', n(s.alt_data_seeds), 'Event/Saison ' + n(s.event_seeds)],
+    ['Cluster', n(s.clusters), n(s.approach_slots) + ' Approach-Slots'],
+  ];
+  document.getElementById('sl4-seed-stats').innerHTML = stats.map(([k, v, sub]) =>
+    '<div class="sl4-seed-stat"><div class="v">' + esc(v) + '</div><div class="k">' +
+    esc(k) + (sub ? ' · ' + esc(sub) : '') + '</div></div>').join('');
+  const fams = (seedPipeline.families || []).slice()
+    .sort((a, b) => (b.seeds || 0) - (a.seeds || 0)).slice(0, 8);
+  let html = '<table class="sl4-table"><thead><tr><th>Familie</th><th>Seeds</th>' +
+    '<th>Strategien</th><th>B</th><th>B/100</th><th>Zero-Yield</th></tr></thead><tbody>';
+  for (const f of fams) {
+    html += '<tr><td>' + esc(f.family) + '</td><td class="num">' + n(f.seeds) +
+      '</td><td class="num">' + n(f.strategies) + '</td><td class="num">' + n(f.B) +
+      '</td><td class="num">' + (f.b_per_100 == null ? '—' : Number(f.b_per_100).toLocaleString('de-DE', {maximumFractionDigits: 1})) +
+      '</td><td class="num">' + n(f.zero_yield) + '</td></tr>';
+  }
+  if (!fams.length) html += '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:1rem">Keine Familien-Daten</td></tr>';
+  html += '</tbody></table>';
+  document.getElementById('sl4-seed-families').innerHTML = html;
+  const caps = seedPipeline.caps || {};
+  const overSeed = (caps.seeds_gt5_strategies || []).length;
+  const overCluster = (caps.clusters_gt20_approaches || []).length;
+  document.getElementById('sl4-seed-note').innerHTML =
+    'B/100 = B-Strategien je 100 Seeds (Yield, kein Portfolio-PnL) · Caps: 5/Seed, 3/Familie, 12/Asset · ' +
+    overSeed + ' Seeds >5 Strategien · ' + overCluster + ' Cluster >20 Approaches';
 }
 
 function renderTable() {
