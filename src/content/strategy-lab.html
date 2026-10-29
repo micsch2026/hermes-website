@@ -2021,8 +2021,9 @@ function b6RdSection(dp) {
     const n = c[v] || 0;
     return `<span class="rd-pill ${v === 'shadow_ready' ? 'ok' : (v === 'reject' ? 'dim' : '')}" style="margin-right:0.35rem">${b6Badge({verdict:v})} ${n}</span>`;
   }).join('');
-  const active = !!dp.active;
-  const ea = dp.enforce_after ? String(dp.enforce_after).slice(0,10) : '—';
+  const active = !!dp.active || !!pol.enabled_for_admission;
+  const eaRaw = dp.enforce_after || pol.enforce_after;
+  const ea = eaRaw ? String(eaRaw).slice(0, 10) : '—';
   const rows = (dp.reviews || []).slice(0, 10).map(r => {
     const m = r.metrics || {};
     const reasons = (r.reasons || []).map(x => x.text).filter(Boolean).slice(0,2).join(' · ');
