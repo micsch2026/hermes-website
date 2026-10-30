@@ -1405,6 +1405,53 @@ function _updateShadowPosTableOnly() {
   if (card) card.innerHTML = _openPosTableHtml();
 }
 
+// ── Execution-Parität (30.10.2026): Sentinel-Befunde kompakt ──
+function _executionParitySectionHtml(ep) {
+  if (!ep) return '';
+  const issues = ep.issues || [];
+  const slotRows = [];
+  Object.keys(ep.bots || {}).forEach(function(b) {
+    ((ep.bots[b] || {}).slots || []).forEach(function(s) {
+      slotRows.push(Object.assign({ bot: b }, s));
+    });
+  });
+  const byKey = {};
+  slotRows.forEach(function(s) { byKey[s.bot + '/' + s.slot_id] = s; });
+  const green = issues.length === 0;
+  const col = green ? '#3fb950' : '#f85149';
+  let html = '<div class="rd-card" style="border-left:3px solid ' + col + ';margin-bottom:0.7rem;padding:0.5rem 0.9rem">';
+  html += '<div style="display:flex;align-items:center;gap:0.35rem 0.7rem;flex-wrap:wrap;font-size:0.78rem">'
+       + '<strong>🩺 Ausführung</strong>'
+       + '<span class="rd-pill" style="background:' + col + '22;color:' + col + ';border:1px solid ' + col + '55">'
+       + (green ? 'im Sync' : issues.length + ' Befund' + (issues.length === 1 ? '' : 'e')) + '</span>'
+       + '<span style="color:var(--dim);font-size:0.7rem">Sentinel · ' + esc(_advBz(ep.generated_at)) + ' BZ · ' + slotRows.length + ' Slots</span>'
+       + '</div>';
+  if (green) {
+    html += '<div style="font-size:0.74rem;color:var(--dim);margin-top:0.25rem">Alle aktiven Slots füllen wie der Shadow — keine offenen Ausführungsbefunde.</div></div>';
+    return html;
+  }
+  const lbl = { zero_fills: '0 Fills', signal_schema: 'Signal-Schema', stale_rejections: 'Stale', parity_gap: 'Parität' };
+  html += '<div style="overflow-x:auto;margin-top:0.35rem"><table class="rd-table" style="font-size:0.72rem;width:100%">';
+  html += '<thead><tr><th>Slot</th><th>Befund</th><th>Shadow / Fills</th><th>Stale</th><th>Letzter Fill</th><th>Nächster Schritt</th></tr></thead><tbody>';
+  issues.slice(0, 8).forEach(function(it) {
+    const s = byKey[it.bot + '/' + it.slot] || {};
+    html += '<tr>'
+         + '<td><b>' + esc(it.bot) + '/' + esc(it.slot) + '</b> <span style="color:var(--dim)">#' + esc(it.sid) + '</span></td>'
+         + '<td><span style="color:' + col + '">' + esc(lbl[it.class] || it.class) + '</span></td>'
+         + '<td>' + (s.shadow_trades != null ? s.shadow_trades : '—') + ' / ' + (s.bot_fills != null ? s.bot_fills : '—') + '</td>'
+         + '<td>' + (s.stale_skips != null ? s.stale_skips : '—') + '</td>'
+         + '<td>' + (s.last_fill ? esc(_advBz(s.last_fill)) : '—') + '</td>'
+         + '<td title="' + esc(it.detail || '') + '">' + esc(it.action || '') + '</td>'
+         + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  if (issues.length > 8) html += '<div style="font-size:0.7rem;color:var(--dim);margin-top:0.2rem">… +' + (issues.length - 8) + ' weitere Befunde im Sentinel-JSON</div>';
+  html += '<details style="margin-top:0.3rem"><summary style="cursor:pointer;font-size:0.7rem;color:var(--dim)">Was prüft der Sentinel?</summary>'
+       + '<div style="font-size:0.72rem;color:var(--dim);margin-top:0.2rem;line-height:1.45">Read-only: Shadow-Trades seit Slot-Deploy, Bot-Fills, Stale-Rejections seit dem letzten Executor-Start, Signal-Schema und unentschuldigte Paritäts-Misses. Fixes sind Vorschläge; Live-Änderungen brauchen Freigabe.</div></details>';
+  html += '</div>';
+  return html;
+}
+
 // ── Shadow Dashboard ──
 function renderShadowDashboard() {
   try {
@@ -1431,6 +1478,9 @@ function renderShadowDashboard() {
   // ── Belegungs-Empfehlungen: Entscheidungs-Sicht zuerst (29.10.2026) ──
   html += _renderAdvisorSection(sd.advisor,
     (typeof catalogData !== 'undefined' && catalogData) ? catalogData.minlot_skip_line : null);
+
+  // ── Execution-Parität: Sentinel-Befunde direkt unter der Belegung ──
+  html += _executionParitySectionHtml(sd.execution_parity);
 
   // ── B6-Übergabe (29.10.2026): Eingangs-Gate, Bestand unberührt ──
   // Kompakt: eine Statuszeile, Kandidaten/Begründung hinter "Details".
