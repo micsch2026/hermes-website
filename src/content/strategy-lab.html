@@ -1,6 +1,7 @@
 <!--TITLE:Strategy Lab — Hermes-->
 <!--HEAD-->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <!--/HEAD-->
 <!--BODY-->
 <!-- Strategy Lab v4 — Auto-generated -->
@@ -121,6 +122,27 @@
 .sl4-modal .detail-item { padding: 0.4rem; background: rgba(48,54,61,0.3); border-radius: 6px; }
 .sl4-modal .detail-label { color: var(--dim); font-size: 0.75rem; }
 .sl4-modal .detail-value { font-size: 0.9rem; font-weight: 600; }
+/* Shadow-Positions-Fokus (03.11.2026): Kerzenchart + Trade-Metriken */
+.sl4-pos-click { cursor: pointer; }
+.sl4-pos-click:hover { background: rgba(88,166,255,0.08); }
+.sl4-focus-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  max-width: 980px; width: 100%; padding: 1.2rem 1.4rem 1.4rem; }
+.sl4-focus-modal h2 { margin: 0 0 0.15rem; font-size: 1.1rem; }
+.sl4-focus-sub { color: var(--dim); font-size: 0.78rem; margin-bottom: 0.6rem; }
+.sl4-focus-tf { display: flex; gap: 0.35rem; margin: 0.4rem 0 0.5rem; }
+.sl4-focus-tf button { border: 1px solid var(--border); background: var(--surface); color: var(--dim);
+  border-radius: 5px; padding: 0.2rem 0.55rem; font-size: 0.72rem; cursor: pointer; }
+.sl4-focus-tf button.active { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+.sl4-focus-chart { width: 100%; height: 320px; background: #0d1117; border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden; }
+.sl4-focus-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; font-size: 0.72rem;
+  color: var(--dim); margin: 0.45rem 0 0.6rem; }
+.sl4-focus-legend b { color: var(--text); }
+.sl4-focus-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 0.4rem; margin-top: 0.5rem; }
+.sl4-focus-grid .detail-item { padding: 0.35rem 0.45rem; background: rgba(48,54,61,0.3); border-radius: 5px; }
+.sl4-focus-note { color: var(--dim); font-size: 0.68rem; margin-top: 0.55rem; line-height: 1.35; }
+.sl4-focus-err { color: var(--yellow); padding: 1rem; font-size: 0.8rem; }
 
 .sl4-summary { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .sl4-summary .stat { text-align: center; }
@@ -237,6 +259,10 @@
 
 <div class="sl4-modal-overlay" id="sl4-modal-overlay">
   <div class="sl4-modal" id="sl4-modal-content"></div>
+</div>
+
+<div class="sl4-modal-overlay" id="sl4-pos-focus-overlay">
+  <div class="sl4-focus-modal" id="sl4-pos-focus-content"></div>
 </div>
 
 <script>
@@ -949,7 +975,7 @@ function showDetail(row) {
         const rr = p.rr != null ? p.rr.toFixed(1) : '—';
         const durStr = fmtDur(p.hold_seconds);
         const marginStr = (p.margin_eur != null ? p.margin_eur.toFixed(1) : '—') + '€';
-        html += `<tr${p.is_live?' class="sl-live-row"':''}><td><strong>${esc(p.symbol)}</strong>${p.is_live?(' <span class="sl-live-badge" title="Echtgeld-Konto '+(p.live_accounts||[]).join(', ')+'">💶 ECHTGELD</span>'):''}</td><td>${p.direction==='long'?'🟢 Long':'🔴 Short'}</td><td class="num">${durStr}</td><td class="num ${pnlCls}" style="font-weight:600">${pnlSign}${pnl.toFixed(2)}€ (${pipsSign}${p.unrealized_pips||0}p)</td><td class="num">${marginStr}</td><td class="num">${slAtr}</td><td class="num">${tpAtr}</td><td class="num">${rr}</td><td>${fmtDT(p.entry_ts)}</td></tr>`;
+        html += `<tr class="sl4-pos-click${p.is_live?' sl-live-row':''}" data-pos-sym="${esc(p.symbol)}" data-pos-id="${esc(String(p.id))}" title="Kerzenchart mit SL/TP, Margin und EUR-Risiko öffnen"><td><strong>${esc(p.symbol)}</strong>${p.is_live?(' <span class="sl-live-badge" title="Echtgeld-Konto '+(p.live_accounts||[]).join(', ')+'">💶 ECHTGELD</span>'):''}</td><td>${p.direction==='long'?'🟢 Long':'🔴 Short'}</td><td class="num">${durStr}</td><td class="num ${pnlCls}" style="font-weight:600">${pnlSign}${pnl.toFixed(2)}€ (${pipsSign}${p.unrealized_pips||0}p)</td><td class="num">${marginStr}</td><td class="num">${slAtr}</td><td class="num">${tpAtr}</td><td class="num">${rr}</td><td>${fmtDT(p.entry_ts)}</td></tr>`;
       }
       html += '</tbody></table>';
     }
@@ -1301,7 +1327,7 @@ function _openPosTableHtml() {
     const marginStr = (p.margin_eur != null ? p.margin_eur.toFixed(1) : '—') + '€';
     const liveBadge = p.is_live ? '<span class="sl-live-badge" title="Echtgeld-Konto ' + esc((p.live_accounts || []).join(', ')) + '">💶 ECHTGELD</span>' : '';
 
-    html += '<tr' + (p.is_live ? ' class="sl-live-row"' : '') + '>';
+    html += '<tr class="sl4-pos-click' + (p.is_live ? ' sl-live-row' : '') + '" data-pos-sym="' + esc(p.symbol) + '" data-pos-id="' + esc(String(p.id)) + '" title="Kerzenchart mit SL/TP, Margin und EUR-Risiko öffnen">';
     html += '<td><strong>#' + p.id + '</strong>' + liveBadge + '</td>';
     html += '<td><strong>' + esc(p.symbol) + '</strong></td>';
     html += '<td style="color:' + dirColor + ';font-weight:700">' + dirIcon + '</td>';
@@ -1395,9 +1421,221 @@ function _openPosSectionHtml() {
   if (!openPos.length && !botOnly.length) return '';
   const nBotRows = openPos.reduce(function(n, p) { return n + (((p.bots && p.bots.length) ? p.bots.length : (p.bot ? 1 : 0))); }, 0);
   let html = '<div class="rd-section-title">📍 Offene Positionen (' + openPos.length + ' Shadow' + (nBotRows ? ' · ' + nBotRows + ' Bot-Spiegel' : '') + (botOnly.length ? ' · ' + botOnly.length + ' ohne Pendant' : '') + ')</div>';
-  html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.35rem">🤖 = Bot-Spiegel (gleiche Spalten, Broker-Fill) · Ampel: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min · 💶 Echtgeld · <span title="Toleranz: FX 3p / Metalle 50p / Indizes 30p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung). ⚠️-Zeilen = Bot-Positionen ohne Shadow-Pendant. Spaltenkopf klicken = sortieren.">ⓘ Details</span></div>';
+  html += '<div style="font-size:0.68rem;color:var(--dim);margin-bottom:0.35rem">🤖 = Bot-Spiegel (gleiche Spalten, Broker-Fill) · Ampel: 🟢 Sync · 🟡 Drift · 🔴 fehlt · ⚫ stale &gt;30min · 💶 Echtgeld · <span title="Toleranz: FX 3p / Metalle 50p / Indizes 30p, Fill ±3h. Volumen weicht by Design (Equity-Skalierung). ⚠️-Zeilen = Bot-Positionen ohne Shadow-Pendant. Spaltenkopf klicken = sortieren. Zeile klicken = Chart + Trade-Details.">ⓘ Details</span></div>';
   html += '<div class="rd-card" id="sl4-pos-card" style="overflow-x:auto;margin-bottom:1rem">' + _openPosTableHtml() + '</div>';
   return html;
+}
+
+// ── Shadow-Positions-Fokus (03.11.2026) ──────────────────────────────
+// Klick auf eine offene Shadow-Position: H1-Kerzen (zu Strategie-TF
+// aggregiert), Entry/SL/TP/Jetzt, Margin, Risiko/Chance in EUR.
+let _shadowFocusChart = null;
+let _shadowFocusData = null;
+let _shadowFocusPos = null;
+let _shadowFocusTF = 3600;
+
+function _shTfSec(tf) {
+  const s = String(tf || '').toLowerCase();
+  if (s === '15m' || s === 'm15') return 900;
+  if (s === '30m' || s === 'm30') return 1800;
+  if (s === '1h' || s === 'h1') return 3600;
+  if (s === '4h' || s === 'h4') return 14400;
+  if (s === '1d' || s === 'd1' || s === '1day') return 86400;
+  return 3600;
+}
+
+function _shTfLabel(sec) {
+  if (sec >= 86400) return '1D';
+  if (sec >= 14400) return '4H';
+  if (sec >= 3600) return '1H';
+  if (sec >= 1800) return '30M';
+  return '15M';
+}
+
+function _shAggBars(bars, sec) {
+  if (!sec || sec <= 3600) return bars.slice();
+  const out = [];
+  let cur = null;
+  for (const b of bars) {
+    const t = Math.floor(Number(b.time) / sec) * sec;
+    if (!cur || cur.time !== t) {
+      if (cur) out.push(cur);
+      cur = {time: t, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume || 0};
+    } else {
+      cur.high = Math.max(cur.high, b.high);
+      cur.low = Math.min(cur.low, b.low);
+      cur.close = b.close;
+      cur.volume += (b.volume || 0);
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+function _shFmtPx(v) {
+  if (v == null || isNaN(Number(v))) return '—';
+  const n = Number(v);
+  if (Math.abs(n) >= 1000) return n.toFixed(2);
+  if (Math.abs(n) >= 10) return n.toFixed(3);
+  return n.toFixed(5);
+}
+
+function _shFmtEur(v) {
+  if (v == null || isNaN(Number(v))) return '—';
+  const n = Number(v);
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + ' €';
+}
+
+function _shBz(ts) {
+  try {
+    return new Date(Number(ts) * 1000).toLocaleString('de-DE',
+      {timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+  } catch (e) { return '—'; }
+}
+
+function _shMetric(label, value, cls) {
+  return '<div class="detail-item"><div class="detail-label">' + label + '</div>' +
+    '<div class="detail-value ' + (cls || '') + '">' + value + '</div></div>';
+}
+
+function _shTfButtons() {
+  const base = Math.max(_shTfSec((_shadowFocusPos && (_shadowFocusPos.timeframe || '1h')) || '1h'), 3600);
+  const opts = [];
+  for (const v of [base, 14400, 86400]) {
+    if (v >= base && opts.indexOf(v) < 0) opts.push(v);
+  }
+  opts.sort(function(a, b) { return a - b; });
+  let html = '';
+  for (const v of opts) {
+    html += '<button type="button" data-sec="' + v + '" class="' + (v === _shadowFocusTF ? 'active' : '') +
+      '" onclick="setShadowFocusTF(' + v + ')">' + _shTfLabel(v) + '</button>';
+  }
+  return html;
+}
+
+function setShadowFocusTF(sec) {
+  _shadowFocusTF = Number(sec) || 3600;
+  const wrap = document.getElementById('sl4-focus-tf');
+  if (wrap) wrap.innerHTML = _shTfButtons();
+  _renderShadowFocusChart();
+}
+
+function showShadowFocus(sym, sid) {
+  const sd = shadowData || {};
+  const p = (sd.open_positions || []).find(function(x) {
+    return String(x.id) === String(sid) && String(x.symbol) === String(sym);
+  });
+  if (!p) return;
+  const meta = (sd.strategies || []).find(function(s) { return String(s.id) === String(sid); }) || {};
+  _shadowFocusPos = p;
+  _shadowFocusData = null;
+  _shadowFocusTF = Math.max(_shTfSec(p.timeframe || meta.timeframe || '1h'), 3600);
+  const dirLong = String(p.direction || '').toLowerCase() === 'long';
+  const dirTxt = dirLong ? '🟢 LONG' : '🔴 SHORT';
+  const risk = p.risk_eur != null ? p.risk_eur : null;
+  const reward = p.reward_eur != null ? p.reward_eur : null;
+  const upnl = p.unrealized_pnl != null ? p.unrealized_pnl : 0;
+  const name = p.strategy_name || meta.name || '';
+  const tfTxt = _shTfLabel(_shadowFocusTF);
+  let html = '<span class="close" onclick="closeShadowFocus()">×</span>';
+  html += '<h2>#' + esc(String(p.id)) + ' · ' + esc(p.symbol) + ' · ' + dirTxt + ' · ' + tfTxt + '</h2>';
+  html += '<div class="sl4-focus-sub">' + esc(name) + (p.strategy_type ? ' · ' + esc(p.strategy_type) : '') + '</div>';
+  html += '<div class="sl4-focus-tf" id="sl4-focus-tf">' + _shTfButtons() + '</div>';
+  html += '<div class="sl4-focus-chart" id="sl4-focus-chart"><div class="sl4-focus-err">Lade Kerzen…</div></div>';
+  html += '<div class="sl4-focus-legend" id="sl4-focus-legend"></div>';
+  html += '<div class="sl4-focus-grid">';
+  html += _shMetric('Entry', _shFmtPx(p.entry));
+  html += _shMetric('Jetzt', _shFmtPx(p.current_price));
+  html += _shMetric('SL', _shFmtPx(p.sl));
+  html += _shMetric('TP', _shFmtPx(p.tp));
+  html += _shMetric('R:R', p.rr != null ? Number(p.rr).toFixed(2) : '—');
+  html += _shMetric('Margin', p.margin_eur != null ? Number(p.margin_eur).toFixed(2) + ' €' : '—');
+  html += _shMetric('Risiko (SL)', risk != null ? '−' + Number(risk).toFixed(2) + ' €' : '—');
+  html += _shMetric('Chance (TP)', reward != null ? '+' + Number(reward).toFixed(2) + ' €' : '—');
+  html += _shMetric('uPnL', _shFmtEur(upnl), upnl >= 0 ? 'pos' : 'neg');
+  html += _shMetric('Pips', (p.unrealized_pips != null ? (p.unrealized_pips >= 0 ? '+' : '') + Number(p.unrealized_pips).toFixed(1) + 'p' : '—'));
+  html += _shMetric('SL / TP (ATR)', (p.sl_atr != null ? Number(p.sl_atr).toFixed(1) + 'x' : '—') + ' / ' + (p.tp_atr != null ? Number(p.tp_atr).toFixed(1) + 'x' : '—'));
+  html += _shMetric('Volumen', p.volume != null ? Number(p.volume).toLocaleString('de-DE') : '—');
+  html += _shMetric('Seit (Berlin)', _shBz(p.entry_ts));
+  html += _shMetric('Dauer', _fmtDurPos(p.hold_seconds));
+  html += '</div>';
+  html += '<div class="sl4-focus-note">Risiko/Chance = Brutto bei SL/TP (ohne Kommission, Swap und Slippage). ' +
+    'Margin aus dem Shadow-Sizing; Kerzen aus H1, Anzeige-TF nie feiner als die Strategie-TF. ' +
+    'Bei Bot-Spiegeln kann der Broker-Fill leicht abweichen.</div>';
+  document.getElementById('sl4-pos-focus-content').innerHTML = html;
+  document.getElementById('sl4-pos-focus-overlay').classList.add('show');
+  fetch('/api/strategy-lab/shadow_charts/' + encodeURIComponent(sym) + '.json?_=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(d) { _shadowFocusData = d; _renderShadowFocusChart(); })
+    .catch(function(e) {
+      const el = document.getElementById('sl4-focus-chart');
+      if (el) el.innerHTML = '<div class="sl4-focus-err">Chart-Daten für ' + esc(sym) + ' fehlen: ' + esc(String(e.message || e)) + '</div>';
+    });
+}
+
+function closeShadowFocus() {
+  const ov = document.getElementById('sl4-pos-focus-overlay');
+  if (ov) ov.classList.remove('show');
+  if (_shadowFocusChart) { _shadowFocusChart.remove(); _shadowFocusChart = null; }
+  _shadowFocusData = null;
+}
+
+function _renderShadowFocusChart() {
+  const el = document.getElementById('sl4-focus-chart');
+  if (!el || !_shadowFocusData || !_shadowFocusPos) return;
+  if (!window.LightweightCharts) {
+    el.innerHTML = '<div class="sl4-focus-err">LightweightCharts nicht geladen — Chart nicht verfügbar.</div>';
+    return;
+  }
+  const p = _shadowFocusPos;
+  const raw = (_shadowFocusData.bars || []).filter(function(b) { return b && b.time != null; });
+  const bars = _shAggBars(raw, _shadowFocusTF);
+  if (bars.length < 2) {
+    el.innerHTML = '<div class="sl4-focus-err">Zu wenige Kerzen für dieses Symbol.</div>';
+    return;
+  }
+  if (_shadowFocusChart) { _shadowFocusChart.remove(); _shadowFocusChart = null; }
+  el.innerHTML = '';
+  const chart = LightweightCharts.createChart(el, {
+    width: el.clientWidth || 880,
+    height: 320,
+    layout: {background: {color: '#0d1117'}, textColor: '#e6edf3'},
+    grid: {vertLines: {color: 'rgba(48,54,61,0.5)'}, horzLines: {color: 'rgba(48,54,61,0.5)'}},
+    rightPriceScale: {borderColor: '#30363d'},
+    timeScale: {borderColor: '#30363d', timeVisible: true, secondsVisible: false},
+    crosshair: {mode: 0}
+  });
+  const series = chart.addCandlestickSeries({
+    upColor: '#3fb950', downColor: '#f85149', borderVisible: false,
+    wickUpColor: '#3fb950', wickDownColor: '#f85149'
+  });
+  series.setData(bars);
+  function level(price, color, style) {
+    if (price == null || isNaN(Number(price))) return;
+    series.createPriceLine({price: Number(price), color: color, lineWidth: 1,
+      lineStyle: style || 2, axisLabelVisible: true, title: ''});
+  }
+  level(p.entry, '#58a6ff', 2);
+  level(p.sl, '#f85149', 0);
+  level(p.tp, '#3fb950', 0);
+  const cur = (_shadowFocusData.live_price != null ? _shadowFocusData.live_price : p.current_price);
+  level(cur, '#d29922', 1);
+  const entrySec = Math.floor(Number(p.entry_ts || 0) / _shadowFocusTF) * _shadowFocusTF;
+  let idx = bars.findIndex(function(b) { return b.time >= entrySec; });
+  if (idx < 0) idx = bars.length - 1;
+  const from = bars[Math.max(0, idx - 40)].time;
+  const to = bars[bars.length - 1].time;
+  if (to > from) chart.timeScale().setVisibleRange({from: from, to: to});
+  else chart.timeScale().fitContent();
+  _shadowFocusChart = chart;
+  const upnl = p.unrealized_pnl != null ? p.unrealized_pnl : 0;
+  const leg = document.getElementById('sl4-focus-legend');
+  if (leg) {
+    leg.innerHTML = '<span>EINSTIEG <b>' + _shFmtPx(p.entry) + '</b></span>' +
+      '<span>SL <b style="color:var(--red)">' + _shFmtPx(p.sl) + '</b>' + (p.risk_eur != null ? ' (−' + Number(p.risk_eur).toFixed(2) + ' €)' : '') + '</span>' +
+      '<span>TP <b style="color:var(--green)">' + _shFmtPx(p.tp) + '</b>' + (p.reward_eur != null ? ' (+' + Number(p.reward_eur).toFixed(2) + ' €)' : '') + '</span>' +
+      '<span>JETZT <b style="color:var(--yellow)">' + _shFmtPx(cur) + '</b> (' + _shFmtEur(upnl) + ')</span>';
+  }
 }
 
 function _updateShadowPosTableOnly() {
@@ -3016,6 +3254,17 @@ document.getElementById('sl4-search').addEventListener('input', e => {
 // Close modal on overlay click
 document.getElementById('sl4-modal-overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) e.target.classList.remove('show');
+});
+document.getElementById('sl4-pos-focus-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeShadowFocus();
+});
+document.addEventListener('click', function(e) {
+  const tr = (e.target && e.target.closest) ? e.target.closest('tr.sl4-pos-click') : null;
+  if (!tr) return;
+  showShadowFocus(tr.dataset.posSym, tr.dataset.posId);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeShadowFocus();
 });
 
 loadData();
