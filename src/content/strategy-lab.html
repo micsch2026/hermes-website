@@ -1472,6 +1472,30 @@ function _shAggBars(bars, sec) {
   return out;
 }
 
+function _shWithLiveBar(bars, p) {
+  // H1-Daten enden mit der letzten GESCHLOSSENEN Bar. Für den Fokus-Chart
+  // hängen wir die laufende Stunde aus dem validierten Spot an (wie Bot-Chart).
+  if (!bars.length || !p || p.current_price == null) return bars;
+  const step = 3600;
+  const last = bars[bars.length - 1];
+  const now = Math.floor(Date.now() / 1000);
+  const bucket = Math.floor(now / step) * step;
+  if (bucket <= Number(last.time)) return bars;
+  if (now - Number(last.time) > 6 * 3600) return bars;  // stale/closed markt
+  const cur = Number(p.current_price);
+  const copy = bars.slice();
+  copy.push({
+    time: bucket,
+    open: last.close,
+    high: Math.max(Number(last.close), cur),
+    low: Math.min(Number(last.close), cur),
+    close: cur,
+    volume: 0,
+    partial: true
+  });
+  return copy;
+}
+
 function _shFmtPx(v) {
   if (v == null || isNaN(Number(v))) return '—';
   const n = Number(v);
@@ -1536,6 +1560,7 @@ function showShadowFocus(sym, sid) {
   const reward = p.reward_eur != null ? p.reward_eur : null;
   const upnl = p.unrealized_pnl != null ? p.unrealized_pnl : 0;
   const name = p.strategy_name || meta.name || '';
+  const fillTs = p.entry_close_ts || p.entry_ts;
   const tfTxt = _shTfLabel(_shadowFocusTF);
   let html = '<span class="close" onclick="closeShadowFocus()">×</span>';
   html += '<h2>#' + esc(String(p.id)) + ' · ' + esc(p.symbol) + ' · ' + dirTxt + ' · ' + tfTxt + '</h2>';
@@ -1556,12 +1581,15 @@ function showShadowFocus(sym, sid) {
   html += _shMetric('Pips', (p.unrealized_pips != null ? (p.unrealized_pips >= 0 ? '+' : '') + Number(p.unrealized_pips).toFixed(1) + 'p' : '—'));
   html += _shMetric('SL / TP (ATR)', (p.sl_atr != null ? Number(p.sl_atr).toFixed(1) + 'x' : '—') + ' / ' + (p.tp_atr != null ? Number(p.tp_atr).toFixed(1) + 'x' : '—'));
   html += _shMetric('Volumen', p.volume != null ? Number(p.volume).toLocaleString('de-DE') : '—');
-  html += _shMetric('Seit (Berlin)', _shBz(p.entry_ts));
+  html += _shMetric('Einstieg (Fill)', _shBz(fillTs));
+  if (p.entry_close_ts && p.entry_close_ts !== p.entry_ts) {
+    html += _shMetric('Signal (Bar-Start)', _shBz(p.entry_ts));
+  }
   html += _shMetric('Dauer', _fmtDurPos(p.hold_seconds));
   html += '</div>';
   html += '<div class="sl4-focus-note">Risiko/Chance = Brutto bei SL/TP (ohne Kommission, Swap und Slippage). ' +
     'Margin aus dem Shadow-Sizing; Kerzen aus H1, Anzeige-TF nie feiner als die Strategie-TF. ' +
-    'Bei Bot-Spiegeln kann der Broker-Fill leicht abweichen.</div>';
+    'EINSTIEG = Fill am Bar-Close, Signal = Bar-Start. Bei Bot-Spiegeln kann der Broker-Fill leicht abweichen.</div>';
   document.getElementById('sl4-pos-focus-content').innerHTML = html;
   document.getElementById('sl4-pos-focus-overlay').classList.add('show');
   fetch('/api/strategy-lab/shadow_charts/' + encodeURIComponent(sym) + '.json?_=' + Date.now())
@@ -1588,7 +1616,7 @@ function _renderShadowFocusChart() {
     return;
   }
   const p = _shadowFocusPos;
-  const raw = (_shadowFocusData.bars || []).filter(function(b) { return b && b.time != null; });
+  const raw = _shWithLiveBar((_shadowFocusData.bars || []).filter(function(b) { return b && b.time != null; }), p);
   const bars = _shAggBars(raw, _shadowFocusTF);
   if (bars.length < 2) {
     el.innerHTML = '<div class="sl4-focus-err">Zu wenige Kerzen für dieses Symbol.</div>';
@@ -1610,6 +1638,17 @@ function _renderShadowFocusChart() {
     wickUpColor: '#3fb950', wickDownColor: '#f85149'
   });
   series.setData(bars);
+  const entrySec = Math.floor(Number(p.entry_close_ts || p.entry_ts || 0) / _shadowFocusTF) * _shadowFocusTF;
+  let entryIdx = bars.findIndex(function(b) { return b.time >= entrySec; });
+  if (entryIdx >= 0) {
+    series.setMarkers([{
+      time: bars[entryIdx].time,
+      position: String(p.direction || '').toLowerCase() === 'long' ? 'belowBar' : 'aboveBar',
+      color: '#58a6ff',
+      shape: String(p.direction || '').toLowerCase() === 'long' ? 'arrowUp' : 'arrowDown',
+      text: 'EINSTIEG'
+    }]);
+  }
   function level(price, color, style) {
     if (price == null || isNaN(Number(price))) return;
     series.createPriceLine({price: Number(price), color: color, lineWidth: 1,
@@ -1620,8 +1659,7 @@ function _renderShadowFocusChart() {
   level(p.tp, '#3fb950', 0);
   const cur = (_shadowFocusData.live_price != null ? _shadowFocusData.live_price : p.current_price);
   level(cur, '#d29922', 1);
-  const entrySec = Math.floor(Number(p.entry_ts || 0) / _shadowFocusTF) * _shadowFocusTF;
-  let idx = bars.findIndex(function(b) { return b.time >= entrySec; });
+  let idx = entryIdx;
   if (idx < 0) idx = bars.length - 1;
   const from = bars[Math.max(0, idx - 40)].time;
   const to = bars[bars.length - 1].time;
@@ -1631,7 +1669,7 @@ function _renderShadowFocusChart() {
   const upnl = p.unrealized_pnl != null ? p.unrealized_pnl : 0;
   const leg = document.getElementById('sl4-focus-legend');
   if (leg) {
-    leg.innerHTML = '<span>EINSTIEG <b>' + _shFmtPx(p.entry) + '</b></span>' +
+    leg.innerHTML = '<span>EINSTIEG <b>' + _shFmtPx(p.entry) + '</b> <span style="color:var(--dim)">· ' + _shBz(p.entry_close_ts || p.entry_ts) + '</span></span>' +
       '<span>SL <b style="color:var(--red)">' + _shFmtPx(p.sl) + '</b>' + (p.risk_eur != null ? ' (−' + Number(p.risk_eur).toFixed(2) + ' €)' : '') + '</span>' +
       '<span>TP <b style="color:var(--green)">' + _shFmtPx(p.tp) + '</b>' + (p.reward_eur != null ? ' (+' + Number(p.reward_eur).toFixed(2) + ' €)' : '') + '</span>' +
       '<span>JETZT <b style="color:var(--yellow)">' + _shFmtPx(cur) + '</b> (' + _shFmtEur(upnl) + ')</span>';
