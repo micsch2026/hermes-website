@@ -3543,6 +3543,42 @@ function renderEquity(d) {
   var idxOf = {};
   for (var li = 0; li < labels.length; li++) idxOf[labels[li]] = li;
 
+  // Kapitalbewegungen (09.11.2026): die Kurve selbst am Sprung einfaerben.
+  // Einzahlung/Auszahlung = rot, Steuer-Rueckzahlung = gruen; sonst normal.
+  var cfSeg = {};
+  var cfAll = Array.isArray(d.cashflows) ? d.cashflows : [];
+  if (cfAll.length) {
+    var cfShown = {};
+    for (var cs = 0; cs < series.length; cs++) cfShown[String(series[cs].a.ctid)] = true;
+    for (var cfi = 0; cfi < cfAll.length; cfi++) {
+      var ce = cfAll[cfi] || {};
+      if (!cfShown[String(ce.ctid)]) continue;
+      var cfCol = null;
+      if (ce.type === 'EINZAHLUNG' || ce.type === 'AUSZAHLUNG') cfCol = '#ef4444';
+      else if (ce.type === 'TAX_SETTLEMENT_RUECKZAHLUNG') cfCol = '#22c55e';
+      if (!cfCol) continue;
+      var cts = String(ce.ts || '');
+      if (!cts) continue;
+      var cfPrev = -1, cfNext = -1;
+      for (var cl = 0; cl < labels.length; cl++) {
+        if (String(labels[cl]) < cts) cfPrev = cl;
+        else { cfNext = cl; break; }
+      }
+      if (cfPrev >= 0 && cfNext > cfPrev) cfSeg[String(ce.ctid) + '|' + cfPrev + '-' + cfNext] = cfCol;
+    }
+  }
+
+  function _cfSegOpt(key, base) {
+    return {
+      borderColor: function (c) {
+        return cfSeg[key + '|' + c.p0DataIndex + '-' + c.p1DataIndex] || base;
+      },
+      borderWidth: function (c) {
+        return cfSeg[key + '|' + c.p0DataIndex + '-' + c.p1DataIndex] ? 3 : 2;
+      }
+    };
+  }
+
   var datasets = [];
   for (var si = 0; si < series.length; si++) {
     var sr = series[si];
@@ -3552,6 +3588,7 @@ function renderEquity(d) {
       if (ix !== undefined) data[ix] = sr.vals[vi].v;
     }
     var isLive = !!sr.a.is_live;
+    var acctKey = String(sr.a.ctid || '');
     datasets.push({
       label: (isLive ? '💰 Echtgeld' : '🧪 Demo') + (sr.a.ctid ? ' ' + sr.a.ctid : ''),
       data: data,
@@ -3561,7 +3598,8 @@ function renderEquity(d) {
       tension: 0.25,
       pointRadius: 0,
       borderWidth: 2,
-      spanGaps: true
+      spanGaps: true,
+      segment: _cfSegOpt(acctKey, isLive ? '#f0b940' : '#5b8def')
     });
   }
 
@@ -3584,37 +3622,6 @@ function renderEquity(d) {
   var curvesM = d.curves || [];
   for (var cm = 0; cm < curvesM.length; cm++) addMarkers(curvesM[cm].markers);
 
-  // Kapitalbewegungen (09.11.2026): Einzahlung/Auszahlung rot, Steuer-Rueckzahlung gruen.
-  var cfAll = Array.isArray(d.cashflows) ? d.cashflows : [];
-  if (cfAll.length) {
-    var cfShown = {};
-    for (var cs = 0; cs < series.length; cs++) cfShown[String(series[cs].a.ctid)] = true;
-    var CF_STYLE = {
-      EINZAHLUNG: { c: '#ef4444', t: 'Einzahlung' },
-      AUSZAHLUNG: { c: '#dc2626', t: 'Auszahlung' },
-      TRANSFER: { c: '#f97316', t: 'Transfer' },
-      TAX_SETTLEMENT_RUECKZAHLUNG: { c: '#22c55e', t: 'Steuer-Rueckzahlung' },
-      WHT_ABZUG: { c: '#9ca3af', t: 'Quellensteuer' }
-    };
-    for (var cfi = 0; cfi < cfAll.length; cfi++) {
-      var ce = cfAll[cfi] || {};
-      if (!cfShown[String(ce.ctid)]) continue;
-      var cts = String(ce.ts || '');
-      if (!cts) continue;
-      var cat = -1;
-      for (var cl = 0; cl < labels.length; cl++) {
-        if (String(labels[cl]) >= cts) { cat = cl; break; }
-      }
-      if (cat < 0) continue;
-      var cmeta = CF_STYLE[ce.type] || { c: '#9ca3af', t: ce.type || 'Cashflow' };
-      var camt = Math.abs(Number(ce.eur) || 0);
-      var cnum = camt % 1 ? camt.toFixed(2).replace('.', ',') : String(Math.round(camt));
-      markers.push({
-        idx: cat, label: ((Number(ce.eur) || 0) >= 0 ? '+' : '-') + cnum + ' EUR',
-        color: cmeta.c, title: cmeta.t, kind: 'cf'
-      });
-    }
-  }
   var markerPlugin = {
     id: 'cpMarkers',
     afterDatasetsDraw: function (chart) {
@@ -3625,16 +3632,13 @@ function renderEquity(d) {
       for (var i2 = 0; i2 < markers.length; i2++) {
         var x = xa.getPixelForValue(markers[i2].idx);
         if (x == null || isNaN(x)) continue;
-        var _isCf = markers[i2].kind === 'cf';
-        ctx.beginPath(); ctx.setLineDash(_isCf ? [6, 3] : [4, 3]);
-        ctx.strokeStyle = markers[i2].color || 'rgba(156,163,175,0.8)';
-        ctx.lineWidth = _isCf ? 1.5 : 1;
+        ctx.beginPath(); ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = 'rgba(156,163,175,0.8)'; ctx.lineWidth = 1;
         ctx.moveTo(x, ya.top); ctx.lineTo(x, ya.bottom); ctx.stroke();
         ctx.setLineDash([]);
         if (markers[i2].label) {
-          ctx.fillStyle = markers[i2].color || '#9ca3af';
-          ctx.font = (_isCf ? 'bold 10px' : '10px') + ' sans-serif'; ctx.textAlign = 'left';
-          ctx.fillText(markers[i2].label, x + 3, ya.top + 10 + (i2 % 3) * 11);
+          ctx.fillStyle = '#9ca3af'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+          ctx.fillText(markers[i2].label, x + 3, ya.top + 10);
         }
       }
       ctx.restore();
@@ -3642,7 +3646,7 @@ function renderEquity(d) {
   };
 
   if (_chartInstances.equity) _chartInstances.equity.destroy();
-  window.__equityMarkers = markers;   // Verify-Hook (09.11.2026)
+  window.__equitySegments = cfSeg;   // Verify-Hook (09.11.2026)
   _chartInstances.equity = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: { labels: labels, datasets: datasets },
