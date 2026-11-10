@@ -3063,18 +3063,36 @@ function renderEventsEngine() {
   const upd = meta.generated_at ? new Date(meta.generated_at).toLocaleString('de-DE') : '—';
   let html = '<div class="rd-section-title">📅 Event-Engine <span style="font-size:0.75rem;color:var(--dim)">'
     + (meta.events_total || 0) + ' Events · ' + (meta.hypotheses || 0) + ' Hypothesen · Stand ' + esc(upd) + '</span></div>';
+  // Kompakte Lage-Zeile statt langer Statusprosa (10.11.2026, UI-Cleanup).
+  const _hyps0 = d.hypotheses || [];
+  const _cnt = {candidate: 0, observing: 0, rejected: 0, active: 0};
+  _hyps0.forEach(h => { if (_cnt[h.status] !== undefined) _cnt[h.status]++; });
+  const _fwdNet = _hyps0.reduce((s, h) => s + (h.forward ? (h.forward.saved_eur || 0) : 0), 0);
+  const _chip = function(txt, col) {
+    return '<span style="display:inline-block;padding:0.28rem 0.55rem;border-radius:999px;font-size:0.75rem;'
+      + 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:' + col + '">' + txt + '</span>';
+  };
+  html += '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin:0.45rem 0 0.2rem">'
+    + _chip('🟡 ' + _cnt.candidate + ' Kandidaten', '#e8b84a')
+    + _chip('👁️ ' + _cnt.observing + ' Beobachtung', '#5ba3d9')
+    + _chip('❌ ' + _cnt.rejected + ' verworfen', '#a05555')
+    + _chip('🧪 Gate-Forward netto ' + (_fwdNet >= 0 ? '+' : '') + _fwdNet.toFixed(0) + '€', _fwdNet >= 0 ? '#39b54a' : '#e05252')
+    + '</div>';
   const cal = d.calendar_next14d || [];
   const now = Date.now()/1000;
   const soon = cal.filter(e => e.epoch <= now + 48*3600);
   html += '<div class="rd-section-title" style="margin-top:0.6rem">🗓️ Kalender — nächste 48 h</div>';
   if (soon.length) {
-    html += '<div class="sl4-table-wrap" style="max-height:420px;overflow-y:auto"><table class="sl4-table"><thead><tr><th>Zeit (Berlin)</th><th>Event</th><th>Kat.</th><th>Währung</th><th>Impact</th></tr></thead><tbody>';
-    for (const e of soon.slice(0, 40)) {
+    const _showCat = soon.some(e => e.category);
+    html += '<div class="sl4-table-wrap" style="max-height:360px;overflow-y:auto"><table class="sl4-table"><thead><tr><th>Zeit (Berlin)</th><th>Event</th>'
+      + (_showCat ? '<th>Kat.</th>' : '') + '<th>Währung</th><th>Impact</th></tr></thead><tbody>';
+    for (const e of soon.slice(0, 15)) {
       const imp = e.impact === 'High' ? '<span class="gate gate-fail">High</span>'
         : (e.impact === 'Medium' ? '<span class="gate" style="background:rgba(210,153,34,0.15);color:#d29922">Med</span>'
         : '<span class="gate" style="background:rgba(107,114,128,0.1);color:var(--dim)">Low</span>');
       html += '<tr><td style="width:130px">' + esc(e.ts_berlin || '') + '</td><td>' + esc(e.title || '')
-        + '</td><td style="width:110px">' + esc(e.category || '—') + '</td><td style="width:60px">' + esc(e.currency || '')
+        + (_showCat ? '</td><td style="width:110px">' + esc(e.category || '—') : '')
+        + '</td><td style="width:60px">' + esc(e.currency || '')
         + '</td><td style="width:70px">' + imp + '</td></tr>';
     }
     html += '</tbody></table></div>';
@@ -3083,30 +3101,44 @@ function renderEventsEngine() {
   }
   const later = cal.filter(e => e.epoch > now + 48*3600 && (e.impact === 'High' || e.impact === 'Medium'));
   if (later.length) {
-    html += '<div class="rd-section-title" style="margin-top:0.8rem">📆 Danach (bis 14 Tage) — High/Medium</div>';
+    html += '<details class="rd-diag" style="margin-top:0.5rem"><summary>📆 Danach (bis 14 Tage) — High/Medium (' + later.length + ')</summary>';
     html += '<div class="sl4-table-wrap"><table class="sl4-table"><tbody>';
-    for (const e of later.slice(0, 60)) {
+    for (const e of later.slice(0, 40)) {
       html += '<tr><td style="width:130px">' + esc((e.ts_berlin || '').slice(5)) + '</td><td>' + esc(e.title || '')
         + '</td><td style="width:110px">' + esc(e.category || '') + '</td><td style="width:60px">' + esc(e.currency || '') + '</td></tr>';
     }
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></details>';
   }
   const hyps = d.hypotheses || [];
   const stIcon = {candidate:'🟡', observing:'👁️', active:'🟢', rejected:'❌'};
   const stColor = {candidate:'#e8b84a', observing:'#5ba3d9', active:'#39b54a', rejected:'#a05555'};
   const stLabel = {candidate:'Kandidat — Gate-Test ausstehend', observing:'Beobachtung — läuft', active:'aktiv', rejected:'verworfen — dokumentiert'};
-  html += '<div class="rd-section-title" style="margin-top:0.8rem">🎯 Hypothesen-Registry (' + hyps.length + ') — was funktioniert, was nicht, was als Nächstes</div>';
-  for (const h of hyps) {
-    const col = stColor[h.status] || '#666';
-    html += '<div style="border-left:3px solid ' + col + ';padding:0.5rem 0.7rem;margin:0.4rem 0;background:rgba(255,255,255,0.025);border-radius:5px">';
-    html += '<div style="font-size:0.88rem"><b>' + (stIcon[h.status] || '') + ' ' + esc(h.name || '') + '</b>';
-    html += '<span style="color:var(--dim);font-size:0.72rem"> · ' + esc(h.hid || '') + ' · Bereich: ' + esc(h.scope || '') + ' · ' + esc(stLabel[h.status] || h.status || '') + '</span></div>';
-    html += '<div style="font-size:0.8rem;margin-top:0.25rem;line-height:1.5">' + esc(h.note || h.summary || '') + '</div>';
-    if (h.forward) {
-      const fwd = h.forward;
-      html += '<div style="font-size:0.75rem;color:var(--dim);margin-top:0.3rem">🧪 Gate-Shadow-Test (virtuell, seit ' + esc(fwd.since || '') + '): ' + (fwd.blocked_n || 0) + ' von ' + (fwd.n_forward || 0) + ' Forward-Trades im Fangnetz · virtuell gespart: <span class="' + ((fwd.saved_eur || 0) > 0 ? 'pos' : 'neg') + '">' + ((fwd.saved_eur || 0) > 0 ? '+' : '') + Number(fwd.saved_eur || 0).toFixed(2) + '€</span>' + (fwd.blocked_mean != null ? ' · Ø ' + Number(fwd.blocked_mean).toFixed(2) + '€/Trade' : '') + '</div>';
+  html += '<div class="rd-section-title" style="margin-top:0.9rem">🎯 Hypothesen (' + hyps.length + ') — was wirkt, was nicht</div>';
+  html += '<div style="font-size:0.76rem;color:var(--dim);margin-bottom:0.35rem">Kandidaten und Beobachtungen sind offen, verworfene eingeklappt. Klick auf eine Zeile öffnet die Begründung. <b>Forward:</b> geblockt / Signale · virtuell gespart (positiv = Gate wirkt).</div>';
+  const _groups = [['candidate', '🟡 Kandidaten — Gate-Test ausstehend'], ['observing', '👁️ Beobachtung'], ['rejected', '❌ Verworfen']];
+  for (const _g of _groups) {
+    const _list = hyps.filter(h => h.status === _g[0]);
+    if (!_list.length) continue;
+    html += '<details class="rd-diag" style="margin:0.3rem 0"' + (_g[0] === 'rejected' ? '' : ' open') + '><summary>' + _g[1] + ' (' + _list.length + ')</summary>';
+    for (const h of _list) {
+      const f = h.forward;
+      const fwdTxt = f
+        ? ((f.blocked_n || 0) + '/' + (f.n_forward || 0) + ' · ' + ((f.saved_eur || 0) >= 0 ? '+' : '') + Number(f.saved_eur || 0).toFixed(0) + '€')
+        : '—';
+      const fwdCls = f ? ((f.saved_eur || 0) > 0 ? 'pos' : ((f.saved_eur || 0) < 0 ? 'neg' : '')) : '';
+      html += '<details style="margin:0.18rem 0;border-left:3px solid ' + (stColor[h.status] || '#666') + ';background:rgba(255,255,255,0.025);border-radius:4px">'
+        + '<summary style="cursor:pointer;padding:0.4rem 0.6rem;font-size:0.82rem">'
+        + (stIcon[h.status] || '') + ' <b>' + esc(h.name || '') + '</b>'
+        + ' <span style="color:var(--dim);font-size:0.72rem">' + esc(h.hid || '') + ' · ' + esc(h.scope || '') + '</span>'
+        + ' <span style="float:right;font-size:0.75rem" class="' + fwdCls + '">' + fwdTxt + '</span>'
+        + '</summary>'
+        + '<div style="padding:0.1rem 0.6rem 0.55rem;font-size:0.78rem;line-height:1.55">' + esc(h.note || h.summary || '') + '</div>'
+        + (f ? '<div style="padding:0 0.6rem 0.5rem;font-size:0.72rem;color:var(--dim)">🧪 Gate-Shadow seit ' + esc(f.since || '')
+          + ' · letzte Messung ' + esc((f.checked_at || '').slice(0, 16).replace('T', ' ')) + ' UTC'
+          + (f.blocked_mean != null ? ' · Ø ' + Number(f.blocked_mean).toFixed(2) + '€/Trade' : '') + '</div>' : '')
+        + '</details>';
     }
-    html += '</div>';
+    html += '</details>';
   }
   let an = '';
   const gsHyps = hyps.filter(h => h.forward);
