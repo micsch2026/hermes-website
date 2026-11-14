@@ -80,7 +80,11 @@ TARGETS = {
         "build_cwd": SITE_DIR,
         "output": os.path.join(SITE_DIR, "_build", "index.html"),
         "timeout": 60,
-        "max_staleness_hours": 24,
+        # 18h statt 24h (FIX 14.11.2026): Timer tickt alle 6h, Watchdog meldet
+        # ab 26h. Mit 24h Limit traf der 24h-Tick sekundengenau VOR die Schwelle
+        # (23h59m55s < 24h) -> Skip, naechster Tick erst 30h > 26h = Fehlalarm.
+        # 18h + 6h Tick = Worst-Case 24h < 26h (2h Margin).
+        "max_staleness_hours": 18,
     },
 }
 

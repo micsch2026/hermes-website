@@ -87,7 +87,16 @@ def main():
         assert should and "refresh" in reason, (should, reason)
     check("unparsable last_build -> rebuild once", t7)
 
-    print(f"\n{7 - len(failures)}/7 PASS, {len(failures)} FAIL")
+    def t8():
+        # Regression 14.11.2026: 24h-Limit + 6h-Tick ergab Worst-Case 30h >
+        # 26h-Watchdog (Alarm im Normalbetrieb, 5s-Race am 24h-Tick).
+        lim = m.TARGETS["site"].get("max_staleness_hours")
+        assert lim is not None, "site max_staleness_hours fehlt"
+        assert float(lim) + 6.0 < 26.0, (
+            f"site limit {lim}h + 6h Timer-Tick >= 26h Watchdog-Frist")
+    check("site limit + 6h tick < 26h watchdog", t8)
+
+    print(f"\n{8 - len(failures)}/8 PASS, {len(failures)} FAIL")
     if failures:
         print("FAILS:", failures)
         sys.exit(1)
